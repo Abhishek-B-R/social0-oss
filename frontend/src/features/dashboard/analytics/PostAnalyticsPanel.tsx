@@ -5,8 +5,8 @@ import { ChartLine, ArrowClockwise } from "@/icons/phosphor";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { getPostAnalytics } from "@/api/analytics";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
+import { PLATFORM_LABEL } from "@/lib/platforms";
 import {
-  PLATFORM_LABEL,
   engagementOf,
   formatMetric,
   viewsOf,

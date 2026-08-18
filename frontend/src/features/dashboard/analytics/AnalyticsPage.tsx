@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
-import { ArrowClockwise, SquaresFour } from "@/icons/phosphor";
-import { AccountAvatar } from "@/components/AccountAvatar";
-import { PlatformIcon } from "@/components/PlatformIcon";
+import { ArrowClockwise } from "@/icons/phosphor";
 import { useSession } from "@/lib/auth-client";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import { RangeToolbar } from "@/components/dashboard/RangeToolbar";
+import { AccountFilterChips } from "@/components/dashboard/AccountFilterChips";
 import {
   defaultDateWindow,
   windowQueryParams,
@@ -16,7 +15,6 @@ import {
 import {
   getAnalyticsOverview,
   listAnalyticsAccounts,
-  type AnalyticsAccount,
 } from "@/api/analytics";
 import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
@@ -26,7 +24,6 @@ import {
   EngagementMixChart,
 } from "./AnalyticsCharts";
 import {
-  PLATFORM_LABEL,
   engagementOf,
   engagementMix,
   formatMetric,
@@ -34,7 +31,7 @@ import {
   viewsOf,
 } from "./analytics-utils";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
-import { isPlatformLive } from "@/lib/live-platforms";
+import { PLATFORM_LABEL } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 
 export function AnalyticsPage() {
@@ -68,13 +65,7 @@ export function AnalyticsPage() {
     staleTime: 60_000,
   });
 
-  const accounts = useMemo(
-    () =>
-      (accountsQuery.data ?? []).filter((a) =>
-        isPlatformLive("analytics", a.platform),
-      ),
-    [accountsQuery.data],
-  );
+  const accounts = accountsQuery.data ?? [];
 
   useEffect(() => {
     if (!accountId || accountsQuery.isLoading) return;
@@ -82,9 +73,7 @@ export function AnalyticsPage() {
   }, [accountId, accounts, accountsQuery.isLoading]);
 
   const reconnect = useMemo(() => {
-    const fromOverview = (overviewQuery.data?.accountsNeedingReconnect ?? []).filter(
-      (a) => isPlatformLive("analytics", a.platform),
-    );
+    const fromOverview = overviewQuery.data?.accountsNeedingReconnect ?? [];
     if (fromOverview.length) return fromOverview;
     return accounts
       .filter((a) => a.missingScopes.length > 0)
@@ -164,35 +153,13 @@ export function AnalyticsPage() {
       <RangeToolbar value={dateWindow} onChange={setDateWindow} />
 
       <div className="shrink-0">
-        {accountsQuery.isLoading ? (
-          <div className="flex flex-wrap gap-3" aria-hidden>
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="flex w-16 flex-col items-center gap-1.5">
-                <div className="h-12 w-12 animate-pulse rounded-full bg-bg-muted" />
-                <div className="h-2.5 w-12 animate-pulse rounded bg-bg-muted" />
-              </div>
-            ))}
-          </div>
-        ) : accounts.length > 0 ? (
-          <div className="flex flex-wrap items-start gap-3">
-            <AllAccountsChip
-              selected={accountId == null}
-              onClick={() => setAccountId(null)}
-            />
-            {accounts.map((a) => (
-              <AccountChip
-                key={a.id}
-                account={a}
-                selected={accountId === a.id}
-                onClick={() => setAccountId(a.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-text-muted">
-            Connect an account to see analytics.
-          </p>
-        )}
+        <AccountFilterChips
+          accounts={accounts}
+          selectedId={accountId}
+          onSelect={setAccountId}
+          loading={accountsQuery.isLoading}
+          emptyLabel="Connect an account to see analytics."
+        />
       </div>
 
       {reconnect.length ? (
@@ -386,116 +353,6 @@ export function AnalyticsPage() {
 function handleLabel(username: string | null): string {
   if (!username) return "account";
   return username.startsWith("@") ? username.slice(1) : username;
-}
-
-function AllAccountsChip({
-  selected,
-  onClick,
-}: {
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className="flex w-16 flex-col items-center gap-1.5"
-    >
-      <span
-        className={cn(
-          "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all",
-          selected
-            ? "border-accent bg-accent/15 text-accent"
-            : "border-transparent bg-bg-muted text-text-muted opacity-70 hover:opacity-100",
-        )}
-      >
-        <SquaresFour size={22} weight={selected ? "fill" : "regular"} />
-        {selected ? <SelectedCheck /> : null}
-      </span>
-      <span
-        className={cn(
-          "w-full truncate text-center text-[11px] font-semibold",
-          selected ? "text-accent" : "text-text-muted",
-        )}
-      >
-        All
-      </span>
-    </button>
-  );
-}
-
-function AccountChip({
-  account,
-  selected,
-  onClick,
-}: {
-  account: AnalyticsAccount;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  const needsReconnect = account.missingScopes.length > 0;
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      title={
-        needsReconnect
-          ? `Reconnect ${PLATFORM_LABEL[account.platform] ?? account.platform} for full insights`
-          : `@${handleLabel(account.username)}`
-      }
-      className="flex w-16 flex-col items-center gap-1.5"
-    >
-      <span
-        className={cn(
-          "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-all",
-          selected
-            ? "border-accent opacity-100"
-            : "border-transparent opacity-60 hover:opacity-100",
-        )}
-      >
-        <span className="h-full w-full overflow-hidden rounded-full">
-          <AccountAvatar
-            profileImageUrl={account.profileImageUrl}
-            username={account.username}
-            platform={account.platform}
-            fill
-          />
-        </span>
-        <span className="absolute bottom-0 right-0 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-bg-elevated bg-bg-elevated">
-          <PlatformIcon platform={account.platform} size={11} />
-        </span>
-        {selected ? <SelectedCheck /> : null}
-        {needsReconnect ? (
-          <span className="absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-bg bg-amber-500" />
-        ) : null}
-      </span>
-      <span
-        className={cn(
-          "w-full truncate text-center text-[11px] font-semibold",
-          selected ? "text-accent" : "text-text",
-        )}
-      >
-        {handleLabel(account.username)}
-      </span>
-    </button>
-  );
-}
-
-function SelectedCheck() {
-  return (
-    <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-accent-foreground">
-      <svg className="h-2.5 w-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2.5}
-          d="M5 13l4 4L19 7"
-        />
-      </svg>
-    </span>
-  );
 }
 
 function StatCard({

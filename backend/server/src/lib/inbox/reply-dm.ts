@@ -2,8 +2,10 @@
 
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
+import { jsonPost } from "../http-json.js";
 import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
 import { inboxAllowsMedia } from "./media-capabilities.js";
+import { blueskySession } from "./bluesky-session.js";
 
 export type DmReplyInput = {
   platform: string;
@@ -15,6 +17,7 @@ export type DmReplyInput = {
   accessToken: string;
   accessSecret?: string | null;
   platformUserId: string;
+  accountId?: string;
   accountHandle?: string | null;
 };
 
@@ -24,19 +27,6 @@ export type DmReplyResult =
 
 function fail(message: string): DmReplyResult {
   return { ok: false, error: message };
-}
-
-async function jsonPost(
-  url: string,
-  body: unknown,
-): Promise<{ ok: boolean; data: unknown }> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, data };
 }
 
 function graphError(data: unknown, fallback: string): string {
@@ -202,18 +192,12 @@ async function replyBluesky(input: DmReplyInput): Promise<DmReplyResult> {
   if (input.mediaUrl) {
     return fail("Bluesky DMs do not support attachments yet.");
   }
-  const sessionRes = await fetch(
-    "https://bsky.social/xrpc/com.atproto.server.createSession",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier: handle, password: appPassword }),
-    },
+  const session = await blueskySession(
+    input.accountId ?? handle,
+    handle,
+    appPassword,
   );
-  const session = (await sessionRes.json().catch(() => ({}))) as {
-    accessJwt?: string;
-  };
-  if (!sessionRes.ok || !session.accessJwt) {
+  if (!session) {
     return fail("Bluesky login failed. Reconnect the account.");
   }
   const res = await fetch("https://api.bsky.chat/xrpc/chat.bsky.convo.sendMessage", {

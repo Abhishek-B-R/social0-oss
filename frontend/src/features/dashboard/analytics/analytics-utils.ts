@@ -45,18 +45,6 @@ export function engagementMix(m: MetricMap): MixSlice[] {
   return slices.filter((s) => s.value > 0);
 }
 
-export const PLATFORM_LABEL: Record<string, string> = {
-  linkedin: "LinkedIn",
-  facebook: "Facebook",
-  bluesky: "Bluesky",
-  youtube: "YouTube",
-  pinterest: "Pinterest",
-  instagram: "Instagram",
-  tiktok: "TikTok",
-  twitter_x: "X",
-  threads: "Threads",
-};
-
 /** Inclusive range label; keeps the start year when the window crosses New Year. */
 export function formatRangeLabel(since: string, until: string): string {
   const a = new Date(since);

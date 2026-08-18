@@ -11,14 +11,12 @@ import {
   postPublications,
   posts,
 } from "../db/schema.js";
-import { decryptToken } from "@social0/shared";
-import {
-  connectionScopeCondition,
-  postScopeCondition,
-} from "../lib/workspace/context.js";
+import { postScopeCondition } from "../lib/workspace/context.js";
 import { requireWorkspaceSession } from "../lib/workspace/session.js";
 import { rpcHttpError } from "../lib/rpc-http-error.js";
-import { getValidToken, REFRESHABLE_PLATFORMS } from "../lib/token-refresh.js";
+import { resolveAccountAccess } from "../lib/account-access.js";
+import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
+import { mapPool } from "../lib/map-pool.js";
 import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { parseDateWindow } from "../lib/date-window.js";
@@ -38,24 +36,6 @@ import {
 
 const SAMPLE_LIMIT = 48;
 const CONCURRENCY = 6;
-
-async function mapPool<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await fn(items[i]!);
-    }
-  }
-  const n = Math.min(concurrency, Math.max(items.length, 1));
-  await Promise.all(Array.from({ length: n }, () => worker()));
-  return results;
-}
 
 type PubRow = {
   publicationId: string;
@@ -162,26 +142,6 @@ async function loadPublishedPubs(opts: {
   }));
 }
 
-async function resolveAccess(
-  account: NonNullable<PubRow["account"]>,
-): Promise<{ accessToken: string; accessSecret: string | null }> {
-  let accessToken: string;
-  if (REFRESHABLE_PLATFORMS.has(account.platform)) {
-    accessToken = await getValidToken(account.id, account.platform);
-  } else {
-    accessToken = decryptToken(account.encryptedAccessToken, account.id);
-  }
-  let accessSecret: string | null = null;
-  if (account.platform === "twitter_x" && account.encryptedRefreshToken) {
-    accessSecret = decryptToken(account.encryptedRefreshToken, account.id);
-  }
-  if (account.platform === "bluesky" && account.encryptedRefreshToken) {
-    // Bluesky stores app password as access; DID/handle in metadata — token is JWT-ish after login.
-    // Publish path uses handle+password; for public getPosts we don't need the token.
-  }
-  return { accessToken, accessSecret };
-}
-
 async function metricsForPub(row: PubRow): Promise<PublicationMetrics> {
   const base: PublicationMetrics = {
     publicationId: row.publicationId,
@@ -207,16 +167,10 @@ async function metricsForPub(row: PubRow): Promise<PublicationMetrics> {
     };
   }
 
-  if (!isPlatformLive("analytics", row.account.platform)) {
-    return { ...base, status: "skipped" };
-  }
-
   const missing = missingAnalyticsScopes(row.account.platform, row.account.scopes);
-  // Soft hint only when we know scopes and they're incomplete; still try for platforms
-  // that can return partial metrics without the extra scope (FB/IG likes).
 
   try {
-    const { accessToken, accessSecret } = await resolveAccess(row.account);
+    const { accessToken, accessSecret } = await resolveAccountAccess(row.account);
     const result = await fetchPlatformPublicationMetrics({
       platform: row.account.platform,
       platformPostId: row.platformPostId,
@@ -408,7 +362,7 @@ export async function getAnalyticsOverview(input: {
       ? input.accountId
       : undefined;
   if (accountId) {
-    const accounts = await loadWorkspaceAccounts(ctx);
+    const accounts = await listActiveConnectedAccounts(ctx);
     if (!accounts.some((a) => a.id === accountId)) {
       throw rpcHttpError("Account not found", 404);
     }
@@ -428,7 +382,7 @@ export async function getAnalyticsOverview(input: {
   );
   const okResults = results.filter((r) => r.status === "ok");
 
-  const accountRows = await loadWorkspaceAccounts(ctx);
+  const accountRows = await listActiveConnectedAccounts(ctx);
   const fromAccounts: AccountReconnectHint[] = accountRows
     .filter((r) => isPlatformLive("analytics", r.platform))
     .map((r) => ({
@@ -517,31 +471,6 @@ function mergeReconnectHints(
   return [...byId.values()];
 }
 
-type AccountListRow = {
-  id: string;
-  platform: string;
-  username: string | null;
-  scopes: string | null;
-  profileImageUrl: string | null;
-};
-
-async function loadWorkspaceAccounts(ctx: {
-  resourceUserId: string;
-  workspaceId: string | null;
-}): Promise<AccountListRow[]> {
-  const scope = connectionScopeCondition(ctx);
-  return db
-    .select({
-      id: connectedAccounts.id,
-      platform: connectedAccounts.platform,
-      username: connectedAccounts.platformUsername,
-      scopes: connectedAccounts.scopes,
-      profileImageUrl: connectedAccounts.profileImageUrl,
-    })
-    .from(connectedAccounts)
-    .where(and(scope, eq(connectedAccounts.isActive, true)));
-}
-
 /** Connected accounts list for analytics filter chips. */
 export async function listAnalyticsAccounts(): Promise<
   Array<{
@@ -556,7 +485,7 @@ export async function listAnalyticsAccounts(): Promise<
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
 
   const ctx = ws.ctx;
-  const rows = await loadWorkspaceAccounts(ctx);
+  const rows = await listActiveConnectedAccounts(ctx);
 
   return rows
     .filter((r) => isPlatformLive("analytics", r.platform))

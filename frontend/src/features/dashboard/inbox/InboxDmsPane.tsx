@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import Link from "@/components/AppLink";
 import {
   ArrowLeft,
   CircleNotch,
@@ -19,7 +18,7 @@ import {
   type InboxDmThreadResult,
   type LocalInboxDmMessage,
 } from "@/api/inbox";
-import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
+import { PLATFORM_LABEL } from "@/lib/platforms";
 import {
   WINDOW_EMPTY_LABEL,
   windowQueryParams,
@@ -35,6 +34,7 @@ import {
   type InboxComposerPayload,
 } from "./InboxComposer";
 import { resolveInboxBody } from "@/lib/inbox-display";
+import { InboxReconnectNotice, InboxFetchErrorsNotice } from "./InboxNotices";
 
 function dmKey(t: InboxDmThread): string {
   return `${t.accountId}:${t.conversationId}`;
@@ -354,36 +354,12 @@ export function InboxDmsPane({
 
   return (
     <>
-      {listQuery.data?.accountsNeedingReconnect?.length ? (
-        <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
-          <span className="font-medium">Reconnect for DMs: </span>
-          {listQuery.data.accountsNeedingReconnect
-            .map(
-              (a) =>
-                `${PLATFORM_LABEL[a.platform] ?? a.platform}${a.username ? ` @${a.username}` : ""}`,
-            )
-            .join(" · ")}
-          {" · "}
-          <Link
-            href={dash("connections")}
-            className="font-medium text-accent underline-offset-2 hover:underline"
-          >
-            Connections
-          </Link>
-        </div>
-      ) : null}
-
-      {listQuery.data?.fetchErrors?.length ? (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-200">
-          <span className="font-medium">Could not load some accounts: </span>
-          {listQuery.data.fetchErrors
-            .map(
-              (e) =>
-                `${PLATFORM_LABEL[e.platform] ?? e.platform} — ${e.error}`,
-            )
-            .join(" · ")}
-        </div>
-      ) : null}
+      <InboxReconnectNotice
+        items={listQuery.data?.accountsNeedingReconnect ?? []}
+        noun="DMs"
+        connectionsHref={dash("connections")}
+      />
+      <InboxFetchErrorsNotice errors={listQuery.data?.fetchErrors ?? []} />
 
       {listQuery.isError ? (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
@@ -403,9 +379,8 @@ export function InboxDmsPane({
           <EnvelopeSimple size={28} className="text-text-muted" />
           <p className="mt-3 text-sm font-medium text-text">No messages yet</p>
           <p className="mt-1 max-w-md text-sm text-text-muted">
-            DMs from Instagram, Facebook Pages, X, Bluesky, and TikTok in{" "}
-            {emptyRangeLabel} show up here. Threads, YouTube, Pinterest, and
-            LinkedIn don&apos;t expose a messaging API we can use.
+            Direct messages from connected accounts in {emptyRangeLabel} show
+            up here.
           </p>
         </div>
       ) : (

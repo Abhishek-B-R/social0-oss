@@ -5,6 +5,7 @@
 
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
+import { jsonGet } from "../http-json.js";
 import type { MetricMap } from "./types.js";
 
 export type PlatformFetchInput = {
@@ -38,16 +39,6 @@ function pick(...vals: Array<number | undefined>): number | undefined {
     if (typeof v === "number") return v;
   }
   return undefined;
-}
-
-async function jsonGet(
-  url: string,
-  headers?: Record<string, string>,
-  timeoutMs = 12_000,
-): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
 }
 
 function scopeError(

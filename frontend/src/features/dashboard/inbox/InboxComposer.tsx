@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleNotch, Paperclip, PaperPlaneTilt, X } from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
-import { inboxMediaAccept } from "@/lib/inbox-media";
-import {
-  pickInboxFileFromClipboard,
-  pickInboxFileFromList,
-} from "@/lib/inbox-pick-file";
+import { inboxMediaAccept, pickInboxFileFromClipboard, pickInboxFileFromList } from "@/lib/inbox-media";
 import { toast } from "sonner";
 
 export type InboxComposerPayload = {

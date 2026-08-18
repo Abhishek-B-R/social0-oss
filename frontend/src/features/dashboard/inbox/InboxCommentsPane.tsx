@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
-import Link from "@/components/AppLink";
 import {
   ArrowLeft,
   ArrowSquareOut,
@@ -18,10 +17,8 @@ import {
   type InboxComment,
   type InboxThread,
 } from "@/api/inbox";
-import {
-  PLATFORM_LABEL,
-  formatRangeLabel,
-} from "@/features/dashboard/analytics/analytics-utils";
+import { PLATFORM_LABEL } from "@/lib/platforms";
+import { formatRangeLabel } from "@/features/dashboard/analytics/analytics-utils";
 import {
   WINDOW_EMPTY_LABEL,
   windowQueryParams,
@@ -40,6 +37,7 @@ import { InboxAttachmentView } from "./InboxAttachmentView";
 import { InboxAvatar } from "./InboxAvatar";
 import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
 import { InboxPostCard, InboxPostThumbnail } from "./InboxPostCard";
+import { InboxReconnectNotice, InboxFetchErrorsNotice } from "./InboxNotices";
 import { resolveInboxBody } from "@/lib/inbox-display";
 
 function threadKey(thread: InboxThread): string {
@@ -341,36 +339,12 @@ export function InboxCommentsPane({
 
   return (
     <>
-      {data?.accountsNeedingReconnect?.length ? (
-        <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-900 dark:text-amber-100">
-          <span className="font-medium">Reconnect for comments: </span>
-          {data.accountsNeedingReconnect
-            .map(
-              (a) =>
-                `${PLATFORM_LABEL[a.platform] ?? a.platform}${a.username ? ` @${a.username}` : ""}`,
-            )
-            .join(" · ")}
-          {" · "}
-          <Link
-            href={dash("connections")}
-            className="font-medium text-accent underline-offset-2 hover:underline"
-          >
-            Connections
-          </Link>
-        </div>
-      ) : null}
-
-      {data?.fetchErrors?.length ? (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-200">
-          <span className="font-medium">Could not load some accounts: </span>
-          {data.fetchErrors
-            .map(
-              (e) =>
-                `${PLATFORM_LABEL[e.platform] ?? e.platform} — ${e.error}`,
-            )
-            .join(" · ")}
-        </div>
-      ) : null}
+      <InboxReconnectNotice
+        items={data?.accountsNeedingReconnect ?? []}
+        noun="comments"
+        connectionsHref={dash("connections")}
+      />
+      <InboxFetchErrorsNotice errors={data?.fetchErrors ?? []} />
 
       {inboxQuery.isError ? (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">

@@ -11,7 +11,7 @@ import { PostAgainButton } from "./PostAgainButton";
 import { PostCardDeleteButton } from "./PostCardDeleteButton";
 import { PostDetailAutoFeaturesSection } from "./PostDetailAutoFeaturesSection";
 import { PostAnalyticsPanel } from "@/features/dashboard/analytics/PostAnalyticsPanel";
-import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
+import { PLATFORM_LABEL } from "@/lib/platforms";
 import { formatDateTime } from "@/lib/date-format";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
 import { getPublicationViewUrl } from "@/lib/platform-view-url";

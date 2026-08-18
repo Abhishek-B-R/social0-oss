@@ -11,14 +11,15 @@ import {
   postPublications,
   posts,
 } from "../db/schema.js";
-import { decryptToken } from "@social0/shared";
 import {
   postScopeCondition,
   connectionScopeCondition,
 } from "../lib/workspace/context.js";
 import { requireWorkspaceSession } from "../lib/workspace/session.js";
 import { rpcHttpError } from "../lib/rpc-http-error.js";
-import { getValidToken, REFRESHABLE_PLATFORMS } from "../lib/token-refresh.js";
+import { resolveAccountAccess } from "../lib/account-access.js";
+import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
+import { mapPool } from "../lib/map-pool.js";
 import { PLATFORMS, type Platform } from "../lib/platforms.js";
 import { fetchPublicationComments } from "../lib/inbox/fetch-comments.js";
 import { replyOnPlatform } from "../lib/inbox/reply-comment.js";
@@ -50,24 +51,6 @@ const SAMPLE_LIMIT = 24;
 const CONCURRENCY = 4;
 /** Posts published before the window can still receive in-window comments. */
 const POST_PUBLISH_SLACK_MS = 90 * 24 * 60 * 60 * 1000;
-
-async function mapPool<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T) => Promise<R>,
-): Promise<R[]> {
-  const results: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      results[i] = await fn(items[i]!);
-    }
-  }
-  const n = Math.min(concurrency, Math.max(items.length, 1));
-  await Promise.all(Array.from({ length: n }, () => worker()));
-  return results;
-}
 
 type PubRow = {
   publicationId: string;
@@ -210,30 +193,6 @@ function firstPostMediaUrl(
   return null;
 }
 
-type TokenAccount = {
-  id: string;
-  platform: string;
-  encryptedAccessToken: string;
-  encryptedRefreshToken: string | null;
-};
-
-async function resolveAccess(account: TokenAccount) {
-  let accessToken: string;
-  if (REFRESHABLE_PLATFORMS.has(account.platform)) {
-    accessToken = await getValidToken(account.id, account.platform);
-  } else {
-    accessToken = decryptToken(account.encryptedAccessToken, account.id);
-  }
-  let accessSecret: string | null = null;
-  if (
-    (account.platform === "twitter_x" || account.platform === "bluesky") &&
-    account.encryptedRefreshToken
-  ) {
-    accessSecret = decryptToken(account.encryptedRefreshToken, account.id);
-  }
-  return { accessToken, accessSecret };
-}
-
 function snippet(content: string | null): string {
   return content?.replace(/\s+/g, " ").trim().slice(0, 80) || "(No caption)";
 }
@@ -270,14 +229,13 @@ export async function listInboxComments(input: {
 
   await mapPool(pubs, CONCURRENCY, async (row) => {
     if (!row.platformPostId || !row.account) return;
-    if (!isPlatformLive("inboxComments", row.account.platform)) return;
     if (INBOX_UNSUPPORTED.has(row.account.platform)) {
       unsupported.add(row.account.platform);
       return;
     }
     const missing = missingInboxScopes(row.account.platform, row.account.scopes);
     try {
-      const { accessToken, accessSecret } = await resolveAccess(row.account);
+      const { accessToken, accessSecret } = await resolveAccountAccess(row.account);
       const result = await fetchPublicationComments({
         platform: row.account.platform,
         platformPostId: row.platformPostId,
@@ -335,32 +293,7 @@ export async function listInboxComments(input: {
     }
   });
 
-  // Also flag connected accounts that never appeared in this sample.
-  for (const row of pubs) {
-    if (!row.account) continue;
-    if (!isPlatformLive("inboxComments", row.account.platform)) continue;
-    const missing = missingInboxScopes(row.account.platform, row.account.scopes);
-    if (missing.length && !reconnect.has(row.account.id)) {
-      reconnect.set(row.account.id, {
-        accountId: row.account.id,
-        platform: row.account.platform,
-        username: row.account.platformUsername,
-        missingScopes: missing,
-      });
-    }
-  }
-
-  const accountRows = await db
-    .select({
-      id: connectedAccounts.id,
-      platform: connectedAccounts.platform,
-      username: connectedAccounts.platformUsername,
-      scopes: connectedAccounts.scopes,
-    })
-    .from(connectedAccounts)
-    .where(
-      and(connectionScopeCondition(ctx), eq(connectedAccounts.isActive, true)),
-    );
+  const accountRows = await listActiveConnectedAccounts(ctx);
   for (const a of accountRows) {
     if (!isPlatformLive("inboxComments", a.platform)) continue;
     const missing = missingInboxScopes(a.platform, a.scopes);
@@ -454,7 +387,7 @@ export async function replyToInboxComment(input: {
   };
 
   try {
-    const { accessToken, accessSecret } = await resolveAccess(account);
+    const { accessToken, accessSecret } = await resolveAccountAccess(account);
     let mediaUrl: string | null = null;
     let mediaMimeType: string | null = null;
     if (mediaId) {
@@ -545,7 +478,7 @@ export async function listInboxDms(input: {
   const threads: InboxDmThread[] = [];
 
   await mapPool(accounts, DM_CONCURRENCY, async (row) => {
-    if (!isInboxDmPlatform(row.platform) || !isPlatformLive("inboxDms", row.platform)) {
+    if (!isInboxDmPlatform(row.platform)) {
       unsupported.add(row.platform);
       return;
     }
@@ -560,7 +493,7 @@ export async function listInboxDms(input: {
       return;
     }
     try {
-      const { accessToken, accessSecret } = await resolveAccess(row);
+      const { accessToken, accessSecret } = await resolveAccountAccess(row);
       const result = await fetchAccountDms(
         {
           id: row.id,
@@ -656,7 +589,7 @@ export async function getInboxDmThread(input: {
     return { error: `DMs are not supported for ${row.platform}.` };
   }
 
-  const { accessToken, accessSecret } = await resolveAccess(row);
+  const { accessToken, accessSecret } = await resolveAccountAccess(row);
   const result = await fetchDmMessages(
     {
       id: row.id,
@@ -722,7 +655,7 @@ export async function replyToInboxDm(input: {
   }
 
   try {
-    const { accessToken, accessSecret } = await resolveAccess(row);
+    const { accessToken, accessSecret } = await resolveAccountAccess(row);
     let mediaUrl: string | null = null;
     let mediaMimeType: string | null = null;
     if (mediaId) {
@@ -741,6 +674,7 @@ export async function replyToInboxDm(input: {
       accessToken,
       accessSecret,
       platformUserId: row.platformUserId,
+      accountId: row.id,
       accountHandle: row.platformUsername,
     });
   } catch (e) {
@@ -750,14 +684,6 @@ export async function replyToInboxDm(input: {
     };
   }
 }
-
-type InboxAccountRow = {
-  id: string;
-  platform: string;
-  username: string | null;
-  profileImageUrl: string | null;
-  scopes: string | null;
-};
 
 /** Connected accounts for inbox filter chips (comments or DMs). */
 export async function listInboxAccounts(input: {
@@ -776,18 +702,7 @@ export async function listInboxAccounts(input: {
 
   const feature =
     input.mode === "dms" ? ("inboxDms" as const) : ("inboxComments" as const);
-  const rows: InboxAccountRow[] = await db
-    .select({
-      id: connectedAccounts.id,
-      platform: connectedAccounts.platform,
-      username: connectedAccounts.platformUsername,
-      profileImageUrl: connectedAccounts.profileImageUrl,
-      scopes: connectedAccounts.scopes,
-    })
-    .from(connectedAccounts)
-    .where(
-      and(connectionScopeCondition(ws.ctx), eq(connectedAccounts.isActive, true)),
-    );
+  const rows = await listActiveConnectedAccounts(ws.ctx);
 
   return rows
     .filter((r) => isPlatformLive(feature, r.platform))

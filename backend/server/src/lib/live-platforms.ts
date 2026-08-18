@@ -1,7 +1,7 @@
 /**
  * Flip a platform to `true` when App Review / API access is live.
  * False = skip live fetch, no reconnect nag.
- * Keep in sync with frontend/src/lib/live-platforms.ts
+ * SPA lists come from analytics.listAccounts / inbox.listAccounts — do not duplicate this map in frontend/.
  */
 import type { Platform } from "./platforms.js";
 

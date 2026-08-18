@@ -15,6 +15,11 @@ export const PLATFORMS = [
 
 export type Platform = (typeof PLATFORMS)[number]["id"];
 
+export const PLATFORM_LABEL: Record<string, string> = {
+  ...Object.fromEntries(PLATFORMS.map((p) => [p.id, p.name])),
+  twitter_x: "X",
+};
+
 /** BYOK + Twitter: never show "expired" in UI. */
 export const NEVER_EXPIRES_PLATFORMS = new Set<string>(["bluesky", "twitter_x"]);
 

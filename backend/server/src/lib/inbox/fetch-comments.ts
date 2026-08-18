@@ -4,6 +4,7 @@
 
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
+import { jsonGet } from "../http-json.js";
 import type { InboxComment } from "./types.js";
 import { INBOX_UNSUPPORTED, sameInboxHandle, youtubeAuthorChannelId } from "./types.js";
 import {
@@ -65,16 +66,6 @@ function withAuthor(
   authorHandle: string | null,
 ): { isOwn: boolean } {
   return { isOwn: sameInboxHandle(authorHandle, input.accountLabel) };
-}
-
-async function jsonGet(
-  url: string,
-  headers?: Record<string, string>,
-  timeoutMs = 12_000,
-): Promise<{ ok: boolean; status: number; data: unknown }> {
-  const res = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
-  const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
 }
 
 function err(

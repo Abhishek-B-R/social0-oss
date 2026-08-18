@@ -1,7 +1,8 @@
 /** Live social analytics types (no DB persistence). */
 
-export const ANALYTICS_RANGES = ["7d", "14d", "28d", "90d", "365d"] as const;
-export type AnalyticsRange = (typeof ANALYTICS_RANGES)[number] | "custom";
+import type { DateWindowRange } from "../date-window.js";
+
+export type AnalyticsRange = DateWindowRange;
 
 export type MetricKey =
   | "views"
@@ -108,21 +109,6 @@ export const ANALYTICS_REQUIRED_SCOPES: Record<string, string[]> = {
   twitter_x: [],
   bluesky: [],
 };
-
-export function rangeToMs(range: Exclude<AnalyticsRange, "custom">): number {
-  switch (range) {
-    case "7d":
-      return 7 * 24 * 60 * 60 * 1000;
-    case "14d":
-      return 14 * 24 * 60 * 60 * 1000;
-    case "28d":
-      return 28 * 24 * 60 * 60 * 1000;
-    case "90d":
-      return 90 * 24 * 60 * 60 * 1000;
-    case "365d":
-      return 365 * 24 * 60 * 60 * 1000;
-  }
-}
 
 export function sumMetrics(maps: MetricMap[]): MetricMap {
   const out: MetricMap = {};

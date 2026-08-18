@@ -1,7 +1,7 @@
 import { formatDistanceToNow } from "date-fns";
 import { ArrowSquareOut } from "@/icons/phosphor";
 import { PlatformIcon } from "@/components/PlatformIcon";
-import { PLATFORM_LABEL } from "@/features/dashboard/analytics/analytics-utils";
+import { PLATFORM_LABEL } from "@/lib/platforms";
 import { InboxAvatar } from "./InboxAvatar";
 import type { InboxComment } from "@/api/inbox";
 import { cn } from "@/lib/utils";
