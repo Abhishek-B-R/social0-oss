@@ -102,14 +102,6 @@ export async function clearPendingCheckout(userId: string): Promise<void> {
     .where(eq(verification.identifier, pendingDbIdentifier(userId)));
 }
 
-export async function replacePendingCheckout(
-  userId: string,
-  pending: PendingCheckout,
-): Promise<void> {
-  await clearPendingCheckout(userId);
-  await savePendingCheckout(userId, pending);
-}
-
 async function acquireCheckoutLock(userId: string): Promise<boolean> {
   if (!redis) return true;
   const acquired = await redis.set(lockRedisKey(userId), "1", {
