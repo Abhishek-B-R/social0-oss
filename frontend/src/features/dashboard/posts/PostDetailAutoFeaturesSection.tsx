@@ -601,9 +601,6 @@ export function PostDetailAutoFeaturesSection({
               <span className="text-sm font-medium text-foreground truncate">
                 Auto-Repost
               </span>
-              <span className="text-xs text-muted-foreground">
-                (Twitter/X only)
-              </span>
               {repostLocked && (
                 <span className="text-[11px] text-amber-600 dark:text-amber-400/90 mt-0.5">
                   Already ran - locked
@@ -687,9 +684,6 @@ export function PostDetailAutoFeaturesSection({
             <div className="flex flex-col gap-0.5 min-w-0 pr-2">
               <span className="text-sm font-medium text-foreground truncate">
                 Auto-Plug
-              </span>
-              <span className="text-xs text-muted-foreground">
-                (Twitter/X only)
               </span>
               {plugLocked && (
                 <span className="text-[11px] text-amber-600 dark:text-amber-400/90 mt-0.5">

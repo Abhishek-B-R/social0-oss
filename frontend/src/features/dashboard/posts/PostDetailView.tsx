@@ -534,14 +534,7 @@ export function PostDetailView({ postId }: { postId: string }) {
             </div>
           )}
 
-          {showAnalytics && showAuto ? (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {analyticsPanel}
-              {autoFeatures}
-            </div>
-          ) : (
-            analyticsPanel ?? autoFeatures
-          )}
+          {analyticsPanel}
         </div>
 
         <div className="space-y-6">
@@ -761,6 +754,7 @@ export function PostDetailView({ postId }: { postId: string }) {
               </ul>
             )}
           </div>
+          {autoFeatures}
         </div>
       </div>
     </div>
