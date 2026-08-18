@@ -37,7 +37,8 @@ function parsePending(raw: unknown): PendingCheckout | null {
     if (
       (data.plan === "starter" ||
         data.plan === "growth" ||
-        data.plan === "pro") &&
+        data.plan === "pro" ||
+        data.plan === "max") &&
       typeof data.url === "string" &&
       typeof data.sessionId === "string"
     ) {
