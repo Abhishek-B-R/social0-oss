@@ -538,11 +538,10 @@ async function fetchBlueskyList(
   until: Date,
 ): Promise<DmListFetchResult> {
   const handle = account.platformUsername;
-  const appPassword = account.accessSecret;
-  if (!handle || !appPassword) {
+  if (!handle || !account.accessSecret) {
     return graphErr("Bluesky credentials incomplete. Reconnect the account.");
   }
-  const session = await blueskySession(account.id, handle, appPassword);
+  const session = await blueskySession(account.id, handle, account.accessSecret);
   if (!session) {
     return graphErr("Bluesky login failed. Reconnect the account.");
   }
@@ -589,11 +588,10 @@ async function fetchBlueskyThread(
   conversationId: string,
 ): Promise<DmThreadFetchResult> {
   const handle = account.platformUsername;
-  const appPassword = account.accessSecret;
-  if (!handle || !appPassword) {
+  if (!handle || !account.accessSecret) {
     return graphMsg("Bluesky credentials incomplete. Reconnect the account.");
   }
-  const session = await blueskySession(account.id, handle, appPassword);
+  const session = await blueskySession(account.id, handle, account.accessSecret);
   if (!session) {
     return graphMsg("Bluesky login failed. Reconnect the account.");
   }

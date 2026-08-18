@@ -405,6 +405,7 @@ export async function replyToInboxComment(input: {
       mediaMimeType,
       accessToken,
       accessSecret,
+      accountId: row.accountId,
       platformUserId: row.platformUserId ?? "me",
       platformPostId: row.platformPostId ?? undefined,
       accountHandle: row.platformUsername,

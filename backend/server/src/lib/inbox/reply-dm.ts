@@ -179,8 +179,7 @@ async function replyTwitter(input: DmReplyInput): Promise<DmReplyResult> {
 
 async function replyBluesky(input: DmReplyInput): Promise<DmReplyResult> {
   const handle = input.accountHandle;
-  const appPassword = input.accessSecret;
-  if (!handle || !appPassword) {
+  if (!handle || !input.accessSecret) {
     return fail("Bluesky credentials incomplete. Reconnect the account.");
   }
   if (input.mediaUrl) {
@@ -189,7 +188,7 @@ async function replyBluesky(input: DmReplyInput): Promise<DmReplyResult> {
   const session = await blueskySession(
     input.accountId ?? handle,
     handle,
-    appPassword,
+    input.accessSecret,
   );
   if (!session) {
     return fail("Bluesky login failed. Reconnect the account.");

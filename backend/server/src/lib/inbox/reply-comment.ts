@@ -5,6 +5,7 @@ import { env } from "../env.js";
 import { fetchAllowedMedia } from "../media-fetch.js";
 import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
 import { inboxAllowsMedia } from "./media-capabilities.js";
+import { blueskySession } from "./bluesky-session.js";
 
 export type ReplyInput = {
   platform: string;
@@ -14,6 +15,7 @@ export type ReplyInput = {
   mediaMimeType?: string | null;
   accessToken: string;
   accessSecret?: string | null;
+  accountId?: string;
   platformUserId: string;
   /** Bluesky original post URI (thread root). */
   platformPostId?: string;
@@ -207,24 +209,16 @@ async function uploadBlueskyReplyBlob(
 
 async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
   const handle = input.accountHandle;
-  const appPassword = input.accessSecret;
   const rootUri = input.platformPostId;
-  if (!handle || !appPassword || !rootUri) {
+  if (!handle || !input.accessSecret || !rootUri) {
     return fail("Bluesky credentials incomplete. Reconnect the account.");
   }
-  const sessionRes = await fetch(
-    "https://bsky.social/xrpc/com.atproto.server.createSession",
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier: handle, password: appPassword }),
-    },
+  const session = await blueskySession(
+    input.accountId ?? handle,
+    handle,
+    input.accessSecret,
   );
-  const session = (await sessionRes.json().catch(() => ({}))) as {
-    accessJwt?: string;
-    did?: string;
-  };
-  if (!sessionRes.ok || !session.accessJwt || !session.did) {
+  if (!session) {
     return fail("Bluesky login failed. Reconnect the account.");
   }
 
