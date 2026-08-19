@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -9,7 +9,6 @@ import {
   CircleNotch,
   WarningCircle,
 } from "@/icons/phosphor";
-import { useDashboardPath } from "@/lib/dashboard-base-path";
 import type { InboxAccount } from "@/api/inbox";
 import {
   listInboxComments,
@@ -21,13 +20,13 @@ import { PLATFORM_LABEL } from "@/lib/platforms";
 import { formatRangeLabel } from "@/features/dashboard/analytics/analytics-utils";
 import {
   WINDOW_EMPTY_LABEL,
-  windowQueryParams,
   type DateWindow,
 } from "@/lib/date-window";
 import {
   inboxReplyTargetId,
   inboxSupportsNestedReplies,
   formatInboxReplyText,
+  inboxReplyDraftMax,
   inboxReplyTextsMatch,
 } from "@/lib/inbox-reply";
 import { uploadFile } from "@/lib/upload-file";
@@ -37,8 +36,19 @@ import { InboxAttachmentView } from "./InboxAttachmentView";
 import { InboxAvatar } from "./InboxAvatar";
 import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
 import { InboxPostCard, InboxPostThumbnail } from "./InboxPostCard";
-import { InboxReconnectNotice, InboxFetchErrorsNotice } from "./InboxNotices";
+import { InboxScrollSentinel } from "./InboxScrollSentinel";
+import {
+  commentIdsFromThreads,
+  markInboxCommentsSeen,
+} from "@/lib/inbox-unread";
 import { resolveInboxBody } from "@/lib/inbox-display";
+import { useSession } from "@/lib/auth-client";
+import { listWorkspaces } from "@/api/team";
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
+import {
+  initialInboxPageParam,
+  nextInboxPageParam,
+} from "@/lib/inbox-infinite";
 
 function threadKey(thread: InboxThread): string {
   return `${thread.comment.publicationId}-${thread.comment.id}`;
@@ -152,8 +162,17 @@ export function InboxCommentsPane({
   enabled: boolean;
   allowReply?: boolean;
 }) {
-  const dash = useDashboardPath();
   const qc = useQueryClient();
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  const workspacesQuery = useQuery({
+    queryKey: WORKSPACES_QUERY_KEY,
+    queryFn: listWorkspaces,
+    enabled: Boolean(session),
+  });
+  const workspaceReady = workspacesQuery.isSuccess || workspacesQuery.isError;
+  const workspaceId =
+    workspacesQuery.data?.workspaces.find((w) => w.isActive)?.id ?? "main";
   const [searchParams, setSearchParams] = useSearchParams();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
@@ -166,20 +185,40 @@ export function InboxCommentsPane({
     [],
   );
 
-  const queryKey = ["inbox-comments", dateWindow, accountId] as const;
+  const queryKey = ["inbox-comments", workspaceId, dateWindow, accountId] as const;
 
-  const inboxQuery = useQuery({
+  const inboxQuery = useInfiniteQuery({
     queryKey,
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       listInboxComments({
-        ...windowQueryParams(dateWindow),
+        ...pageParam,
         accountId: accountId || undefined,
       }),
-    enabled,
+    initialPageParam: initialInboxPageParam(dateWindow),
+    getNextPageParam: (last) =>
+      nextInboxPageParam({
+        hasMore: last.hasMore,
+        sampled: last.sampled,
+        nextBefore: last.nextBefore,
+        since: last.since,
+        until: last.until,
+        itemCount: last.threads.length,
+      }),
+    enabled: enabled && workspaceReady,
     staleTime: 15_000,
     refetchInterval: enabled ? 60_000 : false,
     refetchIntervalInBackground: false,
+    maxPages: 24,
   });
+
+  const fetchNextComments = inboxQuery.fetchNextPage;
+  const hasNextComments = Boolean(inboxQuery.hasNextPage);
+  const fetchingNextComments = inboxQuery.isFetchingNextPage;
+  const loadOlderComments = useCallback(() => {
+    if (hasNextComments && !fetchingNextComments) {
+      void fetchNextComments();
+    }
+  }, [fetchNextComments, fetchingNextComments, hasNextComments]);
 
   const [pendingReplies, setPendingReplies] = useState<InboxComment[]>([]);
   const [failedReplyIds, setFailedReplyIds] = useState<Set<string>>(new Set());
@@ -285,9 +324,26 @@ export function InboxCommentsPane({
     }
   };
 
-  const data = inboxQuery.data;
+  const mergedThreads = useMemo(() => {
+    const seen = new Set<string>();
+    const out: InboxThread[] = [];
+    for (const page of inboxQuery.data?.pages ?? []) {
+      for (const t of page.threads) {
+        const k = threadKey(t);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(t);
+      }
+    }
+    out.sort((a, b) =>
+      (b.comment.createdAt ?? "").localeCompare(a.comment.createdAt ?? ""),
+    );
+    return out;
+  }, [inboxQuery.data]);
+
+  const data = inboxQuery.data?.pages[0];
   const threads = mergePendingReplies(
-    (data?.threads ?? []).filter((t) => {
+    mergedThreads.filter((t) => {
       if (!t.comment.isOwn) return true;
       return t.replies.some((r) => !r.isOwn);
     }),
@@ -295,10 +351,15 @@ export function InboxCommentsPane({
   );
 
   useEffect(() => {
-    if (!inboxQuery.data) return;
+    if (!enabled || !threads.length) return;
+    markInboxCommentsSeen(userId, commentIdsFromThreads(threads));
+  }, [enabled, threads, userId]);
+
+  useEffect(() => {
+    if (!mergedThreads.length) return;
     setPendingReplies((prev) =>
       prev.filter((p) => {
-        const thread = inboxQuery.data.threads.find(
+        const thread = mergedThreads.find(
           (t) =>
             t.comment.publicationId === p.publicationId &&
             (t.comment.id === p.parentId ||
@@ -308,7 +369,7 @@ export function InboxCommentsPane({
         return !thread.replies.some((r) => replyLooksSent(r, p, thread.comment.platform));
       }),
     );
-  }, [inboxQuery.data]);
+  }, [mergedThreads]);
 
   useEffect(() => {
     if (!threads.length) {
@@ -329,7 +390,7 @@ export function InboxCommentsPane({
     }
   }, [threads, pickedId, searchParams]);
 
-  const loading = inboxQuery.isLoading || inboxQuery.isFetching;
+  const loading = inboxQuery.isPending;
   const selected =
     threads.find((t) => threadKey(t) === pickedId) ?? threads[0] ?? null;
   const emptyRangeLabel =
@@ -341,13 +402,6 @@ export function InboxCommentsPane({
 
   return (
     <>
-      <InboxReconnectNotice
-        items={data?.accountsNeedingReconnect ?? []}
-        noun="comments"
-        connectionsHref={dash("connections")}
-      />
-      <InboxFetchErrorsNotice errors={data?.fetchErrors ?? []} />
-
       {inboxQuery.isError ? (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
           {inboxQuery.error instanceof Error
@@ -374,7 +428,7 @@ export function InboxCommentsPane({
         <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
           <ul
             className={cn(
-              "overflow-y-auto border-border lg:border-r",
+              "max-h-[min(70vh,40rem)] min-h-0 overflow-y-auto border-border lg:max-h-none lg:border-r",
               showList ? "block" : "hidden lg:block",
             )}
           >
@@ -454,6 +508,11 @@ export function InboxCommentsPane({
                 </li>
               );
             })}
+            <InboxScrollSentinel
+              onVisible={loadOlderComments}
+              disabled={!hasNextComments || fetchingNextComments}
+              loading={fetchingNextComments}
+            />
           </ul>
 
           <section
@@ -491,11 +550,6 @@ export function InboxCommentsPane({
         </div>
       )}
 
-      {data?.sampled ? (
-        <p className="text-[11px] text-text-muted">
-          Latest {data.sampleLimit} Social0 publications in this range.
-        </p>
-      ) : null}
       {data?.since && data?.until ? (
         <p className="sr-only">
           Showing comments for {formatRangeLabel(data.since, data.until)}
@@ -629,10 +683,15 @@ function ConversationPane({
       {root.canReply && allowReply ? (
         <div ref={composerRef} className="shrink-0">
           <InboxComposer
-            key={root.id}
+            key={`${root.id}:${replyTarget.id}`}
             platform={root.platform}
             mode="comment"
-            maxLength={replyMax(root.platform)}
+            maxLength={inboxReplyDraftMax({
+              platform: root.platform,
+              targetHandle: replyTarget.authorHandle,
+              isRoot: replyTarget.id === root.id,
+              limit: replyMax(root.platform),
+            })}
             placeholder="Write a reply…"
             sending={sending}
             replyTo={

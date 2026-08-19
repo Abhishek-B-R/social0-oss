@@ -6,6 +6,8 @@
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
+import { calendarDayKey } from "../date-window.js";
+import { blueskySession, blueskySessionAfter401 } from "../inbox/bluesky-session.js";
 import type { MetricMap } from "./types.js";
 import {
   firstTikTokPublicVideoId,
@@ -24,6 +26,11 @@ export type PlatformFetchInput = {
   /** Granted OAuth scopes string from connected_accounts.scopes */
   scopes?: string | null;
   platformAccountType?: string | null;
+  since?: Date;
+  until?: Date;
+  timeZone?: string;
+  accountId?: string;
+  accountHandle?: string | null;
 };
 
 export type PlatformFetchResult = {
@@ -138,10 +145,28 @@ async function fetchYouTube(
   };
 }
 
+async function facebookInsightsId(
+  storedId: string,
+  pageId: string,
+  accessToken: string,
+): Promise<string> {
+  if (storedId.includes("_")) return storedId;
+  const url = `https://graph.facebook.com/v21.0/${encodeURIComponent(storedId)}?fields=page_story_id&access_token=${encodeURIComponent(accessToken)}`;
+  const { ok, data } = await jsonGet(url);
+  const story = (data as { page_story_id?: string } | undefined)?.page_story_id;
+  if (ok && story) return story;
+  return pageId ? `${pageId}_${storedId}` : storedId;
+}
+
 async function fetchFacebook(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
-  const id = encodeURIComponent(input.platformPostId);
+  const insightId = await facebookInsightsId(
+    input.platformPostId,
+    input.platformUserId,
+    input.accessToken,
+  );
+  const id = encodeURIComponent(insightId);
   const base = `https://graph.facebook.com/v21.0/${id}`;
   const fieldsUrl = `${base}?fields=shares,likes.summary(true),comments.summary(true)&access_token=${encodeURIComponent(input.accessToken)}`;
   const fields = await jsonGet(fieldsUrl);
@@ -299,10 +324,10 @@ async function fetchThreads(
 async function resolveTikTokVideoId(
   storedId: string,
   accessToken: string,
-): Promise<string | null> {
-  if (isTikTokVideoId(storedId)) return storedId;
+): Promise<{ videoId: string } | { pending: true } | { error: string }> {
+  if (isTikTokVideoId(storedId)) return { videoId: storedId };
   const publishId = tiktokPublishIdFromStored(storedId);
-  if (!publishId) return null;
+  if (!publishId) return { pending: true };
   const res = await fetch(
     "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
     {
@@ -322,20 +347,30 @@ async function resolveTikTokVideoId(
   try {
     data = parseTikTokJson(text) as typeof data;
   } catch {
-    return null;
+    return { error: "TikTok publish status returned invalid JSON" };
   }
-  if (!isTikTokApiOk(data, res.ok)) return null;
-  return firstTikTokPublicVideoId(data.data?.publicaly_available_post_id);
+  if (!isTikTokApiOk(data, res.ok)) {
+    const code = data.error?.code ? ` (${data.error.code})` : "";
+    return {
+      error:
+        data.error?.message ??
+        `TikTok publish status failed${code || ` (${res.status})`}`,
+    };
+  }
+  const videoId = firstTikTokPublicVideoId(data.data?.publicaly_available_post_id);
+  if (!videoId) return { pending: true };
+  return { videoId };
 }
 
 async function fetchTikTok(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
-  const videoId = await resolveTikTokVideoId(
+  const resolved = await resolveTikTokVideoId(
     input.platformPostId,
     input.accessToken,
   );
-  if (!videoId) {
+  if ("error" in resolved) return errResult(resolved.error);
+  if ("pending" in resolved) {
     return {
       metrics: {},
       status: "error",
@@ -343,6 +378,7 @@ async function fetchTikTok(
         "TikTok has not issued a public video id yet. Sandbox and private posts often stay in inbox until the app is approved and the post is public.",
     };
   }
+  const videoId = resolved.videoId;
 
   const url =
     "https://open.tiktokapis.com/v2/video/query/?fields=id,like_count,comment_count,share_count,view_count";
@@ -391,10 +427,14 @@ async function fetchTikTok(
 async function fetchPinterest(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
-  // Lifetime pin analytics (pins:read). Metric types vary by account.
-  const end = new Date();
-  const start = new Date(end.getTime() - 90 * 24 * 60 * 60 * 1000);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const PINTEREST_MAX_MS = 90 * 24 * 60 * 60 * 1000;
+  const end = input.until ?? new Date();
+  let start = input.since ?? new Date(end.getTime() - PINTEREST_MAX_MS);
+  if (end.getTime() - start.getTime() > PINTEREST_MAX_MS) {
+    start = new Date(end.getTime() - PINTEREST_MAX_MS);
+  }
+  const tz = input.timeZone ?? "UTC";
+  const fmt = (d: Date) => calendarDayKey(d, tz);
   const url = new URL(
     `https://api.pinterest.com/v5/pins/${encodeURIComponent(input.platformPostId)}/analytics`,
   );
@@ -424,7 +464,10 @@ async function fetchPinterest(
     status: "ok",
     metrics: {
       impressions: num(summary.IMPRESSION),
-      views: pick(num(summary.VIDEO_MRC_VIEW), num(summary.IMPRESSION)),
+      views:
+        (num(summary.VIDEO_MRC_VIEW) ?? 0) > 0
+          ? num(summary.VIDEO_MRC_VIEW)
+          : num(summary.IMPRESSION),
       clicks: pick(num(summary.PIN_CLICK), num(summary.OUTBOUND_CLICK)),
       saves: num(summary.SAVE),
     },
@@ -480,12 +523,38 @@ async function fetchLinkedIn(
 async function fetchBluesky(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
-  // Public AppView — no extra OAuth scope. URI is stored as platformPostId.
-  const url = new URL(
-    "https://public.api.bsky.app/xrpc/app.bsky.feed.getPosts",
+  const handle = input.accountHandle?.replace(/^@/, "") ?? "";
+  if (!input.accountId || !handle || !input.accessSecret) {
+    return errResult("Bluesky credentials incomplete. Reconnect the account.");
+  }
+  let session = await blueskySession(
+    input.accountId,
+    handle,
+    input.accessSecret,
   );
+  if (!session) {
+    return errResult("Bluesky login failed. Reconnect the account.");
+  }
+  const url = new URL("https://bsky.social/xrpc/app.bsky.feed.getPosts");
   url.searchParams.set("uris", input.platformPostId);
-  const { ok, data } = await jsonGet(url.toString());
+  let { ok, data, status } = await jsonGet(url.toString(), {
+    Authorization: `Bearer ${session.accessJwt}`,
+  });
+  if (status === 401) {
+    session = await blueskySessionAfter401(
+      input.accountId,
+      handle,
+      input.accessSecret,
+    );
+    if (!session) {
+      return errResult("Bluesky login failed. Reconnect the account.");
+    }
+    const retry = await jsonGet(url.toString(), {
+      Authorization: `Bearer ${session.accessJwt}`,
+    });
+    ok = retry.ok;
+    data = retry.data;
+  }
   if (!ok) {
     return errResult(
       (data as { message?: string })?.message ?? "Bluesky getPosts failed",

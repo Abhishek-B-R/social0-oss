@@ -5,7 +5,6 @@
  */
 
 import { and, desc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
-import { addDays, format, startOfDay } from "date-fns";
 import { db } from "../db/index.js";
 import {
   connectedAccounts,
@@ -20,7 +19,8 @@ import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
 import { mapPool } from "../lib/map-pool.js";
 import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
-import { parseDateWindow } from "../lib/date-window.js";
+import { calendarDayKey, parseDateWindow, startOfZonedDay } from "../lib/date-window.js";
+import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
 import {
   engagementTotal,
   missingAnalyticsScopes,
@@ -35,7 +35,7 @@ import {
   type AccountReconnectHint,
 } from "../lib/analytics/types.js";
 
-const SAMPLE_LIMIT = 48;
+const SAMPLE_LIMIT = 200;
 const CONCURRENCY = 6;
 
 type PubRow = {
@@ -102,11 +102,12 @@ async function loadPublishedPubs(opts: {
       and(
         postFilter,
         eq(postPublications.status, "published"),
-        inArray(connectedAccounts.platform, live),
+        eq(connectedAccounts.isActive, true),
         opts.postId ? eq(posts.id, opts.postId) : undefined,
         opts.accountId
           ? eq(postPublications.connectedAccountId, opts.accountId)
           : undefined,
+        inArray(connectedAccounts.platform, live),
         opts.postId
           ? undefined
           : and(
@@ -143,7 +144,10 @@ async function loadPublishedPubs(opts: {
   }));
 }
 
-async function metricsForPub(row: PubRow): Promise<PublicationMetrics> {
+async function metricsForPub(
+  row: PubRow,
+  window?: { since: Date; until: Date; timeZone?: string },
+): Promise<PublicationMetrics> {
   const base: PublicationMetrics = {
     publicationId: row.publicationId,
     postId: row.postId,
@@ -180,6 +184,11 @@ async function metricsForPub(row: PubRow): Promise<PublicationMetrics> {
       accessSecret,
       scopes: row.account.scopes,
       platformAccountType: row.account.platformAccountType,
+      since: window?.since,
+      until: window?.until,
+      timeZone: window?.timeZone,
+      accountId: row.account.id,
+      accountHandle: row.account.platformUsername,
     });
 
     if (
@@ -246,12 +255,13 @@ function buildSeries(
   pubs: PublicationMetrics[],
   since: Date,
   until: Date,
+  timeZone: string,
 ): AnalyticsSeriesPoint[] {
   const byDay = new Map<string, AnalyticsSeriesPoint>();
   for (const p of pubs) {
     if (p.status !== "ok" && Object.keys(p.metrics).length === 0) continue;
     const day = p.publishedAt
-      ? format(new Date(p.publishedAt), "yyyy-MM-dd")
+      ? calendarDayKey(new Date(p.publishedAt), timeZone)
       : null;
     if (!day) continue;
     const cur = byDay.get(day) ?? {
@@ -270,11 +280,12 @@ function buildSeries(
     cur.engagement += engagementTotal(p.metrics);
     byDay.set(day, cur);
   }
-  // ponytail: fill every day in range so the chart spans the selected window (X Analytics-style).
+  // ponytail: fill every day in the user's IANA zone (X Analytics-style).
   const out: AnalyticsSeriesPoint[] = [];
-  const last = startOfDay(until);
-  for (let d = startOfDay(since); d <= last; d = addDays(d, 1)) {
-    const key = format(d, "yyyy-MM-dd");
+  const last = calendarDayKey(until, timeZone);
+  let d = startOfZonedDay(since, timeZone);
+  for (let i = 0; i < 400; i++) {
+    const key = calendarDayKey(d, timeZone);
     out.push(
       byDay.get(key) ?? {
         date: key,
@@ -285,6 +296,9 @@ function buildSeries(
         engagement: 0,
       },
     );
+    if (key >= last) break;
+    // ponytail: +36h then re-snap to midnight so DST 23h days still advance.
+    d = startOfZonedDay(new Date(d.getTime() + 36 * 60 * 60 * 1000), timeZone);
   }
   return out;
 }
@@ -369,7 +383,8 @@ export async function getAnalyticsOverview(input: {
   const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
 
-  const window = parseDateWindow(input);
+  const timeZone = await getUserTimezone(ws.ctx.resourceUserId);
+  const window = parseDateWindow(input, timeZone);
   const { range, since, until } = window;
 
   const ctx = ws.ctx;
@@ -392,7 +407,9 @@ export async function getAnalyticsOverview(input: {
     limit: SAMPLE_LIMIT,
   });
 
-  const results = await mapPool(pubs, CONCURRENCY, metricsForPub);
+  const results = await mapPool(pubs, CONCURRENCY, (row) =>
+    metricsForPub(row, { since, until, timeZone }),
+  );
   const contentByPost = new Map(
     pubs.map((p) => [p.postId, p.content] as const),
   );
@@ -415,7 +432,7 @@ export async function getAnalyticsOverview(input: {
     until: until.toISOString(),
     totals: sumMetrics(okResults.map((r) => r.metrics)),
     byPlatform: buildByPlatform(results),
-    series: buildSeries(okResults, since, until),
+    series: buildSeries(okResults, since, until, timeZone),
     topPosts: buildTopPosts(okResults, contentByPost),
     publications: results,
     accountsNeedingReconnect: mergeReconnectHints(
@@ -444,6 +461,7 @@ export async function getPostAnalytics(input: {
   }
 
   const ctx = ws.ctx;
+  const timeZone = await getUserTimezone(ws.ctx.resourceUserId);
   const until = new Date();
   const since = new Date(0);
   const pubs = await loadPublishedPubs({
@@ -463,7 +481,9 @@ export async function getPostAnalytics(input: {
     if (!post) throw rpcHttpError("Post not found", 404);
   }
 
-  const results = await mapPool(pubs, CONCURRENCY, metricsForPub);
+  const results = await mapPool(pubs, CONCURRENCY, (row) =>
+    metricsForPub(row, { since, until, timeZone }),
+  );
   const okResults = results.filter((r) => r.status === "ok");
   return {
     postId,

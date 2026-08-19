@@ -103,7 +103,7 @@ Route: `/dashboard/inbox` (also `/dashboard/teams/:teamId/inbox`). Not plan-gate
 - **Comments** (default) — comments on posts **published through Social0**
 - **DMs** — conversations on platforms that allow it
 
-Same date ranges as Analytics (`7D` / `2W` / `4W` / `3M` / `1Y` + custom). Account chips: active connections on **live** platforms for that tab. Inline images/videos in threads; reply in-app.
+Same date ranges as Analytics (`7D` / `2W` / `4W` / `3M` / `1Y` + custom). Account chips: active connections on **live** platforms for that tab. Inline images/videos in threads; reply in-app. Scroll the comments or DMs list to load older threads.
 
 | URL | Meaning |
 | --- | ------- |

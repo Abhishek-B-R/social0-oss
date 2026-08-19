@@ -24,6 +24,12 @@ export async function invalidateTeamRoomQueries(
     queryClient.invalidateQueries({ queryKey: ["team"] }),
     queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
     queryClient.invalidateQueries({ queryKey: ["connections"] }),
+    queryClient.invalidateQueries({ queryKey: ["analytics-overview"] }),
+    queryClient.invalidateQueries({ queryKey: ["analytics-accounts"] }),
+    queryClient.invalidateQueries({ queryKey: ["inbox-comments"] }),
+    queryClient.invalidateQueries({ queryKey: ["inbox-dms"] }),
+    queryClient.invalidateQueries({ queryKey: ["inbox-accounts"] }),
+    queryClient.invalidateQueries({ queryKey: ["inbox-dm-thread"] }),
   ];
   if (teamId) {
     tasks.push(

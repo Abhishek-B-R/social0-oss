@@ -1,12 +1,17 @@
 import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { DayPicker, type DateRange } from "react-day-picker";
-import { endOfDay, format, startOfDay, subDays } from "date-fns";
+import { endOfDay, startOfDay, subDays } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 import { CalendarBlank, CaretLeft, CaretRight } from "@/icons/phosphor";
+import { getUserSettingsSnapshot } from "@/api/settings";
 import {
   WINDOW_PRESET_OPTIONS,
+  WINDOW_PRESET_RANGE_LABEL,
   type DateWindow,
   type WindowPreset,
 } from "@/lib/date-window";
+import { formatRangeLabel } from "@/features/dashboard/analytics/analytics-utils";
 import { cn } from "@/lib/utils";
 import "react-day-picker/style.css";
 import "./range-toolbar.css";
@@ -15,21 +20,25 @@ type RangeToolbarProps = {
   value: DateWindow;
   onChange: (next: DateWindow) => void;
   label?: string;
+  resolvedSince?: string | null;
+  resolvedUntil?: string | null;
 };
 
-function presetSinceUntil(preset: WindowPreset): { since: Date; until: Date } {
-  const until = new Date();
-  const days =
-    preset === "7d"
-      ? 7
-      : preset === "14d"
-        ? 14
-        : preset === "28d"
-          ? 28
-          : preset === "90d"
-            ? 90
-            : 365;
-  return { since: startOfDay(subDays(until, days - 1)), until };
+function zonedDayIso(d: Date, timeZone: string, end: boolean): string {
+  const wall = new Date(
+    d.getFullYear(),
+    d.getMonth(),
+    d.getDate(),
+    end ? 23 : 0,
+    end ? 59 : 0,
+    end ? 59 : 0,
+    end ? 999 : 0,
+  );
+  try {
+    return fromZonedTime(wall, timeZone).toISOString();
+  } catch {
+    return (end ? endOfDay(d) : startOfDay(d)).toISOString();
+  }
 }
 
 function RangeChevron({
@@ -50,13 +59,25 @@ function RangeChevron({
   return <CaretRight className={className} size={size} weight="bold" />;
 }
 
-export function RangeToolbar({ value, onChange, label = "Date range" }: RangeToolbarProps) {
+export function RangeToolbar({
+  value,
+  onChange,
+  label = "Date range",
+  resolvedSince,
+  resolvedUntil,
+}: RangeToolbarProps) {
+  const settingsQuery = useQuery({
+    queryKey: ["user-settings-snapshot"],
+    queryFn: getUserSettingsSnapshot,
+    staleTime: 5 * 60_000,
+  });
+  const timeZone = settingsQuery.data?.timezone?.trim() || "UTC";
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const until = value.until ? new Date(value.until) : new Date();
   const since = value.since
     ? new Date(value.since)
-    : presetSinceUntil(value.range === "custom" ? "7d" : value.range).since;
+    : startOfDay(subDays(until, 6));
   const [draft, setDraft] = useState<DateRange>({ from: since, to: until });
 
   useEffect(() => {
@@ -74,9 +95,13 @@ export function RangeToolbar({ value, onChange, label = "Date range" }: RangeToo
   }, [open]);
 
   const rangeLabel =
-    value.range === "custom" && value.since && value.until
-      ? `${format(new Date(value.since), "MMM d")} – ${format(new Date(value.until), "MMM d, yyyy")}`
-      : `${format(since, "MMM d")} – ${format(until, "MMM d, yyyy")}`;
+    resolvedSince && resolvedUntil
+      ? formatRangeLabel(resolvedSince, resolvedUntil, timeZone)
+      : value.range === "custom" && value.since && value.until
+        ? formatRangeLabel(value.since, value.until, timeZone)
+        : WINDOW_PRESET_RANGE_LABEL[
+            value.range === "custom" ? "7d" : (value.range as WindowPreset)
+          ];
 
   return (
     <div ref={rootRef} className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -139,8 +164,8 @@ export function RangeToolbar({ value, onChange, label = "Date range" }: RangeToo
               if (next?.from && next.to) {
                 onChange({
                   range: "custom",
-                  since: startOfDay(next.from).toISOString(),
-                  until: endOfDay(next.to).toISOString(),
+                  since: zonedDayIso(next.from, timeZone, false),
+                  until: zonedDayIso(next.to, timeZone, true),
                 });
               }
             }}

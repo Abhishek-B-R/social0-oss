@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  instagramDmsNeedInstagramLogin,
   missingDmScopes,
   missingInboxScopes,
   peerFromParticipants,
   toInboxThreads,
   youtubeAuthorChannelId,
+  sameLinkedInActor,
   type InboxComment,
 } from "../lib/inbox/types.js";
 
@@ -41,7 +43,18 @@ describe("missingInboxScopes", () => {
 
   it("does not nag platforms that need no extra scopes", () => {
     expect(missingInboxScopes("twitter_x", null)).toEqual([]);
-    expect(missingInboxScopes("youtube", "")).toEqual([]);
+  });
+
+  it("requires youtube.force-ssl so replies can reconnect", () => {
+    expect(missingInboxScopes("youtube", "")).toEqual([
+      "https://www.googleapis.com/auth/youtube.force-ssl",
+    ]);
+    expect(
+      missingInboxScopes(
+        "youtube",
+        "https://www.googleapis.com/auth/youtube.force-ssl",
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -60,6 +73,32 @@ describe("missingDmScopes", () => {
   });
 });
 
+describe("instagramDmsNeedInstagramLogin", () => {
+  it("treats facebook-page metadata as unsupported DMs", () => {
+    expect(
+      instagramDmsNeedInstagramLogin({ connectionMethod: "facebook-page" }, null),
+    ).toBe(true);
+  });
+
+  it("lets Instagram Login through", () => {
+    expect(
+      instagramDmsNeedInstagramLogin(
+        { connectionMethod: "direct" },
+        "instagram_business_manage_messages",
+      ),
+    ).toBe(false);
+  });
+
+  it("detects Page scopes without IG messaging", () => {
+    expect(
+      instagramDmsNeedInstagramLogin(
+        {},
+        "pages_show_list,pages_manage_posts,pages_read_engagement",
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("peerFromParticipants", () => {
   it("picks the other person, not the connected account", () => {
     const peer = peerFromParticipants(
@@ -75,6 +114,14 @@ describe("peerFromParticipants", () => {
       handle: "ada",
       avatarUrl: null,
     });
+  });
+
+  it("does not fall back to self when no other participant", () => {
+    const peer = peerFromParticipants(
+      [{ id: "page", name: "My Page" }],
+      "page",
+    );
+    expect(peer.id).toBe("");
   });
 });
 
@@ -130,5 +177,16 @@ describe("youtubeAuthorChannelId", () => {
     expect(youtubeAuthorChannelId("UC123")).toBe("UC123");
     expect(youtubeAuthorChannelId({ value: "" })).toBeNull();
     expect(youtubeAuthorChannelId(null)).toBeNull();
+  });
+});
+
+describe("sameLinkedInActor", () => {
+  it("matches person URN to bare id and org URN to itself", () => {
+    expect(sameLinkedInActor("urn:li:person:abc", "abc")).toBe(true);
+    expect(
+      sameLinkedInActor("urn:li:organization:99", "urn:li:organization:99"),
+    ).toBe(true);
+    expect(sameLinkedInActor("urn:li:person:abc", "other")).toBe(false);
+    expect(sameLinkedInActor(null, "abc")).toBe(false);
   });
 });

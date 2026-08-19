@@ -225,9 +225,21 @@ export async function publishToFacebook(
       : `https://www.facebook.com/${pageId}/posts/${postId}`
     : null;
 
+  const rawPostId =
+    data.post_id ??
+    (typeof data.id === "string" && data.id.includes("_") ? data.id : null) ??
+    postId ??
+    data.id ??
+    null;
+  const platformPostId = rawPostId
+    ? rawPostId.includes("_")
+      ? rawPostId
+      : `${pageId}_${rawPostId}`
+    : null;
+
   return {
     status: "published",
-    platformPostId: data.id ?? postId ?? null,
+    platformPostId,
     platformPostUrl,
     publishedAt: new Date(),
   };

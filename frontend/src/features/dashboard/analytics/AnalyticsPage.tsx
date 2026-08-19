@@ -12,10 +12,8 @@ import {
   windowQueryParams,
   type DateWindow,
 } from "@/lib/date-window";
-import {
-  getAnalyticsOverview,
-  listAnalyticsAccounts,
-} from "@/api/analytics";
+import { getAnalyticsOverview, listAnalyticsAccounts } from "@/api/analytics";
+import { getUserSettingsSnapshot } from "@/api/settings";
 import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import {
@@ -47,13 +45,14 @@ export function AnalyticsPage() {
     queryFn: listWorkspaces,
     enabled: !!session,
   });
+  const workspaceReady = workspacesQuery.isSuccess || workspacesQuery.isError;
   const workspaceId =
     workspacesQuery.data?.workspaces.find((w) => w.isActive)?.id ?? "main";
 
   const accountsQuery = useQuery({
     queryKey: ["analytics-accounts", workspaceId],
     queryFn: listAnalyticsAccounts,
-    enabled: !!session && canViewAnalytics,
+    enabled: !!session && canViewAnalytics && workspaceReady,
   });
 
   const overviewQuery = useQuery({
@@ -63,8 +62,15 @@ export function AnalyticsPage() {
         ...windowQueryParams(dateWindow),
         accountId: accountId || undefined,
       }),
-    enabled: !!session && canViewAnalytics,
+    enabled: !!session && canViewAnalytics && workspaceReady,
     staleTime: 60_000,
+  });
+
+  const settingsQuery = useQuery({
+    queryKey: ["user-settings-snapshot"],
+    queryFn: getUserSettingsSnapshot,
+    enabled: !!session,
+    staleTime: 5 * 60_000,
   });
 
   const accounts = accountsQuery.data ?? [];
@@ -115,12 +121,19 @@ export function AnalyticsPage() {
 
   const data = overviewQuery.data;
   const loading = overviewQuery.isLoading || overviewQuery.isFetching;
+  const emptyOverview = !data || data.publications.length === 0;
+  const kpi = {
+    views: emptyOverview ? undefined : viewsOf(data.totals),
+    likes: emptyOverview ? undefined : data.totals.likes,
+    comments: emptyOverview ? undefined : data.totals.comments,
+    engagement: emptyOverview ? undefined : engagementOf(data.totals),
+  };
 
   const platformChart =
     data?.byPlatform.map((row) => ({
       platform: row.platform,
       label: PLATFORM_LABEL[row.platform] ?? row.platform,
-      views: viewsOf(row.metrics),
+      views: viewsOf(row.metrics) ?? 0,
       likes: row.metrics.likes ?? 0,
       comments: row.metrics.comments ?? 0,
       shares:
@@ -131,9 +144,10 @@ export function AnalyticsPage() {
 
   const selectedAccount = accounts.find((a) => a.id === accountId);
   const singleAccount = accountId != null;
+  const timeZone = settingsQuery.data?.timezone?.trim() || "UTC";
   const rangeLabel =
     data?.since && data?.until
-      ? formatRangeLabel(data.since, data.until)
+      ? formatRangeLabel(data.since, data.until, timeZone)
       : null;
 
   return (
@@ -163,7 +177,12 @@ export function AnalyticsPage() {
         </button>
       </div>
 
-      <RangeToolbar value={dateWindow} onChange={setDateWindow} />
+      <RangeToolbar
+        value={dateWindow}
+        onChange={setDateWindow}
+        resolvedSince={data?.since}
+        resolvedUntil={data?.until}
+      />
 
       <div className="shrink-0">
         <AccountFilterChips
@@ -211,25 +230,31 @@ export function AnalyticsPage() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard
           label="Views"
-          value={formatMetric(data ? viewsOf(data.totals) : undefined)}
+          value={formatMetric(kpi.views)}
           loading={loading && !data}
         />
         <StatCard
           label="Likes"
-          value={formatMetric(data?.totals.likes)}
+          value={formatMetric(kpi.likes)}
           loading={loading && !data}
         />
         <StatCard
           label="Comments"
-          value={formatMetric(data?.totals.comments)}
+          value={formatMetric(kpi.comments)}
           loading={loading && !data}
         />
         <StatCard
           label="Engagement"
-          value={formatMetric(data ? engagementOf(data.totals) : undefined)}
+          value={formatMetric(kpi.engagement)}
           loading={loading && !data}
         />
       </div>
+      {data?.sampled ? (
+        <p className="text-xs text-text-muted">
+          KPI totals cover the latest {data.sampleLimit} publications in this
+          range.
+        </p>
+      ) : null}
       {data && data.publications.length === 0 ? (
         <p className="text-sm text-text-muted">
           No posts published through Social0 in this range. Try 4W, or

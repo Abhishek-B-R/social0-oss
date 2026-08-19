@@ -1,4 +1,8 @@
-import { useQuery, useQueryClient, useIsFetching } from "@tanstack/react-query";
+import {
+  useQuery,
+  useQueryClient,
+  useIsFetching,
+} from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RangeToolbar } from "@/components/dashboard/RangeToolbar";
@@ -6,6 +10,8 @@ import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import { ArrowClockwise } from "@/icons/phosphor";
 import { useSession } from "@/lib/auth-client";
 import { listInboxAccounts } from "@/api/inbox";
+import { listWorkspaces } from "@/api/team";
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import { defaultDateWindow, type DateWindow } from "@/lib/date-window";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { AccountFilterChips } from "@/components/dashboard/AccountFilterChips";
@@ -20,6 +26,14 @@ export function InboxPage() {
   const { canViewInbox, canReplyComments, canReplyDms } =
     useWorkspaceNavPermissions();
   const qc = useQueryClient();
+  const workspacesQuery = useQuery({
+    queryKey: WORKSPACES_QUERY_KEY,
+    queryFn: listWorkspaces,
+    enabled: !!session,
+  });
+  const workspaceReady = workspacesQuery.isSuccess || workspacesQuery.isError;
+  const workspaceId =
+    workspacesQuery.data?.workspaces.find((w) => w.isActive)?.id ?? "main";
   const [searchParams, setSearchParams] = useSearchParams();
   const mode: InboxMode = searchParams.get("tab") === "dms" ? "dms" : "comments";
   const accountId = searchParams.get("account");
@@ -55,10 +69,16 @@ export function InboxPage() {
   };
 
   const accountsQuery = useQuery({
-    queryKey: ["inbox-accounts", mode],
+    queryKey: ["inbox-accounts", workspaceId, mode],
     queryFn: () =>
       listInboxAccounts({ mode: mode === "dms" ? "dms" : "comments" }),
-    enabled: !!session && canViewInbox,
+    enabled: !!session && canViewInbox && workspaceReady,
+  });
+
+  const commentAccountsQuery = useQuery({
+    queryKey: ["inbox-accounts", workspaceId, "comments"],
+    queryFn: () => listInboxAccounts({ mode: "comments" }),
+    enabled: !!session && canViewInbox && workspaceReady && mode === "dms",
   });
 
   const accounts = accountsQuery.data ?? [];
@@ -155,7 +175,9 @@ export function InboxPage() {
         emptyLabel={
           mode === "comments"
             ? "Connect an account to see comments."
-            : "Connect an account to manage DMs."
+            : commentAccountsQuery.data?.length
+              ? "DMs here need Instagram Login, X, Bluesky, or TikTok. Your other connected platforms don't support inbox DMs."
+              : "Connect an account to manage DMs."
         }
       />
 

@@ -1,6 +1,7 @@
 /** Shared metric formatting for analytics UI. */
 
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import type { MetricMap } from "@/api/analytics";
 
 export function formatMetric(n: number | undefined | null): string {
@@ -22,8 +23,10 @@ export function engagementOf(m: MetricMap): number {
   );
 }
 
-export function viewsOf(m: MetricMap): number {
-  return m.views ?? m.impressions ?? 0;
+export function viewsOf(m: MetricMap): number | undefined {
+  if (m.views != null && Number.isFinite(m.views)) return m.views;
+  if (m.impressions != null && Number.isFinite(m.impressions)) return m.impressions;
+  return undefined;
 }
 
 export type MixSlice = { key: string; label: string; value: number };
@@ -46,11 +49,25 @@ export function engagementMix(m: MetricMap): MixSlice[] {
 }
 
 /** Inclusive range label; keeps the start year when the window crosses New Year. */
-export function formatRangeLabel(since: string, until: string): string {
-  const a = new Date(since);
-  const b = new Date(until);
-  if (a.getFullYear() === b.getFullYear()) {
-    return `${format(a, "MMM d")} – ${format(b, "MMM d, yyyy")}`;
+export function formatRangeLabel(
+  since: string,
+  until: string,
+  timeZone = "UTC",
+): string {
+  try {
+    const sameYear =
+      formatInTimeZone(since, timeZone, "yyyy") ===
+      formatInTimeZone(until, timeZone, "yyyy");
+    if (sameYear) {
+      return `${formatInTimeZone(since, timeZone, "MMM d")} - ${formatInTimeZone(until, timeZone, "MMM d, yyyy")}`;
+    }
+    return `${formatInTimeZone(since, timeZone, "MMM d, yyyy")} - ${formatInTimeZone(until, timeZone, "MMM d, yyyy")}`;
+  } catch {
+    const a = new Date(since);
+    const b = new Date(until);
+    if (a.getFullYear() === b.getFullYear()) {
+      return `${format(a, "MMM d")} - ${format(b, "MMM d, yyyy")}`;
+    }
+    return `${format(a, "MMM d, yyyy")} - ${format(b, "MMM d, yyyy")}`;
   }
-  return `${format(a, "MMM d, yyyy")} – ${format(b, "MMM d, yyyy")}`;
 }

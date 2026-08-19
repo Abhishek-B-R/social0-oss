@@ -10,7 +10,11 @@ export function InboxAttachmentView({
   className?: string;
 }) {
   const [broken, setBroken] = useState(false);
-  if (broken || !attachment.url) return null;
+  if (broken || !attachment.url) {
+    return (
+      <p className="mt-1.5 text-[11px] text-text-muted">Media unavailable</p>
+    );
+  }
 
   if (attachment.type === "image") {
     return (
@@ -34,6 +38,7 @@ export function InboxAttachmentView({
       playsInline
       preload="metadata"
       poster={attachment.thumbnailUrl ?? undefined}
+      referrerPolicy="no-referrer"
       onError={() => setBroken(true)}
       className={cn(
         "mt-1.5 max-h-72 w-full rounded-lg bg-black/80 object-contain",

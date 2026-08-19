@@ -5,7 +5,7 @@ import { env } from "../env.js";
 import { jsonPost } from "../http-json.js";
 import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
 import { inboxAllowsMedia } from "./media-capabilities.js";
-import { blueskySession } from "./bluesky-session.js";
+import { blueskySession, blueskySessionAfter401 } from "./bluesky-session.js";
 import {
   tiktokBmData,
   tiktokBmErrorMessage,
@@ -106,26 +106,22 @@ async function replyGraphMessenger(
     const mediaResult = await postMessage({
       attachment: graphAttachment(input.mediaUrl!, input.mediaMimeType!),
     });
-    if (!mediaResult.ok) return mediaResult;
-    return postMessage({ text: input.text.trim() });
+    if (mediaResult.ok) return postMessage({ text: input.text.trim() });
+    // URL attachment failed - fall through to attachment_id retry.
+  } else {
+    const message: Record<string, unknown> = {};
+    if (hasText) message.text = input.text.trim();
+    if (hasMedia) {
+      message.attachment = graphAttachment(input.mediaUrl!, input.mediaMimeType!);
+    }
+    const result = await postMessage(message);
+    if (result.ok || !hasMedia) return result;
   }
-
-  const message: Record<string, unknown> = {};
-  if (hasText) message.text = input.text.trim();
-  if (hasMedia) {
-    message.attachment = graphAttachment(input.mediaUrl!, input.mediaMimeType!);
-  }
-
-  let result = await postMessage(message);
-  if (result.ok || !hasMedia) return result;
 
   const type = input.mediaMimeType!.startsWith("video/") ? "video" : "image";
-  const uploadHosts: Array<"graph.facebook.com" | "graph.instagram.com"> =
-    host === "graph.instagram.com"
-      ? ["graph.instagram.com", "graph.facebook.com"]
-      : ["graph.facebook.com"];
+  const uploadHosts: Array<"graph.facebook.com" | "graph.instagram.com"> = [host];
 
-  let lastError = result.error ?? "Message with attachment failed";
+  let lastError = "Message with attachment failed";
   for (const uploadHost of uploadHosts) {
     const uploaded = await graphUploadAttachmentId(
       uploadHost,
@@ -134,14 +130,18 @@ async function replyGraphMessenger(
       input.mediaUrl!,
       input.mediaMimeType!,
     );
-    if ("error" in uploaded) continue;
-    const retryMsg: Record<string, unknown> = {
+    if ("error" in uploaded) {
+      lastError = uploaded.error;
+      continue;
+    }
+    const retry = await postMessage({
       attachment: { type, payload: { attachment_id: uploaded.id } },
-    };
-    if (hasText) retryMsg.text = input.text.trim();
-    const retry = await postMessage(retryMsg);
-    if (retry.ok) return retry;
-    lastError = retry.error;
+    });
+    if (retry.ok) {
+      if (hasText) return postMessage({ text: input.text.trim() });
+      return retry;
+    }
+    lastError = retry.error ?? lastError;
   }
 
   return fail(lastError);
@@ -157,7 +157,9 @@ async function replyTwitter(input: DmReplyInput): Promise<DmReplyResult> {
   if (!appKey || !appSecret || !input.accessSecret) {
     return fail("X credentials incomplete. Reconnect the account.");
   }
-  if (!input.peerId) return fail("Missing recipient for this X conversation.");
+  if (!input.conversationId && !input.peerId) {
+    return fail("Missing recipient for this X conversation.");
+  }
   try {
     const client = new TwitterApi({
       appKey,
@@ -174,10 +176,11 @@ async function replyTwitter(input: DmReplyInput): Promise<DmReplyResult> {
       body.attachments = [{ media_id: mediaId }];
     }
     if (!body.text && !body.attachments?.length) return fail("Message is empty.");
-    const raw = await client.v2.post(
-      `dm_conversations/with/${encodeURIComponent(input.peerId)}/messages`,
-      body,
-    );
+    // Group threads must use the conversation id - with/:peerId is 1:1 create-or-send.
+    const path = input.conversationId
+      ? `dm_conversations/${encodeURIComponent(input.conversationId)}/messages`
+      : `dm_conversations/with/${encodeURIComponent(input.peerId)}/messages`;
+    const raw = await client.v2.post(path, body);
     const id = (raw as { data?: { dm_event_id?: string } })?.data?.dm_event_id;
     return { ok: true, messageId: id };
   } catch (e) {
@@ -193,26 +196,31 @@ async function replyBluesky(input: DmReplyInput): Promise<DmReplyResult> {
   if (input.mediaUrl) {
     return fail("Bluesky DMs do not support attachments yet.");
   }
-  const session = await blueskySession(
-    input.accountId ?? handle,
-    handle,
-    input.accessSecret,
-  );
+  const accountKey = input.accountId ?? handle;
+  const send = async (accessJwt: string) =>
+    fetch("https://api.bsky.chat/xrpc/chat.bsky.convo.sendMessage", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessJwt}`,
+        "Atproto-Proxy": "did:web:api.bsky.chat#bsky_chat",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        convoId: input.conversationId,
+        message: { text: input.text },
+      }),
+    });
+
+  let session = await blueskySession(accountKey, handle, input.accessSecret);
   if (!session) {
     return fail("Bluesky login failed. Reconnect the account.");
   }
-  const res = await fetch("https://api.bsky.chat/xrpc/chat.bsky.convo.sendMessage", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.accessJwt}`,
-      "Atproto-Proxy": "did:web:api.bsky.chat#bsky_chat",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      convoId: input.conversationId,
-      message: { text: input.text },
-    }),
-  });
+  let res = await send(session.accessJwt);
+  if (res.status === 401) {
+    session = await blueskySessionAfter401(accountKey, handle, input.accessSecret);
+    if (!session) return fail("Bluesky login failed. Reconnect the account.");
+    res = await send(session.accessJwt);
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     return fail((data as { message?: string })?.message ?? "Bluesky DM failed");
@@ -251,25 +259,40 @@ async function replyTikTok(input: DmReplyInput): Promise<DmReplyResult> {
     imageMediaId = mediaId;
   }
 
-  const body: Record<string, unknown> = {
-    business_id: input.platformUserId,
-    recipient_type: "CONVERSATION",
-    recipient: input.conversationId,
-    message_type: imageMediaId ? "IMAGE" : "TEXT",
-  };
-  if (input.text.trim()) body.text = { body: input.text.trim() };
-  if (imageMediaId) body.image = { media_id: imageMediaId };
-  if (!input.text.trim() && !imageMediaId) return fail("Message is empty.");
+  const caption = input.text.trim();
+  if (!caption && !imageMediaId) return fail("Message is empty.");
 
-  const { ok, data } = await tiktokBmPost(
-    input.accessToken,
-    "/business/message/send/",
-    body,
-  );
-  if (!ok) {
-    return fail(tiktokBmErrorMessage(data, "TikTok send failed"));
+  const sendBm = (body: Record<string, unknown>) =>
+    tiktokBmPost(input.accessToken, "/business/message/send/", {
+      business_id: input.platformUserId,
+      recipient_type: "CONVERSATION",
+      recipient: input.conversationId,
+      ...body,
+    });
+
+  // BM is one message_type per call - image+caption must be two sends.
+  let lastId: string | undefined;
+  if (imageMediaId) {
+    const imageSend = await sendBm({
+      message_type: "IMAGE",
+      image: { media_id: imageMediaId },
+    });
+    if (!imageSend.ok) {
+      return fail(tiktokBmErrorMessage(imageSend.data, "TikTok send failed"));
+    }
+    lastId = tiktokBmSentMessageId(tiktokBmData(imageSend.data));
   }
-  return { ok: true, messageId: tiktokBmSentMessageId(tiktokBmData(data)) };
+  if (caption) {
+    const textSend = await sendBm({
+      message_type: "TEXT",
+      text: { body: caption },
+    });
+    if (!textSend.ok) {
+      return fail(tiktokBmErrorMessage(textSend.data, "TikTok send failed"));
+    }
+    lastId = tiktokBmSentMessageId(tiktokBmData(textSend.data)) ?? lastId;
+  }
+  return { ok: true, messageId: lastId };
 }
 
 export async function replyToDmOnPlatform(

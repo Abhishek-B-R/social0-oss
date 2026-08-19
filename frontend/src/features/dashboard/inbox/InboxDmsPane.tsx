@@ -1,5 +1,10 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -8,7 +13,6 @@ import {
   EnvelopeSimple,
   WarningCircle,
 } from "@/icons/phosphor";
-import { useDashboardPath } from "@/lib/dashboard-base-path";
 import {
   getInboxDmThread,
   listInboxDms,
@@ -21,7 +25,6 @@ import {
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import {
   WINDOW_EMPTY_LABEL,
-  windowQueryParams,
   type DateWindow,
 } from "@/lib/date-window";
 import { uploadFile } from "@/lib/upload-file";
@@ -29,12 +32,18 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InboxAttachmentView } from "./InboxAttachmentView";
 import { InboxAvatar } from "./InboxAvatar";
-import {
-  InboxComposer,
-  type InboxComposerPayload,
-} from "./InboxComposer";
+import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
+import { InboxScrollSentinel } from "./InboxScrollSentinel";
 import { resolveInboxBody } from "@/lib/inbox-display";
-import { InboxReconnectNotice, InboxFetchErrorsNotice } from "./InboxNotices";
+import { inboxDmFingerprint, markInboxDmsSeen } from "@/lib/inbox-unread";
+import { useSession } from "@/lib/auth-client";
+import { listWorkspaces } from "@/api/team";
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
+import {
+  initialInboxPageParam,
+  nextInboxPageParam,
+  type InboxPageParam,
+} from "@/lib/inbox-infinite";
 
 function dmKey(t: InboxDmThread): string {
   return `${t.accountId}:${t.conversationId}`;
@@ -58,17 +67,36 @@ function attachmentFromPreview(
   };
 }
 
+function dmSplitsImageCaption(platform: string): boolean {
+  return platform === "instagram" || platform === "tiktok";
+}
+
 function sameLocalDm(
   server: LocalInboxDmMessage,
   local: LocalInboxDmMessage,
 ): boolean {
-  if (server.id === local.id) return true;
+  if (server.id && local.id && server.id === local.id) return true;
+  if (local.sendStatus === "failed" || local.sendStatus === "sending") {
+    return false;
+  }
   if (!server.isOwn || !local.isOwn) return false;
   const dt = Math.abs(
     new Date(server.createdAt ?? 0).getTime() -
       new Date(local.createdAt ?? 0).getTime(),
   );
   if (dt > 120_000) return false;
+  // IG/TikTok send image then caption as two rows. Drop the combo pending
+  // once either half is on the server.
+  if (local.attachment && local.text) {
+    if (
+      server.attachment &&
+      server.attachment.type === local.attachment.type &&
+      dt < 15_000
+    ) {
+      return true;
+    }
+    return !server.attachment && server.text === local.text;
+  }
   if (local.attachment || server.attachment) {
     return (
       Boolean(server.attachment) &&
@@ -85,7 +113,27 @@ function mergeMessages(
   server: LocalInboxDmMessage[],
   pending: LocalInboxDmMessage[],
 ): LocalInboxDmMessage[] {
-  const extra = pending.filter((m) => !server.some((s) => sameLocalDm(s, m)));
+  const used = new Set<number>();
+  const extra = pending.filter((local) => {
+    if (local.sendStatus === "failed" || local.sendStatus === "sending") {
+      return true;
+    }
+    const byId = server.findIndex(
+      (s, i) => !used.has(i) && s.id && local.id && s.id === local.id,
+    );
+    if (byId >= 0) {
+      used.add(byId);
+      return false;
+    }
+    const byHeuristic = server.findIndex(
+      (s, i) => !used.has(i) && sameLocalDm(s, local),
+    );
+    if (byHeuristic >= 0) {
+      used.add(byHeuristic);
+      return false;
+    }
+    return true;
+  });
   return [...server, ...extra].sort((a, b) =>
     (a.createdAt ?? "").localeCompare(b.createdAt ?? ""),
   );
@@ -102,8 +150,17 @@ export function InboxDmsPane({
   enabled: boolean;
   allowReply?: boolean;
 }) {
-  const dash = useDashboardPath();
   const qc = useQueryClient();
+  const { data: session } = useSession();
+  const userId = session?.user?.id;
+  const workspacesQuery = useQuery({
+    queryKey: WORKSPACES_QUERY_KEY,
+    queryFn: listWorkspaces,
+    enabled: Boolean(session),
+  });
+  const workspaceReady = workspacesQuery.isSuccess || workspacesQuery.isError;
+  const workspaceId =
+    workspacesQuery.data?.workspaces.find((w) => w.isActive)?.id ?? "main";
   const [searchParams, setSearchParams] = useSearchParams();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
@@ -119,23 +176,66 @@ export function InboxDmsPane({
     [],
   );
 
-  const listKey = ["inbox-dms", dateWindow, accountId] as const;
-  const listQuery = useQuery({
+  const listKey = ["inbox-dms", workspaceId, dateWindow, accountId] as const;
+  const listQuery = useInfiniteQuery({
     queryKey: listKey,
-    queryFn: () =>
+    queryFn: ({ pageParam }) =>
       listInboxDms({
-        ...windowQueryParams(dateWindow),
+        ...pageParam,
         accountId: accountId || undefined,
       }),
-    enabled,
+    initialPageParam: initialInboxPageParam(dateWindow),
+    getNextPageParam: (last) =>
+      nextInboxPageParam({
+        hasMore: last.hasMore,
+        sampled: last.sampled,
+        nextBefore: last.nextBefore,
+        since: last.since,
+        until: last.until,
+        itemCount: last.threads.length,
+      }),
+    enabled: enabled && workspaceReady,
     staleTime: 30_000,
     refetchInterval: enabled ? 45_000 : false,
     refetchIntervalInBackground: false,
+    maxPages: 24,
   });
 
-  const threads = listQuery.data?.threads ?? [];
+  const fetchNextDms = listQuery.fetchNextPage;
+  const hasNextDms = Boolean(listQuery.hasNextPage);
+  const fetchingNextDms = listQuery.isFetchingNextPage;
+  const loadOlderDms = useCallback(() => {
+    if (hasNextDms && !fetchingNextDms) {
+      void fetchNextDms();
+    }
+  }, [fetchNextDms, fetchingNextDms, hasNextDms]);
+
+  const threads = useMemo(() => {
+    const seen = new Set<string>();
+    const out: InboxDmThread[] = [];
+    for (const page of listQuery.data?.pages ?? []) {
+      for (const t of page.threads) {
+        const k = dmKey(t);
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push(t);
+      }
+    }
+    out.sort((a, b) =>
+      (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
+    );
+    return out;
+  }, [listQuery.data]);
   const selected =
     threads.find((t) => dmKey(t) === pickedId) ?? threads[0] ?? null;
+  const openedDmKey = selected
+    ? inboxDmFingerprint(selected.accountId, selected.conversationId)
+    : null;
+
+  useEffect(() => {
+    if (!enabled || !openedDmKey) return;
+    markInboxDmsSeen(userId, [openedDmKey]);
+  }, [enabled, openedDmKey, userId]);
 
   useEffect(() => {
     if (!threads.length) {
@@ -143,22 +243,27 @@ export function InboxDmsPane({
       return;
     }
     const keys = threads.map(dmKey);
+    if (pickedId && keys.includes(pickedId)) return;
+
     const convo = searchParams.get("convo");
+    const accountFromUrl = searchParams.get("account") || accountId;
     const fromUrl = convo
-      ? threads.find((t) => t.conversationId === convo)
+      ? threads.find(
+          (t) =>
+            t.conversationId === convo &&
+            (!accountFromUrl || t.accountId === accountFromUrl),
+        )
       : null;
     if (fromUrl) {
       setPickedId(dmKey(fromUrl));
       return;
     }
-    if (!pickedId || !keys.includes(pickedId)) {
-      setPickedId(keys[0] ?? null);
-    }
-  }, [threads, pickedId, searchParams]);
+    setPickedId(keys[0] ?? null);
+  }, [threads, pickedId, searchParams, accountId]);
 
   const threadQueryKey = selected
-    ? (["inbox-dm-thread", selected.accountId, selected.conversationId] as const)
-    : (["inbox-dm-thread", "none"] as const);
+    ? (["inbox-dm-thread", workspaceId, selected.accountId, selected.conversationId] as const)
+    : (["inbox-dm-thread", workspaceId, "none"] as const);
 
   const threadQuery = useQuery({
     queryKey: threadQueryKey,
@@ -224,20 +329,26 @@ export function InboxDmsPane({
         );
       }
 
-      qc.setQueryData<InboxDmListResult>(listKey, (old) => {
-        if (!old) return old;
-        const snippet =
-          payload.text ||
-          (payload.file?.type.startsWith("video/") ? "[video]" : "[image]");
-        return {
-          ...old,
-          threads: old.threads.map((t) =>
-            dmKey(t) === key
-              ? { ...t, snippet, lastMessageAt: createdAt }
-              : t,
-          ),
-        };
-      });
+      qc.setQueryData<InfiniteData<InboxDmListResult, InboxPageParam>>(
+        listKey,
+        (old) => {
+          if (!old) return old;
+          const snippet =
+            payload.text ||
+            (payload.file?.type.startsWith("video/") ? "[video]" : "[image]");
+          return {
+            ...old,
+            pages: old.pages.map((page) => ({
+              ...page,
+              threads: page.threads.map((t) =>
+                dmKey(t) === key
+                  ? { ...t, snippet, lastMessageAt: createdAt }
+                  : t,
+              ),
+            })),
+          };
+        },
+      );
 
       try {
         let mediaId: string | undefined;
@@ -292,21 +403,29 @@ export function InboxDmsPane({
               : m,
           ),
         );
-        qc.setQueryData<InboxDmThreadResult>(threadQueryKey, (old) => {
-          if (!old) return old;
-          const confirmed: LocalInboxDmMessage = {
-            id: res.messageId ?? clientId,
-            text: payload.text,
-            createdAt,
-            isOwn: true,
-            authorName: "You",
-            authorHandle: thread.accountLabel,
-            authorAvatarUrl: thread.accountProfileImageUrl ?? null,
-            attachment: attachmentFromPreview(payload.file, payload.previewUrl),
-          };
-          if (old.messages.some((m) => sameLocalDm(m, confirmed))) return old;
-          return { ...old, messages: [...old.messages, confirmed] };
-        });
+        if (
+          !(
+            dmSplitsImageCaption(thread.platform) &&
+            payload.file &&
+            payload.text.trim()
+          )
+        ) {
+          qc.setQueryData<InboxDmThreadResult>(threadQueryKey, (old) => {
+            if (!old) return old;
+            const confirmed: LocalInboxDmMessage = {
+              id: res.messageId ?? clientId,
+              text: payload.text,
+              createdAt,
+              isOwn: true,
+              authorName: "You",
+              authorHandle: thread.accountLabel,
+              authorAvatarUrl: thread.accountProfileImageUrl ?? null,
+              attachment: attachmentFromPreview(payload.file, payload.previewUrl),
+            };
+            if (old.messages.some((m) => sameLocalDm(m, confirmed))) return old;
+            return { ...old, messages: [...old.messages, confirmed] };
+          });
+        }
         if (refreshTimer.current) clearTimeout(refreshTimer.current);
         refreshTimer.current = setTimeout(() => {
           void qc.invalidateQueries({ queryKey: threadQueryKey });
@@ -324,7 +443,7 @@ export function InboxDmsPane({
     [listKey, pendingByConvo, qc, threadQueryKey, updatePending],
   );
 
-  const loading = listQuery.isLoading || listQuery.isFetching;
+  const loading = listQuery.isPending;
   const emptyRangeLabel =
     dateWindow.range === "custom"
       ? "this range"
@@ -345,9 +464,29 @@ export function InboxDmsPane({
     setPendingByConvo((prev) => {
       const list = prev[key];
       if (!list?.length) return prev;
-      const next = list.filter(
-        (m) => !server.some((s) => sameLocalDm(s as LocalInboxDmMessage, m)),
-      );
+      const used = new Set<number>();
+      const next = list.filter((m) => {
+        if (m.sendStatus === "failed" || m.sendStatus === "sending") return true;
+        const byId = server.findIndex(
+          (s, i) =>
+            !used.has(i) &&
+            s.id &&
+            m.id &&
+            s.id === m.id,
+        );
+        if (byId >= 0) {
+          used.add(byId);
+          return false;
+        }
+        const byHeuristic = server.findIndex(
+          (s, i) => !used.has(i) && sameLocalDm(s as LocalInboxDmMessage, m),
+        );
+        if (byHeuristic >= 0) {
+          used.add(byHeuristic);
+          return false;
+        }
+        return true;
+      });
       if (next.length === list.length) return prev;
       return { ...prev, [key]: next };
     });
@@ -356,13 +495,6 @@ export function InboxDmsPane({
 
   return (
     <>
-      <InboxReconnectNotice
-        items={listQuery.data?.accountsNeedingReconnect ?? []}
-        noun="DMs"
-        connectionsHref={dash("connections")}
-      />
-      <InboxFetchErrorsNotice errors={listQuery.data?.fetchErrors ?? []} />
-
       {listQuery.isError ? (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
           {listQuery.error instanceof Error
@@ -389,7 +521,7 @@ export function InboxDmsPane({
         <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
           <ul
             className={cn(
-              "max-h-[min(70vh,40rem)] overflow-y-auto border-border lg:max-h-none lg:border-r",
+              "max-h-[min(70vh,40rem)] min-h-0 overflow-y-auto border-border lg:max-h-none lg:border-r",
               showList ? "block" : "hidden lg:block",
             )}
           >
@@ -454,6 +586,11 @@ export function InboxDmsPane({
                 </li>
               );
             })}
+            <InboxScrollSentinel
+              onVisible={loadOlderDms}
+              disabled={!hasNextDms || fetchingNextDms}
+              loading={fetchingNextDms}
+            />
           </ul>
 
           <section
@@ -476,12 +613,14 @@ export function InboxDmsPane({
                     : null
                 }
                 onBack={() => setMobileDetail(false)}
-                onSend={(payload) => void sendMessage(selected, payload)}
+                onSend={(payload) =>
+                  void sendMessage(activeThread ?? selected, payload)
+                }
                 onRetry={(message) => {
                   const rp = message.retryPayload;
                   if (!rp) return;
                   void sendMessage(
-                    selected,
+                    activeThread ?? selected,
                     {
                       text: rp.text,
                       file: rp.file ?? null,
@@ -588,7 +727,7 @@ function DmConversationPane({
 
       {thread.canReply && allowReply ? (
         <InboxComposer
-          key={thread.conversationId}
+          key={`${thread.accountId}:${thread.conversationId}`}
           platform={thread.platform}
           mode="dm"
           maxLength={dmReplyMax(thread.platform)}

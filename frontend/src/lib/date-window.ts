@@ -34,3 +34,11 @@ export const WINDOW_EMPTY_LABEL: Record<WindowPreset, string> = {
   "90d": "the last 3 months",
   "365d": "the last year",
 };
+
+export const WINDOW_PRESET_RANGE_LABEL: Record<WindowPreset, string> = {
+  "7d": "Last 7 days",
+  "14d": "Last 2 weeks",
+  "28d": "Last 4 weeks",
+  "90d": "Last 3 months",
+  "365d": "Last year",
+};

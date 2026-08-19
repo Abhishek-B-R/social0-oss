@@ -15,13 +15,13 @@ export function inboxSupportsNestedReplies(platform: string): boolean {
   return NESTED_REPLY_PLATFORMS.has(platform);
 }
 
-/** Platform API target id — Instagram always replies to the top-level comment. */
+/** Platform API target id - Instagram/Facebook always reply to the top-level comment. */
 export function inboxReplyTargetId(
   platform: string,
   rootCommentId: string,
   targetCommentId: string,
 ): string {
-  if (platform === "instagram") return rootCommentId;
+  if (platform === "instagram" || platform === "facebook") return rootCommentId;
   if (inboxSupportsNestedReplies(platform)) return targetCommentId;
   return rootCommentId;
 }
@@ -61,8 +61,24 @@ export function formatInboxReplyText(opts: {
       .trim();
   }
   if (opts.isRoot) return text;
+  if (opts.platform === "facebook") {
+    const mention = /^\d+$/.test(handle) ? `@[${handle}]` : `@${handle}`;
+    if (text.startsWith(mention) || has) return text;
+    return text ? `${mention} ${text}` : mention;
+  }
   if (has) return text;
   return text ? `${mention} ${text}` : mention;
+}
+
+/** Composer cap minus the @mention formatInboxReplyText will prepend. */
+export function inboxReplyDraftMax(opts: {
+  platform: string;
+  targetHandle: string | null | undefined;
+  isRoot: boolean;
+  limit: number;
+}): number {
+  const sent = formatInboxReplyText({ ...opts, text: "x" });
+  return Math.max(0, opts.limit - Math.max(0, sent.length - 1));
 }
 
 /** Compare reply bodies after platform-specific mention normalization. */

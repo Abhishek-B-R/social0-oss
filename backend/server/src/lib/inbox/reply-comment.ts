@@ -3,9 +3,10 @@
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { fetchAllowedMedia } from "../media-fetch.js";
+import { jsonGet } from "../http-json.js";
 import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
 import { inboxAllowsMedia } from "./media-capabilities.js";
-import { blueskySession } from "./bluesky-session.js";
+import { blueskySession, blueskySessionAfter401 } from "./bluesky-session.js";
 
 export type ReplyInput = {
   platform: string;
@@ -213,34 +214,52 @@ async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
   if (!handle || !input.accessSecret || !rootUri) {
     return fail("Bluesky credentials incomplete. Reconnect the account.");
   }
-  const session = await blueskySession(
-    input.accountId ?? handle,
-    handle,
-    input.accessSecret,
-  );
+  const accountKey = input.accountId ?? handle;
+  let session = await blueskySession(accountKey, handle, input.accessSecret);
   if (!session) {
     return fail("Bluesky login failed. Reconnect the account.");
   }
 
-  const threadRes = await fetch(
-    `https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=${encodeURIComponent(input.commentId)}&depth=0`,
+  const authedGet = async (url: string) => {
+    let res = await jsonGet(url, {
+      Authorization: `Bearer ${session!.accessJwt}`,
+    });
+    if (res.status === 401) {
+      session = await blueskySessionAfter401(
+        accountKey,
+        handle,
+        input.accessSecret!,
+      );
+      if (!session) return { ok: false, status: 401, data: {} };
+      res = await jsonGet(url, {
+        Authorization: `Bearer ${session.accessJwt}`,
+      });
+    }
+    return res;
+  };
+
+  const parentUrl = new URL(
+    "https://bsky.social/xrpc/app.bsky.feed.getPostThread",
   );
-  const thread = (await threadRes.json().catch(() => ({}))) as {
+  parentUrl.searchParams.set("uri", input.commentId);
+  parentUrl.searchParams.set("depth", "0");
+  const threadRes = await authedGet(parentUrl.toString());
+  const thread = threadRes.data as {
     thread?: { post?: { uri?: string; cid?: string } };
   };
   const parent = thread.thread?.post;
-  if (!parent?.uri || !parent.cid) {
+  if (!threadRes.ok || !parent?.uri || !parent.cid) {
     return fail("Could not load the Bluesky comment to reply to.");
   }
 
-  const rootRes = await fetch(
-    `https://public.api.bsky.app/xrpc/app.bsky.feed.getPosts?uris=${encodeURIComponent(rootUri)}`,
-  );
-  const rootData = (await rootRes.json().catch(() => ({}))) as {
+  const rootUrl = new URL("https://bsky.social/xrpc/app.bsky.feed.getPosts");
+  rootUrl.searchParams.set("uris", rootUri);
+  const rootRes = await authedGet(rootUrl.toString());
+  const rootData = rootRes.data as {
     posts?: Array<{ uri?: string; cid?: string }>;
   };
   const root = rootData.posts?.[0];
-  if (!root?.uri || !root.cid) {
+  if (!rootRes.ok || !root?.uri || !root.cid) {
     return fail("Could not load the Bluesky post root.");
   }
 
@@ -253,6 +272,21 @@ async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
       parent: { uri: parent.uri, cid: parent.cid },
     },
   };
+
+  const postRecord = async (accessJwt: string, did: string, rec: Record<string, unknown>) =>
+    fetch("https://bsky.social/xrpc/com.atproto.repo.createRecord", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessJwt}`,
+      },
+      body: JSON.stringify({
+        repo: did,
+        collection: "app.bsky.feed.post",
+        record: rec,
+      }),
+    });
+
   if (input.mediaUrl && input.mediaMimeType?.startsWith("image/")) {
     const blob = await uploadBlueskyReplyBlob(session.accessJwt, input.mediaUrl);
     record.embed = {
@@ -261,21 +295,12 @@ async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
     };
   }
 
-  const createRes = await fetch(
-    "https://bsky.social/xrpc/com.atproto.repo.createRecord",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${session.accessJwt}`,
-      },
-      body: JSON.stringify({
-        repo: session.did,
-        collection: "app.bsky.feed.post",
-        record,
-      }),
-    },
-  );
+  let createRes = await postRecord(session.accessJwt, session.did, record);
+  if (createRes.status === 401) {
+    session = await blueskySessionAfter401(accountKey, handle, input.accessSecret);
+    if (!session) return fail("Bluesky login failed. Reconnect the account.");
+    createRes = await postRecord(session.accessJwt, session.did, record);
+  }
   if (!createRes.ok) {
     const data = await createRes.json().catch(() => ({}));
     return fail(

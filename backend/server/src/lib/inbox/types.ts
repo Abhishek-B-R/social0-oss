@@ -64,6 +64,8 @@ export type InboxListResult = {
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
+  hasMore: boolean;
+  nextBefore: string | null;
 };
 
 export const INBOX_DM_PLATFORMS = [
@@ -112,7 +114,7 @@ export function peerFromParticipants(
   selfId: string,
 ): { id: string; name: string; handle: string | null; avatarUrl: string | null } {
   const others = participants.filter((p) => p.id && p.id !== selfId);
-  const peer = others[0] ?? participants.find((p) => p.id) ?? {};
+  const peer = others[0] ?? {};
   return {
     id: peer.id ?? "",
     name: peer.name ?? peer.username ?? "Unknown",
@@ -142,6 +144,8 @@ export type InboxDmListResult = {
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
+  hasMore: boolean;
+  nextBefore: string | null;
 };
 
 export type InboxDmThreadResult = {
@@ -155,7 +159,7 @@ export type InboxDmThreadResult = {
 export const INBOX_REQUIRED_SCOPES: Record<string, string[]> = {
   instagram: ["instagram_business_manage_comments"],
   facebook: ["pages_manage_engagement"],
-  youtube: [],
+  youtube: ["https://www.googleapis.com/auth/youtube.force-ssl"],
   threads: [],
   twitter_x: [],
   bluesky: [],
@@ -184,6 +188,23 @@ export function missingDmScopes(
   if (needed.length === 0) return [];
   if (!granted?.trim()) return [...needed];
   return needed.filter((s) => !inboxScopeGranted(granted, s));
+}
+
+/** Page-connected IG cannot grant messaging. Do not nag reconnect for that scope. */
+export function instagramDmsNeedInstagramLogin(
+  metadata: Record<string, unknown> | null | undefined,
+  granted: string | null | undefined,
+): boolean {
+  const method = metadata?.connectionMethod;
+  if (method === "facebook-page") return true;
+  if (method === "direct") return false;
+  const pageLike =
+    inboxScopeGranted(granted, "pages_show_list") ||
+    inboxScopeGranted(granted, "pages_manage_posts") ||
+    inboxScopeGranted(granted, "pages_read_engagement");
+  return (
+    pageLike && !inboxScopeGranted(granted, "instagram_business_manage_messages")
+  );
 }
 
 export function isInboxDmPlatform(platform: string): platform is InboxDmPlatform {
@@ -221,6 +242,18 @@ export function sameInboxHandle(
     a.replace(/^@/, "").trim().toLowerCase() ===
     b.replace(/^@/, "").trim().toLowerCase()
   );
+}
+
+/** Person/org URN vs connected_accounts.platformUserId (bare id or full URN). */
+export function sameLinkedInActor(
+  actor: string | null | undefined,
+  platformUserId: string | null | undefined,
+): boolean {
+  if (!actor || !platformUserId) return false;
+  if (actor === platformUserId) return true;
+  const a = actor.split(":").pop();
+  const b = platformUserId.split(":").pop();
+  return Boolean(a && b && a === b);
 }
 
 /** YouTube comment snippets expose `{ value: channelId }`, not a bare string. */

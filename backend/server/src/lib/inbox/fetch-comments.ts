@@ -1,12 +1,20 @@
 /**
- * Live comment fetchers. Failures degrade — never throw past the dispatcher.
+ * Live comment fetchers. Failures degrade - never throw past the dispatcher.
  */
 
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
 import type { InboxComment } from "./types.js";
-import { INBOX_UNSUPPORTED, sameInboxHandle, youtubeAuthorChannelId } from "./types.js";
+import {
+  INBOX_REQUIRED_SCOPES,
+  INBOX_UNSUPPORTED,
+  sameInboxHandle,
+  sameLinkedInActor,
+  youtubeAuthorChannelId,
+} from "./types.js";
+import { isGonePlatformPost } from "./fetch-errors.js";
+import { blueskySession, blueskySessionAfter401 } from "./bluesky-session.js";
 import {
   parseBskyViewEmbed,
   parseFbCommentAttachment,
@@ -31,6 +39,8 @@ export type CommentFetchInput = {
   postMediaUrl?: string | null;
   postPublishedAt?: string | null;
   postAccountImageUrl?: string | null;
+  /** ISO time - stop paging comments older than this (newest-first). */
+  since?: string | null;
 };
 
 export type CommentFetchResult = {
@@ -80,12 +90,43 @@ function err(
   };
 }
 
+type GraphPage = {
+  data?: Array<Record<string, unknown>>;
+  paging?: { next?: string };
+};
+
+async function restOfGraphPages(
+  first: GraphPage,
+  sinceMs: number | null,
+  timeField: string,
+  cap = 8,
+): Promise<Array<Record<string, unknown>>> {
+  const out = [...(first.data ?? [])];
+  let next = first.paging?.next ?? null;
+  for (let page = 1; next && page < cap; page++) {
+    const oldest = out.length
+      ? Date.parse(String(out[out.length - 1]?.[timeField] ?? ""))
+      : 0;
+    if (sinceMs != null && oldest && oldest < sinceMs) break;
+    const pageRes = await jsonGet(next);
+    if (!pageRes.ok) break;
+    const body = pageRes.data as GraphPage;
+    out.push(...(body.data ?? []));
+    next = body.paging?.next ?? null;
+  }
+  return out;
+}
+
 async function fetchFacebook(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
+  const token = encodeURIComponent(input.accessToken);
   const id = encodeURIComponent(input.platformPostId);
-  const url = `https://graph.facebook.com/v21.0/${id}/comments?fields=id,from,message,created_time,like_count,attachment,comments.limit(5){id,from,message,created_time,attachment}&limit=25&access_token=${encodeURIComponent(input.accessToken)}`;
-  const { ok, data } = await jsonGet(url);
+  const sinceMs = input.since ? Date.parse(input.since) : null;
+  const fields =
+    "id,from,message,created_time,like_count,attachment,comments.limit(25){id,from,message,created_time,attachment}";
+  const startUrl = `https://graph.facebook.com/v21.0/${id}/comments?fields=${fields}&limit=25&order=reverse_chronological&access_token=${token}`;
+  const { ok, data } = await jsonGet(startUrl);
   if (!ok) {
     const msg =
       (data as { error?: { message?: string } })?.error?.message ??
@@ -95,16 +136,21 @@ async function fetchFacebook(
     }
     return err(msg);
   }
-  const rows = (data as { data?: Array<Record<string, unknown>> })?.data ?? [];
+
+  const rows = await restOfGraphPages(data as GraphPage, sinceMs, "created_time");
   const comments: InboxComment[] = [];
   const common = base(input);
-  for (const row of rows) {
+
+  const mapRow = (
+    row: Record<string, unknown>,
+    parentId: string | null,
+  ): InboxComment => {
     const from = row.from as { name?: string; id?: string } | undefined;
     const media = withMediaFallback(
       String(row.message ?? ""),
       parseFbCommentAttachment(row.attachment),
     );
-    comments.push({
+    return {
       ...common,
       id: String(row.id ?? ""),
       authorName: from?.name ?? "Facebook user",
@@ -114,30 +160,22 @@ async function fetchFacebook(
       createdAt: typeof row.created_time === "string" ? row.created_time : null,
       likeCount:
         typeof row.like_count === "number" ? row.like_count : undefined,
-      parentId: null,
+      parentId,
       isOwn: Boolean(from?.id && from.id === input.platformUserId),
-    });
-    const nested =
-      (row.comments as { data?: Array<Record<string, unknown>> } | undefined)
-        ?.data ?? [];
+    };
+  };
+
+  for (const row of rows) {
+    comments.push(mapRow(row, null));
+    const nestedObj = row.comments as GraphPage | undefined;
+    let nested = [...(nestedObj?.data ?? [])];
+    if (nestedObj?.paging?.next || nested.length >= 25) {
+      const nestedUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/comments?fields=id,from,message,created_time,attachment&limit=50&order=reverse_chronological&access_token=${token}`;
+      const nestedRes = await jsonGet(nestedUrl);
+      if (nestedRes.ok) nested = await restOfGraphPages(nestedRes.data as GraphPage, sinceMs, "created_time");
+    }
     for (const child of nested) {
-      const cfrom = child.from as { name?: string; id?: string } | undefined;
-      const childMedia = withMediaFallback(
-        String(child.message ?? ""),
-        parseFbCommentAttachment(child.attachment),
-      );
-      comments.push({
-        ...common,
-        id: String(child.id ?? ""),
-        authorName: cfrom?.name ?? "Facebook user",
-        authorHandle: cfrom?.id ?? null,
-        text: childMedia.text,
-        attachment: childMedia.attachment,
-        createdAt:
-          typeof child.created_time === "string" ? child.created_time : null,
-        parentId: String(row.id ?? ""),
-        isOwn: Boolean(cfrom?.id && cfrom.id === input.platformUserId),
-      });
+      comments.push(mapRow(child, String(row.id ?? "")));
     }
   }
   return { comments, status: "ok" };
@@ -146,8 +184,10 @@ async function fetchFacebook(
 async function fetchInstagram(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
+  const token = encodeURIComponent(input.accessToken);
   const id = encodeURIComponent(input.platformPostId);
-  const url = `https://graph.instagram.com/v21.0/${id}/comments?fields=id,text,username,timestamp,like_count,replies{id,text,username,timestamp}&limit=25&access_token=${encodeURIComponent(input.accessToken)}`;
+  const sinceMs = input.since ? Date.parse(input.since) : null;
+  const url = `https://graph.instagram.com/v21.0/${id}/comments?fields=id,text,username,timestamp,like_count,replies.limit(50){id,text,username,timestamp}&limit=50&access_token=${token}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -158,12 +198,16 @@ async function fetchInstagram(
     }
     return err(msg);
   }
-  const rows = (data as { data?: Array<Record<string, unknown>> })?.data ?? [];
+  const rows = await restOfGraphPages(data as GraphPage, sinceMs, "timestamp");
   const comments: InboxComment[] = [];
   const common = base(input);
-  for (const row of rows) {
+
+  const mapIg = (
+    row: Record<string, unknown>,
+    parentId: string | null,
+  ): InboxComment => {
     const handle = typeof row.username === "string" ? row.username : null;
-    comments.push({
+    return {
       ...common,
       id: String(row.id ?? ""),
       authorName: handle ?? "Instagram user",
@@ -172,24 +216,24 @@ async function fetchInstagram(
       createdAt: typeof row.timestamp === "string" ? row.timestamp : null,
       likeCount:
         typeof row.like_count === "number" ? row.like_count : undefined,
-      parentId: null,
+      parentId,
       ...withAuthor(input, handle),
-    });
-    const nested =
-      (row.replies as { data?: Array<Record<string, unknown>> } | undefined)
-        ?.data ?? [];
+    };
+  };
+
+  for (const row of rows) {
+    comments.push(mapIg(row, null));
+    const nestedObj = row.replies as GraphPage | undefined;
+    let nested = [...(nestedObj?.data ?? [])];
+    if (nestedObj?.paging?.next || nested.length >= 50) {
+      const nestedUrl = `https://graph.instagram.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/replies?fields=id,text,username,timestamp&limit=50&access_token=${token}`;
+      const nestedRes = await jsonGet(nestedUrl);
+      if (nestedRes.ok) {
+        nested = await restOfGraphPages(nestedRes.data as GraphPage, sinceMs, "timestamp");
+      }
+    }
     for (const child of nested) {
-      const ch = typeof child.username === "string" ? child.username : null;
-      comments.push({
-        ...common,
-        id: String(child.id ?? ""),
-        authorName: ch ?? "Instagram user",
-        authorHandle: ch,
-        text: String(child.text ?? ""),
-        createdAt: typeof child.timestamp === "string" ? child.timestamp : null,
-        parentId: String(row.id ?? ""),
-        ...withAuthor(input, ch),
-      });
+      comments.push(mapIg(child, String(row.id ?? "")));
     }
   }
   return { comments, status: "ok" };
@@ -199,8 +243,15 @@ async function fetchThreads(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
   const id = encodeURIComponent(input.platformPostId);
-  const url = `https://graph.threads.net/v1.0/${id}/replies?fields=id,text,username,timestamp&limit=25&access_token=${encodeURIComponent(input.accessToken)}`;
-  const { ok, data } = await jsonGet(url);
+  const token = encodeURIComponent(input.accessToken);
+  const convoUrl = `https://graph.threads.net/v1.0/${id}/conversation?fields=id,text,username,timestamp,replied_to{id}&limit=50&access_token=${token}`;
+  let { ok, data } = await jsonGet(convoUrl);
+  if (!ok) {
+    const fallback = `https://graph.threads.net/v1.0/${id}/replies?fields=id,text,username,timestamp,replied_to{id}&limit=25&access_token=${token}`;
+    const retry = await jsonGet(fallback);
+    ok = retry.ok;
+    data = retry.data;
+  }
   if (!ok) {
     const msg =
       (data as { error?: { message?: string } })?.error?.message ??
@@ -210,10 +261,14 @@ async function fetchThreads(
     }
     return err(msg);
   }
-  const rows = (data as { data?: Array<Record<string, unknown>> })?.data ?? [];
+  const sinceMs = input.since ? Date.parse(input.since) : null;
+  const rows = await restOfGraphPages(data as GraphPage, sinceMs, "timestamp");
   const common = base(input);
   const comments: InboxComment[] = rows.map((row) => {
     const handle = typeof row.username === "string" ? row.username : null;
+    const repliedTo = (row.replied_to as { id?: string } | undefined)?.id;
+    const parentId =
+      !repliedTo || repliedTo === input.platformPostId ? null : repliedTo;
     return {
       ...common,
       id: String(row.id ?? ""),
@@ -221,72 +276,140 @@ async function fetchThreads(
       authorHandle: handle,
       text: String(row.text ?? ""),
       createdAt: typeof row.timestamp === "string" ? row.timestamp : null,
-      parentId: null,
+      parentId,
       ...withAuthor(input, handle),
     };
   });
   return { comments, status: "ok" };
 }
 
+function youtubeHandle(sn: Record<string, unknown>): string | null {
+  const name = String(sn.authorDisplayName ?? "").trim();
+  if (!name) return null;
+  return name.replace(/^@/, "");
+}
+
+async function fetchYoutubeReplies(
+  parentId: string,
+  accessToken: string,
+): Promise<Array<{ id: string; snippet: Record<string, unknown> }>> {
+  const out: Array<{ id: string; snippet: Record<string, unknown> }> = [];
+  let pageToken: string | undefined;
+  for (let i = 0; i < 4; i++) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/comments");
+    url.searchParams.set("part", "snippet");
+    url.searchParams.set("parentId", parentId);
+    url.searchParams.set("maxResults", "100");
+    url.searchParams.set("textFormat", "plainText");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    const { ok, data } = await jsonGet(url.toString(), {
+      Authorization: `Bearer ${accessToken}`,
+    });
+    if (!ok) break;
+    const items =
+      (data as { items?: Array<{ id?: string; snippet?: Record<string, unknown> }>; nextPageToken?: string })
+        ?.items ?? [];
+    for (const item of items) {
+      if (item.id && item.snippet) out.push({ id: item.id, snippet: item.snippet });
+    }
+    pageToken = (data as { nextPageToken?: string }).nextPageToken;
+    if (!pageToken) break;
+  }
+  return out;
+}
+
 async function fetchYouTube(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
-  const url = new URL(
-    "https://www.googleapis.com/youtube/v3/commentThreads",
-  );
-  url.searchParams.set("part", "snippet,replies");
-  url.searchParams.set("videoId", input.platformPostId);
-  url.searchParams.set("maxResults", "25");
-  url.searchParams.set("textFormat", "plainText");
-  const { ok, data } = await jsonGet(url.toString(), {
-    Authorization: `Bearer ${input.accessToken}`,
-  });
-  if (!ok) {
-    const msg =
-      (data as { error?: { message?: string } })?.error?.message ??
-      "YouTube comments failed";
-    if (/disabled|commentsDisabled/i.test(msg)) {
-      return { comments: [], status: "ok" };
-    }
-    return err(msg);
-  }
-  const items =
-    (data as { items?: Array<Record<string, unknown>> })?.items ?? [];
+  const sinceMs = input.since ? Date.parse(input.since) : null;
   const comments: InboxComment[] = [];
   const common = base(input);
-  for (const item of items) {
-    const top = (item.snippet as { topLevelComment?: { id?: string; snippet?: Record<string, unknown> } })
-      ?.topLevelComment;
-    const sn = top?.snippet;
-    if (!top?.id || !sn) continue;
-    comments.push({
-      ...common,
-      id: top.id,
-      authorName: String(sn.authorDisplayName ?? "YouTube user"),
-      authorHandle: null,
-      text: String(sn.textDisplay ?? sn.textOriginal ?? ""),
-      createdAt: typeof sn.publishedAt === "string" ? sn.publishedAt : null,
-      likeCount: typeof sn.likeCount === "number" ? sn.likeCount : undefined,
-      parentId: null,
-      isOwn: youtubeAuthorChannelId(sn.authorChannelId) === input.platformUserId,
+  let pageToken: string | undefined;
+  let first = true;
+  for (let page = 0; page < 4; page++) {
+    const url = new URL(
+      "https://www.googleapis.com/youtube/v3/commentThreads",
+    );
+    url.searchParams.set("part", "snippet,replies");
+    url.searchParams.set("videoId", input.platformPostId);
+    url.searchParams.set("maxResults", "100");
+    url.searchParams.set("textFormat", "plainText");
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    const { ok, data, status } = await jsonGet(url.toString(), {
+      Authorization: `Bearer ${input.accessToken}`,
     });
-    const replies =
-      (item.replies as { comments?: Array<{ id?: string; snippet?: Record<string, unknown> }> })
-        ?.comments ?? [];
-    for (const r of replies) {
-      const rs = r.snippet;
-      if (!r.id || !rs) continue;
+    if (!ok) {
+      const msg =
+        (data as { error?: { message?: string } })?.error?.message ??
+        "YouTube comments failed";
+      if (first && /disabled|commentsDisabled/i.test(msg)) {
+        return { comments: [], status: "ok" };
+      }
+      if (first && (status === 404 || isGonePlatformPost(msg))) {
+        return { comments: [], status: "ok" };
+      }
+      if (first && (status === 403 || /forbidden|insufficient|permission/i.test(msg))) {
+        return err(msg, INBOX_REQUIRED_SCOPES.youtube);
+      }
+      if (first) return err(msg);
+      break;
+    }
+    first = false;
+    const items =
+      (data as { items?: Array<Record<string, unknown>>; nextPageToken?: string })
+        ?.items ?? [];
+    let hitSince = false;
+    for (const item of items) {
+      const top = (item.snippet as { topLevelComment?: { id?: string; snippet?: Record<string, unknown> }; totalReplyCount?: number })
+        ?.topLevelComment;
+      const sn = top?.snippet;
+      if (!top?.id || !sn) continue;
+      const publishedAt =
+        typeof sn.publishedAt === "string" ? Date.parse(sn.publishedAt) : NaN;
+      if (sinceMs != null && publishedAt && publishedAt < sinceMs) {
+        hitSince = true;
+        continue;
+      }
       comments.push({
         ...common,
-        id: r.id,
-        authorName: String(rs.authorDisplayName ?? "YouTube user"),
-        authorHandle: null,
-        text: String(rs.textDisplay ?? rs.textOriginal ?? ""),
-        createdAt: typeof rs.publishedAt === "string" ? rs.publishedAt : null,
-        parentId: top.id,
-        isOwn: youtubeAuthorChannelId(rs.authorChannelId) === input.platformUserId,
+        id: top.id,
+        authorName: String(sn.authorDisplayName ?? "YouTube user"),
+        authorHandle: youtubeHandle(sn),
+        text: String(sn.textDisplay ?? sn.textOriginal ?? ""),
+        createdAt: typeof sn.publishedAt === "string" ? sn.publishedAt : null,
+        likeCount: typeof sn.likeCount === "number" ? sn.likeCount : undefined,
+        parentId: null,
+        isOwn: youtubeAuthorChannelId(sn.authorChannelId) === input.platformUserId,
       });
+      const embedded =
+        (item.replies as { comments?: Array<{ id?: string; snippet?: Record<string, unknown> }> })
+          ?.comments ?? [];
+      const totalReplyCount =
+        typeof (item.snippet as { totalReplyCount?: number })?.totalReplyCount === "number"
+          ? (item.snippet as { totalReplyCount: number }).totalReplyCount
+          : embedded.length;
+      const replies =
+        totalReplyCount > embedded.length
+          ? await fetchYoutubeReplies(top.id, input.accessToken)
+          : embedded.filter((r): r is { id: string; snippet: Record<string, unknown> } =>
+              Boolean(r.id && r.snippet),
+            );
+      for (const r of replies) {
+        const rs = r.snippet;
+        comments.push({
+          ...common,
+          id: r.id,
+          authorName: String(rs.authorDisplayName ?? "YouTube user"),
+          authorHandle: youtubeHandle(rs),
+          text: String(rs.textDisplay ?? rs.textOriginal ?? ""),
+          createdAt: typeof rs.publishedAt === "string" ? rs.publishedAt : null,
+          parentId: top.id,
+          isOwn: youtubeAuthorChannelId(rs.authorChannelId) === input.platformUserId,
+        });
+      }
     }
+    pageToken = (data as { nextPageToken?: string }).nextPageToken;
+    if (!pageToken || hitSince) break;
   }
   return { comments, status: "ok" };
 }
@@ -306,11 +429,19 @@ async function fetchTwitter(
       accessToken: input.accessToken,
       accessSecret: input.accessSecret,
     });
+    const searchQuery = `conversation_id:${input.platformPostId}`;
+    const sevenDayMs = 7 * 24 * 60 * 60 * 1000;
+    const edgeSlackMs = 2 * 60 * 1000;
+    const windowMs = input.since ? Date.now() - Date.parse(input.since) : Infinity;
+    const startTime =
+      Number.isFinite(windowMs) && windowMs <= sevenDayMs - edgeSlackMs
+        ? undefined
+        : new Date(Date.now() - sevenDayMs + edgeSlackMs).toISOString();
     const search = await client.v2.search(
-      `conversation_id:${input.platformPostId}`,
+      searchQuery,
       {
-        max_results: 50,
-        start_time: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+        max_results: 100,
+        ...(startTime ? { start_time: startTime } : {}),
         "tweet.fields": [
           "created_at",
           "author_id",
@@ -324,40 +455,80 @@ async function fetchTwitter(
       },
     );
     const users = new Map<string, { name?: string; username?: string }>();
-    for (const u of search.includes?.users ?? []) {
-      users.set(u.id, { name: u.name, username: u.username });
-    }
     const mediaByKey = new Map<string, XMediaLike>();
-    for (const m of search.includes?.media ?? []) {
-      if (m.media_key) mediaByKey.set(m.media_key, m);
+    const tweets: Array<(typeof search.tweets)[number]> = [];
+    for (let page = 0; page < 5; page++) {
+      for (const u of search.includes?.users ?? []) {
+        users.set(u.id, { name: u.name, username: u.username });
+      }
+      for (const m of search.includes?.media ?? []) {
+        if (m.media_key) mediaByKey.set(m.media_key, m);
+      }
+      tweets.push(...(search.tweets ?? []));
+      if (search.done) break;
+      try {
+        await search.fetchNext();
+      } catch {
+        break;
+      }
     }
     const common = base(input);
-    const tweets = search.tweets ?? [];
     const comments: InboxComment[] = [];
+    const seen = new Set<string>();
+    const repliedToOf = new Map<string, string | undefined>();
+    const authorOf = new Map<string, string | undefined>();
     for (const tweet of tweets) {
-      if (tweet.id === input.platformPostId) continue;
-      const user = tweet.author_id ? users.get(tweet.author_id) : undefined;
-      const handle = user?.username ?? null;
+      if (!tweet.id) continue;
       const repliedTo = tweet.referenced_tweets?.find(
         (r) => r.type === "replied_to",
       )?.id;
-      // Direct reply to the Social0 post = top-level comment; else nest under parent tweet.
+      repliedToOf.set(tweet.id, repliedTo);
+      authorOf.set(tweet.id, tweet.author_id);
+    }
+    const ownSelfThread = (tweetId: string): boolean => {
+      let id: string | undefined = repliedToOf.get(tweetId);
+      const walked = new Set<string>();
+      while (id && !walked.has(id)) {
+        walked.add(id);
+        if (id === input.platformPostId) return true;
+        if (authorOf.get(id) !== input.platformUserId) return false;
+        id = repliedToOf.get(id);
+      }
+      return false;
+    };
+    for (const tweet of tweets) {
+      if (!tweet.id || seen.has(tweet.id)) continue;
+      seen.add(tweet.id);
+      if (tweet.id === input.platformPostId) continue;
+      const isOwn = Boolean(
+        tweet.author_id && tweet.author_id === input.platformUserId,
+      );
+      const repliedTo = repliedToOf.get(tweet.id);
+      if (isOwn && (!repliedTo || ownSelfThread(tweet.id))) continue;
+      const user = tweet.author_id ? users.get(tweet.author_id) : undefined;
+      const handle = user?.username ?? null;
       const parentId =
         !repliedTo || repliedTo === input.platformPostId ? null : repliedTo;
       const mediaKey = tweet.attachments?.media_keys?.[0];
       comments.push({
         ...common,
         id: tweet.id,
-        authorName: user?.name ?? "X user",
+        authorName: isOwn ? "You" : (user?.name ?? "X user"),
         authorHandle: handle,
         text: tweet.text ?? "",
         attachment: mediaKey ? xMediaToAttachment(mediaByKey.get(mediaKey)) : null,
         createdAt: tweet.created_at ?? null,
         parentId,
-        ...withAuthor(input, handle),
+        isOwn: isOwn || withAuthor(input, handle).isOwn,
       });
     }
-    return { comments, status: "ok" };
+    return {
+      comments,
+      status: "ok",
+      error: startTime
+        ? "X comments only go back 7 days (Recent Search)."
+        : undefined,
+    };
   } catch (e) {
     return err(e instanceof Error ? e.message : "X replies failed");
   }
@@ -366,21 +537,52 @@ async function fetchTwitter(
 async function fetchBluesky(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
-  const url = new URL(
-    "https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread",
-  );
-  url.searchParams.set("uri", input.platformPostId);
-  url.searchParams.set("depth", "3");
-  const { ok, data } = await jsonGet(url.toString());
-  if (!ok) {
-    return err(
-      (data as { message?: string })?.message ?? "Bluesky thread failed",
-    );
+  const handle = input.accountLabel?.replace(/^@/, "") ?? "";
+  if (!handle || !input.accessSecret) {
+    return err("Bluesky credentials incomplete. Reconnect the account.");
   }
-  const comments: InboxComment[] = [];
-  const common = base(input);
+
+  const urlFor = (uri: string) => {
+    const url = new URL("https://bsky.social/xrpc/app.bsky.feed.getPostThread");
+    url.searchParams.set("uri", uri);
+    url.searchParams.set("depth", "6");
+    return url.toString();
+  };
+
+  let session = await blueskySession(input.accountId, handle, input.accessSecret);
+  if (!session) {
+    return err("Bluesky login failed. Reconnect the account.");
+  }
+  let { ok, data, status } = await jsonGet(urlFor(input.platformPostId), {
+    Authorization: `Bearer ${session.accessJwt}`,
+  });
+  if (status === 401) {
+    session = await blueskySessionAfter401(
+      input.accountId,
+      handle,
+      input.accessSecret,
+    );
+    if (!session) return err("Bluesky login failed. Reconnect the account.");
+    const retry = await jsonGet(urlFor(input.platformPostId), {
+      Authorization: `Bearer ${session.accessJwt}`,
+    });
+    ok = retry.ok;
+    data = retry.data;
+    status = retry.status;
+  }
+  if (!ok) {
+    const msg =
+      (data as { message?: string; error?: string })?.message ??
+      (data as { error?: string })?.error ??
+      "Bluesky thread failed";
+    if (status === 404 || isGonePlatformPost(msg)) {
+      return { comments: [], status: "ok" };
+    }
+    return err(msg);
+  }
 
   type ThreadNode = {
+    $type?: string;
     post?: {
       uri?: string;
       author?: { displayName?: string; handle?: string };
@@ -390,6 +592,18 @@ async function fetchBluesky(
     };
     replies?: ThreadNode[];
   };
+
+  const root = (data as { thread?: ThreadNode }).thread;
+  const rootType = root?.$type ?? "";
+  if (
+    !root?.post?.uri ||
+    /notFound|blocked/i.test(rootType)
+  ) {
+    return { comments: [], status: "ok" };
+  }
+
+  const comments: InboxComment[] = [];
+  const common = base(input);
 
   function walk(node: ThreadNode | undefined, parentId: string | null) {
     if (!node?.post?.uri) return;
@@ -415,7 +629,7 @@ async function fetchBluesky(
     }
   }
 
-  walk((data as { thread?: ThreadNode }).thread, null);
+  walk(root, null);
   return { comments, status: "ok" };
 }
 
@@ -448,18 +662,25 @@ async function fetchLinkedIn(
   const common = { ...base(input), canReply: false };
   const comments: InboxComment[] = elements.map((el) => {
     const msg = el.message as { text?: string } | undefined;
-    const created = el.created as { time?: number } | undefined;
+    const created = el.created as { time?: number; actor?: string } | undefined;
+    const actor =
+      (typeof el.actor === "string" && el.actor) ||
+      (typeof created?.actor === "string" && created.actor) ||
+      (typeof el.commenter === "string" && el.commenter) ||
+      null;
+    const isOwn = sameLinkedInActor(actor, input.platformUserId);
     return {
       ...common,
       id: String(el.id ?? el.$URN ?? ""),
-      authorName: "LinkedIn user",
-      authorHandle: null,
+      authorName: isOwn ? "You" : "LinkedIn user",
+      authorHandle: actor,
       text: msg?.text ?? "",
       createdAt:
         typeof created?.time === "number"
           ? new Date(created.time).toISOString()
           : null,
       parentId: null,
+      isOwn,
     };
   });
   return { comments, status: "ok" };

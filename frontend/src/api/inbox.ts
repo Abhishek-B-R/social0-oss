@@ -64,6 +64,8 @@ export type InboxListResult = {
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
+  hasMore?: boolean;
+  nextBefore?: string | null;
 };
 
 export type InboxDmThread = {
@@ -116,6 +118,8 @@ export type InboxDmListResult = {
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
+  hasMore?: boolean;
+  nextBefore?: string | null;
 };
 
 export type InboxAccount = {
@@ -139,6 +143,8 @@ export function listInboxComments(input?: {
   range?: InboxRange;
   since?: string;
   until?: string;
+  before?: string;
+  limit?: number;
 }): Promise<InboxListResult> {
   return rpc<InboxListResult>("inbox.listComments", input ?? {});
 }
@@ -157,6 +163,8 @@ export function listInboxDms(input?: {
   range?: InboxRange;
   since?: string;
   until?: string;
+  before?: string;
+  limit?: number;
 }): Promise<InboxDmListResult> {
   return rpc<InboxDmListResult>("inbox.listDms", input ?? {});
 }

@@ -1,6 +1,6 @@
 /** Shared lookback window for analytics + inbox. Mirrors X Analytics: 7D / 2W / 4W / 3M / 1Y + custom. */
 
-import { startOfDay, subDays } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 export const WINDOW_PRESETS = ["7d", "14d", "28d", "90d", "365d"] as const;
 export type WindowPreset = (typeof WINDOW_PRESETS)[number];
@@ -30,11 +30,55 @@ function mapLegacyRange(raw: string): string {
   return raw;
 }
 
-export function parseDateWindow(input: {
-  range?: unknown;
-  since?: unknown;
-  until?: unknown;
-}): { range: DateWindowRange; since: Date; until: Date } {
+function validTz(timeZone: string | undefined): string {
+  const tz = timeZone?.trim();
+  if (!tz) return "UTC";
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return tz;
+  } catch {
+    return "UTC";
+  }
+}
+
+/** UTC instant for calendar midnight of `date` in `timeZone`. */
+export function startOfZonedDay(date: Date, timeZone: string): Date {
+  const tz = validTz(timeZone);
+  const z = toZonedTime(date, tz);
+  return fromZonedTime(
+    new Date(z.getFullYear(), z.getMonth(), z.getDate(), 0, 0, 0, 0),
+    tz,
+  );
+}
+
+function addZonedCalendarDays(date: Date, days: number, timeZone: string): Date {
+  const tz = validTz(timeZone);
+  const z = toZonedTime(date, tz);
+  return fromZonedTime(
+    new Date(z.getFullYear(), z.getMonth(), z.getDate() + days, 0, 0, 0, 0),
+    tz,
+  );
+}
+
+/** YYYY-MM-DD in the given IANA zone. */
+export function calendarDayKey(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: validTz(timeZone),
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+export function parseDateWindow(
+  input: {
+    range?: unknown;
+    since?: unknown;
+    until?: unknown;
+  },
+  timeZone = "UTC",
+): { range: DateWindowRange; since: Date; until: Date } {
+  const tz = validTz(timeZone);
   const now = new Date();
   const raw = typeof input.range === "string" ? mapLegacyRange(input.range) : "7d";
 
@@ -42,8 +86,9 @@ export function parseDateWindow(input: {
     let until = parseDate(input.until) ?? now;
     if (until.getTime() > now.getTime()) until = now;
     let since = parseDate(input.since);
+    // Custom ISO is already zoned from the client - do not startOfDay again.
     if (!since || since >= until) {
-      since = startOfDay(subDays(until, PRESET_DAYS["7d"] - 1));
+      since = addZonedCalendarDays(until, -(PRESET_DAYS["7d"] - 1), tz);
     }
     if (until.getTime() - since.getTime() > MAX_CUSTOM_MS) {
       since = new Date(until.getTime() - MAX_CUSTOM_MS);
@@ -56,19 +101,21 @@ export function parseDateWindow(input: {
     : "7d";
   return {
     range: preset,
-    since: startOfDay(subDays(now, PRESET_DAYS[preset] - 1)),
+    since: addZonedCalendarDays(now, -(PRESET_DAYS[preset] - 1), tz),
     until: now,
   };
 }
 
-/** Keep undated items; otherwise require timestamp inside [since, until]. */
+/** Keep undated items by default (comments); pass keepUndated:false for DM list rows. */
 export function inDateWindow(
   iso: string | null | undefined,
   since: Date,
   until: Date,
+  opts?: { keepUndated?: boolean },
 ): boolean {
-  if (!iso) return true;
+  const keepUndated = opts?.keepUndated !== false;
+  if (!iso) return keepUndated;
   const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return true;
+  if (Number.isNaN(t)) return keepUndated;
   return t >= since.getTime() && t <= until.getTime();
 }

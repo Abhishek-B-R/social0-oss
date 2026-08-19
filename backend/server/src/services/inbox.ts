@@ -1,9 +1,9 @@
 /**
- * Social inbox — live comments on Social0-published posts + reply.
+ * Social inbox - live comments on Social0-published posts + reply.
  * No DB writes.
  */
 
-import { and, desc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, lt, lte } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   connectedAccounts,
@@ -29,8 +29,11 @@ import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
 import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { parseDateWindow, inDateWindow } from "../lib/date-window.js";
+import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
+import { noteFetchError } from "../lib/inbox/fetch-errors.js";
 import {
   INBOX_UNSUPPORTED,
+  instagramDmsNeedInstagramLogin,
   isInboxDmPlatform,
   missingDmScopes,
   missingInboxScopes,
@@ -48,10 +51,28 @@ function parsePlatform(value: unknown): Platform | undefined {
   return PLATFORMS.find((p) => p.id === value)?.id;
 }
 
-const SAMPLE_LIMIT = 24;
+const SAMPLE_LIMIT = 40;
 const CONCURRENCY = 4;
 /** Posts published before the window can still receive in-window comments. */
 const POST_PUBLISH_SLACK_MS = 90 * 24 * 60 * 60 * 1000;
+const PAGE_LIMIT_MAX = 80;
+
+function parseBefore(value: unknown): Date | undefined {
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? undefined : d;
+}
+
+function parsePageLimit(value: unknown, fallback: number): number {
+  const n =
+    typeof value === "number"
+      ? value
+      : typeof value === "string"
+        ? Number(value)
+        : NaN;
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(PAGE_LIMIT_MAX, Math.max(1, Math.floor(n)));
+}
 
 type PubRow = {
   publicationId: string;
@@ -86,6 +107,8 @@ async function loadPubs(opts: {
   until: Date;
   accountId?: string;
   platform?: Platform;
+  before?: Date;
+  limit?: number;
 }): Promise<PubRow[]> {
   const live = livePlatformIds("inboxComments");
   if (!opts.platform && !live.length) return [];
@@ -93,6 +116,7 @@ async function loadPubs(opts: {
     resourceUserId: opts.resourceUserId,
     workspaceId: opts.workspaceId,
   });
+  const limit = opts.limit ?? SAMPLE_LIMIT;
   const rows = await db
     .select({
       publicationId: postPublications.id,
@@ -113,7 +137,7 @@ async function loadPubs(opts: {
     })
     .from(postPublications)
     .innerJoin(posts, eq(postPublications.postId, posts.id))
-    .leftJoin(
+    .innerJoin(
       connectedAccounts,
       eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
@@ -123,11 +147,15 @@ async function loadPubs(opts: {
         eq(postPublications.status, "published"),
         isNotNull(postPublications.platformPostId),
         isNotNull(postPublications.publishedAt),
+        eq(connectedAccounts.isActive, true),
         gte(
           postPublications.publishedAt,
           new Date(opts.since.getTime() - POST_PUBLISH_SLACK_MS),
         ),
         lte(postPublications.publishedAt, opts.until),
+        opts.before
+          ? lt(postPublications.publishedAt, opts.before)
+          : undefined,
         opts.accountId
           ? eq(postPublications.connectedAccountId, opts.accountId)
           : undefined,
@@ -137,7 +165,7 @@ async function loadPubs(opts: {
       ),
     )
     .orderBy(desc(postPublications.publishedAt))
-    .limit(SAMPLE_LIMIT);
+    .limit(limit);
 
   return rows.map((r) => ({
     publicationId: r.publicationId,
@@ -204,14 +232,19 @@ export async function listInboxComments(input: {
   range?: unknown;
   since?: unknown;
   until?: unknown;
+  before?: unknown;
+  limit?: unknown;
 }): Promise<InboxListResult> {
   const ctx = await requireUser();
-  const { range, since, until } = parseDateWindow(input);
+  const timeZone = await getUserTimezone(ctx.resourceUserId);
+  const { range, since, until } = parseDateWindow(input, timeZone);
   const accountId =
     typeof input.accountId === "string" && input.accountId
       ? input.accountId
       : undefined;
   const platform = parsePlatform(input.platform);
+  const before = parseBefore(input.before);
+  const limit = parsePageLimit(input.limit, SAMPLE_LIMIT);
 
   const pubs = await loadPubs({
     resourceUserId: ctx.resourceUserId,
@@ -220,6 +253,8 @@ export async function listInboxComments(input: {
     until,
     accountId,
     platform,
+    before,
+    limit,
   });
   const mediaById = await resolvePostMediaUrls(pubs);
 
@@ -253,6 +288,7 @@ export async function listInboxComments(input: {
         postMediaUrl: firstPostMediaUrl(row.mediaIds, mediaById),
         postPublishedAt: row.publishedAt?.toISOString() ?? null,
         postAccountImageUrl: row.account.profileImageUrl,
+        since: since.toISOString(),
       });
       allComments.push(...result.comments);
       const scopes = result.missingScopes?.length
@@ -269,8 +305,11 @@ export async function listInboxComments(input: {
       if (result.status === "unsupported") {
         unsupported.add(row.account.platform);
       }
-      if (result.status === "error" && result.error) {
-        fetchErrors.push({
+      if (
+        result.error &&
+        (result.status === "error" || result.status === "ok")
+      ) {
+        noteFetchError(fetchErrors, {
           accountId: row.account.id,
           platform: row.account.platform,
           error: result.error,
@@ -278,7 +317,7 @@ export async function listInboxComments(input: {
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "Comment fetch failed";
-      fetchErrors.push({
+      noteFetchError(fetchErrors, {
         accountId: row.account.id,
         platform: row.account.platform,
         error: message,
@@ -311,6 +350,9 @@ export async function listInboxComments(input: {
   const filteredComments = allComments.filter((c) =>
     inDateWindow(c.createdAt, since, until),
   );
+  const lastPub = pubs[pubs.length - 1];
+  const hasMore = pubs.length >= limit;
+  const nextBefore = hasMore ? lastPub?.publishedAt?.toISOString() ?? null : null;
 
   return {
     range,
@@ -321,8 +363,10 @@ export async function listInboxComments(input: {
     unsupported: [...unsupported],
     fetchErrors,
     fetchedAt: new Date().toISOString(),
-    sampled: pubs.length >= SAMPLE_LIMIT,
-    sampleLimit: SAMPLE_LIMIT,
+    sampled: hasMore,
+    sampleLimit: limit,
+    hasMore,
+    nextBefore,
   };
 }
 
@@ -425,6 +469,7 @@ type DmAccountRow = {
   platformUsername: string | null;
   profileImageUrl: string | null;
   scopes: string | null;
+  platformMetadata: Record<string, unknown> | null;
   encryptedAccessToken: string;
   encryptedRefreshToken: string | null;
 };
@@ -443,6 +488,7 @@ async function loadDmAccounts(
       platformUsername: connectedAccounts.platformUsername,
       profileImageUrl: connectedAccounts.profileImageUrl,
       scopes: connectedAccounts.scopes,
+      platformMetadata: connectedAccounts.platformMetadata,
       encryptedAccessToken: connectedAccounts.encryptedAccessToken,
       encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
     })
@@ -458,20 +504,25 @@ async function loadDmAccounts(
 }
 
 const DM_CONCURRENCY = 3;
-const DM_SAMPLE_LIMIT = 80;
+const DM_SAMPLE_LIMIT = 40;
 
 export async function listInboxDms(input: {
   accountId?: unknown;
   range?: unknown;
   since?: unknown;
   until?: unknown;
+  before?: unknown;
+  limit?: unknown;
 }): Promise<InboxDmListResult> {
   const ctx = await requireUser();
-  const { range, since, until } = parseDateWindow(input);
+  const timeZone = await getUserTimezone(ctx.resourceUserId);
+  const { range, since, until } = parseDateWindow(input, timeZone);
   const accountId =
     typeof input.accountId === "string" && input.accountId
       ? input.accountId
       : undefined;
+  const beforeMs = parseBefore(input.before)?.getTime();
+  const limit = parsePageLimit(input.limit, DM_SAMPLE_LIMIT);
 
   const accounts = await loadDmAccounts(ctx, accountId);
   const reconnect = new Map<string, InboxReconnectHint>();
@@ -482,6 +533,17 @@ export async function listInboxDms(input: {
   await mapPool(accounts, DM_CONCURRENCY, async (row) => {
     if (!isInboxDmPlatform(row.platform)) {
       unsupported.add(row.platform);
+      return;
+    }
+    if (
+      row.platform === "instagram" &&
+      instagramDmsNeedInstagramLogin(row.platformMetadata, row.scopes)
+    ) {
+      noteFetchError(fetchErrors, {
+        accountId: row.id,
+        platform: row.platform,
+        error: "Instagram DMs need Instagram Login",
+      });
       return;
     }
     const missing = missingDmScopes(row.platform, row.scopes);
@@ -520,8 +582,11 @@ export async function listInboxDms(input: {
         });
       }
       if (result.status === "unsupported") unsupported.add(row.platform);
-      if (result.status === "error" && result.error) {
-        fetchErrors.push({
+      if (
+        result.error &&
+        (result.status === "error" || result.status === "ok")
+      ) {
+        noteFetchError(fetchErrors, {
           accountId: row.id,
           platform: row.platform,
           error: result.error,
@@ -529,7 +594,7 @@ export async function listInboxDms(input: {
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "DM fetch failed";
-      fetchErrors.push({
+      noteFetchError(fetchErrors, {
         accountId: row.id,
         platform: row.platform,
         error: message,
@@ -548,18 +613,29 @@ export async function listInboxDms(input: {
   threads.sort((a, b) =>
     (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
   );
-  const sampled = threads.length > DM_SAMPLE_LIMIT;
+  const older =
+    beforeMs == null
+      ? threads
+      : threads.filter((t) => {
+          const tms = t.lastMessageAt ? Date.parse(t.lastMessageAt) : 0;
+          return Number.isFinite(tms) && tms < beforeMs;
+        });
+  const hasMore = older.length > limit;
+  const page = older.slice(0, limit);
+  const nextBefore = page[page.length - 1]?.lastMessageAt ?? null;
   return {
     range,
     since: since.toISOString(),
     until: until.toISOString(),
-    threads: threads.slice(0, DM_SAMPLE_LIMIT),
+    threads: page,
     accountsNeedingReconnect: [...reconnect.values()],
     unsupported: [...unsupported],
     fetchErrors,
     fetchedAt: new Date().toISOString(),
-    sampled,
-    sampleLimit: DM_SAMPLE_LIMIT,
+    sampled: hasMore,
+    sampleLimit: limit,
+    hasMore,
+    nextBefore,
   };
 }
 
