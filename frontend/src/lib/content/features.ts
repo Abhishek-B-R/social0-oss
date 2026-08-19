@@ -8,6 +8,8 @@ export type FeaturePage = {
   heroSubheadline: string;
   intro: string;
   benefits: { title: string; description: string }[];
+  /** Platform-specific options available in the composer before publish. */
+  prePostOptions?: { title: string; description: string }[];
   howItWorks: { step: number; title: string; description: string }[];
   faq: { question: string; answer: string }[];
   relatedAlternativeSlugs: string[];
@@ -19,7 +21,7 @@ export const FEATURES: FeaturePage[] = [
     platformLabel: "Threads",
     metaTitle: "Threads Scheduler - Schedule Meta Threads Posts | Social0",
     metaDescription:
-      "Schedule Threads posts from one dashboard. Compose text, images, and videos, pick your Threads account, and publish or schedule with Social0.",
+      "Schedule Threads posts with per-platform captions, text, images, video, and multi-post threads. Publish now, queue, or save a Social0 draft.",
     keywords: [
       "threads scheduler",
       "schedule threads posts",
@@ -30,7 +32,7 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Stop opening the Threads app for every post. Draft, schedule, and publish alongside X, Instagram, and LinkedIn.",
     intro:
-      "Threads shares Meta's ecosystem but deserves its own publishing workflow. Social0 connects your Threads account via official OAuth, respects caption and media limits, and lets you schedule posts on a calendar next to every other platform you use.",
+      "Threads shares Meta's ecosystem but deserves its own publishing workflow. Social0 connects via official OAuth, enforces caption and media limits, lets you override the caption just for Threads, and schedules posts on the same calendar as every other network.",
     benefits: [
       {
         title: "Official Threads OAuth",
@@ -38,19 +40,41 @@ export const FEATURES: FeaturePage[] = [
           "Connect securely with Meta's Threads API. Tokens are encrypted at rest and refreshed before they expire.",
       },
       {
-        title: "Text, images, and video",
+        title: "Text, images, video, and threads",
         description:
-          "Publish the content types Threads supports without re-uploading in a separate app.",
+          "Publish single posts or thread-style multi-post drafts without re-uploading in a separate app.",
       },
       {
-        title: "Schedule or post now",
+        title: "Schedule, post now, or draft",
         description:
-          "Queue Threads content for later or send it live with your other networks in one action.",
+          "Queue Threads for later, publish with your other networks in one action, or save work in Social0 drafts.",
       },
       {
         title: "Multiple Threads accounts",
         description:
           "Manage more than one profile when your plan allows multiple connections per platform.",
+      },
+    ],
+    prePostOptions: [
+      {
+        title: "Per-platform caption",
+        description:
+          "Keep one base caption, then override the Threads copy so hashtags and length match the network.",
+      },
+      {
+        title: "Text, image, and video",
+        description:
+          "Attach the media types Threads accepts from the same composer you use for X and Instagram.",
+      },
+      {
+        title: "Multi-post threads",
+        description:
+          "Build a thread in Social0 instead of chaining replies by hand in the Threads app.",
+      },
+      {
+        title: "When it goes out",
+        description:
+          "Post now, pick a time, drop it in your posting queue, or save a Social0 draft to finish later.",
       },
     ],
     howItWorks: [
@@ -64,7 +88,7 @@ export const FEATURES: FeaturePage[] = [
         step: 2,
         title: "Compose your post",
         description:
-          "Write your caption, attach media if needed, and select your Threads account.",
+          "Write a caption (or a Threads-only override), attach media, and optionally split it into a thread.",
       },
       {
         step: 3,
@@ -92,7 +116,7 @@ export const FEATURES: FeaturePage[] = [
     platformLabel: "Bluesky",
     metaTitle: "Bluesky Scheduling Tool - Schedule AT Protocol Posts | Social0",
     metaDescription:
-      "Bluesky scheduling tool for creators on the AT Protocol. Connect with your handle, compose posts, and schedule or publish from Social0.",
+      "Schedule Bluesky posts with character limits, images, threads, and per-platform captions. Connect with your handle and app password.",
     keywords: [
       "bluesky scheduling tool",
       "bluesky scheduler",
@@ -103,7 +127,7 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Connect your Bluesky handle, write posts once, and schedule them without a separate bot or script.",
     intro:
-      "Bluesky uses a bring-your-own-key connection instead of classic OAuth. Social0 lets you connect your handle securely, compose within Bluesky's character limits, and schedule posts like any other platform in your stack.",
+      "Bluesky uses a bring-your-own-key connection instead of classic OAuth. Social0 lets you connect your handle, compose within Bluesky's limits, override the caption for AT Protocol only, and schedule like any other platform. App-password permissions stay in Bluesky settings.",
     benefits: [
       {
         title: "BYOK connection",
@@ -123,7 +147,29 @@ export const FEATURES: FeaturePage[] = [
       {
         title: "Scheduled and instant publish",
         description:
-          "Queue posts for peak hours or publish immediately when news breaks.",
+          "Queue posts for peak hours, publish immediately, or save a Social0 draft.",
+      },
+    ],
+    prePostOptions: [
+      {
+        title: "Per-platform caption",
+        description:
+          "Override the Bluesky text independently so skeets stay within the character limit.",
+      },
+      {
+        title: "Images and threads",
+        description:
+          "Attach supported images or publish a multi-post thread from the same create flow.",
+      },
+      {
+        title: "App password, not extra OAuth toggles",
+        description:
+          "What Social0 can do is whatever you allowed when you created the Bluesky app password.",
+      },
+      {
+        title: "When it goes out",
+        description:
+          "Post now, schedule a time, use a queue slot, or keep it as a Social0 draft.",
       },
     ],
     howItWorks: [
@@ -136,7 +182,8 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 2,
         title: "Create your post",
-        description: "Write text and attach images supported by Bluesky's API.",
+        description:
+          "Write text, attach images Bluesky accepts, and optionally override the Bluesky-only caption.",
       },
       {
         step: 3,
@@ -164,7 +211,7 @@ export const FEATURES: FeaturePage[] = [
     platformLabel: "TikTok",
     metaTitle: "TikTok Scheduler - Schedule TikTok Videos & Photos | Social0",
     metaDescription:
-      "TikTok scheduler for videos and photo posts. Set privacy, titles, and publish or schedule TikTok content from Social0.",
+      "TikTok scheduler for videos and photo posts. Set title, privacy, comments, Duet, Stitch, branded disclosure, or send as a TikTok draft.",
     keywords: [
       "tiktok scheduler",
       "schedule tiktok posts",
@@ -174,22 +221,54 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Upload video or images, configure TikTok-specific settings, and schedule from the same composer you use for every network.",
     intro:
-      "TikTok publishing has extra requirements - titles, privacy levels, and media rules. Social0's TikTok composer captures those settings, processes images when needed, and schedules or publishes through TikTok's Content Posting API.",
+      "TikTok publishing has extra requirements - titles, privacy, interaction toggles, and commercial labels. Social0's TikTok panel captures those settings, can send the post to TikTok as a draft instead of going live, processes photo formats when needed, and schedules through TikTok's Content Posting API.",
     benefits: [
       {
         title: "Video and photo posts",
         description:
-          "Publish short videos and supported photo carousels without a separate TikTok workflow.",
+          "Publish short videos and supported photo carousels. PNGs for photo posts are converted to JPEG automatically.",
       },
       {
-        title: "TikTok-specific settings",
+        title: "Full TikTok composer settings",
         description:
-          "Privacy, title, and branded content toggles live in the composer so nothing is missed at publish time.",
+          "Title, privacy, comments, Duet, Stitch, commercial disclosure, and send-as-draft live next to the upload.",
       },
       {
         title: "Scheduling built in",
         description:
-          "Queue TikTok content for optimal times alongside Instagram Reels and YouTube Shorts.",
+          "Queue TikTok content for later alongside Instagram Reels and YouTube Shorts, or post immediately.",
+      },
+    ],
+    prePostOptions: [
+      {
+        title: "TikTok title",
+        description:
+          "Optional unique title (up to 85 characters) separate from your caption.",
+      },
+      {
+        title: "Send to TikTok as draft",
+        description:
+          "Save the post in TikTok instead of publishing. Finish and go live from TikTok inbox notifications.",
+      },
+      {
+        title: "Privacy",
+        description:
+          "Public, Friends, Followers, or Only me. Branded content cannot use Only me.",
+      },
+      {
+        title: "Comments, Duet, and Stitch",
+        description:
+          "Allow or block comments. On videos, also control whether others can Duet or Stitch.",
+      },
+      {
+        title: "Commercial content disclosure",
+        description:
+          "Label Your Brand (promotional) or Branded Content (paid partnership) before publish.",
+      },
+      {
+        title: "Per-platform caption",
+        description:
+          "Override the TikTok caption independently from the copy you send to other networks.",
       },
     ],
     howItWorks: [
@@ -203,7 +282,7 @@ export const FEATURES: FeaturePage[] = [
         step: 2,
         title: "Upload and configure",
         description:
-          "Add media, set TikTok title and privacy, and confirm posting consent.",
+          "Add media, set title, privacy, interaction toggles, disclosure, or send as a TikTok draft.",
       },
       {
         step: 3,
@@ -217,6 +296,16 @@ export const FEATURES: FeaturePage[] = [
         answer:
           "Yes, when your TikTok account is connected and approved for the Content Posting API.",
       },
+      {
+        question: "Can I send a post to TikTok as a draft?",
+        answer:
+          "Yes. Turn on Send to TikTok as Draft in TikTok settings. Social0 delivers the media to TikTok; you finish editing and publish from TikTok (check inbox notifications). That is separate from saving a Social0 draft in your dashboard.",
+      },
+      {
+        question: "Which TikTok privacy and disclosure options can I set?",
+        answer:
+          "Privacy: Public, Friends, Followers, or Only me. You can allow or disable comments, and on videos Duet and Stitch. Commercial disclosure covers Your Brand and Branded Content (paid partnership).",
+      },
     ],
     relatedAlternativeSlugs: ["later", "buffer"],
   },
@@ -225,7 +314,7 @@ export const FEATURES: FeaturePage[] = [
     platformLabel: "Instagram",
     metaTitle: "Instagram Scheduler - Schedule Posts & Reels | Social0",
     metaDescription:
-      "Instagram scheduler for images, carousels, and reels. Connect via Instagram or Facebook Page and schedule from Social0.",
+      "Instagram scheduler for feed posts, carousels, and Reels. Set a custom Reel cover, trial Reel, and per-platform captions in Social0.",
     keywords: [
       "instagram scheduler",
       "schedule instagram posts",
@@ -235,7 +324,7 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Connect Instagram directly or via a linked Facebook Page, then schedule posts with the rest of your content calendar.",
     intro:
-      "Instagram publishing often means jumping between Meta Business tools. Social0 supports direct Instagram OAuth and Facebook Page-linked Instagram accounts so you can schedule feed posts and reels from the same composer as X, LinkedIn, and TikTok.",
+      "Instagram publishing often means jumping between Meta Business tools. Social0 supports direct Instagram OAuth and Facebook Page-linked accounts, then exposes Reel cover and trial-Reel options in the composer so you set those before publish, not in a second app.",
     benefits: [
       {
         title: "Two connection paths",
@@ -243,14 +332,36 @@ export const FEATURES: FeaturePage[] = [
           "Connect Instagram directly or through a Facebook Page when that fits your setup.",
       },
       {
-        title: "Carousel and reel support",
+        title: "Carousel and Reel support",
         description:
-          "Publish the formats your Instagram account supports from one upload flow.",
+          "Publish feed images, carousels, and Reels from one upload flow with Instagram limits in the UI.",
       },
       {
-        title: "Calendar scheduling",
+        title: "Reel-specific options",
         description:
-          "Line up Instagram content with launches on other platforms.",
+          "Upload a custom 9:16 cover and optionally publish as a trial Reel to non-followers first.",
+      },
+    ],
+    prePostOptions: [
+      {
+        title: "Custom Reel cover",
+        description:
+          "Upload a JPEG cover (9:16 / 1080×1920 recommended, under 8MB) instead of a video frame.",
+      },
+      {
+        title: "Trial Reel",
+        description:
+          "Test the Reel with non-followers before sharing it with everyone.",
+      },
+      {
+        title: "Carousels and feed images",
+        description:
+          "Reorder images, keep Instagram's attachment limits, and publish alongside other networks.",
+      },
+      {
+        title: "Per-platform caption",
+        description:
+          "Override Instagram copy independently of the caption you send to TikTok or LinkedIn.",
       },
     ],
     howItWorks: [
@@ -264,7 +375,7 @@ export const FEATURES: FeaturePage[] = [
         step: 2,
         title: "Compose with media",
         description:
-          "Add images or video and write your caption with limit indicators.",
+          "Add images or video, set a Reel cover or trial Reel when needed, and write a caption with limit indicators.",
       },
       {
         step: 3,
@@ -278,6 +389,11 @@ export const FEATURES: FeaturePage[] = [
         answer:
           "Yes, within your plan's account limits. Each account appears separately in the composer.",
       },
+      {
+        question: "Can I set a custom cover or trial Reel?",
+        answer:
+          "Yes, in Instagram Config on the video form: upload a cover image and toggle Trial Reel to test with non-followers first.",
+      },
     ],
     relatedAlternativeSlugs: ["later", "buffer"],
   },
@@ -286,7 +402,7 @@ export const FEATURES: FeaturePage[] = [
     platformLabel: "LinkedIn",
     metaTitle: "LinkedIn Scheduler - Schedule Posts & Articles | Social0",
     metaDescription:
-      "LinkedIn scheduler for professionals and founders. Schedule text, images, and video posts to LinkedIn from Social0.",
+      "LinkedIn scheduler for text, images (up to 20), and video. Post to connected profiles or pages with per-platform captions from Social0.",
     keywords: [
       "linkedin scheduler",
       "schedule linkedin posts",
@@ -296,21 +412,44 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Draft thought leadership once, schedule it, and publish to LinkedIn with your other channels.",
     intro:
-      "LinkedIn rewards consistency. Social0 connects via official OAuth, supports text and media posts, and slots LinkedIn into your weekly calendar next to X and Threads so you never forget a workday post.",
+      "LinkedIn rewards consistency. Social0 connects via official OAuth, supports text, images, and video, lets you override the LinkedIn caption, and posts to the personal profile or company page you connected - on the same calendar as X and Threads.",
     benefits: [
       {
         title: "Professional publishing",
         description:
-          "Post text, images, and video with LinkedIn's limits enforced in the UI.",
+          "Post text, images (up to 20 attachments), and video with LinkedIn's limits enforced in the UI.",
+      },
+      {
+        title: "Profile or company page",
+        description:
+          "Publish to the LinkedIn accounts available through your OAuth scopes - personal and pages you selected at connect.",
       },
       {
         title: "Token refresh",
         description:
           "Expired tokens are refreshed automatically before publish when possible.",
       },
+    ],
+    prePostOptions: [
       {
-        title: "Multi-account",
-        description: "Manage personal and company pages when your plan allows.",
+        title: "Which LinkedIn account",
+        description:
+          "Pick the connected profile or company page in the composer. Extra pages are added from Connections.",
+      },
+      {
+        title: "Per-platform caption",
+        description:
+          "Write thought-leadership copy for LinkedIn without changing the tweet or Reel caption.",
+      },
+      {
+        title: "Media mix",
+        description:
+          "Text-only, images (first 20 if you attach more), or video, with character guidance in the editor.",
+      },
+      {
+        title: "When it goes out",
+        description:
+          "Queue for business hours, publish immediately, use a posting-queue slot, or save a Social0 draft.",
       },
     ],
     howItWorks: [
@@ -322,7 +461,8 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 2,
         title: "Write your post",
-        description: "Compose in the editor with character guidance.",
+        description:
+          "Compose with character guidance and an optional LinkedIn-only caption override.",
       },
       {
         step: 3,
@@ -344,7 +484,7 @@ export const FEATURES: FeaturePage[] = [
     platformLabel: "X (Twitter)",
     metaTitle: "X / Twitter Scheduler - Schedule Tweets & Threads | Social0",
     metaDescription:
-      "X and Twitter scheduler with support for long posts on Premium accounts. Schedule tweets, threads, and media from Social0.",
+      "X and Twitter scheduler with Premium limits, threads, media, Made with AI and paid-partnership labels, plus per-platform captions.",
     keywords: [
       "twitter scheduler",
       "x scheduler",
@@ -355,7 +495,7 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Schedule tweets and threads. Social0 detects X Premium so long-form posts use the right character limit.",
     intro:
-      "X publishing needs OAuth 1.0a and careful handling of character limits - 280 for standard accounts, up to 25,000 for Premium. Social0 connects your X accounts, respects Premium status, and lets you schedule single posts and threads.",
+      "X publishing needs OAuth 1.0a and careful character limits - 280 for standard accounts, up to 25,000 for Premium. Social0 detects Premium, supports tweets and threads, and lets you mark Made with AI or a paid partnership before the post goes out.",
     benefits: [
       {
         title: "Premium character limits",
@@ -368,8 +508,31 @@ export const FEATURES: FeaturePage[] = [
           "Publish multi-post threads without manual reply chaining.",
       },
       {
-        title: "Media attachments",
-        description: "Add images and video to scheduled tweets.",
+        title: "X post labels",
+        description:
+          "Toggle Made with AI and Paid partnership so the disclosure is on the tweet, not an afterthought.",
+      },
+    ],
+    prePostOptions: [
+      {
+        title: "Made with AI",
+        description:
+          "Add X's AI disclosure label for this post from X Settings in the composer.",
+      },
+      {
+        title: "Paid partnership",
+        description:
+          "Mark the post as a branded or paid partnership on X.",
+      },
+      {
+        title: "Tweets, threads, and media",
+        description:
+          "Single posts or threads with images and video, using the live character count for that account.",
+      },
+      {
+        title: "Per-platform caption",
+        description:
+          "Keep a short tweet while LinkedIn or Instagram gets a longer override.",
       },
     ],
     howItWorks: [
@@ -381,7 +544,8 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 2,
         title: "Compose tweet or thread",
-        description: "Write content with live character counts per account.",
+        description:
+          "Write a tweet or thread with live character counts, then set AI or paid-partnership labels if needed.",
       },
       {
         step: 3,
@@ -394,6 +558,11 @@ export const FEATURES: FeaturePage[] = [
         question: "Does Social0 support X Premium long posts?",
         answer:
           "Yes. Social0 reads Premium status on connect and when you refresh it from Connections.",
+      },
+      {
+        question: "Can I label a tweet as AI-generated or a paid partnership?",
+        answer:
+          "Yes. X Settings in the composer includes Made with AI and Paid partnership toggles for that post.",
       },
     ],
     relatedAlternativeSlugs: ["buffer", "metricool"],
@@ -433,6 +602,33 @@ export const FEATURES: FeaturePage[] = [
         title: "Drafts and bulk tools",
         description: "Save drafts and use bulk scheduling on supported plans.",
       },
+      {
+        title: "Per-network options",
+        description:
+          "Selecting TikTok, Pinterest, YouTube, Instagram, or X unlocks that platform's settings instead of a generic one-size post.",
+      },
+    ],
+    prePostOptions: [
+      {
+        title: "Per-platform captions",
+        description:
+          "One base caption, optional override per network so hashtags and length match each API.",
+      },
+      {
+        title: "Platform config panels",
+        description:
+          "TikTok (privacy, draft, Duet, disclosure), Pinterest (board, title, link), YouTube title, Instagram cover and trial Reel, X AI and partnership labels.",
+      },
+      {
+        title: "Account mix",
+        description:
+          "Select any combination of connected accounts. One failure does not block the rest.",
+      },
+      {
+        title: "When it goes out",
+        description:
+          "Post now with live progress, one schedule time for all, a queue slot, or a Social0 draft.",
+      },
     ],
     howItWorks: [
       {
@@ -442,8 +638,9 @@ export const FEATURES: FeaturePage[] = [
       },
       {
         step: 2,
-        title: "Compose once",
-        description: "Write caption, add media, and select target accounts.",
+        title: "Compose once, then tune each network",
+        description:
+          "Write a shared caption, then open per-platform captions and option panels (TikTok, Pinterest, YouTube title, Instagram Reel, X labels) for the accounts you selected.",
       },
       {
         step: 3,
@@ -522,7 +719,7 @@ export const FEATURES: FeaturePage[] = [
     platformLabel: "YouTube",
     metaTitle: "YouTube Scheduler - Schedule Shorts & Videos | Social0",
     metaDescription:
-      "YouTube scheduler for Shorts and videos. Upload, set title and visibility, and schedule YouTube content from Social0 alongside your other platforms.",
+      "YouTube scheduler for Shorts and videos. Set a custom title (caption becomes the description) and schedule from Social0.",
     keywords: [
       "youtube scheduler",
       "schedule youtube shorts",
@@ -533,7 +730,7 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Connect your channel, upload video, and schedule YouTube posts without a separate workflow.",
     intro:
-      "YouTube publishing usually means opening Studio or a dedicated tool. Social0 connects via Google OAuth, supports video uploads within platform limits, and lets you schedule Shorts and videos on the same calendar as Instagram Reels and TikTok.",
+      "YouTube publishing usually means opening Studio. Social0 connects via Google OAuth, lets you set a YouTube title in the composer (the caption is the description), tags vertical videos under 3 minutes as Shorts, and schedules them on the same calendar as Reels and TikTok.",
     benefits: [
       {
         title: "Google OAuth connection",
@@ -543,12 +740,34 @@ export const FEATURES: FeaturePage[] = [
       {
         title: "Shorts and video support",
         description:
-          "Publish vertical Shorts and standard videos from the same composer.",
+          "Vertical video up to 3 minutes is published as a Short (with #Shorts). Longer or landscape uploads go out as regular videos (up to 5 minutes in this flow).",
       },
       {
-        title: "Unified calendar",
+        title: "Custom title",
         description:
-          "Line up YouTube releases with launches on X, LinkedIn, and TikTok.",
+          "Set a YouTube title (up to 100 characters). If you skip it, Social0 uses the caption.",
+      },
+    ],
+    prePostOptions: [
+      {
+        title: "YouTube title",
+        description:
+          "Optional title field in the composer. Shorts also get #Shorts appended when needed.",
+      },
+      {
+        title: "Description from caption",
+        description:
+          "Your post caption (or YouTube-only override) is used as the video description.",
+      },
+      {
+        title: "Shorts vs long-form",
+        description:
+          "Social0 classifies Shorts from duration and aspect ratio. You do not pick a separate YouTube product in the form.",
+      },
+      {
+        title: "When it goes out",
+        description:
+          "Schedule or publish now. Videos are uploaded as public through this flow.",
       },
     ],
     howItWorks: [
@@ -560,7 +779,8 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 2,
         title: "Upload video",
-        description: "Add your video file and write title and description.",
+        description:
+          "Add your video, set an optional YouTube title, and use the caption as the description.",
       },
       {
         step: 3,
@@ -577,7 +797,12 @@ export const FEATURES: FeaturePage[] = [
       {
         question: "Does Social0 replace YouTube Studio?",
         answer:
-          "Social0 handles scheduling and publishing. Advanced Studio features like end screens remain in YouTube Studio.",
+          "Social0 handles scheduling and publishing. Advanced Studio features like end screens, playlists, and visibility other than public remain in YouTube Studio.",
+      },
+      {
+        question: "Can I set a custom YouTube title?",
+        answer:
+          "Yes. YouTube Title in the composer accepts up to 100 characters. The post caption is used as the description.",
       },
     ],
     relatedAlternativeSlugs: ["buffer", "metricool"],
@@ -587,7 +812,7 @@ export const FEATURES: FeaturePage[] = [
     platformLabel: "Pinterest",
     metaTitle: "Pinterest Scheduler - Schedule Pins & Idea Pins | Social0",
     metaDescription:
-      "Pinterest scheduler to publish pins to boards you choose. Schedule images and video pins from Social0's multi-platform composer.",
+      "Pinterest scheduler with board picker, optional pin title and destination link, plus image and video pins from Social0.",
     keywords: [
       "pinterest scheduler",
       "schedule pinterest pins",
@@ -597,22 +822,44 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Pick your board, add your pin, and schedule alongside Instagram and TikTok.",
     intro:
-      "Pinterest needs the right board and image specs. Social0 connects via Pinterest OAuth, lets you select boards at compose time, and schedules pins on your content calendar next to every other network.",
+      "Pinterest needs the right board and pin fields. Social0 connects via OAuth, lets you pick or create a public board, set an optional title and destination link, remember those per account, and schedule pins on the same calendar as every other network.",
     benefits: [
       {
         title: "Board picker",
         description:
-          "Choose which board each pin lands on without leaving the composer.",
+          "Choose which public board each pin lands on, create a board from the composer, and remember a default.",
+      },
+      {
+        title: "Title and destination link",
+        description:
+          "Optional pin title (100 characters) and a click-through URL, with remember-link per account.",
       },
       {
         title: "Image and video pins",
         description:
           "Publish supported pin formats with per-platform validation.",
       },
+    ],
+    prePostOptions: [
       {
-        title: "Part of one stack",
+        title: "Board (required)",
         description:
-          "Schedule Pinterest with the same post workflow you use for X and LinkedIn.",
+          "Select a public board. Only public boards can receive pins from this app.",
+      },
+      {
+        title: "Create a board",
+        description:
+          "Add a new public board from the composer without leaving Social0.",
+      },
+      {
+        title: "Pin title",
+        description:
+          "Optional title. If empty, Social0 uses the first 100 characters of the caption.",
+      },
+      {
+        title: "Destination link",
+        description:
+          "Optional URL viewers can open from the pin. Remember board and link per Pinterest account.",
       },
     ],
     howItWorks: [
@@ -625,7 +872,7 @@ export const FEATURES: FeaturePage[] = [
         step: 2,
         title: "Select board and media",
         description:
-          "Upload your pin image or video and pick a destination board.",
+          "Upload your pin image or video, pick or create a board, and optionally set title and link.",
       },
       {
         step: 3,
@@ -637,7 +884,12 @@ export const FEATURES: FeaturePage[] = [
       {
         question: "Can I schedule to multiple Pinterest boards?",
         answer:
-          "Each publish targets the board you select in the composer for that post.",
+          "Each publish targets the board you select in the composer for that post. You can remember a default board per account.",
+      },
+      {
+        question: "Can I set a pin title and destination link?",
+        answer:
+          "Yes. Pinterest Config includes an optional title (max 100 characters) and an optional link, with remember checkboxes per account.",
       },
     ],
     relatedAlternativeSlugs: ["later", "buffer"],
@@ -658,7 +910,7 @@ export const FEATURES: FeaturePage[] = [
     heroSubheadline:
       "Schedule posts to Facebook Pages - not personal profiles - from the same dashboard as Instagram and Threads.",
     intro:
-      "Facebook Page publishing requires Meta permissions and the right account type. Social0 connects Facebook Pages via official OAuth, supports text, images, and video posts, and schedules them on your unified calendar.",
+      "Facebook Page publishing requires Meta permissions and the right account type. Social0 connects Pages via official OAuth, supports text, images (up to 20), and video, lets you override the Facebook caption, and schedules them on your unified calendar.",
     benefits: [
       {
         title: "Page-only publishing",
@@ -668,12 +920,34 @@ export const FEATURES: FeaturePage[] = [
       {
         title: "Multi-photo and video",
         description:
-          "Publish image carousels and video posts supported by the Graph API.",
+          "Publish image carousels (up to 20 images) and video posts supported by the Graph API.",
       },
       {
         title: "Works with Instagram",
         description:
-          "Manage Meta properties alongside Instagram from one composer.",
+          "Select both accounts in the composer and publish or schedule in one action.",
+      },
+    ],
+    prePostOptions: [
+      {
+        title: "Which Page",
+        description:
+          "Authorize Meta OAuth and pick the Facebook Page in Connections, then select it in the composer.",
+      },
+      {
+        title: "Per-platform caption",
+        description:
+          "Override Facebook copy independently of Instagram or LinkedIn.",
+      },
+      {
+        title: "Text, images, and video",
+        description:
+          "If you attach more than 20 images, only the first 20 go to Facebook.",
+      },
+      {
+        title: "When it goes out",
+        description:
+          "Schedule, post now, use a queue slot, or save a Social0 draft.",
       },
     ],
     howItWorks: [
@@ -685,7 +959,7 @@ export const FEATURES: FeaturePage[] = [
       {
         step: 2,
         title: "Compose",
-        description: "Write your post and attach images or video.",
+        description: "Write your post, attach images or video, and optionally override the Facebook caption.",
       },
       {
         step: 3,

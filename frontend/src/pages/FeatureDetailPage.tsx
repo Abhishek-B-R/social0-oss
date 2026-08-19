@@ -115,6 +115,33 @@ export function FeatureDetailPage() {
               </div>
             ))}
           </div>
+          {page.prePostOptions && page.prePostOptions.length > 0 ? (
+            <>
+              <h2 className="mt-14 mb-3 font-serif text-[clamp(24px,3vw,36px)] tracking-tight text-[#333C4D] dark:text-white">
+                Customize before you post
+              </h2>
+              <p className="mb-6 max-w-3xl text-[15px] leading-relaxed text-muted-foreground">
+                {page.platformLabel
+                  ? `When you select a ${page.platformLabel} account, Social0 shows that network's options in the composer so you are not finishing the post in a second app.`
+                  : "When you select accounts, Social0 shows each network's options in the composer so you are not finishing the post in a second app."}
+              </p>
+              <ul className="grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2">
+                {page.prePostOptions.map((option) => (
+                  <li
+                    key={option.title}
+                    className="bg-background px-6 py-6 dark:bg-background/50"
+                  >
+                    <h3 className="mb-2 text-[15px] font-semibold text-[#333C4D] dark:text-white">
+                      {option.title}
+                    </h3>
+                    <p className="text-[14px] leading-relaxed text-muted-foreground">
+                      {option.description}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </div>
       </section>
       <section className="border-y border-border bg-muted/20 px-6 py-16 lg:px-8">
