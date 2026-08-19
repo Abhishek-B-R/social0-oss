@@ -24,7 +24,6 @@ import {
 } from "@/lib/date-window";
 import {
   inboxReplyTargetId,
-  inboxSupportsNestedReplies,
   formatInboxReplyText,
   inboxReplyDraftMax,
   inboxReplyTextsMatch,
@@ -42,6 +41,7 @@ import {
   markInboxCommentsSeen,
 } from "@/lib/inbox-unread";
 import { resolveInboxBody } from "@/lib/inbox-display";
+import { flattenInboxThread } from "@/lib/inbox-thread";
 import { useSession } from "@/lib/auth-client";
 import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
@@ -108,46 +108,6 @@ function mergePendingReplies(
 }
 
 type RetryPayload = InboxComposerPayload & { parentCommentId: string };
-
-type FlatComment = { comment: InboxComment; depth: number };
-
-function flattenThread(
-  root: InboxComment,
-  replies: InboxComment[],
-  platform: string,
-): FlatComment[] {
-  const sorted = [...replies].sort((a, b) =>
-    (a.createdAt ?? "").localeCompare(b.createdAt ?? ""),
-  );
-  const nested = inboxSupportsNestedReplies(platform);
-  const out: FlatComment[] = [{ comment: root, depth: 0 }];
-
-  if (!nested) {
-    for (const c of sorted) out.push({ comment: c, depth: 1 });
-    return out;
-  }
-
-  const nodes = new Map<string, { comment: InboxComment; children: InboxComment[] }>();
-  for (const c of sorted) nodes.set(c.id, { comment: c, children: [] });
-  const tops: InboxComment[] = [];
-  for (const c of sorted) {
-    const parentId = c.parentId;
-    if (parentId && parentId !== root.id && nodes.has(parentId)) {
-      nodes.get(parentId)!.children.push(c);
-    } else {
-      tops.push(c);
-    }
-  }
-  function walk(list: InboxComment[], depth: number) {
-    for (const c of list) {
-      out.push({ comment: c, depth });
-      const kids = nodes.get(c.id)?.children ?? [];
-      if (kids.length) walk(kids, depth + 1);
-    }
-  }
-  walk(tops, 1);
-  return out;
-}
 
 export function InboxCommentsPane({
   dateWindow,
@@ -592,7 +552,7 @@ function ConversationPane({
   }, [root.id]);
 
   const flat = useMemo(
-    () => flattenThread(root, thread.replies, root.platform),
+    () => flattenInboxThread(root, thread.replies),
     [root, thread.replies],
   );
 
@@ -653,7 +613,7 @@ function ConversationPane({
           />
         </div>
 
-        <div className="divide-y divide-border">
+        <div className="flex flex-col">
           {flat.map(({ comment, depth }) => (
             <CommentRow
               key={comment.id}
@@ -759,13 +719,23 @@ function CommentRow({
   return (
     <article
       className={cn(
-        "px-3 py-3 sm:px-4",
+        "relative px-3 py-2.5 sm:px-4",
         active && "bg-accent/[0.04]",
         own && "bg-bg-subtle/30",
         failed && "bg-red-500/[0.04]",
       )}
     >
-      <div className="flex gap-2.5" style={{ marginLeft: depth * 16 }}>
+      {depth > 0
+        ? Array.from({ length: depth }, (_, i) => (
+            <span
+              key={i}
+              aria-hidden
+              className="pointer-events-none absolute top-0 bottom-0 w-px bg-border"
+              style={{ left: 22 + i * 18 }}
+            />
+          ))
+        : null}
+      <div className="flex gap-2.5" style={{ paddingLeft: depth * 18 }}>
         <InboxAvatar
           profileImageUrl={avatarUrl}
           username={comment.authorHandle ?? comment.authorName}

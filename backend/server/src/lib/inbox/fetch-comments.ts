@@ -14,6 +14,7 @@ import {
   youtubeAuthorChannelId,
 } from "./types.js";
 import { isGonePlatformPost } from "./fetch-errors.js";
+import { nestMentionReplies } from "./mention-nest.js";
 import { blueskySession, blueskySessionAfter401 } from "./bluesky-session.js";
 import {
   parseBskyViewEmbed,
@@ -394,17 +395,40 @@ async function fetchYouTube(
           : embedded.filter((r): r is { id: string; snippet: Record<string, unknown> } =>
               Boolean(r.id && r.snippet),
             );
-      for (const r of replies) {
-        const rs = r.snippet;
+      const replyComments = nestMentionReplies(
+        {
+          id: top.id,
+          parentId: null,
+          text: String(sn.textDisplay ?? sn.textOriginal ?? ""),
+          authorHandle: youtubeHandle(sn),
+          authorName: String(sn.authorDisplayName ?? "YouTube user"),
+          createdAt: typeof sn.publishedAt === "string" ? sn.publishedAt : null,
+        },
+        replies.map((r) => {
+          const rs = r.snippet;
+          return {
+            id: r.id,
+            parentId: top.id,
+            text: String(rs.textDisplay ?? rs.textOriginal ?? ""),
+            authorHandle: youtubeHandle(rs),
+            authorName: String(rs.authorDisplayName ?? "YouTube user"),
+            createdAt: typeof rs.publishedAt === "string" ? rs.publishedAt : null,
+            isOwn: youtubeAuthorChannelId(rs.authorChannelId) === input.platformUserId,
+            likeCount: typeof rs.likeCount === "number" ? rs.likeCount : undefined,
+          };
+        }),
+      );
+      for (const r of replyComments) {
         comments.push({
           ...common,
           id: r.id,
-          authorName: String(rs.authorDisplayName ?? "YouTube user"),
-          authorHandle: youtubeHandle(rs),
-          text: String(rs.textDisplay ?? rs.textOriginal ?? ""),
-          createdAt: typeof rs.publishedAt === "string" ? rs.publishedAt : null,
-          parentId: top.id,
-          isOwn: youtubeAuthorChannelId(rs.authorChannelId) === input.platformUserId,
+          authorName: r.authorName,
+          authorHandle: r.authorHandle,
+          text: r.text,
+          createdAt: r.createdAt,
+          parentId: r.parentId,
+          likeCount: r.likeCount,
+          isOwn: r.isOwn,
         });
       }
     }
