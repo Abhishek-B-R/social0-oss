@@ -81,7 +81,7 @@ export const COMPARE_ROWS: CompareRow[] = [
     "Posts",
     "How many posts you can create and publish. Free includes a lifetime trial allotment.",
     {
-      free: `${freePosts} to try`,
+      free: `${freePosts} for trial`,
       starter: "Unlimited",
       growth: "Unlimited",
       pro: "Unlimited",
@@ -349,7 +349,7 @@ export function PricingComparisonTable({
       className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24"
       aria-label="Plan comparison"
     >
-      <div className="mx-auto max-w-[1120px]">
+      <div className="mx-auto w-full max-w-350">
         <div className="mb-10 text-center">
           <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
             Compare

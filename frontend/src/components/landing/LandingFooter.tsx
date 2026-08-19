@@ -257,7 +257,7 @@ export function LandingFooter() {
     { href: "/alternatives", label: "All comparisons" },
     { href: DOCS_BASE_URL, label: "Docs", external: true },
     { href: "/#platforms", label: "Channels" },
-    { href: "/#stories", label: "Stories" },
+    { href: "/#stories", label: "Reviews" },
     { href: "/#faq", label: "FAQ" },
     { href: "/#developers", label: "Developers" },
     // ponytail: self-host repo private

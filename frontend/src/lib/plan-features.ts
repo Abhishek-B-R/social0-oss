@@ -39,7 +39,7 @@ export type PlanFeature = { text: string; highlight?: boolean };
 export const freeFeatures: PlanFeature[] = [
   { text: "No credit card required", highlight: true },
   { text: "Up to 3 connected accounts", highlight: true },
-  { text: `${freePosts} posts to try before you upgrade`, highlight: true },
+  { text: `${freePosts} posts for trial`, highlight: true },
   ...CORE_PUBLISH.map((text) => ({ text })),
   ...CORE_DEV.map((text) => ({ text })),
   ...CORE_EXTRAS.map((text) => ({ text })),
