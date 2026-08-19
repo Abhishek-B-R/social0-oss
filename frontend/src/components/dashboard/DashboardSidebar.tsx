@@ -54,7 +54,6 @@ type NavItem = {
     weight?: IconWeight;
   }>;
   experimental?: boolean;
-  unread?: number;
 };
 
 function NavLink({
@@ -64,7 +63,6 @@ function NavLink({
   isActive,
   collapsed,
   experimental,
-  unread = 0,
 }: NavItem & { isActive: boolean; collapsed: boolean }) {
   const pathname = useLocation().pathname;
   const [navPending, setNavPending] = useState(false);
@@ -87,7 +85,6 @@ function NavLink({
         navPending && "opacity-60",
         collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
         experimental && collapsed && "relative",
-        unread > 0 && collapsed && "relative",
       )}
     >
       <Icon
@@ -96,22 +93,12 @@ function NavLink({
         weight={isActive ? "fill" : "regular"}
       />
       {!collapsed ? <span className="min-w-0 flex-1 truncate">{label}</span> : null}
-      {unread > 0 ? (
-        <span
-          className={cn(
-            "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold tabular-nums text-accent-foreground",
-            collapsed ? "absolute -bottom-0.5 -right-0.5" : "ml-auto shrink-0",
-          )}
-        >
-          {unread > 99 ? "99+" : unread}
-        </span>
-      ) : null}
       {experimental ? (
         <ExperimentalBadge
           compact
           className={cn(
             "shrink-0",
-            collapsed ? "absolute -right-0.5 -top-0.5" : unread > 0 ? "" : "ml-auto",
+            collapsed ? "absolute -right-0.5 -top-0.5" : "ml-auto",
           )}
         />
       ) : null}
@@ -157,7 +144,6 @@ type DashboardSidebarProps = {
   planLabel: string;
   isGuest?: boolean;
   sessionPending?: boolean;
-  inboxUnread?: number;
   canCreatePosts?: boolean;
   canViewAnalytics?: boolean;
   canViewInbox?: boolean;
@@ -185,7 +171,6 @@ export function DashboardSidebar({
   planLabel,
   isGuest = false,
   sessionPending = false,
-  inboxUnread = 0,
   canCreatePosts = true,
   canViewAnalytics = true,
   canViewInbox = true,
@@ -468,7 +453,6 @@ export function DashboardSidebar({
               collapsed={collapsed}
               isActive={relativeMatches(relative, "inbox")}
               experimental
-              unread={inboxUnread}
             />
             ) : null}
           </Section>

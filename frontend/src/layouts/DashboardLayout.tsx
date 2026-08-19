@@ -16,7 +16,6 @@ import { useSessionResolved } from "@/lib/use-is-guest";
 import { signInUrl } from "@/lib/sign-in-url";
 import { loadDashboardLayoutData } from "@/api/dashboard-data";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
-import { useInboxUnreadBadge } from "@/hooks/useInboxUnreadBadge";
 
 function getPlanLabel(tier: string): string {
   if (tier === "max") return "Max plan";
@@ -82,7 +81,6 @@ export function DashboardLayout() {
     }
   }, [session, onboarding, location.pathname, navigate]);
 
-  const inboxUnread = useInboxUnreadBadge();
   const relativePath = location.pathname
     .replace(/^\/dashboard\/teams\/[^/]+\/?/, "")
     .replace(/^\/dashboard\/?/, "");
@@ -121,7 +119,6 @@ export function DashboardLayout() {
           layoutData ? getPlanLabel(layoutData.subscriptionTier) : "..."
         }
         sessionPending={isPending}
-        inboxUnread={inboxUnread}
         canCreatePosts={layoutData?.canCreatePosts ?? true}
         canViewAnalytics={layoutData?.canViewAnalytics ?? true}
         canViewInbox={layoutData?.canViewInbox ?? true}
