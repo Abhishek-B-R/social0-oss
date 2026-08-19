@@ -52,6 +52,8 @@ type PricingCardsProps = {
   compareHref?: string;
   /** Section element id (landing uses #pricing) */
   id?: string;
+  /** Full-bleed cards on /pricing; landing stays the older narrower width. */
+  wide?: boolean;
 };
 
 export function PricingCards({
@@ -61,6 +63,7 @@ export function PricingCards({
   headingAs = "h2",
   compareHref = "#compare",
   id,
+  wide = false,
 }: PricingCardsProps) {
   const [showMax, setShowMax] = useState(false);
   const starter = getPlanPrice("starter", interval);
@@ -82,7 +85,7 @@ export function PricingCards({
 
   return (
     <section id={id} className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-      <div className="mx-auto w-full max-w-350">
+      <div className={wide ? "mx-auto w-full max-w-350" : "mx-auto max-w-280"}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
