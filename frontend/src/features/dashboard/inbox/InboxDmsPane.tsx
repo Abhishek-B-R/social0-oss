@@ -48,9 +48,10 @@ import {
   type InboxPageParam,
 } from "@/lib/inbox-infinite";
 import {
-  INBOX_DMS_POLL_MS,
+  PAGE_LIVE_POLL_MS,
   useVisibilityPoll,
 } from "@/lib/use-visibility-poll";
+import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
 
 function dmKey(t: InboxDmThread): string {
   return `${t.accountId}:${t.conversationId}`;
@@ -201,20 +202,9 @@ export function InboxDmsPane({
         itemCount: last.threads.length,
       }),
     enabled: enabled && workspaceReady,
-    staleTime: 90_000,
+    ...PAGE_LIVE_QUERY,
     maxPages: 24,
   });
-
-  const pollDms = useCallback(() => {
-    void refreshInboxInfiniteFirstPage(qc, listKey, () =>
-      listInboxDms({
-        ...initialInboxPageParam(dateWindow),
-        accountId: accountId || undefined,
-      }),
-    );
-  }, [qc, listKey, dateWindow, accountId]);
-
-  useVisibilityPoll(pollDms, INBOX_DMS_POLL_MS, enabled && workspaceReady);
 
   const fetchNextDms = listQuery.fetchNextPage;
   const hasNextDms = Boolean(listQuery.hasNextPage);
@@ -284,17 +274,28 @@ export function InboxDmsPane({
       return result;
     },
     enabled: enabled && Boolean(selected),
-    staleTime: 90_000,
+    ...PAGE_LIVE_QUERY,
   });
   const refetchThread = threadQuery.refetch;
 
-  useVisibilityPoll(
-    () => {
-      void refetchThread();
-    },
-    INBOX_DMS_POLL_MS,
-    enabled && Boolean(selected),
-  );
+  const pollDms = useCallback(() => {
+    void refreshInboxInfiniteFirstPage(qc, listKey, () =>
+      listInboxDms({
+        ...initialInboxPageParam(dateWindow),
+        accountId: accountId || undefined,
+      }),
+    );
+    if (selected) void refetchThread();
+  }, [qc, listKey, dateWindow, accountId, selected, refetchThread]);
+
+  useVisibilityPoll(pollDms, PAGE_LIVE_POLL_MS, enabled && workspaceReady);
+
+  useEffect(() => {
+    return () => {
+      void qc.cancelQueries({ queryKey: listKey });
+      void qc.cancelQueries({ queryKey: ["inbox-dm-thread", workspaceId] });
+    };
+  }, [qc, listKey, workspaceId]);
 
   const updatePending = useCallback(
     (key: string, updater: (prev: LocalInboxDmMessage[]) => LocalInboxDmMessage[]) => {

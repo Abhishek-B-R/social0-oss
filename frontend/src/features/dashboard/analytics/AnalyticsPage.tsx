@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
 import { ArrowClockwise } from "@/icons/phosphor";
 import { useSession } from "@/lib/auth-client";
@@ -32,6 +32,11 @@ import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
+import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
+import {
+  PAGE_LIVE_POLL_MS,
+  useVisibilityPoll,
+} from "@/lib/use-visibility-poll";
 
 export function AnalyticsPage() {
   const { data: session, isPending: sessionPending } = useSession();
@@ -55,6 +60,7 @@ export function AnalyticsPage() {
     queryKey: ["analytics-accounts", workspaceId],
     queryFn: listAnalyticsAccounts,
     enabled: !!session && permissionsReady && canViewAnalytics && workspaceReady,
+    ...PAGE_LIVE_QUERY,
   });
 
   const overviewQuery = useQuery({
@@ -65,8 +71,32 @@ export function AnalyticsPage() {
         accountId: accountId || undefined,
       }),
     enabled: !!session && permissionsReady && canViewAnalytics && workspaceReady,
-    staleTime: 60_000,
+    ...PAGE_LIVE_QUERY,
   });
+
+  const pollOverview = useCallback(() => {
+    void qc.fetchQuery({
+      queryKey: ["analytics-overview", workspaceId, dateWindow, accountId],
+      queryFn: () =>
+        getAnalyticsOverview({
+          ...windowQueryParams(dateWindow),
+          accountId: accountId || undefined,
+        }),
+    });
+  }, [qc, workspaceId, dateWindow, accountId]);
+
+  useVisibilityPoll(
+    pollOverview,
+    PAGE_LIVE_POLL_MS,
+    !!session && permissionsReady && canViewAnalytics && workspaceReady,
+  );
+
+  useEffect(() => {
+    return () => {
+      void qc.cancelQueries({ queryKey: ["analytics-overview", workspaceId] });
+      void qc.cancelQueries({ queryKey: ["analytics-accounts", workspaceId] });
+    };
+  }, [qc, workspaceId]);
 
   const settingsQuery = useQuery({
     queryKey: ["user-settings-snapshot"],

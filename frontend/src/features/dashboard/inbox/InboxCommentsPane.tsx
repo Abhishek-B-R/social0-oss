@@ -50,9 +50,10 @@ import {
   refreshInboxInfiniteFirstPage,
 } from "@/lib/inbox-infinite";
 import {
-  INBOX_COMMENTS_POLL_MS,
+  PAGE_LIVE_POLL_MS,
   useVisibilityPoll,
 } from "@/lib/use-visibility-poll";
+import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
 
 function threadLastActivity(thread: InboxThread): string {
   const times = [
@@ -176,7 +177,7 @@ export function InboxCommentsPane({
         itemCount: last.threads.length,
       }),
     enabled: enabled && workspaceReady,
-    staleTime: 120_000,
+    ...PAGE_LIVE_QUERY,
     maxPages: 24,
   });
 
@@ -189,7 +190,13 @@ export function InboxCommentsPane({
     );
   }, [qc, queryKey, dateWindow, accountId]);
 
-  useVisibilityPoll(pollComments, INBOX_COMMENTS_POLL_MS, enabled && workspaceReady);
+  useVisibilityPoll(pollComments, PAGE_LIVE_POLL_MS, enabled && workspaceReady);
+
+  useEffect(() => {
+    return () => {
+      void qc.cancelQueries({ queryKey });
+    };
+  }, [qc, queryKey]);
 
   const fetchNextComments = inboxQuery.fetchNextPage;
   const hasNextComments = Boolean(inboxQuery.hasNextPage);

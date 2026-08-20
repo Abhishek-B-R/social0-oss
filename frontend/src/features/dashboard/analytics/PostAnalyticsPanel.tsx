@@ -28,7 +28,9 @@ export function PostAnalyticsPanel({
     queryKey: ["post-analytics", postId],
     queryFn: () => getPostAnalytics(postId),
     enabled: enabled && open,
-    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
   });
 
   if (!enabled) return null;

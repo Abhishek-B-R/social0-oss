@@ -24,6 +24,7 @@ import {
   initialInboxPageParam,
   refreshInboxInfiniteFirstPage,
 } from "@/lib/inbox-infinite";
+import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
 
 export function InboxPage() {
   const { data: session, isPending: sessionPending } = useSession();
@@ -77,6 +78,7 @@ export function InboxPage() {
     queryFn: () =>
       listInboxAccounts({ mode: mode === "dms" ? "dms" : "comments" }),
     enabled: !!session && permissionsReady && canViewInbox && workspaceReady,
+    ...PAGE_LIVE_QUERY,
   });
 
   const commentAccountsQuery = useQuery({
@@ -88,7 +90,17 @@ export function InboxPage() {
       canViewInbox &&
       workspaceReady &&
       mode === "dms",
+    ...PAGE_LIVE_QUERY,
   });
+
+  useEffect(() => {
+    return () => {
+      void qc.cancelQueries({ queryKey: ["inbox-accounts", workspaceId] });
+      void qc.cancelQueries({ queryKey: ["inbox-comments", workspaceId] });
+      void qc.cancelQueries({ queryKey: ["inbox-dms", workspaceId] });
+      void qc.cancelQueries({ queryKey: ["inbox-dm-thread", workspaceId] });
+    };
+  }, [qc, workspaceId]);
 
   const accounts = accountsQuery.data ?? [];
 
