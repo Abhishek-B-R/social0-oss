@@ -116,7 +116,7 @@ export function RangeToolbar({
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
           className={cn(
-            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors",
+            "flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.97]",
             value.range === "custom" || open
               ? "bg-foreground text-background"
               : "text-text-muted hover:text-text",
@@ -137,7 +137,7 @@ export function RangeToolbar({
                 onChange({ range: opt.value });
               }}
               className={cn(
-                "h-8 min-w-9 rounded-full px-2.5 text-xs font-semibold tracking-wide transition-colors sm:px-3",
+                "h-8 min-w-9 rounded-full px-2.5 text-xs font-semibold tracking-wide transition-[transform,background-color,color,opacity] duration-150 ease-out active:scale-[0.97] sm:px-3",
                 selected
                   ? "bg-foreground text-background shadow-sm"
                   : "text-text-muted hover:text-text",

@@ -51,7 +51,7 @@ export function AccountFilterChips({
       <ChipButton selected={selectedId == null} onClick={() => onSelect(null)}>
         <span
           className={cn(
-            "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-all",
+            "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-[transform,border-color,background-color,color,opacity] duration-150 ease-out",
             selectedId == null
               ? "border-accent bg-accent/15 text-accent"
               : "border-transparent bg-bg-muted text-text-muted opacity-70 hover:opacity-100",
@@ -78,7 +78,7 @@ export function AccountFilterChips({
           >
             <span
               className={cn(
-                "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-all",
+                "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-[transform,border-color,opacity] duration-150 ease-out",
                 selected
                   ? "border-accent opacity-100"
                   : "border-transparent opacity-60 hover:opacity-100",
@@ -125,7 +125,7 @@ function ChipButton({
       onClick={onClick}
       aria-pressed={selected}
       title={title}
-      className="flex w-16 flex-col items-center gap-1.5"
+      className="flex w-16 flex-col items-center gap-1.5 rounded-2xl transition-transform duration-150 ease-out active:scale-[0.97]"
     >
       {children}
     </button>

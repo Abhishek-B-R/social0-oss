@@ -176,7 +176,7 @@ export function AnalyticsPage() {
           type="button"
           onClick={() => void overviewQuery.refetch()}
           disabled={loading}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
+          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-[transform,background-color,color,opacity] duration-150 ease-out hover:bg-bg-subtle active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
         >
           <ArrowClockwise
             className={cn("h-4 w-4", loading && "animate-spin")}

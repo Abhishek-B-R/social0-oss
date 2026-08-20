@@ -1,5 +1,6 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -442,7 +443,7 @@ export function InboxCommentsPane({
                       );
                     }}
                     className={cn(
-                      "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors",
+                      "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-[background-color,transform] duration-150 ease-out active:scale-[0.995]",
                       active
                         ? "bg-accent/[0.08] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent"
                         : "hover:bg-bg-subtle/80",
@@ -562,6 +563,7 @@ function ConversationPane({
   ) => void;
   onRetryReply: (optimisticId: string) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const root = thread.comment;
   const account = accounts.find((a) => a.id === root.accountId);
   const [replyTarget, setReplyTarget] = useState<InboxComment>(root);
@@ -585,7 +587,7 @@ function ConversationPane({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text lg:hidden"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97] lg:hidden"
           aria-label="Back to list"
         >
           <ArrowLeft size={16} />
@@ -617,7 +619,7 @@ function ConversationPane({
             href={root.platformPostUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-accent"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-accent active:scale-[0.97]"
             aria-label="View post"
           >
             <ArrowSquareOut size={14} />
@@ -649,7 +651,10 @@ function ConversationPane({
               onReply={() => {
                 if (comment.isOwn) return;
                 setReplyTarget(comment);
-                composerRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                composerRef.current?.scrollIntoView({
+                  behavior: reduceMotion ? "auto" : "smooth",
+                  block: "nearest",
+                });
               }}
               onRetry={
                 comment.isOwn && failedReplyIds.has(comment.id)
@@ -791,7 +796,7 @@ function CommentRow({
             <button
               type="button"
               onClick={onRetry}
-              className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-500 hover:text-red-400"
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-500 transition-[transform,color] duration-150 ease-out hover:text-red-400 active:scale-[0.97]"
             >
               <WarningCircle size={14} weight="fill" />
               Failed · Retry
@@ -802,7 +807,7 @@ function CommentRow({
               type="button"
               onClick={onReply}
               className={cn(
-                "mt-2 text-[11px] font-semibold",
+                "mt-2 text-[11px] font-semibold transition-[transform,color] duration-150 ease-out active:scale-[0.97]",
                 active ? "text-accent" : "text-text-muted hover:text-accent",
               )}
             >

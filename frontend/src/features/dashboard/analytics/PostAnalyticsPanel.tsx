@@ -49,7 +49,7 @@ export function PostAnalyticsPanel({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:bg-accent-hover"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-[transform,background-color,opacity] duration-150 ease-out hover:bg-accent-hover active:scale-[0.97]"
           >
             <ChartLine size={16} weight="bold" />
             {open ? "Hide analytics" : "Show analytics"}
@@ -59,7 +59,7 @@ export function PostAnalyticsPanel({
               type="button"
               onClick={() => void query.refetch()}
               disabled={query.isFetching}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-text hover:bg-bg-subtle disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-text transition-[transform,background-color,color,opacity] duration-150 ease-out hover:bg-bg-subtle active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
             >
               <ArrowClockwise
                 className={cn("h-4 w-4", query.isFetching && "animate-spin")}

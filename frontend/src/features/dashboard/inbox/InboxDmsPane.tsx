@@ -5,6 +5,7 @@ import {
   type InfiniteData,
 } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -550,7 +551,7 @@ export function InboxDmsPane({
                       );
                     }}
                     className={cn(
-                      "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-colors",
+                      "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-[background-color,transform] duration-150 ease-out active:scale-[0.995]",
                       active
                         ? "bg-accent/10 before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent"
                         : "hover:bg-bg-subtle/80",
@@ -661,12 +662,16 @@ function DmConversationPane({
   onSend: (payload: InboxComposerPayload) => void;
   onRetry: (message: LocalInboxDmMessage) => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const scroller = useRef<HTMLDivElement>(null);
   const sending = messages.some((m) => m.sendStatus === "sending");
 
   useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
-  }, [messages.length, thread.conversationId]);
+    scroller.current?.scrollTo({
+      top: scroller.current.scrollHeight,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }, [messages.length, reduceMotion, thread.conversationId]);
 
   const peerLabel = thread.peerHandle
     ? `${thread.peerName} (@${thread.peerHandle.replace(/^@/, "")})`
@@ -678,7 +683,7 @@ function DmConversationPane({
         <button
           type="button"
           onClick={onBack}
-          className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text lg:hidden"
+          className="mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97] lg:hidden"
           aria-label="Back to list"
         >
           <ArrowLeft size={16} />
@@ -824,7 +829,7 @@ function DmBubble({
             type="button"
             onClick={onRetry}
             className={cn(
-              "inline-flex items-center gap-1 text-[11px] font-medium text-red-500 hover:text-red-400",
+              "inline-flex items-center gap-1 text-[11px] font-medium text-red-500 transition-[transform,color] duration-150 ease-out hover:text-red-400 active:scale-[0.97]",
               own && "self-end",
             )}
           >

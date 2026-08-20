@@ -128,7 +128,7 @@ export function InboxComposer({
           <button
             type="button"
             onClick={replyTo.onClear}
-            className="shrink-0 font-medium text-text-muted hover:text-text"
+            className="shrink-0 rounded-md font-medium text-text-muted transition-[transform,color,opacity] duration-150 ease-out hover:text-text active:scale-[0.97]"
           >
             Cancel
           </button>
@@ -154,7 +154,7 @@ export function InboxComposer({
           <button
             type="button"
             onClick={clearFile}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted hover:bg-bg-subtle hover:text-text"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97]"
             aria-label="Remove attachment"
           >
             <X size={14} />
@@ -176,7 +176,7 @@ export function InboxComposer({
               type="button"
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full border border-border text-text-muted hover:bg-bg-subtle hover:text-text disabled:opacity-50"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full border border-border text-text-muted transition-[transform,background-color,color,opacity] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100"
               aria-label="Attach image or video"
             >
               <Paperclip size={18} />
@@ -204,7 +204,7 @@ export function InboxComposer({
           disabled={!canSend}
           aria-label={sending ? "Sending" : "Send"}
           className={cn(
-            "inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full bg-accent text-accent-foreground hover:bg-accent-hover disabled:opacity-50",
+            "inline-flex h-10 w-10 shrink-0 items-center justify-center self-end rounded-full bg-accent text-accent-foreground transition-[transform,background-color,opacity,filter] duration-150 ease-out hover:bg-accent-hover active:scale-[0.97] disabled:opacity-50 disabled:active:scale-100",
           )}
         >
           {sending ? (
