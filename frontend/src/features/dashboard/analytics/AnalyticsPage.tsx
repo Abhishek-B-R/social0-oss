@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
 import { ArrowClockwise } from "@/icons/phosphor";
@@ -35,11 +35,13 @@ import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 
 export function AnalyticsPage() {
   const { data: session, isPending: sessionPending } = useSession();
-  const { canViewAnalytics } = useWorkspaceNavPermissions();
+  const { ready: permissionsReady, canViewAnalytics } =
+    useWorkspaceNavPermissions();
   const dash = useDashboardPath();
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
   const [accountId, setAccountId] = useState<string | null>(null);
 
+  const qc = useQueryClient();
   const workspacesQuery = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
     queryFn: listWorkspaces,
@@ -52,7 +54,7 @@ export function AnalyticsPage() {
   const accountsQuery = useQuery({
     queryKey: ["analytics-accounts", workspaceId],
     queryFn: listAnalyticsAccounts,
-    enabled: !!session && canViewAnalytics && workspaceReady,
+    enabled: !!session && permissionsReady && canViewAnalytics && workspaceReady,
   });
 
   const overviewQuery = useQuery({
@@ -62,7 +64,7 @@ export function AnalyticsPage() {
         ...windowQueryParams(dateWindow),
         accountId: accountId || undefined,
       }),
-    enabled: !!session && canViewAnalytics && workspaceReady,
+    enabled: !!session && permissionsReady && canViewAnalytics && workspaceReady,
     staleTime: 60_000,
   });
 
@@ -76,13 +78,13 @@ export function AnalyticsPage() {
   const accounts = accountsQuery.data ?? [];
 
   useEffect(() => {
-    if (!accountId || accountsQuery.isLoading) return;
+    if (!accountId || !accountsQuery.isSuccess) return;
     if (!accounts.some((a) => a.id === accountId)) setAccountId(null);
-  }, [accountId, accounts, accountsQuery.isLoading]);
+  }, [accountId, accounts, accountsQuery.isSuccess]);
 
   const reconnect = useMemo(() => {
-    const fromOverview = overviewQuery.data?.accountsNeedingReconnect ?? [];
-    if (fromOverview.length) return fromOverview;
+    const fromOverview = overviewQuery.data?.accountsNeedingReconnect;
+    if (fromOverview != null) return fromOverview;
     return accounts
       .filter((a) => a.missingScopes.length > 0)
       .map((a) => ({
@@ -130,6 +132,10 @@ export function AnalyticsPage() {
     );
   }
 
+  if (!permissionsReady) {
+    return <AnalyticsSkeleton />;
+  }
+
   if (!canViewAnalytics) {
     return (
       <div className="flex min-h-[24rem] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
@@ -142,7 +148,8 @@ export function AnalyticsPage() {
   }
 
   const data = overviewQuery.data;
-  const loading = overviewQuery.isLoading || overviewQuery.isFetching;
+  const loading = overviewQuery.isPending;
+  const refetching = overviewQuery.isFetching && !overviewQuery.isPending;
   const emptyOverview = !data || data.publications.length === 0;
   const kpi = {
     views: emptyOverview ? undefined : viewsOf(data.totals),
@@ -174,12 +181,22 @@ export function AnalyticsPage() {
         </div>
         <button
           type="button"
-          onClick={() => void overviewQuery.refetch()}
-          disabled={loading}
+          onClick={() => {
+            void qc.fetchQuery({
+              queryKey: ["analytics-overview", workspaceId, dateWindow, accountId],
+              queryFn: () =>
+                getAnalyticsOverview({
+                  ...windowQueryParams(dateWindow),
+                  accountId: accountId || undefined,
+                  fresh: true,
+                }),
+            });
+          }}
+          disabled={loading || refetching}
           className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-[transform,background-color,color,opacity] duration-150 ease-out hover:bg-bg-subtle active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
         >
           <ArrowClockwise
-            className={cn("h-4 w-4", loading && "animate-spin")}
+            className={cn("h-4 w-4", refetching && "animate-spin")}
             size={16}
           />
           Refresh
@@ -284,7 +301,8 @@ export function AnalyticsPage() {
             Views & engagement
           </h2>
           <p className="mb-4 text-xs text-text-muted">
-            Daily totals across posts published in {rangeLabel ?? "this range"}.
+            Lifetime totals by publish date for posts in {rangeLabel ?? "this range"}.
+            {data?.sampled ? " Showing the most recent sample of posts." : ""}
           </p>
           {loading && !data ? (
             <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />

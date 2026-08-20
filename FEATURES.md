@@ -113,7 +113,7 @@ Same date ranges as Analytics (`7D` / `2W` / `4W` / `3M` / `1Y` + custom). Accou
 | `?thread=` | Open a comment thread |
 | `?convo=` | Open a DM conversation |
 
-Unread badge on **Inbox** in the dashboard nav (and More on mobile). Polls while you are elsewhere in the app; clears while you are on Inbox.
+- Inbox nav entry (experimental). Unread badge is not shipped yet.
 
 ### Live vs not yet (today)
 

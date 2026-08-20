@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   instagramDmsNeedInstagramLogin,
+  instagramProfilePicUrl,
+  isInboxSelfActor,
   missingDmScopes,
   missingInboxScopes,
   peerFromParticipants,
@@ -99,6 +101,36 @@ describe("instagramDmsNeedInstagramLogin", () => {
   });
 });
 
+describe("instagramProfilePicUrl", () => {
+  it("reads profile_pic from User Profile API payloads", () => {
+    expect(
+      instagramProfilePicUrl({
+        profile_pic: "https://fbcdn-profile.example/avatar.jpg",
+      }),
+    ).toBe("https://fbcdn-profile.example/avatar.jpg");
+    expect(instagramProfilePicUrl({ profile_pic: null })).toBeNull();
+    expect(instagramProfilePicUrl({})).toBeNull();
+  });
+});
+
+describe("isInboxSelfActor", () => {
+  it("matches by id or username when Instagram ids diverge", () => {
+    expect(
+      isInboxSelfActor({ id: "ig-me", username: "henry" }, "ig-me", "henry"),
+    ).toBe(true);
+    expect(
+      isInboxSelfActor(
+        { id: "different-messaging-id", username: "henry__polymath" },
+        "ig-me",
+        "henry__polymath",
+      ),
+    ).toBe(true);
+    expect(
+      isInboxSelfActor({ id: "peer", username: "tester" }, "ig-me", "henry"),
+    ).toBe(false);
+  });
+});
+
 describe("peerFromParticipants", () => {
   it("picks the other person, not the connected account", () => {
     const peer = peerFromParticipants(
@@ -112,6 +144,23 @@ describe("peerFromParticipants", () => {
       id: "user-1",
       name: "Ada",
       handle: "ada",
+      avatarUrl: null,
+    });
+  });
+
+  it("excludes self by username when messaging id ≠ /me id", () => {
+    const peer = peerFromParticipants(
+      [
+        { id: "msg-self", username: "henry__polymath", name: "Henry" },
+        { id: "igsid-tester", username: "testersocial8", name: "tester" },
+      ],
+      "graph-me-id",
+      "henry__polymath",
+    );
+    expect(peer).toEqual({
+      id: "igsid-tester",
+      name: "tester",
+      handle: "testersocial8",
       avatarUrl: null,
     });
   });

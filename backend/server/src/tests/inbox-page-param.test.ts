@@ -33,14 +33,16 @@ describe("nextInboxPageParam", () => {
     expect(next?.before).toBeUndefined();
   });
 
-  it("stops when the last page was empty", () => {
-    expect(
-      nextInboxPageParam({
-        hasMore: false,
-        since: "2026-08-05T00:00:00.000Z",
-        until: "2026-08-12T00:00:00.000Z",
-        itemCount: 0,
-      }),
-    ).toBeUndefined();
+  it("walks an older window when the current window has no threads", () => {
+    const next = nextInboxPageParam({
+      hasMore: false,
+      since: "2026-08-12T00:00:00.000Z",
+      until: "2026-08-19T00:00:00.000Z",
+      itemCount: 0,
+    });
+    expect(next?.range).toBe("custom");
+    expect(next?.until).toBe("2026-08-12T00:00:00.000Z");
+    expect(next?.since).toBe("2026-08-05T00:00:00.000Z");
+    expect(next?.before).toBeUndefined();
   });
 });

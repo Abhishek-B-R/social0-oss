@@ -101,6 +101,8 @@ export function tiktokBmSentMessageId(
   return typeof data.message_id === "string" ? data.message_id : undefined;
 }
 
+const TIKTOK_BM_TIMEOUT_MS = 12_000;
+
 export async function tiktokBmGet(
   accessToken: string,
   path: string,
@@ -110,6 +112,7 @@ export async function tiktokBmGet(
   for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
   const res = await fetch(url, {
     headers: { "Access-Token": accessToken },
+    signal: AbortSignal.timeout(TIKTOK_BM_TIMEOUT_MS),
   });
   const data = (await res.json().catch(() => ({}))) as TikTokBmEnvelope;
   return { ok: isTikTokBmOk(res.ok, data), data };
@@ -127,6 +130,7 @@ export async function tiktokBmPost(
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(TIKTOK_BM_TIMEOUT_MS),
   });
   const data = (await res.json().catch(() => ({}))) as TikTokBmEnvelope;
   return { ok: isTikTokBmOk(res.ok, data), data };
@@ -146,6 +150,7 @@ export async function tiktokBmUploadImage(
     method: "POST",
     headers: { "Access-Token": accessToken },
     body: form,
+    signal: AbortSignal.timeout(TIKTOK_BM_TIMEOUT_MS),
   });
   const data = (await res.json().catch(() => ({}))) as TikTokBmEnvelope;
   return { ok: isTikTokBmOk(res.ok, data), data };

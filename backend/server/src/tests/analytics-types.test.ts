@@ -11,6 +11,15 @@ describe("analytics types", () => {
     expect(scopeGranted("a,b,c", "b")).toBe(true);
     expect(scopeGranted("video.list user.info.stats", "video.list")).toBe(true);
     expect(scopeGranted("video.upload", "video.list")).toBe(false);
+    expect(
+      scopeGranted(
+        "https://www.googleapis.com/auth/youtube.readonly",
+        "https://www.googleapis.com/auth/youtube.readonly",
+      ),
+    ).toBe(true);
+    expect(
+      scopeGranted("instagram_manage_insights", "instagram_business_manage_insights"),
+    ).toBe(false);
   });
 
   it("flags missing insights scopes", () => {

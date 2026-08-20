@@ -30,3 +30,20 @@ export function noteFetchError(
   }
   list.push({ ...item, error });
 }
+
+/** Platform limits shown as info, not failures (e.g. X Recent Search window). */
+export function isInboxFetchNotice(error: string): boolean {
+  return /only go back|Recent Search/i.test(error);
+}
+
+export function noteFetchNotice(
+  list: Array<{ platform: string; message: string }>,
+  item: { platform: string; message: string },
+): void {
+  const message = item.message.trim().slice(0, 180);
+  if (!message) return;
+  if (list.some((n) => n.platform === item.platform && n.message === message)) {
+    return;
+  }
+  list.push({ platform: item.platform, message });
+}

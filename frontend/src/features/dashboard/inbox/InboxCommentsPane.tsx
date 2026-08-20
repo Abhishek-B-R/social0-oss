@@ -37,10 +37,8 @@ import { InboxAvatar } from "./InboxAvatar";
 import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
 import { InboxPostCard, InboxPostThumbnail } from "./InboxPostCard";
 import { InboxScrollSentinel } from "./InboxScrollSentinel";
-import {
-  commentIdsFromThreads,
-  markInboxCommentsSeen,
-} from "@/lib/inbox-unread";
+import { InboxStatusBanners } from "./InboxStatusBanners";
+import { inboxMetaFromPages } from "./inbox-meta";
 import { resolveInboxBody } from "@/lib/inbox-display";
 import { flattenInboxThread } from "@/lib/inbox-thread";
 import { useSession } from "@/lib/auth-client";
@@ -49,7 +47,20 @@ import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import {
   initialInboxPageParam,
   nextInboxPageParam,
+  refreshInboxInfiniteFirstPage,
 } from "@/lib/inbox-infinite";
+import {
+  INBOX_COMMENTS_POLL_MS,
+  useVisibilityPoll,
+} from "@/lib/use-visibility-poll";
+
+function threadLastActivity(thread: InboxThread): string {
+  const times = [
+    thread.comment.createdAt,
+    ...thread.replies.map((r) => r.createdAt),
+  ].filter(Boolean) as string[];
+  return times.sort().at(-1) ?? "";
+}
 
 function threadKey(thread: InboxThread): string {
   return `${thread.comment.publicationId}-${thread.comment.id}`;
@@ -125,7 +136,6 @@ export function InboxCommentsPane({
 }) {
   const qc = useQueryClient();
   const { data: session } = useSession();
-  const userId = session?.user?.id;
   const workspacesQuery = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
     queryFn: listWorkspaces,
@@ -138,9 +148,6 @@ export function InboxCommentsPane({
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Avoid repeatedly writing large "seen" lists to localStorage as the
-  // infinite query refetches/accumulates pages.
-  const markedCommentIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(
     () => () => {
@@ -169,11 +176,20 @@ export function InboxCommentsPane({
         itemCount: last.threads.length,
       }),
     enabled: enabled && workspaceReady,
-    staleTime: 15_000,
-    refetchInterval: enabled ? 60_000 : false,
-    refetchIntervalInBackground: false,
+    staleTime: 120_000,
     maxPages: 24,
   });
+
+  const pollComments = useCallback(() => {
+    void refreshInboxInfiniteFirstPage(qc, queryKey, () =>
+      listInboxComments({
+        ...initialInboxPageParam(dateWindow),
+        accountId: accountId || undefined,
+      }),
+    );
+  }, [qc, queryKey, dateWindow, accountId]);
+
+  useVisibilityPoll(pollComments, INBOX_COMMENTS_POLL_MS, enabled && workspaceReady);
 
   const fetchNextComments = inboxQuery.fetchNextPage;
   const hasNextComments = Boolean(inboxQuery.hasNextPage);
@@ -274,7 +290,12 @@ export function InboxCommentsPane({
       );
       if (refreshTimer.current) clearTimeout(refreshTimer.current);
       refreshTimer.current = setTimeout(() => {
-        void qc.invalidateQueries({ queryKey: ["inbox-comments"] });
+        void refreshInboxInfiniteFirstPage(qc, queryKey, () =>
+          listInboxComments({
+            ...initialInboxPageParam(dateWindow),
+            accountId: accountId || undefined,
+          }),
+        );
       }, 8000);
     } catch (e) {
       setFailedReplyIds((s) => new Set(s).add(optimisticId));
@@ -300,12 +321,13 @@ export function InboxCommentsPane({
       }
     }
     out.sort((a, b) =>
-      (b.comment.createdAt ?? "").localeCompare(a.comment.createdAt ?? ""),
+      threadLastActivity(b).localeCompare(threadLastActivity(a)),
     );
     return out;
   }, [inboxQuery.data]);
 
   const data = inboxQuery.data?.pages[0];
+  const inboxMeta = inboxMetaFromPages(inboxQuery.data?.pages);
   const threads = mergePendingReplies(
     mergedThreads.filter((t) => {
       if (!t.comment.isOwn) return true;
@@ -313,26 +335,6 @@ export function InboxCommentsPane({
     }),
     pendingReplies,
   );
-
-  const commentIds = useMemo(
-    () => (threads.length ? commentIdsFromThreads(threads) : []),
-    [threads],
-  );
-
-  useEffect(() => {
-    // Reset when the user changes window/filter so we only mark ids for the
-    // currently-visible universe.
-    markedCommentIdsRef.current = new Set();
-  }, [enabled, dateWindow, accountId]);
-
-  useEffect(() => {
-    if (!enabled || !userId || !commentIds.length) return;
-    const marked = markedCommentIdsRef.current;
-    const next = commentIds.filter((id) => !marked.has(id));
-    if (!next.length) return;
-    markInboxCommentsSeen(userId, next);
-    for (const id of next) marked.add(id);
-  }, [enabled, userId, commentIds]);
 
   useEffect(() => {
     if (!mergedThreads.length) return;
@@ -372,6 +374,22 @@ export function InboxCommentsPane({
   }, [threads, pickedId, searchParams]);
 
   const loading = inboxQuery.isPending;
+
+  useEffect(() => {
+    if (!enabled || loading || fetchingNextComments) return;
+    if (mergedThreads.length === 0 && threads.length === 0 && hasNextComments) {
+      void fetchNextComments();
+    }
+  }, [
+    enabled,
+    loading,
+    fetchingNextComments,
+    mergedThreads.length,
+    threads.length,
+    hasNextComments,
+    fetchNextComments,
+  ]);
+
   const selected =
     threads.find((t) => threadKey(t) === pickedId) ?? threads[0] ?? null;
   const emptyRangeLabel =
@@ -391,12 +409,14 @@ export function InboxCommentsPane({
         </div>
       ) : null}
 
+      <InboxStatusBanners {...inboxMeta} />
+
       {loading && !data ? (
         <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
           <div className="h-full animate-pulse bg-bg-muted/60" />
           <div className="hidden h-full animate-pulse bg-bg-muted/40 lg:block" />
         </div>
-      ) : !data || threads.length === 0 ? (
+      ) : !data || (threads.length === 0 && !hasNextComments) ? (
         <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
           <ChatCircle size={28} className="text-text-muted" />
           <p className="mt-3 text-sm font-medium text-text">No comments yet</p>
@@ -404,6 +424,11 @@ export function InboxCommentsPane({
             Comments on Social0 posts from {emptyRangeLabel} show up here.
             Try a longer range if you just published.
           </p>
+        </div>
+      ) : threads.length === 0 && hasNextComments ? (
+        <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-border bg-bg-elevated px-6">
+          <CircleNotch size={24} className="animate-spin text-text-muted" />
+          <p className="mt-3 text-sm text-text-muted">Loading older posts...</p>
         </div>
       ) : (
         <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
@@ -508,6 +533,7 @@ export function InboxCommentsPane({
                 accounts={accounts}
                 allowReply={allowReply}
                 sendingReplyIds={sendingReplyIds}
+                pendingReplies={pendingReplies}
                 failedReplyIds={failedReplyIds}
                 onBack={() => setMobileDetail(false)}
                 onReply={(uiParentId, payload, optimisticId) =>
@@ -545,6 +571,7 @@ function ConversationPane({
   accounts,
   allowReply,
   sendingReplyIds,
+  pendingReplies,
   failedReplyIds,
   onBack,
   onReply,
@@ -554,6 +581,7 @@ function ConversationPane({
   accounts: InboxAccount[];
   allowReply: boolean;
   sendingReplyIds: Set<string>;
+  pendingReplies: InboxComment[];
   failedReplyIds: Set<string>;
   onBack: () => void;
   onReply: (
@@ -579,7 +607,10 @@ function ConversationPane({
     [root, thread.replies],
   );
 
-  const sending = sendingReplyIds.size > 0;
+  const sending = pendingReplies.some(
+    (p) =>
+      p.publicationId === root.publicationId && sendingReplyIds.has(p.id),
+  );
 
   return (
     <>
@@ -669,7 +700,7 @@ function ConversationPane({
       {root.canReply && allowReply ? (
         <div ref={composerRef} className="shrink-0">
           <InboxComposer
-            key={`${root.id}:${replyTarget.id}`}
+            key={root.id}
             platform={root.platform}
             mode="comment"
             maxLength={inboxReplyDraftMax({

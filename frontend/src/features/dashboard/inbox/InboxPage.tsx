@@ -3,13 +3,13 @@ import {
   useQueryClient,
   useIsFetching,
 } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { RangeToolbar } from "@/components/dashboard/RangeToolbar";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
 import { ArrowClockwise } from "@/icons/phosphor";
 import { useSession } from "@/lib/auth-client";
-import { listInboxAccounts } from "@/api/inbox";
+import { listInboxAccounts, listInboxComments, listInboxDms, getInboxDmThread } from "@/api/inbox";
 import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import { defaultDateWindow, type DateWindow } from "@/lib/date-window";
@@ -20,10 +20,14 @@ import { InboxCommentsPane } from "./InboxCommentsPane";
 import { InboxDmsPane } from "./InboxDmsPane";
 import { InboxModeToggle, type InboxMode } from "./InboxModeToggle";
 import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
+import {
+  initialInboxPageParam,
+  refreshInboxInfiniteFirstPage,
+} from "@/lib/inbox-infinite";
 
 export function InboxPage() {
   const { data: session, isPending: sessionPending } = useSession();
-  const { canViewInbox, canReplyComments, canReplyDms } =
+  const { ready: permissionsReady, canViewInbox, canReplyComments, canReplyDms } =
     useWorkspaceNavPermissions();
   const qc = useQueryClient();
   const workspacesQuery = useQuery({
@@ -72,27 +76,38 @@ export function InboxPage() {
     queryKey: ["inbox-accounts", workspaceId, mode],
     queryFn: () =>
       listInboxAccounts({ mode: mode === "dms" ? "dms" : "comments" }),
-    enabled: !!session && canViewInbox && workspaceReady,
+    enabled: !!session && permissionsReady && canViewInbox && workspaceReady,
   });
 
   const commentAccountsQuery = useQuery({
     queryKey: ["inbox-accounts", workspaceId, "comments"],
     queryFn: () => listInboxAccounts({ mode: "comments" }),
-    enabled: !!session && canViewInbox && workspaceReady && mode === "dms",
+    enabled:
+      !!session &&
+      permissionsReady &&
+      canViewInbox &&
+      workspaceReady &&
+      mode === "dms",
   });
 
   const accounts = accountsQuery.data ?? [];
 
   useEffect(() => {
-    if (!accountId || accountsQuery.isLoading) return;
+    if (!accountId || !accountsQuery.isSuccess) return;
     if (!accounts.some((a) => a.id === accountId)) {
       setAccountId(null);
     }
-  }, [accountId, accounts, accountsQuery.isLoading]);
+  }, [accountId, accounts, accountsQuery.isSuccess]);
 
-  const fetching = useIsFetching({
-    queryKey: mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],
-  });
+  const listQueryKey = useMemo(
+    () =>
+      mode === "comments"
+        ? (["inbox-comments", workspaceId, dateWindow, accountId] as const)
+        : (["inbox-dms", workspaceId, dateWindow, accountId] as const),
+    [mode, workspaceId, dateWindow, accountId],
+  );
+
+  const fetching = useIsFetching({ queryKey: listQueryKey });
 
   if (sessionPending) {
     return <InboxSkeleton />;
@@ -107,6 +122,10 @@ export function InboxPage() {
         promptDescription="Once you connect accounts, Social0 pulls comments on your posts and DMs from platforms that support it."
       />
     );
+  }
+
+  if (!permissionsReady) {
+    return <InboxSkeleton />;
   }
 
   if (!canViewInbox) {
@@ -141,12 +160,41 @@ export function InboxPage() {
           <button
             type="button"
             onClick={() => {
-              void qc.invalidateQueries({
-                queryKey:
-                  mode === "comments" ? ["inbox-comments"] : ["inbox-dms"],
-              });
-              if (mode === "dms") {
-                void qc.invalidateQueries({ queryKey: ["inbox-dm-thread"] });
+              if (mode === "comments") {
+                void refreshInboxInfiniteFirstPage(qc, listQueryKey, () =>
+                  listInboxComments({
+                    ...initialInboxPageParam(dateWindow),
+                    accountId: accountId || undefined,
+                    fresh: true,
+                  }),
+                );
+              } else {
+                void refreshInboxInfiniteFirstPage(qc, listQueryKey, () =>
+                  listInboxDms({
+                    ...initialInboxPageParam(dateWindow),
+                    accountId: accountId || undefined,
+                    fresh: true,
+                  }),
+                );
+                const convo = searchParams.get("convo");
+                const dmAccount = searchParams.get("account") || accountId;
+                if (convo && dmAccount) {
+                  void qc.invalidateQueries({
+                    queryKey: ["inbox-dm-thread", workspaceId, dmAccount, convo],
+                  });
+                  void getInboxDmThread({
+                    accountId: dmAccount,
+                    conversationId: convo,
+                    fresh: true,
+                  }).then((result) => {
+                    if (!("error" in result)) {
+                      qc.setQueryData(
+                        ["inbox-dm-thread", workspaceId, dmAccount, convo],
+                        result,
+                      );
+                    }
+                  });
+                }
               }
             }}
             disabled={loading}

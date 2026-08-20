@@ -9,6 +9,7 @@ export type ActiveConnectedAccount = {
   username: string | null;
   scopes: string | null;
   profileImageUrl: string | null;
+  platformMetadata: Record<string, unknown> | null;
 };
 
 export async function listActiveConnectedAccounts(ctx: {
@@ -22,6 +23,7 @@ export async function listActiveConnectedAccounts(ctx: {
       username: connectedAccounts.platformUsername,
       scopes: connectedAccounts.scopes,
       profileImageUrl: connectedAccounts.profileImageUrl,
+      platformMetadata: connectedAccounts.platformMetadata,
     })
     .from(connectedAccounts)
     .where(and(connectionScopeCondition(ctx), eq(connectedAccounts.isActive, true)));

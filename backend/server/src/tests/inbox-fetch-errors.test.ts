@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   isGonePlatformPost,
+  isInboxFetchNotice,
   noteFetchError,
+  noteFetchNotice,
   sanitizeInboxFetchError,
 } from "../lib/inbox/fetch-errors.js";
 
@@ -66,5 +68,29 @@ describe("noteFetchError", () => {
         error: "Request failed with code 401",
       },
     ]);
+  });
+});
+
+describe("isInboxFetchNotice", () => {
+  it("flags advisory platform window copy", () => {
+    expect(isInboxFetchNotice("X comments only go back 7 days (Recent Search).")).toBe(
+      true,
+    );
+    expect(isInboxFetchNotice("Request failed with code 401")).toBe(false);
+  });
+});
+
+describe("noteFetchNotice", () => {
+  it("dedupes notices by platform and message", () => {
+    const list: Array<{ platform: string; message: string }> = [];
+    noteFetchNotice(list, {
+      platform: "twitter_x",
+      message: "X comments only go back 7 days (Recent Search).",
+    });
+    noteFetchNotice(list, {
+      platform: "twitter_x",
+      message: "X comments only go back 7 days (Recent Search).",
+    });
+    expect(list).toHaveLength(1);
   });
 });

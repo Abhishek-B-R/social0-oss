@@ -53,6 +53,11 @@ export type InboxFetchError = {
   error: string;
 };
 
+export type InboxNotice = {
+  platform: string;
+  message: string;
+};
+
 export type InboxListResult = {
   range: DateWindowRange;
   since: string;
@@ -61,6 +66,7 @@ export type InboxListResult = {
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
   fetchErrors: InboxFetchError[];
+  notices: InboxNotice[];
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
@@ -104,6 +110,17 @@ export type InboxDmMessage = {
   attachment?: InboxAttachment | null;
 };
 
+/** True when a Graph participant/sender is the connected Instagram account. */
+export function isInboxSelfActor(
+  actor: { id?: string | null; username?: string | null } | null | undefined,
+  selfId: string,
+  selfUsername?: string | null,
+): boolean {
+  if (!actor) return false;
+  if (actor.id != null && String(actor.id) === String(selfId)) return true;
+  return sameInboxHandle(actor.username, selfUsername);
+}
+
 export function peerFromParticipants(
   participants: Array<{
     id?: string;
@@ -112,8 +129,12 @@ export function peerFromParticipants(
     picture?: unknown;
   }>,
   selfId: string,
+  selfUsername?: string | null,
 ): { id: string; name: string; handle: string | null; avatarUrl: string | null } {
-  const others = participants.filter((p) => p.id && p.id !== selfId);
+  // Instagram Messaging participant ids often differ from /me id; also match username.
+  const others = participants.filter(
+    (p) => p.id && !isInboxSelfActor(p, selfId, selfUsername),
+  );
   const peer = others[0] ?? {};
   return {
     id: peer.id ?? "",
@@ -133,6 +154,13 @@ export function graphPictureUrl(picture: unknown): string | null {
   return null;
 }
 
+/** Instagram User Profile API returns `profile_pic` (not nested `picture`). */
+export function instagramProfilePicUrl(data: unknown): string | null {
+  const direct = (data as { profile_pic?: unknown })?.profile_pic;
+  if (typeof direct === "string" && direct.startsWith("http")) return direct;
+  return graphPictureUrl(direct);
+}
+
 export type InboxDmListResult = {
   range: DateWindowRange;
   since: string;
@@ -141,6 +169,7 @@ export type InboxDmListResult = {
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
   fetchErrors: InboxFetchError[];
+  notices: InboxNotice[];
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
@@ -266,6 +295,17 @@ export function youtubeAuthorChannelId(v: unknown): string | null {
   return null;
 }
 
+/** Latest createdAt in a thread (root + replies) for inbox sort order. */
+function latestThreadActivity(
+  root: InboxComment,
+  replies: InboxComment[],
+): string {
+  const times = [root.createdAt, ...replies.map((r) => r.createdAt)].filter(
+    Boolean,
+  ) as string[];
+  return times.sort().at(-1) ?? "";
+}
+
 /**
  * Nest replies under the top-level comment in the conversation.
  * Deeper replies (reply-to-reply) flatten under that root so the pane shows
@@ -305,7 +345,11 @@ export function toInboxThreads(comments: InboxComment[]): InboxThread[] {
     repliesByRoot.set(root.id, list);
   }
 
-  tops.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+  tops.sort((a, b) => {
+    const aTs = latestThreadActivity(a, repliesByRoot.get(a.id) ?? []);
+    const bTs = latestThreadActivity(b, repliesByRoot.get(b.id) ?? []);
+    return bTs.localeCompare(aTs);
+  });
   return tops.map((comment) => ({
     comment,
     replies: (repliesByRoot.get(comment.id) ?? []).sort((a, b) =>

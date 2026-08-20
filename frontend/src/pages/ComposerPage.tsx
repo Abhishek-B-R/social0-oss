@@ -2,7 +2,15 @@ import { Composer } from "@/features/dashboard/composer/Composer";
 import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 
 export function ComposerPage() {
-  const { canCreatePosts } = useWorkspaceNavPermissions();
+  const { ready, canCreatePosts } = useWorkspaceNavPermissions();
+
+  if (!ready) {
+    return (
+      <div className="relative px-4 sm:px-6 lg:px-10" aria-busy>
+        <div className="h-[28rem] animate-pulse rounded-xl bg-bg-muted" />
+      </div>
+    );
+  }
 
   if (!canCreatePosts) {
     return (

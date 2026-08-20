@@ -34,9 +34,13 @@ import {
   type TopPostRow,
   type AccountReconnectHint,
 } from "../lib/analytics/types.js";
+import {
+  PlatformApiCooldownError,
+  withPlatformReadCache,
+} from "../lib/platform-api-cache.js";
 
 const SAMPLE_LIMIT = 200;
-const CONCURRENCY = 6;
+const CONCURRENCY = 3;
 
 type PubRow = {
   publicationId: string;
@@ -147,6 +151,7 @@ async function loadPublishedPubs(opts: {
 async function metricsForPub(
   row: PubRow,
   window?: { since: Date; until: Date; timeZone?: string },
+  fresh = false,
 ): Promise<PublicationMetrics> {
   const base: PublicationMetrics = {
     publicationId: row.publicationId,
@@ -176,20 +181,42 @@ async function metricsForPub(
 
   try {
     const { accessToken, accessSecret } = await resolveAccountAccess(row.account);
-    const result = await fetchPlatformPublicationMetrics({
-      platform: row.account.platform,
-      platformPostId: row.platformPostId,
-      platformUserId: row.account.platformUserId,
-      accessToken,
-      accessSecret,
-      scopes: row.account.scopes,
-      platformAccountType: row.account.platformAccountType,
-      since: window?.since,
-      until: window?.until,
-      timeZone: window?.timeZone,
-      accountId: row.account.id,
-      accountHandle: row.account.platformUsername,
-    });
+    let result;
+    try {
+      const cached = await withPlatformReadCache({
+        platform: row.account.platform,
+        accountId: row.account.id,
+        kind: "analytics",
+        suffix: row.platformPostId,
+        fresh,
+        fetch: () =>
+          fetchPlatformPublicationMetrics({
+            platform: row.account!.platform,
+            platformPostId: row.platformPostId!,
+            platformUserId: row.account!.platformUserId,
+            accessToken,
+            accessSecret,
+            scopes: row.account!.scopes,
+            platformAccountType: row.account!.platformAccountType,
+            since: window?.since,
+            until: window?.until,
+            timeZone: window?.timeZone,
+            accountId: row.account!.id,
+            accountHandle: row.account!.platformUsername,
+          }),
+      });
+      result = cached.data;
+    } catch (e) {
+      if (e instanceof PlatformApiCooldownError) {
+        return {
+          ...base,
+          status: "error",
+          error: "Platform rate limit reached - try again in a few minutes.",
+          missingScopes: missing.length ? missing : undefined,
+        };
+      }
+      throw e;
+    }
 
     if (
       result.resolvedPlatformPostId &&
@@ -280,12 +307,12 @@ function buildSeries(
     cur.engagement += engagementTotal(p.metrics);
     byDay.set(day, cur);
   }
-  // ponytail: fill every day in the user's IANA zone (X Analytics-style).
+  // Zero-fill every day in the range so the chart draws a continuous line.
+  const cursor = startOfZonedDay(since, timeZone);
+  const endMs = until.getTime();
   const out: AnalyticsSeriesPoint[] = [];
-  const last = calendarDayKey(until, timeZone);
-  let d = startOfZonedDay(since, timeZone);
-  for (let i = 0; i < 400; i++) {
-    const key = calendarDayKey(d, timeZone);
+  while (cursor.getTime() <= endMs) {
+    const key = calendarDayKey(cursor, timeZone);
     out.push(
       byDay.get(key) ?? {
         date: key,
@@ -296,9 +323,7 @@ function buildSeries(
         engagement: 0,
       },
     );
-    if (key >= last) break;
-    // ponytail: +36h then re-snap to midnight so DST 23h days still advance.
-    d = startOfZonedDay(new Date(d.getTime() + 36 * 60 * 60 * 1000), timeZone);
+    cursor.setDate(cursor.getDate() + 1);
   }
   return out;
 }
@@ -379,9 +404,12 @@ export async function getAnalyticsOverview(input: {
   since?: unknown;
   until?: unknown;
   accountId?: unknown;
+  fresh?: unknown;
 }): Promise<AnalyticsOverview> {
   const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
+
+  const fresh = input.fresh === true;
 
   const timeZone = await getUserTimezone(ws.ctx.resourceUserId);
   const window = parseDateWindow(input, timeZone);
@@ -408,7 +436,7 @@ export async function getAnalyticsOverview(input: {
   });
 
   const results = await mapPool(pubs, CONCURRENCY, (row) =>
-    metricsForPub(row, { since, until, timeZone }),
+    metricsForPub(row, { since, until, timeZone }, fresh),
   );
   const contentByPost = new Map(
     pubs.map((p) => [p.postId, p.content] as const),
@@ -416,7 +444,10 @@ export async function getAnalyticsOverview(input: {
   const okResults = results.filter((r) => r.status === "ok");
 
   const accountRows = await listActiveConnectedAccounts(ctx);
-  const fromAccounts: AccountReconnectHint[] = accountRows
+  const scopedAccounts = accountId
+    ? accountRows.filter((r) => r.id === accountId)
+    : accountRows;
+  const fromAccounts: AccountReconnectHint[] = scopedAccounts
     .filter((r) => isPlatformLive("analytics", r.platform))
     .map((r) => ({
       accountId: r.id,
@@ -440,7 +471,7 @@ export async function getAnalyticsOverview(input: {
       collectReconnectHints(results),
     ),
     fetchedAt: new Date().toISOString(),
-    sampled: pubs.length >= SAMPLE_LIMIT,
+    sampled: pubs.length > SAMPLE_LIMIT,
     sampleLimit: SAMPLE_LIMIT,
   };
 }
@@ -482,14 +513,34 @@ export async function getPostAnalytics(input: {
   }
 
   const results = await mapPool(pubs, CONCURRENCY, (row) =>
-    metricsForPub(row, { since, until, timeZone }),
+    metricsForPub(row, { since, until, timeZone }, false),
   );
   const okResults = results.filter((r) => r.status === "ok");
+  const accountRows = await listActiveConnectedAccounts(ctx);
+  const pubAccountIds = new Set(
+    pubs
+      .map((p) => p.connectedAccountId ?? p.account?.id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const fromAccounts: AccountReconnectHint[] = accountRows
+    .filter(
+      (r) => pubAccountIds.has(r.id) && isPlatformLive("analytics", r.platform),
+    )
+    .map((r) => ({
+      accountId: r.id,
+      platform: r.platform,
+      username: r.username,
+      missingScopes: missingAnalyticsScopes(r.platform, r.scopes),
+    }))
+    .filter((a) => a.missingScopes.length > 0);
   return {
     postId,
     publications: results,
     totals: sumMetrics(okResults.map((r) => r.metrics)),
-    accountsNeedingReconnect: collectReconnectHints(results),
+    accountsNeedingReconnect: mergeReconnectHints(
+      fromAccounts,
+      collectReconnectHints(results),
+    ),
     fetchedAt: new Date().toISOString(),
   };
 }

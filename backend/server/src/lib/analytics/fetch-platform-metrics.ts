@@ -50,6 +50,18 @@ function num(v: unknown): number | undefined {
   return undefined;
 }
 
+function setMetric(
+  metrics: MetricMap,
+  key: keyof MetricMap,
+  value: number | undefined,
+): void {
+  if (value != null) metrics[key] = value;
+}
+
+function hasDefinedMetrics(metrics: MetricMap): boolean {
+  return Object.values(metrics).some((v) => v != null);
+}
+
 function pick(...vals: Array<number | undefined>): number | undefined {
   for (const v of vals) {
     if (typeof v === "number") return v;
@@ -177,9 +189,9 @@ async function fetchFacebook(
       likes?: { summary?: { total_count?: number } };
       comments?: { summary?: { total_count?: number } };
     };
-    metrics.shares = num(d.shares?.count);
-    metrics.likes = num(d.likes?.summary?.total_count);
-    metrics.comments = num(d.comments?.summary?.total_count);
+    setMetric(metrics, "shares", num(d.shares?.count));
+    setMetric(metrics, "likes", num(d.likes?.summary?.total_count));
+    setMetric(metrics, "comments", num(d.comments?.summary?.total_count));
   }
 
   const insightsUrl = `${base}/insights?metric=post_impressions,post_impressions_unique,post_engaged_users,post_clicks&access_token=${encodeURIComponent(input.accessToken)}`;
@@ -205,7 +217,7 @@ async function fetchFacebook(
         ?.message ?? "";
     if (/insight|permission|(#10)|(#200)|read_insights/i.test(msg)) {
       // Still return engagement if we got likes/comments
-      if (Object.keys(metrics).length > 0) {
+      if (Object.keys(metrics).length > 0 && hasDefinedMetrics(metrics)) {
         return {
           status: "ok",
           metrics,
@@ -217,7 +229,7 @@ async function fetchFacebook(
     }
   }
 
-  if (Object.keys(metrics).length === 0) {
+  if (!hasDefinedMetrics(metrics)) {
     return errResult(
       (fields.data as { error?: { message?: string } })?.error?.message ??
         "No Facebook metrics available.",
@@ -239,8 +251,8 @@ async function fetchInstagram(
       like_count?: number;
       comments_count?: number;
     };
-    metrics.likes = num(d.like_count);
-    metrics.comments = num(d.comments_count);
+    setMetric(metrics, "likes", num(d.like_count));
+    setMetric(metrics, "comments", num(d.comments_count));
   }
 
   const insightsUrl = `${base}/insights?metric=views,reach,total_interactions,saved,shares&access_token=${encodeURIComponent(input.accessToken)}`;
@@ -263,7 +275,7 @@ async function fetchInstagram(
     const msg =
       (insights.data as { error?: { message?: string } })?.error?.message ?? "";
     if (/insight|permission|manage_insights/i.test(msg)) {
-      if (Object.keys(metrics).length > 0) {
+      if (Object.keys(metrics).length > 0 && hasDefinedMetrics(metrics)) {
         return {
           status: "ok",
           metrics,
@@ -279,7 +291,7 @@ async function fetchInstagram(
     }
   }
 
-  if (Object.keys(metrics).length === 0) {
+  if (!hasDefinedMetrics(metrics)) {
     return errResult(
       (media.data as { error?: { message?: string } })?.error?.message ??
         "No Instagram metrics available.",
@@ -315,7 +327,7 @@ async function fetchThreads(
     else if (row.name === "reposts") metrics.reposts = v;
     else if (row.name === "quotes") metrics.quotes = v;
   }
-  if (Object.keys(metrics).length === 0) {
+  if (!hasDefinedMetrics(metrics)) {
     return errResult("No Threads insights returned.");
   }
   return { status: "ok", metrics };
@@ -428,22 +440,25 @@ async function fetchPinterest(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
   const PINTEREST_MAX_MS = 90 * 24 * 60 * 60 * 1000;
-  const end = input.until ?? new Date();
+  const tz = input.timeZone ?? "UTC";
+  const nowKey = calendarDayKey(new Date(), tz);
+  let end = input.until ?? new Date();
+  let endKey = calendarDayKey(end, tz);
+  if (endKey > nowKey) {
+    end = new Date();
+    endKey = nowKey;
+  }
   let start = input.since ?? new Date(end.getTime() - PINTEREST_MAX_MS);
   if (end.getTime() - start.getTime() > PINTEREST_MAX_MS) {
     start = new Date(end.getTime() - PINTEREST_MAX_MS);
   }
-  const tz = input.timeZone ?? "UTC";
   const fmt = (d: Date) => calendarDayKey(d, tz);
   const url = new URL(
     `https://api.pinterest.com/v5/pins/${encodeURIComponent(input.platformPostId)}/analytics`,
   );
   url.searchParams.set("start_date", fmt(start));
   url.searchParams.set("end_date", fmt(end));
-  url.searchParams.set(
-    "metric_types",
-    "IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE,VIDEO_MRC_VIEW",
-  );
+  url.searchParams.set("metric_types", "IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE");
   const { ok, data, status } = await jsonGet(url.toString(), {
     Authorization: `Bearer ${input.accessToken}`,
   });
@@ -464,10 +479,7 @@ async function fetchPinterest(
     status: "ok",
     metrics: {
       impressions: num(summary.IMPRESSION),
-      views:
-        (num(summary.VIDEO_MRC_VIEW) ?? 0) > 0
-          ? num(summary.VIDEO_MRC_VIEW)
-          : num(summary.IMPRESSION),
+      views: num(summary.IMPRESSION),
       clicks: pick(num(summary.PIN_CLICK), num(summary.OUTBOUND_CLICK)),
       saves: num(summary.SAVE),
     },

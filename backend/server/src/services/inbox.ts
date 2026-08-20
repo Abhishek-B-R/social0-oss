@@ -30,7 +30,13 @@ import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { parseDateWindow, inDateWindow } from "../lib/date-window.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
-import { noteFetchError } from "../lib/inbox/fetch-errors.js";
+import { noteFetchError, noteFetchNotice, isInboxFetchNotice } from "../lib/inbox/fetch-errors.js";
+import {
+  PlatformApiCooldownError,
+  platformCommentPageRounds,
+  platformInboxSampleLimit,
+  withPlatformReadCache,
+} from "../lib/platform-api-cache.js";
 import {
   INBOX_UNSUPPORTED,
   instagramDmsNeedInstagramLogin,
@@ -52,10 +58,42 @@ function parsePlatform(value: unknown): Platform | undefined {
 }
 
 const SAMPLE_LIMIT = 40;
-const CONCURRENCY = 4;
+const CONCURRENCY = 2;
 /** Posts published before the window can still receive in-window comments. */
 const POST_PUBLISH_SLACK_MS = 90 * 24 * 60 * 60 * 1000;
 const PAGE_LIMIT_MAX = 80;
+const COMMENT_PAGE_ROUNDS_MAX = 4;
+
+function filterThreadsByActivity(
+  threads: ReturnType<typeof toInboxThreads>,
+  since: Date,
+  until: Date,
+): ReturnType<typeof toInboxThreads> {
+  const inWindow = (c: InboxComment) =>
+    inDateWindow(c.createdAt, since, until);
+  return threads.filter(
+    (t) => inWindow(t.comment) || t.replies.some(inWindow),
+  );
+}
+
+function recordPlatformMessage(
+  fetchErrors: InboxListResult["fetchErrors"],
+  notices: InboxListResult["notices"],
+  item: { accountId: string; platform: string; error: string },
+  status: string,
+): void {
+  if (!item.error) return;
+  if (status === "ok" && isInboxFetchNotice(item.error)) {
+    noteFetchNotice(notices, {
+      platform: item.platform,
+      message: item.error,
+    });
+    return;
+  }
+  if (status === "error" || status === "ok") {
+    noteFetchError(fetchErrors, item);
+  }
+}
 
 function parseBefore(value: unknown): Date | undefined {
   if (typeof value !== "string" || !value.trim()) return undefined;
@@ -234,6 +272,7 @@ export async function listInboxComments(input: {
   until?: unknown;
   before?: unknown;
   limit?: unknown;
+  fresh?: unknown;
 }): Promise<InboxListResult> {
   const ctx = await requireUser();
   const timeZone = await getUserTimezone(ctx.resourceUserId);
@@ -244,94 +283,155 @@ export async function listInboxComments(input: {
       : undefined;
   const platform = parsePlatform(input.platform);
   const before = parseBefore(input.before);
-  const limit = parsePageLimit(input.limit, SAMPLE_LIMIT);
-
-  const pubs = await loadPubs({
-    resourceUserId: ctx.resourceUserId,
-    workspaceId: ctx.workspaceId,
-    since,
-    until,
-    accountId,
-    platform,
-    before,
-    limit,
-  });
-  const mediaById = await resolvePostMediaUrls(pubs);
+  const fresh = input.fresh === true;
+  const limit = parsePageLimit(
+    input.limit,
+    platformInboxSampleLimit(platform, SAMPLE_LIMIT),
+  );
+  const pageRounds = platformCommentPageRounds(platform, COMMENT_PAGE_ROUNDS_MAX);
 
   const reconnect = new Map<string, InboxReconnectHint>();
   const unsupported = new Set<string>();
   const fetchErrors: InboxListResult["fetchErrors"] = [];
+  const notices: InboxListResult["notices"] = [];
   const allComments: InboxComment[] = [];
 
-  await mapPool(pubs, CONCURRENCY, async (row) => {
-    if (!row.platformPostId || !row.account) return;
-    if (INBOX_UNSUPPORTED.has(row.account.platform)) {
-      unsupported.add(row.account.platform);
-      return;
+  let cursorBefore = before;
+  let hasMore = false;
+  let nextBefore: string | null = null;
+
+  for (let round = 0; round < pageRounds; round++) {
+    const pubs = await loadPubs({
+      resourceUserId: ctx.resourceUserId,
+      workspaceId: ctx.workspaceId,
+      since,
+      until,
+      accountId,
+      platform,
+      before: cursorBefore,
+      limit,
+    });
+    if (!pubs.length) {
+      hasMore = false;
+      nextBefore = null;
+      break;
     }
-    const missing = missingInboxScopes(row.account.platform, row.account.scopes);
-    try {
-      const { accessToken, accessSecret } = await resolveAccountAccess(row.account);
-      const result = await fetchPublicationComments({
-        platform: row.account.platform,
-        platformPostId: row.platformPostId,
-        platformPostUrl: row.platformPostUrl,
-        platformUserId: row.account.platformUserId,
-        accessToken,
-        accessSecret,
-        accountId: row.account.id,
-        accountLabel: row.account.platformUsername,
-        postId: row.postId,
-        publicationId: row.publicationId,
-        postSnippet: snippet(row.content),
-        postContent: row.content?.trim() || snippet(row.content),
-        postMediaUrl: firstPostMediaUrl(row.mediaIds, mediaById),
-        postPublishedAt: row.publishedAt?.toISOString() ?? null,
-        postAccountImageUrl: row.account.profileImageUrl,
-        since: since.toISOString(),
-      });
-      allComments.push(...result.comments);
-      const scopes = result.missingScopes?.length
-        ? result.missingScopes
-        : missing;
-      if (scopes.length) {
-        reconnect.set(row.account.id, {
-          accountId: row.account.id,
-          platform: row.account.platform,
-          username: row.account.platformUsername,
-          missingScopes: scopes,
-        });
-      }
-      if (result.status === "unsupported") {
+
+    const mediaById = await resolvePostMediaUrls(pubs);
+
+    await mapPool(pubs, CONCURRENCY, async (row) => {
+      if (!row.platformPostId || !row.account) return;
+      if (INBOX_UNSUPPORTED.has(row.account.platform)) {
         unsupported.add(row.account.platform);
+        return;
       }
-      if (
-        result.error &&
-        (result.status === "error" || result.status === "ok")
-      ) {
+      const missing = missingInboxScopes(row.account.platform, row.account.scopes);
+      try {
+        const { accessToken, accessSecret } = await resolveAccountAccess(row.account);
+        let result;
+        try {
+          const cached = await withPlatformReadCache({
+            platform: row.account.platform,
+            accountId: row.account.id,
+            kind: "inbox_comments",
+            suffix: `${row.publicationId}:${since.toISOString()}`,
+            fresh,
+            fetch: () =>
+              fetchPublicationComments({
+                platform: row.account!.platform,
+                platformPostId: row.platformPostId!,
+                platformPostUrl: row.platformPostUrl,
+                platformUserId: row.account!.platformUserId,
+                accessToken,
+                accessSecret,
+                accountId: row.account!.id,
+                accountLabel: row.account!.platformUsername,
+                postId: row.postId,
+                publicationId: row.publicationId,
+                postSnippet: snippet(row.content),
+                postContent: row.content?.trim() || snippet(row.content),
+                postMediaUrl: firstPostMediaUrl(row.mediaIds, mediaById),
+                postPublishedAt: row.publishedAt?.toISOString() ?? null,
+                postAccountImageUrl: row.account!.profileImageUrl,
+                since: since.toISOString(),
+              }),
+          });
+          result = cached.data;
+          if (cached.rateLimited) {
+            noteFetchNotice(notices, {
+              platform: row.account.platform,
+              message: "Showing cached comments - platform rate limit reached.",
+            });
+          }
+        } catch (e) {
+          if (e instanceof PlatformApiCooldownError) {
+            noteFetchNotice(notices, {
+              platform: row.account.platform,
+              message:
+                "Platform rate limit reached - wait a few minutes before refreshing.",
+            });
+            return;
+          }
+          throw e;
+        }
+        allComments.push(...result.comments);
+        const scopes = result.missingScopes?.length
+          ? result.missingScopes
+          : missing;
+        if (scopes.length) {
+          reconnect.set(row.account.id, {
+            accountId: row.account.id,
+            platform: row.account.platform,
+            username: row.account.platformUsername,
+            missingScopes: scopes,
+          });
+        }
+        if (result.status === "unsupported") {
+          unsupported.add(row.account.platform);
+        }
+        if (result.error) {
+          recordPlatformMessage(
+            fetchErrors,
+            notices,
+            {
+              accountId: row.account.id,
+              platform: row.account.platform,
+              error: result.error,
+            },
+            result.status,
+          );
+        }
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Comment fetch failed";
         noteFetchError(fetchErrors, {
           accountId: row.account.id,
           platform: row.account.platform,
-          error: result.error,
+          error: message,
         });
+        if (missing.length) {
+          reconnect.set(row.account.id, {
+            accountId: row.account.id,
+            platform: row.account.platform,
+            username: row.account.platformUsername,
+            missingScopes: missing,
+          });
+        }
       }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : "Comment fetch failed";
-      noteFetchError(fetchErrors, {
-        accountId: row.account.id,
-        platform: row.account.platform,
-        error: message,
-      });
-      if (missing.length) {
-        reconnect.set(row.account.id, {
-          accountId: row.account.id,
-          platform: row.account.platform,
-          username: row.account.platformUsername,
-          missingScopes: missing,
-        });
-      }
-    }
-  });
+    });
+
+    const threads = filterThreadsByActivity(
+      toInboxThreads(allComments),
+      since,
+      until,
+    );
+    hasMore = pubs.length >= limit;
+    const lastPub = pubs[pubs.length - 1];
+    nextBefore = hasMore ? lastPub?.publishedAt?.toISOString() ?? null : null;
+
+    if (threads.length > 0 || !hasMore) break;
+    cursorBefore = lastPub?.publishedAt ?? undefined;
+    if (!cursorBefore) break;
+  }
 
   const accountRows = await listActiveConnectedAccounts(ctx);
   for (const a of accountRows) {
@@ -347,21 +447,21 @@ export async function listInboxComments(input: {
     }
   }
 
-  const filteredComments = allComments.filter((c) =>
-    inDateWindow(c.createdAt, since, until),
+  const filteredThreads = filterThreadsByActivity(
+    toInboxThreads(allComments),
+    since,
+    until,
   );
-  const lastPub = pubs[pubs.length - 1];
-  const hasMore = pubs.length >= limit;
-  const nextBefore = hasMore ? lastPub?.publishedAt?.toISOString() ?? null : null;
 
   return {
     range,
     since: since.toISOString(),
     until: until.toISOString(),
-    threads: toInboxThreads(filteredComments),
+    threads: filteredThreads,
     accountsNeedingReconnect: [...reconnect.values()],
     unsupported: [...unsupported],
     fetchErrors,
+    notices,
     fetchedAt: new Date().toISOString(),
     sampled: hasMore,
     sampleLimit: limit,
@@ -503,7 +603,7 @@ async function loadDmAccounts(
     );
 }
 
-const DM_CONCURRENCY = 3;
+const DM_CONCURRENCY = 2;
 const DM_SAMPLE_LIMIT = 40;
 
 export async function listInboxDms(input: {
@@ -513,10 +613,12 @@ export async function listInboxDms(input: {
   until?: unknown;
   before?: unknown;
   limit?: unknown;
+  fresh?: unknown;
 }): Promise<InboxDmListResult> {
   const ctx = await requireUser();
   const timeZone = await getUserTimezone(ctx.resourceUserId);
   const { range, since, until } = parseDateWindow(input, timeZone);
+  const fresh = input.fresh === true;
   const accountId =
     typeof input.accountId === "string" && input.accountId
       ? input.accountId
@@ -533,6 +635,7 @@ export async function listInboxDms(input: {
   const reconnect = new Map<string, InboxReconnectHint>();
   const unsupported = new Set<string>();
   const fetchErrors: InboxDmListResult["fetchErrors"] = [];
+  const notices: InboxDmListResult["notices"] = [];
   const threads: InboxDmThread[] = [];
 
   await mapPool(accounts, DM_CONCURRENCY, async (row) => {
@@ -563,19 +666,48 @@ export async function listInboxDms(input: {
     }
     try {
       const { accessToken, accessSecret } = await resolveAccountAccess(row);
-      const result = await fetchAccountDms(
-        {
-          id: row.id,
+      let result;
+      try {
+        const cached = await withPlatformReadCache({
           platform: row.platform,
-          platformUserId: row.platformUserId,
-          platformUsername: row.platformUsername,
-          profileImageUrl: row.profileImageUrl,
-          accessToken,
-          accessSecret,
-        },
-        since,
-        untilForFetch,
-      );
+          accountId: row.id,
+          kind: "inbox_dms",
+          suffix: `${since.toISOString()}:${untilForFetch.toISOString()}`,
+          fresh,
+          fetch: () =>
+            fetchAccountDms(
+              {
+                id: row.id,
+                platform: row.platform,
+                platformUserId: row.platformUserId,
+                platformUsername: row.platformUsername,
+                ownerUserId: ctx.resourceUserId,
+                profileImageUrl: row.profileImageUrl,
+                accessToken,
+                accessSecret,
+              },
+              since,
+              untilForFetch,
+            ),
+        });
+        result = cached.data;
+        if (cached.rateLimited) {
+          noteFetchNotice(notices, {
+            platform: row.platform,
+            message: "Showing cached DMs - platform rate limit reached.",
+          });
+        }
+      } catch (e) {
+        if (e instanceof PlatformApiCooldownError) {
+          noteFetchNotice(notices, {
+            platform: row.platform,
+            message:
+              "Platform rate limit reached - wait a few minutes before refreshing.",
+          });
+          return;
+        }
+        throw e;
+      }
       threads.push(...result.threads);
       const scopes = result.missingScopes?.length ? result.missingScopes : missing;
       if (scopes.length) {
@@ -587,15 +719,17 @@ export async function listInboxDms(input: {
         });
       }
       if (result.status === "unsupported") unsupported.add(row.platform);
-      if (
-        result.error &&
-        (result.status === "error" || result.status === "ok")
-      ) {
-        noteFetchError(fetchErrors, {
-          accountId: row.id,
-          platform: row.platform,
-          error: result.error,
-        });
+      if (result.error) {
+        recordPlatformMessage(
+          fetchErrors,
+          notices,
+          {
+            accountId: row.id,
+            platform: row.platform,
+            error: result.error,
+          },
+          result.status,
+        );
       }
     } catch (e) {
       const message = e instanceof Error ? e.message : "DM fetch failed";
@@ -623,7 +757,7 @@ export async function listInboxDms(input: {
       ? threads
       : threads.filter((t) => {
           const tms = t.lastMessageAt ? Date.parse(t.lastMessageAt) : 0;
-          return Number.isFinite(tms) && tms < beforeMs;
+          return Number.isFinite(tms) && tms <= beforeMs;
         });
   const hasMore = older.length > limit;
   const page = older.slice(0, limit);
@@ -636,6 +770,7 @@ export async function listInboxDms(input: {
     accountsNeedingReconnect: [...reconnect.values()],
     unsupported: [...unsupported],
     fetchErrors,
+    notices,
     fetchedAt: new Date().toISOString(),
     sampled: hasMore,
     sampleLimit: limit,
@@ -656,6 +791,7 @@ export async function getInboxDmThread(input: {
   accountId?: unknown;
   conversationId?: unknown;
   peerId?: unknown;
+  fresh?: unknown;
 }): Promise<InboxDmThreadResult | { error: string }> {
   const ctx = await requireUser();
   if (typeof input.accountId !== "string" || !input.accountId) {
@@ -665,6 +801,7 @@ export async function getInboxDmThread(input: {
     return { error: "conversationId required" };
   }
   const peerId = typeof input.peerId === "string" ? input.peerId : "";
+  const fresh = input.fresh === true;
 
   const row = await loadDmAccount(ctx, input.accountId);
   if (!row) return { error: "Account not found" };
@@ -672,42 +809,58 @@ export async function getInboxDmThread(input: {
     return { error: `DMs are not supported for ${row.platform}.` };
   }
 
-  const { accessToken, accessSecret } = await resolveAccountAccess(row);
-  const result = await fetchDmMessages(
-    {
-      id: row.id,
+  try {
+    const { accessToken, accessSecret } = await resolveAccountAccess(row);
+    const cached = await withPlatformReadCache({
       platform: row.platform,
-      platformUserId: row.platformUserId,
-      platformUsername: row.platformUsername,
-      profileImageUrl: row.profileImageUrl,
-      accessToken,
-      accessSecret,
-    },
-    input.conversationId,
-    peerId,
-  );
-  if (result.status !== "ok") {
-    return { error: result.error ?? "Failed to load conversation" };
+      accountId: row.id,
+      kind: "inbox_dm_thread",
+      suffix: input.conversationId,
+      fresh,
+      fetch: () =>
+        fetchDmMessages(
+          {
+            id: row.id,
+            platform: row.platform,
+            platformUserId: row.platformUserId,
+            platformUsername: row.platformUsername,
+            ownerUserId: ctx.resourceUserId,
+            profileImageUrl: row.profileImageUrl,
+            accessToken,
+            accessSecret,
+          },
+          input.conversationId as string,
+          peerId,
+        ),
+    });
+    const result = cached.data;
+    if (result.status !== "ok") {
+      return { error: result.error ?? "Failed to load conversation" };
+    }
+    const fallback: InboxDmThread = {
+      conversationId: input.conversationId,
+      platform: row.platform,
+      accountId: row.id,
+      accountLabel: row.platformUsername,
+      accountProfileImageUrl: row.profileImageUrl,
+      peerId,
+      peerName: "Conversation",
+      peerHandle: null,
+      lastMessageAt: result.messages.at(-1)?.createdAt ?? null,
+      snippet: result.messages.at(-1)?.text ?? "",
+      canReply: true,
+    };
+    return {
+      conversationId: input.conversationId,
+      thread: result.thread ?? fallback,
+      messages: result.messages,
+      fetchedAt: new Date().toISOString(),
+    };
+  } catch (e) {
+    return {
+      error: e instanceof Error ? e.message : "Failed to load conversation",
+    };
   }
-  const fallback: InboxDmThread = {
-    conversationId: input.conversationId,
-    platform: row.platform,
-    accountId: row.id,
-    accountLabel: row.platformUsername,
-    accountProfileImageUrl: row.profileImageUrl,
-    peerId,
-    peerName: "Conversation",
-    peerHandle: null,
-    lastMessageAt: result.messages.at(-1)?.createdAt ?? null,
-    snippet: result.messages.at(-1)?.text ?? "",
-    canReply: true,
-  };
-  return {
-    conversationId: input.conversationId,
-    thread: result.thread ?? fallback,
-    messages: result.messages,
-    fetchedAt: new Date().toISOString(),
-  };
 }
 
 export async function replyToInboxDm(input: {
@@ -796,7 +949,9 @@ export async function listInboxAccounts(input: {
       profileImageUrl: r.profileImageUrl,
       missingScopes:
         feature === "inboxDms"
-          ? missingDmScopes(r.platform, r.scopes)
+          ? instagramDmsNeedInstagramLogin(r.platformMetadata, r.scopes)
+            ? []
+            : missingDmScopes(r.platform, r.scopes)
           : missingInboxScopes(r.platform, r.scopes),
     }));
 }

@@ -35,16 +35,22 @@ import { InboxAttachmentView } from "./InboxAttachmentView";
 import { InboxAvatar } from "./InboxAvatar";
 import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
 import { InboxScrollSentinel } from "./InboxScrollSentinel";
+import { InboxStatusBanners } from "./InboxStatusBanners";
+import { inboxMetaFromPages } from "./inbox-meta";
 import { resolveInboxBody } from "@/lib/inbox-display";
-import { inboxDmFingerprint, markInboxDmsSeen } from "@/lib/inbox-unread";
 import { useSession } from "@/lib/auth-client";
 import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import {
   initialInboxPageParam,
   nextInboxPageParam,
+  refreshInboxInfiniteFirstPage,
   type InboxPageParam,
 } from "@/lib/inbox-infinite";
+import {
+  INBOX_DMS_POLL_MS,
+  useVisibilityPoll,
+} from "@/lib/use-visibility-poll";
 
 function dmKey(t: InboxDmThread): string {
   return `${t.accountId}:${t.conversationId}`;
@@ -153,7 +159,6 @@ export function InboxDmsPane({
 }) {
   const qc = useQueryClient();
   const { data: session } = useSession();
-  const userId = session?.user?.id;
   const workspacesQuery = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
     queryFn: listWorkspaces,
@@ -196,11 +201,20 @@ export function InboxDmsPane({
         itemCount: last.threads.length,
       }),
     enabled: enabled && workspaceReady,
-    staleTime: 30_000,
-    refetchInterval: enabled ? 45_000 : false,
-    refetchIntervalInBackground: false,
+    staleTime: 90_000,
     maxPages: 24,
   });
+
+  const pollDms = useCallback(() => {
+    void refreshInboxInfiniteFirstPage(qc, listKey, () =>
+      listInboxDms({
+        ...initialInboxPageParam(dateWindow),
+        accountId: accountId || undefined,
+      }),
+    );
+  }, [qc, listKey, dateWindow, accountId]);
+
+  useVisibilityPoll(pollDms, INBOX_DMS_POLL_MS, enabled && workspaceReady);
 
   const fetchNextDms = listQuery.fetchNextPage;
   const hasNextDms = Boolean(listQuery.hasNextPage);
@@ -229,14 +243,6 @@ export function InboxDmsPane({
   }, [listQuery.data]);
   const selected =
     threads.find((t) => dmKey(t) === pickedId) ?? threads[0] ?? null;
-  const openedDmKey = selected
-    ? inboxDmFingerprint(selected.accountId, selected.conversationId)
-    : null;
-
-  useEffect(() => {
-    if (!enabled || !openedDmKey) return;
-    markInboxDmsSeen(userId, [openedDmKey]);
-  }, [enabled, openedDmKey, userId]);
 
   useEffect(() => {
     if (!threads.length) {
@@ -278,10 +284,17 @@ export function InboxDmsPane({
       return result;
     },
     enabled: enabled && Boolean(selected),
-    staleTime: 20_000,
-    refetchInterval: enabled && selected ? 45_000 : false,
-    refetchIntervalInBackground: false,
+    staleTime: 90_000,
   });
+  const refetchThread = threadQuery.refetch;
+
+  useVisibilityPoll(
+    () => {
+      void refetchThread();
+    },
+    INBOX_DMS_POLL_MS,
+    enabled && Boolean(selected),
+  );
 
   const updatePending = useCallback(
     (key: string, updater: (prev: LocalInboxDmMessage[]) => LocalInboxDmMessage[]) => {
@@ -430,7 +443,12 @@ export function InboxDmsPane({
         if (refreshTimer.current) clearTimeout(refreshTimer.current);
         refreshTimer.current = setTimeout(() => {
           void qc.invalidateQueries({ queryKey: threadQueryKey });
-          void qc.invalidateQueries({ queryKey: ["inbox-dms"] });
+          void refreshInboxInfiniteFirstPage(qc, listKey, () =>
+            listInboxDms({
+              ...initialInboxPageParam(dateWindow),
+              accountId: accountId || undefined,
+            }),
+          );
         }, 8000);
       } catch (e) {
         updatePending(key, (prev) =>
@@ -441,10 +459,11 @@ export function InboxDmsPane({
         toast.error(e instanceof Error ? e.message : "Send failed");
       }
     },
-    [listKey, pendingByConvo, qc, threadQueryKey, updatePending],
+    [dateWindow, accountId, listKey, pendingByConvo, qc, threadQueryKey, updatePending],
   );
 
   const loading = listQuery.isPending;
+  const inboxMeta = inboxMetaFromPages(listQuery.data?.pages);
   const emptyRangeLabel =
     dateWindow.range === "custom"
       ? "this range"
@@ -503,6 +522,8 @@ export function InboxDmsPane({
             : "Failed to load DMs"}
         </div>
       ) : null}
+
+      <InboxStatusBanners {...inboxMeta} />
 
       {loading && !listQuery.data ? (
         <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
@@ -664,9 +685,18 @@ function DmConversationPane({
 }) {
   const reduceMotion = useReducedMotion();
   const scroller = useRef<HTMLDivElement>(null);
+  const pinnedToBottomRef = useRef(true);
   const sending = messages.some((m) => m.sendStatus === "sending");
 
+  const onScrollerScroll = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    pinnedToBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }, []);
+
   useEffect(() => {
+    if (!pinnedToBottomRef.current) return;
     scroller.current?.scrollTo({
       top: scroller.current.scrollHeight,
       behavior: reduceMotion ? "auto" : "smooth",
@@ -710,6 +740,7 @@ function DmConversationPane({
 
       <div
         ref={scroller}
+        onScroll={onScrollerScroll}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 sm:px-4"
       >
         {error ? (
@@ -735,6 +766,7 @@ function DmConversationPane({
           key={`${thread.accountId}:${thread.conversationId}`}
           platform={thread.platform}
           mode="dm"
+          mediaKinds={thread.mediaKinds}
           maxLength={dmReplyMax(thread.platform)}
           placeholder={`Message ${thread.peerName}...`}
           disabled={false}

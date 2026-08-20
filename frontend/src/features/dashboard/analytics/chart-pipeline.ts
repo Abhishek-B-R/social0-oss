@@ -63,12 +63,15 @@ const PLATFORM_SERIES = [
   { key: "shares", name: "Shares", fill: "var(--chart-violet, #8b5cf6)" },
 ] as const satisfies PlatformChartModel["activeSeries"];
 
-function dayDate(iso: string): Date {
-  return new Date(`${iso}T12:00:00`);
+function dayDate(iso: string): Date | null {
+  const bare = iso.slice(0, 10);
+  const d = new Date(`${bare}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
 export function chartDayTick(iso: string, days: number): string {
   const d = dayDate(iso);
+  if (!d) return "";
   if (days > 180) return format(d, "MMM");
   return format(d, "MMM d");
 }
@@ -82,11 +85,17 @@ export function axisTick(v: number): string {
 /** Stage: normalize_trend */
 export function buildTrendChartModel(data: TrendPoint[]): TrendChartModel {
   const dayCount = data.length;
-  const rows = data.map((d) => ({
-    ...d,
-    tick: chartDayTick(d.date, dayCount),
-    fullDate: format(dayDate(d.date), "MMM d, yyyy"),
-  }));
+  const rows = data.flatMap((d) => {
+    const parsed = dayDate(d.date);
+    if (!parsed) return [];
+    return [
+      {
+        ...d,
+        tick: chartDayTick(d.date, dayCount),
+        fullDate: format(parsed, "MMM d, yyyy"),
+      },
+    ];
+  });
   return { rows, dayCount };
 }
 

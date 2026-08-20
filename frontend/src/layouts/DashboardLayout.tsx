@@ -119,9 +119,9 @@ export function DashboardLayout() {
           layoutData ? getPlanLabel(layoutData.subscriptionTier) : "..."
         }
         sessionPending={isPending}
-        canCreatePosts={layoutData?.canCreatePosts ?? true}
-        canViewAnalytics={layoutData?.canViewAnalytics ?? true}
-        canViewInbox={layoutData?.canViewInbox ?? true}
+        canCreatePosts={layoutData?.canCreatePosts ?? false}
+        canViewAnalytics={layoutData?.canViewAnalytics ?? false}
+        canViewInbox={layoutData?.canViewInbox ?? false}
       />
       <PersonalWorkspaceBoot enabled />
       <main

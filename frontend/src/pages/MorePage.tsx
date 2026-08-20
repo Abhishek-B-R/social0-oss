@@ -63,9 +63,12 @@ export function MorePage() {
 
   const planLabel = getPlanLabel(layoutData?.subscriptionTier ?? "free");
   const user = session?.user;
-  const canCreatePosts = layoutData?.canCreatePosts ?? true;
-  const canViewAnalytics = layoutData?.canViewAnalytics ?? true;
-  const canViewInbox = layoutData?.canViewInbox ?? true;
+  const layoutReady = Boolean(layoutData);
+  const canCreatePosts = layoutReady ? (layoutData?.canCreatePosts ?? false) : false;
+  const canViewAnalytics = layoutReady
+    ? (layoutData?.canViewAnalytics ?? false)
+    : false;
+  const canViewInbox = layoutReady ? (layoutData?.canViewInbox ?? false) : false;
 
   const moreLinks = MORE_LINKS.filter((link) => {
     if (link.href === "/dashboard/analytics") return canViewAnalytics;

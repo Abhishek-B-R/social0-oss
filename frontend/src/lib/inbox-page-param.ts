@@ -24,7 +24,6 @@ export function nextInboxPageParam(last: {
       before: last.nextBefore,
     };
   }
-  if (last.itemCount === 0) return undefined;
   const untilMs = Date.parse(last.since);
   const span = Date.parse(last.until) - Date.parse(last.since);
   if (!Number.isFinite(untilMs) || !Number.isFinite(span) || span <= 0) {

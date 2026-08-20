@@ -9,6 +9,8 @@ import { jsonGet } from "../http-json.js";
 import { inDateWindow } from "../date-window.js";
 import {
   graphPictureUrl,
+  instagramProfilePicUrl,
+  isInboxSelfActor,
   peerFromParticipants,
   type InboxAttachment,
   type InboxDmMessage,
@@ -40,6 +42,7 @@ export type DmAccount = {
   platform: string;
   platformUserId: string;
   platformUsername: string | null;
+  ownerUserId?: string;
   profileImageUrl?: string | null;
   accessToken: string;
   accessSecret?: string | null;
@@ -89,6 +92,58 @@ const GRAPH_MSG_ATTACHMENT_FIELDS =
 
 function personAvatar(person: GraphPerson | undefined): string | null {
   return graphPictureUrl(person?.picture);
+}
+
+async function fetchInstagramProfilePic(
+  account: DmAccount,
+  igsid: string,
+): Promise<string | null> {
+  if (!igsid) return null;
+  const id = encodeURIComponent(igsid);
+  const token = encodeURIComponent(account.accessToken);
+  // Instagram Conversations participants omit avatars; User Profile API exposes
+  // `profile_pic` on the Instagram-scoped user id (IGSID). Use CDN URL directly
+  // on read paths — do not mirror to R2 on every poll.
+  const hosts = [
+    "https://graph.instagram.com/v21.0",
+    "https://graph.facebook.com/v21.0",
+  ];
+  for (const host of hosts) {
+    const url = `${host}/${id}?fields=profile_pic&access_token=${token}`;
+    try {
+      const { ok, data } = await jsonGet(url);
+      if (!ok) continue;
+      const pic = instagramProfilePicUrl(data);
+      if (pic) return pic;
+    } catch {
+      // Avatar lookup is cosmetic; never fail the DM payload.
+    }
+  }
+  return null;
+}
+
+async function fillInstagramAvatars(
+  ids: string[],
+  account: DmAccount,
+  into: Map<string, string | null>,
+): Promise<void> {
+  const missing = [...new Set(ids)].filter(
+    (id) =>
+      !into.get(id) &&
+      !isInboxSelfActor(
+        { id },
+        account.platformUserId,
+        account.platformUsername,
+      ),
+  );
+  await mapPool(missing, 4, async (id) => {
+    try {
+      const pic = await fetchInstagramProfilePic(account, id);
+      if (pic) into.set(id, pic);
+    } catch {
+      // Ignore per-peer avatar failures.
+    }
+  });
 }
 
 function graphErr(message: string, missingScopes?: string[]): DmListFetchResult {
@@ -203,7 +258,7 @@ async function fetchInstagramList(
 ): Promise<DmListFetchResult> {
   const id = encodeURIComponent(account.platformUserId);
   const fields =
-    `id,updated_time,participants{id,username,name,picture},messages.limit(1){message,created_time,from,${GRAPH_MSG_ATTACHMENT_FIELDS}}`;
+    `id,updated_time,participants{id,username,name},messages.limit(1){message,created_time,from,${GRAPH_MSG_ATTACHMENT_FIELDS}}`;
   const url = `https://graph.instagram.com/v21.0/${id}/conversations?platform=instagram&fields=${encodeURIComponent(fields)}&limit=50&access_token=${encodeURIComponent(account.accessToken)}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
@@ -226,6 +281,7 @@ async function fetchInstagramList(
     const peer = peerFromParticipants(
       graphPeople(row.participants),
       account.platformUserId,
+      account.platformUsername,
     );
     const last =
       (row.messages as { data?: Array<{ message?: string }> } | undefined)
@@ -243,7 +299,21 @@ async function fetchInstagramList(
       }),
     );
   }
-  return { threads, status: "ok" };
+  let enriched = threads;
+  try {
+    enriched = await mapPool(threads, 4, async (thread) => {
+      if (!thread.peerId || thread.peerAvatarUrl) return thread;
+      try {
+        const pic = await fetchInstagramProfilePic(account, thread.peerId);
+        return pic ? { ...thread, peerAvatarUrl: pic } : thread;
+      } catch {
+        return thread;
+      }
+    });
+  } catch {
+    enriched = threads;
+  }
+  return { threads: enriched, status: "ok" };
 }
 
 function graphMessagesToInbox(
@@ -254,7 +324,12 @@ function graphMessagesToInbox(
   const out: InboxDmMessage[] = [];
   for (const row of rows) {
     const from = row.from as GraphPerson | undefined;
-    const isOwn = Boolean(from?.id && from.id === account.platformUserId);
+    // IG Messaging `from.id` often ≠ connected_accounts.platformUserId (/me id).
+    const isOwn = isInboxSelfActor(
+      from,
+      account.platformUserId,
+      account.platformUsername,
+    );
     const media = withMediaFallback(
       String(row.message ?? ""),
       parseGraphAttachments(row.attachments),
@@ -293,7 +368,7 @@ async function fetchInstagramThread(
 ): Promise<DmThreadFetchResult> {
   const token = encodeURIComponent(account.accessToken);
   const id = encodeURIComponent(conversationId);
-  const url = `https://graph.instagram.com/v21.0/${id}?fields=id,updated_time,participants{id,username,name,picture}&access_token=${token}`;
+  const url = `https://graph.instagram.com/v21.0/${id}?fields=id,updated_time,participants{id,username,name}&access_token=${token}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -308,9 +383,24 @@ async function fetchInstagramThread(
   }
   const row = data as Record<string, unknown>;
   const participants = graphPeople(row.participants);
-  const peer = peerFromParticipants(participants, account.platformUserId);
+  const peer = peerFromParticipants(
+    participants,
+    account.platformUserId,
+    account.platformUsername,
+  );
   const avatars = participantAvatars(participants);
-  const msgUrl = `https://graph.instagram.com/v21.0/${id}/messages?fields=id,created_time,from,message,${GRAPH_MSG_ATTACHMENT_FIELDS}&limit=50&access_token=${token}`;
+  try {
+    await fillInstagramAvatars(
+      participants.flatMap((p) => (p.id ? [p.id] : [])),
+      account,
+      avatars,
+    );
+  } catch {
+    // Avatar enrichment is cosmetic.
+  }
+  const peerAvatarUrl =
+    (peer.id ? avatars.get(peer.id) : null) ?? peer.avatarUrl;
+  const msgUrl = `https://graph.instagram.com/v21.0/${id}/messages?fields=id,created_time,from{id,username,name},message,${GRAPH_MSG_ATTACHMENT_FIELDS}&limit=50&access_token=${token}`;
   const msgRes = await jsonGet(msgUrl);
   if (!msgRes.ok) {
     const msg =
@@ -338,7 +428,7 @@ async function fetchInstagramThread(
       peerId: peer.id,
       peerName: peer.name,
       peerHandle: peer.handle,
-      peerAvatarUrl: peer.avatarUrl,
+      peerAvatarUrl,
       lastMessageAt: last?.createdAt ?? (typeof row.updated_time === "string" ? row.updated_time : null),
       snippet: snippetOf(last?.text || (last?.attachment ? `[${last.attachment.type}]` : "")),
       canReply: Boolean(peer.id),
@@ -468,7 +558,7 @@ async function fetchTwitterList(
           peerAvatarUrl: peer?.profile_image_url ?? null,
           lastMessageAt: last?.created_at ?? null,
           snippet: snippetOf(last?.text || (attachment ? `[${attachment.type}]` : "")),
-          canReply: Boolean(peerId),
+          canReply: Boolean(conversationId || peerId),
         }),
       );
     }
@@ -599,6 +689,7 @@ async function blueskyChat(
       ...(opts?.body ? { "Content-Type": "application/json" } : {}),
     },
     body: opts?.body ? JSON.stringify(opts.body) : undefined,
+    signal: AbortSignal.timeout(12_000),
   });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };

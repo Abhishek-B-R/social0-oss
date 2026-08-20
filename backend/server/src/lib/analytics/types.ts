@@ -140,7 +140,11 @@ export function scopeGranted(
 ): boolean {
   if (!granted) return false;
   const parts = granted.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
-  return parts.some((p) => p === needed || p.endsWith(needed));
+  return parts.some((p) => {
+    if (p === needed) return true;
+    if (needed.startsWith("https://") && p.endsWith(needed)) return true;
+    return false;
+  });
 }
 
 export function missingAnalyticsScopes(

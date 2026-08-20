@@ -53,6 +53,11 @@ export type InboxFetchError = {
   error: string;
 };
 
+export type InboxNotice = {
+  platform: string;
+  message: string;
+};
+
 export type InboxListResult = {
   range: InboxRange;
   since: string;
@@ -61,6 +66,7 @@ export type InboxListResult = {
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
   fetchErrors: InboxFetchError[];
+  notices?: InboxNotice[];
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
@@ -115,6 +121,7 @@ export type InboxDmListResult = {
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
   fetchErrors: InboxFetchError[];
+  notices?: InboxNotice[];
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
@@ -145,6 +152,7 @@ export function listInboxComments(input?: {
   until?: string;
   before?: string;
   limit?: number;
+  fresh?: boolean;
 }): Promise<InboxListResult> {
   return rpc<InboxListResult>("inbox.listComments", input ?? {});
 }
@@ -165,6 +173,7 @@ export function listInboxDms(input?: {
   until?: string;
   before?: string;
   limit?: number;
+  fresh?: boolean;
 }): Promise<InboxDmListResult> {
   return rpc<InboxDmListResult>("inbox.listDms", input ?? {});
 }
@@ -173,6 +182,7 @@ export function getInboxDmThread(input: {
   accountId: string;
   conversationId: string;
   peerId?: string;
+  fresh?: boolean;
 }): Promise<InboxDmThreadResult | { error: string }> {
   return rpc<InboxDmThreadResult | { error: string }>("inbox.getDmThread", input);
 }

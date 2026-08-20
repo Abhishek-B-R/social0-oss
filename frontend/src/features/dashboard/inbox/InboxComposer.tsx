@@ -20,6 +20,7 @@ export function InboxComposer({
   initialText = "",
   variant = "default",
   replyTo,
+  mediaKinds,
   onSend,
 }: {
   platform: string;
@@ -31,6 +32,7 @@ export function InboxComposer({
   initialText?: string;
   variant?: "default" | "embedded";
   replyTo?: { name: string; onClear: () => void } | null;
+  mediaKinds?: ("image" | "video")[] | null;
   onSend: (payload: InboxComposerPayload) => void;
 }) {
   const [draft, setDraft] = useState(initialText);
@@ -39,7 +41,7 @@ export function InboxComposer({
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const inFlightRef = useRef(false);
-  const accept = inboxMediaAccept(platform, mode);
+  const accept = inboxMediaAccept(platform, mode, mediaKinds);
   const canAttach = Boolean(accept);
 
   useEffect(() => {
@@ -57,14 +59,14 @@ export function InboxComposer({
     (next: File | null) => {
       clearFile();
       if (!next) return;
-      if (!pickInboxFileFromList(platform, mode, [next])) {
+      if (!pickInboxFileFromList(platform, mode, [next], mediaKinds)) {
         toast.error("This platform does not support that file type.");
         return;
       }
       setFile(next);
       setPreviewUrl(URL.createObjectURL(next));
     },
-    [clearFile, mode, platform],
+    [clearFile, mediaKinds, mode, platform],
   );
 
   useEffect(() => {
@@ -106,7 +108,7 @@ export function InboxComposer({
         if (!canAttach) return;
         e.preventDefault();
         setDragOver(false);
-        const picked = pickInboxFileFromList(platform, mode, e.dataTransfer.files);
+      const picked = pickInboxFileFromList(platform, mode, e.dataTransfer.files, mediaKinds);
         if (picked) pickFile(picked);
         else if (e.dataTransfer.files.length) {
           toast.error("This platform does not support that file type.");
@@ -188,7 +190,7 @@ export function InboxComposer({
           onChange={(e) => setDraft(e.target.value)}
           onPaste={(e) => {
             if (!canAttach) return;
-            const picked = pickInboxFileFromClipboard(platform, mode, e.clipboardData);
+            const picked = pickInboxFileFromClipboard(platform, mode, e.clipboardData, mediaKinds);
             if (!picked) return;
             e.preventDefault();
             pickFile(picked);

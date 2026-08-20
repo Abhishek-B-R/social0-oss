@@ -74,16 +74,22 @@ export function RangeToolbar({
   const timeZone = settingsQuery.data?.timezone?.trim() || "UTC";
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const until = value.until ? new Date(value.until) : new Date();
-  const since = value.since
-    ? new Date(value.since)
-    : startOfDay(subDays(until, 6));
-  const [draft, setDraft] = useState<DateRange>({ from: since, to: until });
+  const untilIso = value.until ?? new Date().toISOString();
+  const sinceIso =
+    value.since ??
+    startOfDay(subDays(new Date(untilIso), 6)).toISOString();
+  const [draft, setDraft] = useState<DateRange>(() => ({
+    from: new Date(sinceIso),
+    to: new Date(untilIso),
+  }));
+  const prevOpenRef = useRef(false);
 
   useEffect(() => {
-    if (!open) return;
-    setDraft({ from: since, to: until });
-  }, [open, since, until]);
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (!justOpened) return;
+    setDraft({ from: new Date(sinceIso), to: new Date(untilIso) });
+  }, [open, sinceIso, untilIso]);
 
   useEffect(() => {
     if (!open) return;

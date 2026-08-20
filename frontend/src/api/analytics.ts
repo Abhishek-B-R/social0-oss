@@ -103,6 +103,7 @@ export function getAnalyticsOverview(input: {
   since?: string;
   until?: string;
   accountId?: string | null;
+  fresh?: boolean;
 }): Promise<AnalyticsOverview> {
   return rpc<AnalyticsOverview>("analytics.getOverview", input);
 }
