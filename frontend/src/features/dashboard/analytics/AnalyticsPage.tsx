@@ -93,6 +93,28 @@ export function AnalyticsPage() {
       }));
   }, [overviewQuery.data, accounts]);
 
+  const platformChart = useMemo(
+    () =>
+      overviewQuery.data?.byPlatform.map((row) => ({
+        platform: row.platform,
+        label: PLATFORM_LABEL[row.platform] ?? row.platform,
+        views: viewsOf(row.metrics) ?? 0,
+        likes: row.metrics.likes ?? 0,
+        comments: row.metrics.comments ?? 0,
+        shares:
+          (row.metrics.shares ?? 0) +
+          (row.metrics.reposts ?? 0) +
+          (row.metrics.quotes ?? 0),
+      })) ?? [],
+    [overviewQuery.data?.byPlatform],
+  );
+
+  const mixChart = useMemo(
+    () =>
+      overviewQuery.data ? engagementMix(overviewQuery.data.totals) : [],
+    [overviewQuery.data],
+  );
+
   if (sessionPending) {
     return <AnalyticsSkeleton />;
   }
@@ -128,19 +150,6 @@ export function AnalyticsPage() {
     comments: emptyOverview ? undefined : data.totals.comments,
     engagement: emptyOverview ? undefined : engagementOf(data.totals),
   };
-
-  const platformChart =
-    data?.byPlatform.map((row) => ({
-      platform: row.platform,
-      label: PLATFORM_LABEL[row.platform] ?? row.platform,
-      views: viewsOf(row.metrics) ?? 0,
-      likes: row.metrics.likes ?? 0,
-      comments: row.metrics.comments ?? 0,
-      shares:
-        (row.metrics.shares ?? 0) +
-        (row.metrics.reposts ?? 0) +
-        (row.metrics.quotes ?? 0),
-    })) ?? [];
 
   const selectedAccount = accounts.find((a) => a.id === accountId);
   const singleAccount = accountId != null;
@@ -300,9 +309,7 @@ export function AnalyticsPage() {
               {loading && !data ? (
                 <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
               ) : (
-                <EngagementMixChart
-                  data={data ? engagementMix(data.totals) : []}
-                />
+                <EngagementMixChart data={mixChart} />
               )}
             </>
           ) : (
