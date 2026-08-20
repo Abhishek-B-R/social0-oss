@@ -33,12 +33,14 @@ export function InboxAttachmentView({
 
   return (
     <video
+      ref={(el) => {
+        if (el) el.setAttribute("referrerpolicy", "no-referrer");
+      }}
       src={attachment.url}
       controls
       playsInline
       preload="metadata"
       poster={attachment.thumbnailUrl ?? undefined}
-      referrerPolicy="no-referrer"
       onError={() => setBroken(true)}
       className={cn(
         "mt-1.5 max-h-72 w-full rounded-lg bg-black/80 object-contain",

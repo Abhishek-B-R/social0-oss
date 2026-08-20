@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextInboxPageParam } from "../../../../frontend/src/lib/inbox-page-param.ts";
+import { nextInboxPageParam } from "../lib/inbox/page-param.js";
 
 describe("nextInboxPageParam", () => {
   it("pages with before when the current window still has more", () => {

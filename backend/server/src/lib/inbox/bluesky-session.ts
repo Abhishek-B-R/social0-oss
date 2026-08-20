@@ -43,11 +43,13 @@ async function refreshSession(
     refreshJwt?: string;
     did?: string;
   };
-  if (!res.ok || !data.accessJwt || !data.did) {
+  const accessJwt = data.accessJwt;
+  const did = data.did;
+  if (!res.ok || !accessJwt || !did) {
     cache.delete(accountId);
     return null;
   }
-  return store(accountId, data);
+  return store(accountId, { accessJwt, refreshJwt: data.refreshJwt, did });
 }
 
 async function createSession(
@@ -69,8 +71,10 @@ async function createSession(
     refreshJwt?: string;
     did?: string;
   };
-  if (!res.ok || !data.accessJwt || !data.did) return null;
-  return store(accountId, data);
+  const accessJwt = data.accessJwt;
+  const did = data.did;
+  if (!res.ok || !accessJwt || !did) return null;
+  return store(accountId, { accessJwt, refreshJwt: data.refreshJwt, did });
 }
 
 /** Cached session - refresh JWT when possible; password login is last resort. */

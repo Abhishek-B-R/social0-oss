@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { nestMentionReplies } from "../lib/inbox/mention-nest.js";
-import { flattenInboxThread } from "../../../../frontend/src/lib/inbox-thread.ts";
+import { flattenInboxThread } from "../lib/inbox/thread-flatten.js";
 import type { InboxComment } from "../lib/inbox/types.js";
 
 function comment(
@@ -84,11 +84,16 @@ describe("nestMentionReplies", () => {
 
 describe("flattenInboxThread", () => {
   it("walks explicit reply-to-reply parent ids", () => {
-    const root = { id: "root", parentId: null as string | null, createdAt: "1" };
+    const root = {
+      id: "root",
+      parentId: null as string | null,
+      authorName: "root",
+      createdAt: "1",
+    };
     const flat = flattenInboxThread(root, [
-      { id: "thanks", parentId: "root", createdAt: "2" },
-      { id: "ok", parentId: "thanks", createdAt: "3" },
-      { id: "hello", parentId: "root", createdAt: "4" },
+      { id: "thanks", parentId: "root", authorName: "a", createdAt: "2" },
+      { id: "ok", parentId: "thanks", authorName: "b", createdAt: "3" },
+      { id: "hello", parentId: "root", authorName: "c", createdAt: "4" },
     ]);
     expect(flat.map((row) => [row.comment.id, row.depth])).toEqual([
       ["root", 0],
@@ -112,6 +117,7 @@ describe("flattenInboxThread", () => {
         id: "thanks",
         parentId: "root",
         authorHandle: "abhishekb.r9569",
+        authorName: "abhishekb.r9569",
         text: "thanks :)",
         createdAt: "2",
       },
@@ -119,6 +125,7 @@ describe("flattenInboxThread", () => {
         id: "ok",
         parentId: "root",
         authorHandle: "AbhishekB.R",
+        authorName: "AbhishekB.R",
         text: "@abhishekb.r9569 its ok :)",
         createdAt: "3",
       },
@@ -126,6 +133,7 @@ describe("flattenInboxThread", () => {
         id: "hello",
         parentId: "root",
         authorHandle: "abhishekb.r9569",
+        authorName: "abhishekb.r9569",
         text: "hello??",
         createdAt: "4",
       },

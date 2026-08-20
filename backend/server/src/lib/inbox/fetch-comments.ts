@@ -365,6 +365,7 @@ async function fetchYouTube(
         ?.topLevelComment;
       const sn = top?.snippet;
       if (!top?.id || !sn) continue;
+      const topId = top.id;
       const publishedAt =
         typeof sn.publishedAt === "string" ? Date.parse(sn.publishedAt) : NaN;
       if (sinceMs != null && publishedAt && publishedAt < sinceMs) {
@@ -395,20 +396,32 @@ async function fetchYouTube(
           : embedded.filter((r): r is { id: string; snippet: Record<string, unknown> } =>
               Boolean(r.id && r.snippet),
             );
-      const replyComments = nestMentionReplies(
+      type YoutubeNestRow = {
+        id: string;
+        parentId: string | null;
+        text: string;
+        authorHandle: string | null;
+        authorName: string;
+        createdAt: string | null;
+        isOwn: boolean;
+        likeCount: number | undefined;
+      };
+      const replyComments = nestMentionReplies<YoutubeNestRow>(
         {
-          id: top.id,
+          id: topId,
           parentId: null,
           text: String(sn.textDisplay ?? sn.textOriginal ?? ""),
           authorHandle: youtubeHandle(sn),
           authorName: String(sn.authorDisplayName ?? "YouTube user"),
           createdAt: typeof sn.publishedAt === "string" ? sn.publishedAt : null,
+          isOwn: youtubeAuthorChannelId(sn.authorChannelId) === input.platformUserId,
+          likeCount: typeof sn.likeCount === "number" ? sn.likeCount : undefined,
         },
         replies.map((r) => {
           const rs = r.snippet;
           return {
             id: r.id,
-            parentId: top.id,
+            parentId: topId,
             text: String(rs.textDisplay ?? rs.textOriginal ?? ""),
             authorHandle: youtubeHandle(rs),
             authorName: String(rs.authorDisplayName ?? "YouTube user"),
