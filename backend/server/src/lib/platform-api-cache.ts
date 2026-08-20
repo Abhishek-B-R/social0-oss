@@ -56,10 +56,31 @@ const OUTBOUND_PER_MIN: Record<string, Partial<Record<PlatformReadKind, number>>
 const COOLDOWN_PREFIX = "platform:cooldown:";
 const CACHE_PREFIX = "platform:read:";
 
+/** Cap in-process cache so many account/suffix keys cannot grow forever. */
+export const MEM_CACHE_MAX_ENTRIES = 500;
+export const MEM_COOLDOWN_MAX_ENTRIES = 200;
+
 const memCache = new Map<string, { exp: number; raw: string }>();
 const memCooldown = new Map<string, number>();
 
 const outboundLimiters = new Map<string, Ratelimit>();
+
+/** Drop expired entries, then FIFO-evict until at/under maxSize. */
+export function pruneBoundedMap<V extends { exp?: number } | number>(
+  map: Map<string, V>,
+  maxSize: number,
+  now = Date.now(),
+): void {
+  for (const [k, v] of map) {
+    const exp = typeof v === "number" ? v : v?.exp;
+    if (typeof exp === "number" && exp < now) map.delete(k);
+  }
+  while (map.size > maxSize) {
+    const oldest = map.keys().next().value;
+    if (oldest === undefined) break;
+    map.delete(oldest);
+  }
+}
 
 function ttlSec(platform: string, kind: PlatformReadKind): number {
   return (
@@ -131,6 +152,7 @@ async function readCache<T>(key: string): Promise<T | null> {
 async function writeCache(key: string, value: unknown, ttl: number): Promise<void> {
   const raw = JSON.stringify(value);
   memCache.set(key, { exp: Date.now() + ttl * 1000, raw });
+  pruneBoundedMap(memCache, MEM_CACHE_MAX_ENTRIES);
   if (!redis) return;
   await withRedisTimeout(
     `platform-cache set ${key}`,
@@ -160,6 +182,7 @@ async function setCooldown(platform: string, accountId: string, seconds: number)
   const until = Date.now() + seconds * 1000;
   const key = cooldownKey(platform, accountId);
   memCooldown.set(key, until);
+  pruneBoundedMap(memCooldown, MEM_COOLDOWN_MAX_ENTRIES);
   if (!redis) return;
   await withRedisTimeout(
     `platform-cooldown set ${key}`,

@@ -8,6 +8,10 @@ import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
 import { calendarDayKey } from "../date-window.js";
 import { blueskySession, blueskySessionAfter401 } from "../inbox/bluesky-session.js";
+import {
+  PLATFORM_FETCH_TIMEOUT_MS,
+  raceTimeout,
+} from "../live-request-budget.js";
 import type { MetricMap } from "./types.js";
 import {
   firstTikTokPublicVideoId,
@@ -100,9 +104,13 @@ async function fetchTwitter(
       accessToken: input.accessToken,
       accessSecret: input.accessSecret,
     });
-    const tweet = await client.v2.singleTweet(input.platformPostId, {
-      "tweet.fields": ["public_metrics"],
-    });
+    const tweet = await raceTimeout(
+      client.v2.singleTweet(input.platformPostId, {
+        "tweet.fields": ["public_metrics"],
+      }),
+      PLATFORM_FETCH_TIMEOUT_MS,
+      "X metrics",
+    );
     const m = tweet.data?.public_metrics;
     if (!m) return errResult("No public metrics returned for this tweet.");
     return {
@@ -349,6 +357,7 @@ async function resolveTikTokVideoId(
         "Content-Type": "application/json; charset=UTF-8",
       },
       body: JSON.stringify({ publish_id: publishId }),
+      signal: AbortSignal.timeout(PLATFORM_FETCH_TIMEOUT_MS),
     },
   );
   const text = await res.text();
@@ -403,6 +412,7 @@ async function fetchTikTok(
     body: JSON.stringify({
       filters: { video_ids: [videoId] },
     }),
+    signal: AbortSignal.timeout(PLATFORM_FETCH_TIMEOUT_MS),
   });
   const text = await res.text();
   let data: {

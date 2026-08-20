@@ -84,6 +84,8 @@ export type AnalyticsOverview = {
   fetchedAt: string;
   sampled: boolean;
   sampleLimit: number;
+  /** True when the live RPC budget expired before every publication was fetched. */
+  partial?: boolean;
 };
 
 export type PostAnalyticsResult = {
@@ -92,6 +94,7 @@ export type PostAnalyticsResult = {
   totals: MetricMap;
   accountsNeedingReconnect: AccountReconnectHint[];
   fetchedAt: string;
+  partial?: boolean;
 };
 
 /**

@@ -22,6 +22,9 @@ import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { calendarDayKey, parseDateWindow, startOfZonedDay } from "../lib/date-window.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
 import {
+  createLiveRequestBudget,
+} from "../lib/live-request-budget.js";
+import {
   engagementTotal,
   missingAnalyticsScopes,
   sumMetrics,
@@ -39,7 +42,8 @@ import {
   withPlatformReadCache,
 } from "../lib/platform-api-cache.js";
 
-const SAMPLE_LIMIT = 200;
+/** Cap live fan-out so overview RPCs stay within the request budget. */
+const SAMPLE_LIMIT = 48;
 const CONCURRENCY = 3;
 
 type PubRow = {
@@ -435,8 +439,34 @@ export async function getAnalyticsOverview(input: {
     limit: SAMPLE_LIMIT,
   });
 
-  const results = await mapPool(pubs, CONCURRENCY, (row) =>
-    metricsForPub(row, { since, until, timeZone }, fresh),
+  const budget = createLiveRequestBudget();
+  let partial = false;
+  const results = await mapPool(
+    pubs,
+    CONCURRENCY,
+    (row) => metricsForPub(row, { since, until, timeZone }, fresh),
+    {
+      shouldContinue: () => {
+        if (budget.isExpired()) {
+          partial = true;
+          return false;
+        }
+        return true;
+      },
+      onSkip: (row) => ({
+        publicationId: row.publicationId,
+        postId: row.postId,
+        platform: row.account?.platform ?? "unknown",
+        accountId: row.account?.id ?? row.connectedAccountId,
+        accountLabel: row.account?.platformUsername ?? null,
+        platformPostId: row.platformPostId,
+        platformPostUrl: row.platformPostUrl,
+        publishedAt: row.publishedAt?.toISOString() ?? null,
+        metrics: {},
+        status: "skipped" as const,
+        error: "Request budget exceeded - refresh for more metrics.",
+      }),
+    },
   );
   const contentByPost = new Map(
     pubs.map((p) => [p.postId, p.content] as const),
@@ -471,8 +501,9 @@ export async function getAnalyticsOverview(input: {
       collectReconnectHints(results),
     ),
     fetchedAt: new Date().toISOString(),
-    sampled: pubs.length > SAMPLE_LIMIT,
+    sampled: pubs.length >= SAMPLE_LIMIT || partial,
     sampleLimit: SAMPLE_LIMIT,
+    partial,
   };
 }
 
@@ -512,8 +543,34 @@ export async function getPostAnalytics(input: {
     if (!post) throw rpcHttpError("Post not found", 404);
   }
 
-  const results = await mapPool(pubs, CONCURRENCY, (row) =>
-    metricsForPub(row, { since, until, timeZone }, false),
+  const budget = createLiveRequestBudget();
+  let partial = false;
+  const results = await mapPool(
+    pubs,
+    CONCURRENCY,
+    (row) => metricsForPub(row, { since, until, timeZone }, false),
+    {
+      shouldContinue: () => {
+        if (budget.isExpired()) {
+          partial = true;
+          return false;
+        }
+        return true;
+      },
+      onSkip: (row) => ({
+        publicationId: row.publicationId,
+        postId: row.postId,
+        platform: row.account?.platform ?? "unknown",
+        accountId: row.account?.id ?? row.connectedAccountId,
+        accountLabel: row.account?.platformUsername ?? null,
+        platformPostId: row.platformPostId,
+        platformPostUrl: row.platformPostUrl,
+        publishedAt: row.publishedAt?.toISOString() ?? null,
+        metrics: {},
+        status: "skipped" as const,
+        error: "Request budget exceeded - refresh for more metrics.",
+      }),
+    },
   );
   const okResults = results.filter((r) => r.status === "ok");
   const accountRows = await listActiveConnectedAccounts(ctx);
@@ -542,6 +599,7 @@ export async function getPostAnalytics(input: {
       collectReconnectHints(results),
     ),
     fetchedAt: new Date().toISOString(),
+    partial,
   };
 }
 

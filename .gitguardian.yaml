@@ -1,0 +1,8 @@
+# Ignore historical false positives on OAuth token field names (accessSecret /
+# app password parameter aliases). Live secrets are not committed in this tree.
+version: 2
+
+paths-ignore:
+  - "frontend/bun.lock"
+  - "backend/package-lock.json"
+  - "**/node_modules/**"

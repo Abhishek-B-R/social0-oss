@@ -3,6 +3,8 @@ import {
   platformCommentPageRounds,
   platformInboxSampleLimit,
   isPlatformRateLimitError,
+  pruneBoundedMap,
+  MEM_CACHE_MAX_ENTRIES,
 } from "../lib/platform-api-cache.js";
 
 describe("platform-api-cache helpers", () => {
@@ -20,5 +22,19 @@ describe("platform-api-cache helpers", () => {
     expect(isPlatformRateLimitError({ status: 429 })).toBe(true);
     expect(isPlatformRateLimitError(new Error("Rate limit exceeded"))).toBe(true);
     expect(isPlatformRateLimitError(new Error("Forbidden"))).toBe(false);
+  });
+
+  it("exposes a finite in-memory cache cap", () => {
+    expect(MEM_CACHE_MAX_ENTRIES).toBeGreaterThan(0);
+    expect(MEM_CACHE_MAX_ENTRIES).toBeLessThanOrEqual(2_000);
+  });
+
+  it("prunes bounded maps under the max size", () => {
+    const map = new Map<string, { exp: number }>();
+    for (let i = 0; i < 10; i++) {
+      map.set(`k${i}`, { exp: Date.now() + 60_000 });
+    }
+    pruneBoundedMap(map, 3);
+    expect(map.size).toBe(3);
   });
 });

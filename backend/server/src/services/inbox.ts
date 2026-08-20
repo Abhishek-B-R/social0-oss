@@ -35,6 +35,7 @@ import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { parseDateWindow, inDateWindow } from "../lib/date-window.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
 import { noteFetchError, noteFetchNotice, isInboxFetchNotice } from "../lib/inbox/fetch-errors.js";
+import { createLiveRequestBudget, raceTimeout, LIVE_RPC_BUDGET_MS } from "../lib/live-request-budget.js";
 import {
   PlatformApiCooldownError,
   platformCommentPageRounds,
@@ -61,12 +62,13 @@ function parsePlatform(value: unknown): Platform | undefined {
   return PLATFORMS.find((p) => p.id === value)?.id;
 }
 
-const SAMPLE_LIMIT = 40;
+/** Keep fan-out small enough to finish inside the live RPC budget. */
+const SAMPLE_LIMIT = 24;
 const CONCURRENCY = 2;
 /** Posts published before the window can still receive in-window comments. */
 const POST_PUBLISH_SLACK_MS = 90 * 24 * 60 * 60 * 1000;
-const PAGE_LIMIT_MAX = 80;
-const COMMENT_PAGE_ROUNDS_MAX = 4;
+const PAGE_LIMIT_MAX = 40;
+const COMMENT_PAGE_ROUNDS_MAX = 2;
 
 function filterThreadsByActivity(
   threads: ReturnType<typeof toInboxThreads>,
@@ -299,12 +301,18 @@ export async function listInboxComments(input: {
   const fetchErrors: InboxListResult["fetchErrors"] = [];
   const notices: InboxListResult["notices"] = [];
   const allComments: InboxComment[] = [];
+  const budget = createLiveRequestBudget();
+  let budgetHit = false;
 
   let cursorBefore = before;
   let hasMore = false;
   let nextBefore: string | null = null;
 
   for (let round = 0; round < pageRounds; round++) {
+    if (budget.isExpired()) {
+      budgetHit = true;
+      break;
+    }
     const pubs = await loadPubs({
       resourceUserId: ctx.resourceUserId,
       workspaceId: ctx.workspaceId,
@@ -323,7 +331,10 @@ export async function listInboxComments(input: {
 
     const mediaById = await resolvePostMediaUrls(pubs);
 
-    await mapPool(pubs, CONCURRENCY, async (row) => {
+    await mapPool(
+      pubs,
+      CONCURRENCY,
+      async (row) => {
       if (!row.platformPostId || !row.account) return;
       if (INBOX_UNSUPPORTED.has(row.account.platform)) {
         unsupported.add(row.account.platform);
@@ -421,7 +432,17 @@ export async function listInboxComments(input: {
           });
         }
       }
-    });
+    },
+      {
+        shouldContinue: () => {
+          if (budget.isExpired()) {
+            budgetHit = true;
+            return false;
+          }
+          return true;
+        },
+      },
+    );
 
     const threads = filterThreadsByActivity(
       toInboxThreads(allComments),
@@ -432,9 +453,17 @@ export async function listInboxComments(input: {
     const lastPub = pubs[pubs.length - 1];
     nextBefore = hasMore ? lastPub?.publishedAt?.toISOString() ?? null : null;
 
-    if (threads.length > 0 || !hasMore) break;
+    if (threads.length > 0 || !hasMore || budgetHit) break;
     cursorBefore = lastPub?.publishedAt ?? undefined;
     if (!cursorBefore) break;
+  }
+
+  if (budgetHit) {
+    noteFetchNotice(notices, {
+      platform: "all",
+      message:
+        "Partial results - request budget reached. Scroll or refresh for more.",
+    });
   }
 
   const accountRows = await listActiveConnectedAccounts(ctx);
@@ -684,7 +713,7 @@ async function loadDmAccounts(
 }
 
 const DM_CONCURRENCY = 2;
-const DM_SAMPLE_LIMIT = 40;
+const DM_SAMPLE_LIMIT = 20;
 
 export async function listInboxDms(input: {
   accountId?: unknown;
@@ -717,8 +746,13 @@ export async function listInboxDms(input: {
   const fetchErrors: InboxDmListResult["fetchErrors"] = [];
   const notices: InboxDmListResult["notices"] = [];
   const threads: InboxDmThread[] = [];
+  const budget = createLiveRequestBudget();
+  let budgetHit = false;
 
-  await mapPool(accounts, DM_CONCURRENCY, async (row) => {
+  await mapPool(
+    accounts,
+    DM_CONCURRENCY,
+    async (row) => {
     if (!isInboxDmPlatform(row.platform)) {
       unsupported.add(row.platform);
       return;
@@ -827,7 +861,25 @@ export async function listInboxDms(input: {
         });
       }
     }
-  });
+  },
+    {
+      shouldContinue: () => {
+        if (budget.isExpired()) {
+          budgetHit = true;
+          return false;
+        }
+        return true;
+      },
+    },
+  );
+
+  if (budgetHit) {
+    noteFetchNotice(notices, {
+      platform: "all",
+      message:
+        "Partial results - request budget reached. Refresh for more conversations.",
+    });
+  }
 
   threads.sort((a, b) =>
     (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
@@ -891,28 +943,32 @@ export async function getInboxDmThread(input: {
 
   try {
     const { accessToken, accessSecret } = await resolveAccountAccess(row);
-    const cached = await withPlatformReadCache({
-      platform: row.platform,
-      accountId: row.id,
-      kind: "inbox_dm_thread",
-      suffix: input.conversationId,
-      fresh,
-      fetch: () =>
-        fetchDmMessages(
-          {
-            id: row.id,
-            platform: row.platform,
-            platformUserId: row.platformUserId,
-            platformUsername: row.platformUsername,
-            ownerUserId: ctx.resourceUserId,
-            profileImageUrl: row.profileImageUrl,
-            accessToken,
-            accessSecret,
-          },
-          input.conversationId as string,
-          peerId,
-        ),
-    });
+    const cached = await raceTimeout(
+      withPlatformReadCache({
+        platform: row.platform,
+        accountId: row.id,
+        kind: "inbox_dm_thread",
+        suffix: input.conversationId,
+        fresh,
+        fetch: () =>
+          fetchDmMessages(
+            {
+              id: row.id,
+              platform: row.platform,
+              platformUserId: row.platformUserId,
+              platformUsername: row.platformUsername,
+              ownerUserId: ctx.resourceUserId,
+              profileImageUrl: row.profileImageUrl,
+              accessToken,
+              accessSecret,
+            },
+            input.conversationId as string,
+            peerId,
+          ),
+      }),
+      LIVE_RPC_BUDGET_MS,
+      "inbox DM thread",
+    );
     const result = cached.data;
     if (result.status !== "ok") {
       return { error: result.error ?? "Failed to load conversation" };

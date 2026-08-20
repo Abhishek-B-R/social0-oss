@@ -1,4 +1,6 @@
-const DEFAULT_TIMEOUT_MS = 12_000;
+import { PLATFORM_FETCH_TIMEOUT_MS } from "./live-request-budget.js";
+
+const DEFAULT_TIMEOUT_MS = PLATFORM_FETCH_TIMEOUT_MS;
 
 export async function jsonGet(
   url: string,

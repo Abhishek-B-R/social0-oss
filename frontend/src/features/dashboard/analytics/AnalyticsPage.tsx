@@ -307,6 +307,11 @@ export function AnalyticsPage() {
           range.
         </p>
       ) : null}
+      {data?.partial ? (
+        <p className="text-xs text-amber-700 dark:text-amber-400">
+          Partial metrics — request budget reached. Refresh to load more.
+        </p>
+      ) : null}
       {data && data.publications.length === 0 ? (
         <p className="text-sm text-text-muted">
           No posts published through Social0 in this range. Try 4W, or
