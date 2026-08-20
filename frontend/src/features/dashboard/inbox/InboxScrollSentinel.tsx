@@ -18,13 +18,13 @@ export function InboxScrollSentinel({
     const root = el.parentElement;
     const io = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) onVisible();
+        if (entry?.isIntersecting && !loading) onVisible();
       },
       { root, rootMargin: "120px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [onVisible, disabled]);
+  }, [onVisible, disabled, loading]);
 
   return (
     <li

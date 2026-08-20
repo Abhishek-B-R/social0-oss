@@ -137,6 +137,9 @@ export function InboxCommentsPane({
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Avoid repeatedly writing large "seen" lists to localStorage as the
+  // infinite query refetches/accumulates pages.
+  const markedCommentIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(
     () => () => {
@@ -310,13 +313,29 @@ export function InboxCommentsPane({
     pendingReplies,
   );
 
+  const commentIds = useMemo(
+    () => (threads.length ? commentIdsFromThreads(threads) : []),
+    [threads],
+  );
+
   useEffect(() => {
-    if (!enabled || !threads.length) return;
-    markInboxCommentsSeen(userId, commentIdsFromThreads(threads));
-  }, [enabled, threads, userId]);
+    // Reset when the user changes window/filter so we only mark ids for the
+    // currently-visible universe.
+    markedCommentIdsRef.current = new Set();
+  }, [enabled, dateWindow, accountId]);
+
+  useEffect(() => {
+    if (!enabled || !userId || !commentIds.length) return;
+    const marked = markedCommentIdsRef.current;
+    const next = commentIds.filter((id) => !marked.has(id));
+    if (!next.length) return;
+    markInboxCommentsSeen(userId, next);
+    for (const id of next) marked.add(id);
+  }, [enabled, userId, commentIds]);
 
   useEffect(() => {
     if (!mergedThreads.length) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPendingReplies((prev) =>
       prev.filter((p) => {
         const thread = mergedThreads.find(
@@ -333,6 +352,7 @@ export function InboxCommentsPane({
 
   useEffect(() => {
     if (!threads.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPickedId(null);
       return;
     }
@@ -548,8 +568,9 @@ function ConversationPane({
   const composerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setReplyTarget(root);
-  }, [root.id]);
+  }, [root]);
 
   const flat = useMemo(
     () => flattenInboxThread(root, thread.replies),
@@ -652,7 +673,7 @@ function ConversationPane({
               isRoot: replyTarget.id === root.id,
               limit: replyMax(root.platform),
             })}
-            placeholder="Write a reply…"
+            placeholder="Write a reply..."
             sending={sending}
             replyTo={
               replyTarget.id !== root.id

@@ -523,6 +523,11 @@ export async function listInboxDms(input: {
       : undefined;
   const beforeMs = parseBefore(input.before)?.getTime();
   const limit = parsePageLimit(input.limit, DM_SAMPLE_LIMIT);
+  // When paging older DMs, we must constrain the platform fetchers by an
+  // effective `until` derived from `before`. Otherwise each "older page"
+  // re-fetches the same since..until set and the client-side slice quickly
+  // runs out.
+  const untilForFetch = beforeMs != null ? new Date(beforeMs) : until;
 
   const accounts = await loadDmAccounts(ctx, accountId);
   const reconnect = new Map<string, InboxReconnectHint>();
@@ -569,7 +574,7 @@ export async function listInboxDms(input: {
           accessSecret,
         },
         since,
-        until,
+        untilForFetch,
       );
       threads.push(...result.threads);
       const scopes = result.missingScopes?.length ? result.missingScopes : missing;
