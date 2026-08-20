@@ -20,6 +20,8 @@ import {
   EngagementTrendChart,
   PlatformBreakdownChart,
   EngagementMixChart,
+  TrendChartViewToggle,
+  type TrendChartView,
 } from "./AnalyticsCharts";
 import {
   engagementOf,
@@ -45,6 +47,7 @@ export function AnalyticsPage() {
   const dash = useDashboardPath();
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
   const [accountId, setAccountId] = useState<string | null>(null);
+  const [trendChartView, setTrendChartView] = useState<TrendChartView>("line");
 
   const qc = useQueryClient();
   const workspacesQuery = useQuery({
@@ -90,13 +93,6 @@ export function AnalyticsPage() {
     PAGE_LIVE_POLL_MS,
     !!session && permissionsReady && canViewAnalytics && workspaceReady,
   );
-
-  useEffect(() => {
-    return () => {
-      void qc.cancelQueries({ queryKey: ["analytics-overview", workspaceId] });
-      void qc.cancelQueries({ queryKey: ["analytics-accounts", workspaceId] });
-    };
-  }, [qc, workspaceId]);
 
   const settingsQuery = useQuery({
     queryKey: ["user-settings-snapshot"],
@@ -327,17 +323,28 @@ export function AnalyticsPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm sm:p-5">
-          <h2 className="mb-1 text-sm font-semibold text-text">
-            Views & engagement
-          </h2>
-          <p className="mb-4 text-xs text-text-muted">
-            Lifetime totals by publish date for posts in {rangeLabel ?? "this range"}.
-            {data?.sampled ? " Showing the most recent sample of posts." : ""}
-          </p>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-text">
+                Performance trend
+              </h2>
+              <p className="mt-1 text-xs text-text-muted">
+                Daily totals by publish date for posts in {rangeLabel ?? "this range"}.
+                {data?.sampled ? " Showing the most recent sample of posts." : ""}
+              </p>
+            </div>
+            <TrendChartViewToggle
+              value={trendChartView}
+              onChange={setTrendChartView}
+            />
+          </div>
           {loading && !data ? (
             <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
           ) : (
-            <EngagementTrendChart data={data?.series ?? []} />
+            <EngagementTrendChart
+              data={data?.series ?? []}
+              view={trendChartView}
+            />
           )}
         </section>
 

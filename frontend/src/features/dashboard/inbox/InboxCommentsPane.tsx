@@ -8,11 +8,13 @@ import {
   ArrowSquareOut,
   ChatCircle,
   CircleNotch,
+  Heart,
   WarningCircle,
 } from "@/icons/phosphor";
 import type { InboxAccount } from "@/api/inbox";
 import {
   listInboxComments,
+  likeInboxComment,
   replyToInboxComment,
   type InboxComment,
   type InboxThread,
@@ -38,9 +40,15 @@ import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
 import { InboxPostCard, InboxPostThumbnail } from "./InboxPostCard";
 import { InboxScrollSentinel } from "./InboxScrollSentinel";
 import { InboxStatusBanners } from "./InboxStatusBanners";
+import type { InboxCommentStatusFilter } from "./InboxStatusFilter";
 import { inboxMetaFromPages } from "./inbox-meta";
 import { resolveInboxBody } from "@/lib/inbox-display";
 import { flattenInboxThread } from "@/lib/inbox-thread";
+import {
+  commentIdsFromThreads,
+  loadInboxSeen,
+  markInboxCommentsSeen,
+} from "@/lib/inbox-unread";
 import { useSession } from "@/lib/auth-client";
 import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
@@ -54,6 +62,28 @@ import {
   useVisibilityPoll,
 } from "@/lib/use-visibility-poll";
 import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
+
+const LIKE_SUPPORTED = new Set([
+  "facebook",
+  "instagram",
+  "twitter_x",
+  "bluesky",
+  "threads",
+]);
+
+type PostGroup = {
+  publicationId: string;
+  platform: string;
+  postSnippet: string;
+  postContent: string;
+  postMediaUrl?: string | null;
+  platformPostUrl: string | null;
+  accountLabel: string | null;
+  threads: InboxThread[];
+  unanswered: number;
+  unread: number;
+  lastActivity: string;
+};
 
 function threadLastActivity(thread: InboxThread): string {
   const times = [
@@ -128,15 +158,18 @@ export function InboxCommentsPane({
   accounts,
   enabled,
   allowReply = true,
+  statusFilter = "all",
 }: {
   dateWindow: DateWindow;
   accountId: string | null;
   accounts: InboxAccount[];
   enabled: boolean;
   allowReply?: boolean;
+  statusFilter?: InboxCommentStatusFilter;
 }) {
   const qc = useQueryClient();
   const { data: session } = useSession();
+  const userId = session?.user?.id;
   const workspacesQuery = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
     queryFn: listWorkspaces,
@@ -157,7 +190,10 @@ export function InboxCommentsPane({
     [],
   );
 
-  const queryKey = ["inbox-comments", workspaceId, dateWindow, accountId] as const;
+  const queryKey = useMemo(
+    () => ["inbox-comments", workspaceId, dateWindow, accountId] as const,
+    [workspaceId, dateWindow, accountId],
+  );
 
   const inboxQuery = useInfiniteQuery({
     queryKey,
@@ -191,12 +227,6 @@ export function InboxCommentsPane({
   }, [qc, queryKey, dateWindow, accountId]);
 
   useVisibilityPoll(pollComments, PAGE_LIVE_POLL_MS, enabled && workspaceReady);
-
-  useEffect(() => {
-    return () => {
-      void qc.cancelQueries({ queryKey });
-    };
-  }, [qc, queryKey]);
 
   const fetchNextComments = inboxQuery.fetchNextPage;
   const hasNextComments = Boolean(inboxQuery.hasNextPage);
@@ -335,13 +365,74 @@ export function InboxCommentsPane({
 
   const data = inboxQuery.data?.pages[0];
   const inboxMeta = inboxMetaFromPages(inboxQuery.data?.pages);
+  const [seenTick, setSeenTick] = useState(0);
+  const seen = useMemo(() => {
+    void seenTick;
+    return loadInboxSeen(userId);
+  }, [userId, seenTick]);
+  const seenSet = useMemo(() => new Set(seen.comments), [seen.comments]);
+
+  const isThreadUnread = useCallback(
+    (t: InboxThread) => {
+      if (!seen.seeded) return true;
+      const ids = commentIdsFromThreads([t]);
+      return ids.some((id) => !seenSet.has(id));
+    },
+    [seen.seeded, seenSet],
+  );
+  const isThreadAnswered = (t: InboxThread) =>
+    t.replies.some((r) => r.isOwn);
+
   const threads = mergePendingReplies(
     mergedThreads.filter((t) => {
-      if (!t.comment.isOwn) return true;
-      return t.replies.some((r) => !r.isOwn);
+      if (!t.comment.isOwn) {
+        /* keep */
+      } else if (!t.replies.some((r) => !r.isOwn)) {
+        return false;
+      }
+      if (statusFilter === "unanswered") return !isThreadAnswered(t);
+      if (statusFilter === "answered") return isThreadAnswered(t);
+      if (statusFilter === "unread") return isThreadUnread(t);
+      return true;
     }),
     pendingReplies,
   );
+
+  const postGroups = useMemo(() => {
+    const map = new Map<string, PostGroup>();
+    for (const t of threads) {
+      const id = t.comment.publicationId;
+      const cur = map.get(id);
+      const unanswered = isThreadAnswered(t) ? 0 : 1;
+      const unread = isThreadUnread(t) ? 1 : 0;
+      const activity = threadLastActivity(t);
+      if (!cur) {
+        map.set(id, {
+          publicationId: id,
+          platform: t.comment.platform,
+          postSnippet: t.comment.postSnippet,
+          postContent: t.comment.postContent,
+          postMediaUrl: t.comment.postMediaUrl,
+          platformPostUrl: t.comment.platformPostUrl,
+          accountLabel: t.comment.accountLabel,
+          threads: [t],
+          unanswered,
+          unread,
+          lastActivity: activity,
+        });
+      } else {
+        cur.threads.push(t);
+        cur.unanswered += unanswered;
+        cur.unread += unread;
+        if (activity > cur.lastActivity) cur.lastActivity = activity;
+      }
+    }
+    return [...map.values()].sort((a, b) =>
+      b.lastActivity.localeCompare(a.lastActivity),
+    );
+  }, [threads, isThreadUnread]);
+
+  const [pickedPostId, setPickedPostId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!mergedThreads.length) return;
@@ -361,26 +452,47 @@ export function InboxCommentsPane({
   }, [mergedThreads]);
 
   useEffect(() => {
-    if (!threads.length) {
+    if (!postGroups.length) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPickedPostId(null);
       setPickedId(null);
       return;
     }
-    const keys = threads.map(threadKey);
     const fromUrl = searchParams.get("thread");
     const match = fromUrl
       ? threads.find((t) => t.comment.id === fromUrl)
       : null;
     if (match) {
+      setPickedPostId(match.comment.publicationId);
       setPickedId(threadKey(match));
       return;
     }
+    const post =
+      postGroups.find((g) => g.publicationId === pickedPostId) ?? postGroups[0];
+    setPickedPostId(post.publicationId);
+    const keys = post.threads.map(threadKey);
     if (!pickedId || !keys.includes(pickedId)) {
       setPickedId(keys[0] ?? null);
     }
-  }, [threads, pickedId, searchParams]);
+  }, [postGroups, threads, pickedPostId, pickedId, searchParams]);
 
-  const loading = inboxQuery.isPending;
+  const selectedPost =
+    postGroups.find((g) => g.publicationId === pickedPostId) ?? postGroups[0] ?? null;
+  const selected =
+    selectedPost?.threads.find((t) => threadKey(t) === pickedId) ??
+    selectedPost?.threads[0] ??
+    null;
+
+  useEffect(() => {
+    if (!enabled || !userId || !selected) return;
+    const ids = commentIdsFromThreads([selected]);
+    if (!ids.length) return;
+    markInboxCommentsSeen(userId, ids);
+    // Defer tick so we don't cascade render in this effect
+    queueMicrotask(() => setSeenTick((n) => n + 1));
+  }, [enabled, userId, selected?.comment.id]);
+
+  const loading = inboxQuery.isPending || (inboxQuery.isFetching && !inboxQuery.data);
 
   useEffect(() => {
     if (!enabled || loading || fetchingNextComments) return;
@@ -397,8 +509,6 @@ export function InboxCommentsPane({
     fetchNextComments,
   ]);
 
-  const selected =
-    threads.find((t) => threadKey(t) === pickedId) ?? threads[0] ?? null;
   const emptyRangeLabel =
     dateWindow.range === "custom"
       ? "this range"
@@ -423,16 +533,19 @@ export function InboxCommentsPane({
           <div className="h-full animate-pulse bg-bg-muted/60" />
           <div className="hidden h-full animate-pulse bg-bg-muted/40 lg:block" />
         </div>
-      ) : !data || (threads.length === 0 && !hasNextComments) ? (
+      ) : !data || (postGroups.length === 0 && !hasNextComments) ? (
         <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
           <ChatCircle size={28} className="text-text-muted" />
-          <p className="mt-3 text-sm font-medium text-text">No comments yet</p>
+          <p className="mt-3 text-sm font-medium text-text">
+            {statusFilter === "all" ? "No comments yet" : "Nothing in this filter"}
+          </p>
           <p className="mt-1 max-w-sm text-sm text-text-muted">
-            Comments on Social0 posts from {emptyRangeLabel} show up here.
-            Try a longer range if you just published.
+            {statusFilter === "all"
+              ? `Comments on Social0 posts from ${emptyRangeLabel} show up here.`
+              : "Try All, or a longer date range."}
           </p>
         </div>
-      ) : threads.length === 0 && hasNextComments ? (
+      ) : postGroups.length === 0 && hasNextComments ? (
         <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-border bg-bg-elevated px-6">
           <CircleNotch size={24} className="animate-spin text-text-muted" />
           <p className="mt-3 text-sm text-text-muted">Loading older posts...</p>
@@ -445,30 +558,27 @@ export function InboxCommentsPane({
               showList ? "block" : "hidden lg:block",
             )}
           >
-            {threads.map((thread) => {
-              const key = threadKey(thread);
-              const active = selected ? threadKey(selected) === key : false;
-              const c = thread.comment;
-              const when = c.createdAt
-                ? formatDistanceToNow(new Date(c.createdAt), { addSuffix: false })
-                : "";
-              const replyCount = thread.replies.length;
-              const needsReply = !thread.replies.some((r) => r.isOwn);
-              const via = c.accountLabel
-                ? `@${c.accountLabel.replace(/^@/, "")}`
-                : PLATFORM_LABEL[c.platform] ?? c.platform;
-
+            <li className="sticky top-0 z-10 border-b border-border bg-bg-elevated px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+              Posts
+            </li>
+            {postGroups.map((group) => {
+              const active = selectedPost?.publicationId === group.publicationId;
+              const via = group.accountLabel
+                ? `@${group.accountLabel.replace(/^@/, "")}`
+                : PLATFORM_LABEL[group.platform] ?? group.platform;
+              const badge = group.unread || group.unanswered;
               return (
-                <li key={key} className="border-b border-border last:border-b-0">
+                <li key={group.publicationId} className="border-b border-border last:border-b-0">
                   <button
                     type="button"
                     onClick={() => {
-                      setPickedId(key);
+                      setPickedPostId(group.publicationId);
+                      setPickedId(threadKey(group.threads[0]!));
                       setMobileDetail(true);
                       setSearchParams(
                         (prev) => {
                           const next = new URLSearchParams(prev);
-                          next.set("thread", c.id);
+                          next.set("thread", group.threads[0]!.comment.id);
                           return next;
                         },
                         { replace: true },
@@ -482,39 +592,30 @@ export function InboxCommentsPane({
                     )}
                   >
                     <InboxPostThumbnail
-                      mediaUrl={c.postMediaUrl}
-                      content={c.postContent || c.postSnippet}
-                      platform={c.platform}
+                      mediaUrl={group.postMediaUrl}
+                      content={group.postContent || group.postSnippet}
+                      platform={group.platform}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="flex items-baseline gap-1.5">
-                        <span className="truncate text-[13px] font-semibold text-text">
-                          {c.authorName}
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate text-[12px] font-medium text-text-muted">
+                          {PLATFORM_LABEL[group.platform] ?? group.platform} · {via}
                         </span>
-                        {needsReply ? (
-                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
-                        ) : null}
-                        <span className="ml-auto shrink-0 text-[10px] tabular-nums text-text-muted">
-                          {when}
-                        </span>
-                      </span>
-                      <span className="mt-0.5 line-clamp-2 text-[12px] leading-snug text-text-muted">
-                        {c.text ||
-                          (c.attachment?.type === "video"
-                            ? "Video"
-                            : c.attachment
-                              ? "Photo"
-                              : "(No text)")}
-                      </span>
-                      <span className="mt-1 flex items-center gap-2 text-[10px] text-text-muted">
-                        <span>
-                          {PLATFORM_LABEL[c.platform] ?? c.platform} · {via}
-                        </span>
-                        {replyCount > 0 ? (
-                          <span className="ml-auto inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-sky-500/90 px-1 text-[10px] font-semibold text-white">
-                            {replyCount + 1}
+                        {badge > 0 ? (
+                          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold text-white">
+                            {badge}
                           </span>
                         ) : null}
+                      </span>
+                      <span className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-text">
+                        {group.postContent || group.postSnippet || "(No caption)"}
+                      </span>
+                      <span className="mt-1 text-[10px] text-text-muted">
+                        {group.threads.length} comment
+                        {group.threads.length === 1 ? "" : "s"}
+                        {group.unanswered > 0
+                          ? ` · ${group.unanswered} unanswered`
+                          : " · answered"}
                       </span>
                     </span>
                   </button>
@@ -534,14 +635,26 @@ export function InboxCommentsPane({
               showDetail ? "flex" : "hidden lg:flex",
             )}
           >
-            {selected ? (
+            {selected && selectedPost ? (
               <ConversationPane
                 thread={selected}
+                siblingThreads={selectedPost.threads}
                 accounts={accounts}
                 allowReply={allowReply}
                 sendingReplyIds={sendingReplyIds}
                 pendingReplies={pendingReplies}
                 failedReplyIds={failedReplyIds}
+                onSelectThread={(t) => {
+                  setPickedId(threadKey(t));
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set("thread", t.comment.id);
+                      return next;
+                    },
+                    { replace: true },
+                  );
+                }}
                 onBack={() => setMobileDetail(false)}
                 onReply={(uiParentId, payload, optimisticId) =>
                   void sendReply(selected, uiParentId, payload, { optimisticId })
@@ -557,7 +670,7 @@ export function InboxCommentsPane({
               />
             ) : (
               <div className="flex flex-1 items-center justify-center p-8 text-sm text-text-muted">
-                Select a comment thread
+                Select a post
               </div>
             )}
           </section>
@@ -575,21 +688,25 @@ export function InboxCommentsPane({
 
 function ConversationPane({
   thread,
+  siblingThreads,
   accounts,
   allowReply,
   sendingReplyIds,
   pendingReplies,
   failedReplyIds,
+  onSelectThread,
   onBack,
   onReply,
   onRetryReply,
 }: {
   thread: InboxThread;
+  siblingThreads: InboxThread[];
   accounts: InboxAccount[];
   allowReply: boolean;
   sendingReplyIds: Set<string>;
   pendingReplies: InboxComment[];
   failedReplyIds: Set<string>;
+  onSelectThread: (t: InboxThread) => void;
   onBack: () => void;
   onReply: (
     uiParentId: string,
@@ -619,6 +736,15 @@ function ConversationPane({
       p.publicationId === root.publicationId && sendingReplyIds.has(p.id),
   );
 
+  const answered = thread.replies.some((r) => r.isOwn);
+  const totalComments = siblingThreads.reduce(
+    (n, t) => n + 1 + t.replies.length,
+    0,
+  );
+  const repliedCount = siblingThreads.filter((t) =>
+    t.replies.some((r) => r.isOwn),
+  ).length;
+
   return (
     <>
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5 sm:px-4">
@@ -630,26 +756,16 @@ function ConversationPane({
         >
           <ArrowLeft size={16} />
         </button>
-        <InboxAvatar
-          profileImageUrl={root.authorAvatarUrl}
-          username={root.authorHandle ?? root.authorName}
-          platform={root.platform}
-          size={36}
-          className="shrink-0"
-        />
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-semibold text-text">
-            {root.authorName}
-            {root.authorHandle
-              ? ` (@${root.authorHandle.replace(/^@/, "")})`
+            {PLATFORM_LABEL[root.platform] ?? root.platform}
+            {root.accountLabel
+              ? ` · @${root.accountLabel.replace(/^@/, "")}`
               : ""}
           </p>
           <p className="mt-0.5 text-[11px] text-text-muted">
-            {PLATFORM_LABEL[root.platform] ?? root.platform}
-            {root.accountLabel
-              ? ` · via @${root.accountLabel.replace(/^@/, "")}`
-              : ""}
-            {` · ${flat.length} comment${flat.length === 1 ? "" : "s"}`}
+            {repliedCount} replied / {totalComments} total comments
+            {answered ? " · includes your reply" : " · awaiting reply"}
           </p>
         </div>
         {root.platformPostUrl ? (
@@ -673,6 +789,31 @@ function ConversationPane({
             accountProfileImageUrl={account?.profileImageUrl}
           />
         </div>
+
+        {siblingThreads.length > 1 ? (
+          <div className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2">
+            {siblingThreads.map((t) => {
+              const active = t.comment.id === root.id;
+              const needs = !t.replies.some((r) => r.isOwn);
+              return (
+                <button
+                  key={t.comment.id}
+                  type="button"
+                  onClick={() => onSelectThread(t)}
+                  className={cn(
+                    "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
+                    active
+                      ? "bg-accent/15 text-accent"
+                      : "bg-bg-muted text-text-muted hover:text-text",
+                  )}
+                >
+                  @{t.comment.authorHandle?.replace(/^@/, "") || t.comment.authorName}
+                  {needs ? " · new" : ""}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
 
         <div className="flex flex-col">
           {flat.map(({ comment, depth }) => (
@@ -716,7 +857,11 @@ function ConversationPane({
               isRoot: replyTarget.id === root.id,
               limit: replyMax(root.platform),
             })}
-            placeholder="Write a reply..."
+            placeholder={
+              replyTarget.id !== root.id
+                ? `Reply to @${(replyTarget.authorHandle ?? replyTarget.authorName).replace(/^@/, "")}...`
+                : "Type in your reply..."
+            }
             sending={sending}
             replyTo={
               replyTarget.id !== root.id
@@ -779,11 +924,35 @@ function CommentRow({
     ? account?.profileImageUrl ?? comment.authorAvatarUrl
     : comment.authorAvatarUrl;
   const body = resolveInboxBody(comment.text, comment.attachment);
+  const [liked, setLiked] = useState(false);
+  const [liking, setLiking] = useState(false);
+  const canLike =
+    allowReply && !own && LIKE_SUPPORTED.has(comment.platform) && !liked;
+
+  const onLike = async () => {
+    if (!canLike || liking) return;
+    setLiking(true);
+    try {
+      const res = await likeInboxComment({
+        publicationId: comment.publicationId,
+        commentId: comment.id,
+      });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      setLiked(true);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Like failed");
+    } finally {
+      setLiking(false);
+    }
+  };
 
   return (
     <article
       className={cn(
-        "relative px-3 py-2.5 sm:px-4",
+        "relative px-3 py-3 sm:px-4",
         active && "bg-accent/[0.04]",
         own && "bg-bg-subtle/30",
         failed && "bg-red-500/[0.04]",
@@ -823,7 +992,7 @@ function CommentRow({
             </span>
           </div>
           {body.text ? (
-            <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-text">
+            <p className="mt-1.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-text">
               {body.text}
             </p>
           ) : null}
@@ -840,18 +1009,45 @@ function CommentRow({
               Failed · Retry
             </button>
           ) : null}
-          {root.canReply && allowReply && !own ? (
-            <button
-              type="button"
-              onClick={onReply}
-              className={cn(
-                "mt-2 text-[11px] font-semibold transition-[transform,color] duration-150 ease-out active:scale-[0.97]",
-                active ? "text-accent" : "text-text-muted hover:text-accent",
-              )}
-            >
-              Reply
-            </button>
-          ) : null}
+          <div className="mt-2 flex items-center gap-3">
+            {canLike || liked ? (
+              <button
+                type="button"
+                onClick={() => void onLike()}
+                disabled={!canLike || liking}
+                className={cn(
+                  "inline-flex h-8 w-8 items-center justify-center rounded-full border border-border transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.95]",
+                  liked
+                    ? "bg-rose-500/10 text-rose-500"
+                    : "text-text-muted hover:bg-bg-subtle hover:text-rose-500",
+                )}
+                aria-label={liked ? "Liked" : "Like comment"}
+              >
+                {liking ? (
+                  <CircleNotch size={14} className="animate-spin" />
+                ) : (
+                  <Heart size={14} weight={liked ? "fill" : "regular"} />
+                )}
+              </button>
+            ) : null}
+            {typeof comment.likeCount === "number" && comment.likeCount > 0 ? (
+              <span className="text-[11px] tabular-nums text-text-muted">
+                {comment.likeCount + (liked ? 1 : 0)}
+              </span>
+            ) : null}
+            {root.canReply && allowReply && !own ? (
+              <button
+                type="button"
+                onClick={onReply}
+                className={cn(
+                  "text-[12px] font-semibold transition-[transform,color] duration-150 ease-out active:scale-[0.97]",
+                  active ? "text-accent" : "text-text-muted hover:text-accent",
+                )}
+              >
+                Reply
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </article>

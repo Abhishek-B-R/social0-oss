@@ -19,6 +19,10 @@ import { cn } from "@/lib/utils";
 import { InboxCommentsPane } from "./InboxCommentsPane";
 import { InboxDmsPane } from "./InboxDmsPane";
 import { InboxModeToggle, type InboxMode } from "./InboxModeToggle";
+import {
+  InboxStatusFilter,
+  type InboxCommentStatusFilter,
+} from "./InboxStatusFilter";
 import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 import {
   initialInboxPageParam,
@@ -43,6 +47,8 @@ export function InboxPage() {
   const mode: InboxMode = searchParams.get("tab") === "dms" ? "dms" : "comments";
   const accountId = searchParams.get("account");
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
+  const [statusFilter, setStatusFilter] =
+    useState<InboxCommentStatusFilter>("all");
 
   const setMode = (next: InboxMode) => {
     setSearchParams(
@@ -92,15 +98,6 @@ export function InboxPage() {
       mode === "dms",
     ...PAGE_LIVE_QUERY,
   });
-
-  useEffect(() => {
-    return () => {
-      void qc.cancelQueries({ queryKey: ["inbox-accounts", workspaceId] });
-      void qc.cancelQueries({ queryKey: ["inbox-comments", workspaceId] });
-      void qc.cancelQueries({ queryKey: ["inbox-dms", workspaceId] });
-      void qc.cancelQueries({ queryKey: ["inbox-dm-thread", workspaceId] });
-    };
-  }, [qc, workspaceId]);
 
   const accounts = accountsQuery.data ?? [];
 
@@ -221,11 +218,16 @@ export function InboxPage() {
         </div>
       </div>
 
-      <RangeToolbar
-        value={dateWindow}
-        onChange={setDateWindow}
-        label="Inbox date range"
-      />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <RangeToolbar
+          value={dateWindow}
+          onChange={setDateWindow}
+          label="Inbox date range"
+        />
+        {mode === "comments" ? (
+          <InboxStatusFilter value={statusFilter} onChange={setStatusFilter} />
+        ) : null}
+      </div>
 
       <AccountFilterChips
         accounts={accounts}
@@ -249,6 +251,7 @@ export function InboxPage() {
             accounts={accounts}
             enabled
             allowReply={canReplyComments}
+            statusFilter={statusFilter}
           />
         </div>
       ) : (

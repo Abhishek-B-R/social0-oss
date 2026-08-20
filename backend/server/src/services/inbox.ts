@@ -24,6 +24,10 @@ import { mapPool } from "../lib/map-pool.js";
 import { PLATFORMS, type Platform } from "../lib/platforms.js";
 import { fetchPublicationComments } from "../lib/inbox/fetch-comments.js";
 import { replyOnPlatform } from "../lib/inbox/reply-comment.js";
+import {
+  inboxCommentLikeSupported,
+  likeCommentOnPlatform,
+} from "../lib/inbox/like-comment.js";
 import { fetchAccountDms, fetchDmMessages } from "../lib/inbox/fetch-dms.js";
 import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
 import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
@@ -558,6 +562,82 @@ export async function replyToInboxComment(input: {
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Reply failed",
+    };
+  }
+}
+
+export async function likeInboxComment(input: {
+  publicationId?: unknown;
+  commentId?: unknown;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  const ctx = await requireUser("reply_comments");
+  if (typeof input.publicationId !== "string" || !input.publicationId) {
+    return { ok: false, error: "publicationId required" };
+  }
+  if (typeof input.commentId !== "string" || !input.commentId) {
+    return { ok: false, error: "commentId required" };
+  }
+
+  const postFilter = postScopeCondition({
+    resourceUserId: ctx.resourceUserId,
+    workspaceId: ctx.workspaceId,
+  });
+  const rows = await db
+    .select({
+      publicationId: postPublications.id,
+      platformPostId: postPublications.platformPostId,
+      accountId: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
+      platformUsername: connectedAccounts.platformUsername,
+      encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+    })
+    .from(postPublications)
+    .innerJoin(posts, eq(postPublications.postId, posts.id))
+    .leftJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .where(and(postFilter, eq(postPublications.id, input.publicationId)))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row?.accountId || !row.platform) {
+    return { ok: false, error: "Publication not found." };
+  }
+  if (!inboxCommentLikeSupported(row.platform)) {
+    return {
+      ok: false,
+      error: `Liking comments is not supported for ${row.platform} yet.`,
+    };
+  }
+
+  const account = {
+    id: row.accountId,
+    platform: row.platform,
+    platformUserId: row.platformUserId ?? "",
+    platformUsername: row.platformUsername,
+    scopes: null,
+    encryptedAccessToken: row.encryptedAccessToken!,
+    encryptedRefreshToken: row.encryptedRefreshToken,
+  };
+
+  try {
+    const { accessToken, accessSecret } = await resolveAccountAccess(account);
+    return await likeCommentOnPlatform({
+      platform: row.platform,
+      commentId: input.commentId,
+      accessToken,
+      accessSecret,
+      platformUserId: row.platformUserId ?? "me",
+      accountId: row.accountId,
+      accountHandle: row.platformUsername,
+    });
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Like failed",
     };
   }
 }

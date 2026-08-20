@@ -183,7 +183,10 @@ export function InboxDmsPane({
     [],
   );
 
-  const listKey = ["inbox-dms", workspaceId, dateWindow, accountId] as const;
+  const listKey = useMemo(
+    () => ["inbox-dms", workspaceId, dateWindow, accountId] as const,
+    [workspaceId, dateWindow, accountId],
+  );
   const listQuery = useInfiniteQuery({
     queryKey: listKey,
     queryFn: ({ pageParam }) =>
@@ -289,13 +292,6 @@ export function InboxDmsPane({
   }, [qc, listKey, dateWindow, accountId, selected, refetchThread]);
 
   useVisibilityPoll(pollDms, PAGE_LIVE_POLL_MS, enabled && workspaceReady);
-
-  useEffect(() => {
-    return () => {
-      void qc.cancelQueries({ queryKey: listKey });
-      void qc.cancelQueries({ queryKey: ["inbox-dm-thread", workspaceId] });
-    };
-  }, [qc, listKey, workspaceId]);
 
   const updatePending = useCallback(
     (key: string, updater: (prev: LocalInboxDmMessage[]) => LocalInboxDmMessage[]) => {
@@ -463,7 +459,7 @@ export function InboxDmsPane({
     [dateWindow, accountId, listKey, pendingByConvo, qc, threadQueryKey, updatePending],
   );
 
-  const loading = listQuery.isPending;
+  const loading = listQuery.isPending || (listQuery.isFetching && !listQuery.data);
   const inboxMeta = inboxMetaFromPages(listQuery.data?.pages);
   const emptyRangeLabel =
     dateWindow.range === "custom"

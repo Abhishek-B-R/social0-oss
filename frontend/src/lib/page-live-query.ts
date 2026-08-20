@@ -3,6 +3,8 @@ export const PAGE_LIVE_QUERY = {
   refetchOnWindowFocus: false,
   refetchOnReconnect: false,
   refetchInterval: false as const,
-  refetchOnMount: "always" as const,
-  gcTime: 0,
+  refetchOnMount: true as const,
+  // Keep results briefly so Strict Mode remounts / filter toggles don't flash empty.
+  staleTime: 30_000,
+  gcTime: 5 * 60_000,
 };

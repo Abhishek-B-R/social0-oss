@@ -166,6 +166,13 @@ export function replyToInboxComment(input: {
   return rpc("inbox.replyToComment", input);
 }
 
+export function likeInboxComment(input: {
+  publicationId: string;
+  commentId: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  return rpc("inbox.likeComment", input);
+}
+
 export function listInboxDms(input?: {
   accountId?: string | null;
   range?: InboxRange;

@@ -1,9 +1,10 @@
-import { memo, useMemo, type ReactNode } from "react";
+import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "framer-motion";
 import {
   ResponsiveContainer,
-  AreaChart,
+  ComposedChart,
   Area,
+  Line,
   BarChart,
   Bar,
   PieChart,
@@ -15,7 +16,10 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
+import { CaretDown, ChartBar, ChartLine } from "@/icons/phosphor";
+import { cn } from "@/lib/utils";
 import { formatMetric, type MixSlice } from "./analytics-utils";
+import { MIX_COLORS, VIZ } from "./analytics-colors";
 import {
   axisTick,
   buildMixChartModel,
@@ -28,17 +32,7 @@ import {
 
 const GRID = "var(--color-border, #e5e7eb)";
 const MUTED = "var(--color-text-muted, #6b7280)";
-const ACCENT = "var(--color-accent, #10b981)";
-const BLUE = "#3b82f6";
-
-const MIX_COLORS: Record<string, string> = {
-  likes: "#f43f5e",
-  comments: "#f59e0b",
-  shares: "#8b5cf6",
-  quotes: BLUE,
-  saves: ACCENT,
-  clicks: "#06b6d4",
-};
+const ACCENT = VIZ.emerald;
 
 const CHART_MOTION = { duration: 320, easing: "ease-out" as const };
 
@@ -87,14 +81,64 @@ function ChartShell({ children }: { children: ReactNode }) {
   );
 }
 
+export type TrendChartView = "line" | "bar";
+
+export function TrendChartViewToggle({
+  value,
+  onChange,
+}: {
+  value: TrendChartView;
+  onChange: (next: TrendChartView) => void;
+}) {
+  return (
+    <div
+      role="tablist"
+      aria-label="Chart type"
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-bg-muted p-1"
+    >
+      {(
+        [
+          { id: "line" as const, label: "Line", Icon: ChartLine },
+          { id: "bar" as const, label: "Bar", Icon: ChartBar },
+        ] as const
+      ).map(({ id, label, Icon }) => {
+        const selected = value === id;
+        return (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(id)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.97]",
+              selected
+                ? "bg-bg-elevated text-text shadow-sm"
+                : "text-text-muted hover:text-text",
+            )}
+          >
+            <Icon size={14} weight={selected ? "fill" : "regular"} />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export const EngagementTrendChart = memo(function EngagementTrendChart({
   data,
+  view = "line",
 }: {
   data: TrendPoint[];
+  view?: TrendChartView;
 }) {
   const reduceMotion = useReducedMotion();
   const model = useMemo(() => buildTrendChartModel(data), [data]);
   const animate = !reduceMotion;
+  const fillId = useId().replace(/:/g, "");
+  const [leftMetric, setLeftMetric] = useState<"views" | "likes" | "comments" | "shares">("views");
+  const [rightMetric, setRightMetric] = useState<"engagement" | "likes" | "comments" | "shares">("engagement");
 
   if (model.rows.length === 0) {
     return (
@@ -102,83 +146,305 @@ export const EngagementTrendChart = memo(function EngagementTrendChart({
     );
   }
 
+  const leftMeta = METRIC_OPTIONS.find((m) => m.key === leftMetric)!;
+  const rightMeta = METRIC_OPTIONS.find((m) => m.key === rightMetric)!;
+
   return (
-    <ChartShell>
-      <ResponsiveContainer width="100%" height="100%" debounce={120}>
-        <AreaChart
-          data={model.rows}
-          margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
-        >
-          <defs>
-            <linearGradient id="engFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={ACCENT} stopOpacity={0.32} />
-              <stop offset="100%" stopColor={ACCENT} stopOpacity={0.02} />
-            </linearGradient>
-            <linearGradient id="viewsFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={BLUE} stopOpacity={0.28} />
-              <stop offset="100%" stopColor={BLUE} stopOpacity={0.02} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="date"
-            tickFormatter={(iso) => chartDayTick(String(iso), model.dayCount)}
-            tick={{ fill: MUTED, fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
-            interval="preserveStartEnd"
-            minTickGap={24}
-            tickMargin={8}
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <MetricPicker
+          value={leftMetric}
+          color={ACCENT}
+          options={LEFT_METRIC_OPTIONS}
+          onChange={setLeftMetric}
+          ariaLabel="Primary metric"
+        />
+        <span className="text-xs text-text-subtle" aria-hidden>
+          vs
+        </span>
+        <MetricPicker
+          value={rightMetric}
+          color={VIZ.amber}
+          options={RIGHT_METRIC_OPTIONS}
+          onChange={setRightMetric}
+          ariaLabel="Compare metric"
+        />
+      </div>
+      <ChartShell>
+        <ResponsiveContainer width="100%" height="100%" debounce={120}>
+          {view === "line" ? (
+            <ComposedChart
+              data={model.rows}
+              margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
+            >
+              <defs>
+                <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={ACCENT} stopOpacity={0.28} />
+                  <stop offset="100%" stopColor={ACCENT} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(iso) => chartDayTick(String(iso), model.dayCount)}
+                tick={{ fill: MUTED, fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={20}
+                tickMargin={8}
+              />
+              <YAxis
+                yAxisId="left"
+                orientation="left"
+                tick={{ fill: MUTED, fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={44}
+                allowDecimals={false}
+                tickFormatter={(v) => axisTick(Number(v))}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tick={{ fill: MUTED, fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={44}
+                allowDecimals={false}
+                tickFormatter={(v) => axisTick(Number(v))}
+              />
+              <Tooltip
+                content={<ChartTooltip />}
+                cursor={{ stroke: GRID, strokeWidth: 1 }}
+                isAnimationActive={false}
+              />
+              <Area
+                yAxisId="left"
+                type="monotone"
+                dataKey={leftMetric}
+                name={leftMeta.label}
+                stroke={ACCENT}
+                strokeWidth={2}
+                fill={`url(#${fillId})`}
+                dot={false}
+                activeDot={{ r: 4, fill: ACCENT, stroke: "var(--color-bg-elevated)", strokeWidth: 2 }}
+                isAnimationActive={animate}
+                animationDuration={CHART_MOTION.duration}
+                animationEasing={CHART_MOTION.easing}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey={rightMetric}
+                name={rightMeta.label}
+                stroke={VIZ.amber}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: VIZ.amber, stroke: "var(--color-bg-elevated)", strokeWidth: 2 }}
+                isAnimationActive={animate}
+                animationDuration={CHART_MOTION.duration}
+                animationEasing={CHART_MOTION.easing}
+              />
+            </ComposedChart>
+          ) : (
+            <BarChart
+              data={model.rows}
+              margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
+              barGap={2}
+              barCategoryGap="28%"
+            >
+              <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="date"
+                tickFormatter={(iso) => chartDayTick(String(iso), model.dayCount)}
+                tick={{ fill: MUTED, fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                interval="preserveStartEnd"
+                minTickGap={20}
+                tickMargin={8}
+              />
+              <YAxis
+                yAxisId="left"
+                orientation="left"
+                tick={{ fill: MUTED, fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={44}
+                allowDecimals={false}
+                tickFormatter={(v) => axisTick(Number(v))}
+              />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                tick={{ fill: MUTED, fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                width={44}
+                allowDecimals={false}
+                tickFormatter={(v) => axisTick(Number(v))}
+              />
+              <Tooltip
+                content={<ChartTooltip />}
+                cursor={{ fill: "var(--color-bg-muted)", opacity: 0.35 }}
+                isAnimationActive={false}
+              />
+              <Bar
+                yAxisId="left"
+                dataKey={leftMetric}
+                name={leftMeta.label}
+                fill={ACCENT}
+                maxBarSize={18}
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={animate}
+                animationDuration={CHART_MOTION.duration}
+                animationEasing={CHART_MOTION.easing}
+              />
+              <Bar
+                yAxisId="right"
+                dataKey={rightMetric}
+                name={rightMeta.label}
+                fill={VIZ.amber}
+                maxBarSize={18}
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={animate}
+                animationDuration={CHART_MOTION.duration}
+                animationEasing={CHART_MOTION.easing}
+              />
+            </BarChart>
+          )}
+        </ResponsiveContainer>
+      </ChartShell>
+      <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted">
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className={cn(view === "bar" ? "h-2 w-2 rounded-sm" : "h-0.5 w-4 rounded-full", "bg-accent")}
+            aria-hidden
           />
-          <YAxis
-            tick={{ fill: MUTED, fontSize: 11 }}
-            axisLine={false}
-            tickLine={false}
-            width={40}
-            allowDecimals={false}
-            tickFormatter={(v) => axisTick(Number(v))}
+          {leftMeta.label}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className={cn(
+              view === "bar" ? "h-2 w-2 rounded-sm" : "h-0.5 w-4 rounded-full",
+            )}
+            style={{ background: VIZ.amber }}
+            aria-hidden
           />
-          <Tooltip
-            content={<ChartTooltip />}
-            cursor={{ stroke: MUTED, strokeDasharray: "3 3", strokeOpacity: 0.6 }}
-            isAnimationActive={false}
-          />
-          <Legend
-            wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
-            iconType="circle"
-            iconSize={8}
-          />
-          <Area
-            type="monotone"
-            dataKey="views"
-            name="Views"
-            stroke={BLUE}
-            fill="url(#viewsFill)"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4, strokeWidth: 0 }}
-            isAnimationActive={animate}
-            animationDuration={CHART_MOTION.duration}
-            animationEasing={CHART_MOTION.easing}
-          />
-          <Area
-            type="monotone"
-            dataKey="engagement"
-            name="Engagement"
-            stroke={ACCENT}
-            fill="url(#engFill)"
-            strokeWidth={2}
-            dot={false}
-            activeDot={{ r: 4, strokeWidth: 0 }}
-            isAnimationActive={animate}
-            animationDuration={CHART_MOTION.duration}
-            animationEasing={CHART_MOTION.easing}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </ChartShell>
+          {rightMeta.label}
+        </span>
+      </div>
+    </div>
   );
 });
+
+const LEFT_METRIC_OPTIONS = [
+  { key: "views", label: "Views" },
+  { key: "likes", label: "Likes" },
+  { key: "comments", label: "Comments" },
+  { key: "shares", label: "Shares" },
+] as const;
+
+const RIGHT_METRIC_OPTIONS = [
+  { key: "engagement", label: "Engagements" },
+  { key: "likes", label: "Likes" },
+  { key: "comments", label: "Comments" },
+  { key: "shares", label: "Shares" },
+] as const;
+
+const METRIC_OPTIONS = [
+  ...LEFT_METRIC_OPTIONS,
+  { key: "engagement", label: "Engagements" },
+] as const;
+
+function MetricPicker<T extends string>({
+  value,
+  color,
+  options,
+  onChange,
+  ariaLabel,
+}: {
+  value: T;
+  color: string;
+  options: ReadonlyArray<{ key: T; label: string }>;
+  onChange: (next: T) => void;
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.key === value)!;
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(e: MouseEvent) {
+      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-muted px-2.5 py-1.5 text-xs font-medium text-text transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-elevated active:scale-[0.97]",
+          open && "bg-bg-elevated shadow-sm",
+        )}
+      >
+        <span
+          className="h-2 w-2 shrink-0 rounded-full"
+          style={{ background: color }}
+          aria-hidden
+        />
+        {selected.label}
+        <CaretDown
+          size={12}
+          weight="bold"
+          className={cn("text-text-muted transition-transform", open && "rotate-180")}
+        />
+      </button>
+      {open ? (
+        <div
+          role="listbox"
+          aria-label={ariaLabel}
+          className="absolute top-full left-0 z-30 mt-1.5 min-w-[9.5rem] rounded-xl border border-border bg-bg-elevated p-1 shadow-lg"
+        >
+          {options.map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              role="option"
+              aria-selected={value === o.key}
+              onClick={() => {
+                onChange(o.key);
+                setOpen(false);
+              }}
+              className={cn(
+                "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
+                value === o.key
+                  ? "bg-bg-muted font-medium text-text"
+                  : "text-text-muted hover:bg-bg-muted/70 hover:text-text",
+              )}
+            >
+              <span
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ background: value === o.key ? color : "var(--color-border)" }}
+                aria-hidden
+              />
+              {o.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 export const PlatformBreakdownChart = memo(function PlatformBreakdownChart({
   data,

@@ -11,6 +11,7 @@
 
 import { format } from "date-fns";
 import { formatMetric, type MixSlice } from "./analytics-utils";
+import { VIZ } from "./analytics-colors";
 
 export type TrendPoint = {
   date: string;
@@ -57,10 +58,10 @@ export type MixChartModel = {
 };
 
 const PLATFORM_SERIES = [
-  { key: "views", name: "Views", fill: "var(--chart-blue, #3b82f6)" },
-  { key: "likes", name: "Likes", fill: "var(--chart-rose, #f43f5e)" },
-  { key: "comments", name: "Comments", fill: "var(--chart-amber, #f59e0b)" },
-  { key: "shares", name: "Shares", fill: "var(--chart-violet, #8b5cf6)" },
+  { key: "views", name: "Views", fill: VIZ.emerald },
+  { key: "likes", name: "Likes", fill: VIZ.rose },
+  { key: "comments", name: "Comments", fill: VIZ.blue },
+  { key: "shares", name: "Shares", fill: VIZ.amber },
 ] as const satisfies PlatformChartModel["activeSeries"];
 
 function dayDate(iso: string): Date | null {
