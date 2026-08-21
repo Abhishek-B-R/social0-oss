@@ -83,6 +83,18 @@ export function axisTick(v: number): string {
   return String(Math.round(v));
 }
 
+/** Nice Y-axis ceiling from raw values (readable tick steps). */
+export function niceAxisMax(values: number[]): number {
+  const max = Math.max(0, ...values.filter((v) => Number.isFinite(v)));
+  if (max <= 0) return 4;
+  const padded = max * 1.05;
+  const magnitude = 10 ** Math.floor(Math.log10(padded));
+  const normalized = padded / magnitude;
+  const step =
+    ([1, 1.5, 2, 2.5, 5, 10] as const).find((s) => normalized <= s) ?? 10;
+  return step * magnitude;
+}
+
 /** Stage: normalize_trend */
 export function buildTrendChartModel(data: TrendPoint[]): TrendChartModel {
   const dayCount = data.length;
@@ -104,10 +116,14 @@ export function buildTrendChartModel(data: TrendPoint[]): TrendChartModel {
 export function buildPlatformChartModel(
   rows: PlatformChartRow[],
 ): PlatformChartModel {
-  const activeSeries = PLATFORM_SERIES.filter((s) =>
-    rows.some((row) => row[s.key] > 0),
+  const activeRows = rows.filter(
+    (row) =>
+      row.views > 0 || row.likes > 0 || row.comments > 0 || row.shares > 0,
   );
-  return { rows, activeSeries };
+  const activeSeries = PLATFORM_SERIES.filter((s) =>
+    activeRows.some((row) => row[s.key] > 0),
+  );
+  return { rows: activeRows, activeSeries };
 }
 
 /** Stage: normalize_mix */
