@@ -45,7 +45,10 @@ export function InboxPage() {
     workspacesQuery.data?.workspaces.find((w) => w.isActive)?.id ?? "main";
   const [searchParams, setSearchParams] = useSearchParams();
   const mode: InboxMode = searchParams.get("tab") === "dms" ? "dms" : "comments";
-  const accountId = searchParams.get("account");
+  /** URL `account`: missing until resolved, `all` = explicit all-accounts, else account id. */
+  const accountParam = searchParams.get("account");
+  const accountId =
+    accountParam && accountParam !== "all" ? accountParam : null;
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
   const [statusFilter, setStatusFilter] =
     useState<InboxCommentStatusFilter>("unanswered");
@@ -71,8 +74,9 @@ export function InboxPage() {
     setSearchParams(
       (prev) => {
         const nextParams = new URLSearchParams(prev);
-        if (id) nextParams.set("account", id);
-        else nextParams.delete("account");
+        // null = explicit "All accounts" (never omit the param — that was the
+        // mount race that fan-out-fetched every platform before pinning).
+        nextParams.set("account", id ?? "all");
         return nextParams;
       },
       { replace: true },
@@ -104,10 +108,17 @@ export function InboxPage() {
   // Prefer a single account so "All" is an explicit choice, not the default
   // storm that fans out across every connected platform.
   useEffect(() => {
-    if (!accountsQuery.isSuccess || !accounts.length) return;
-    if (accountId && accounts.some((a) => a.id === accountId)) return;
+    if (!accountsQuery.isSuccess) return;
+    if (!accounts.length) return;
+    if (accountParam === "all") return;
+    if (accountParam && accounts.some((a) => a.id === accountParam)) return;
     setAccountId(accounts[0]!.id);
-  }, [accountId, accounts, accountsQuery.isSuccess]);
+  }, [accountParam, accounts, accountsQuery.isSuccess]);
+
+  /** Live list fetches wait until account is pinned or user chose All. */
+  const accountFilterReady =
+    accountsQuery.isSuccess &&
+    (accounts.length === 0 || accountParam !== null);
 
   const listQueryKey = useMemo(
     () =>
@@ -237,9 +248,9 @@ export function InboxPage() {
 
       <AccountFilterChips
         accounts={accounts}
-        selectedId={accountId}
+        selectedId={accountParam === "all" ? null : accountId}
         onSelect={setAccountId}
-        loading={accountsQuery.isLoading}
+        loading={accountsQuery.isLoading || !accountFilterReady}
         emptyLabel={
           mode === "comments"
             ? "Connect an account to see comments."
@@ -255,7 +266,7 @@ export function InboxPage() {
             dateWindow={dateWindow}
             accountId={accountId}
             accounts={accounts}
-            enabled
+            enabled={accountFilterReady}
             allowReply={canReplyComments}
             statusFilter={statusFilter}
           />
@@ -265,7 +276,7 @@ export function InboxPage() {
           <InboxDmsPane
             dateWindow={dateWindow}
             accountId={accountId}
-            enabled
+            enabled={accountFilterReady}
             allowReply={canReplyDms}
           />
         </div>

@@ -174,7 +174,7 @@ async function fillInstagramProfiles(
         account.platformUsername,
       ),
   );
-  await mapPool(missing, 2, async (id) => {
+  await mapPool(missing.slice(0, 8), 2, async (id) => {
     try {
       const profile = await fetchInstagramUserProfile(account, id);
       if (profile) into.set(id, profile);

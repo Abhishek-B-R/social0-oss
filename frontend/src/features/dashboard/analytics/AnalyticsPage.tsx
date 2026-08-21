@@ -42,7 +42,10 @@ export function AnalyticsPage() {
     useWorkspaceNavPermissions();
   const dash = useDashboardPath();
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
-  const [accountId, setAccountId] = useState<string | null>(null);
+  /** undefined = unresolved (do not fetch); null = All; string = account id */
+  const [accountFilter, setAccountFilter] = useState<string | null | undefined>(
+    undefined,
+  );
   const [trendChartView, setTrendChartView] = useState<TrendChartView>("line");
   const [reconnectDismissed, setReconnectDismissed] = useState(false);
 
@@ -63,14 +66,26 @@ export function AnalyticsPage() {
     ...PAGE_LIVE_QUERY,
   });
 
+  const accounts = accountsQuery.data ?? [];
+  const accountReady =
+    accountsQuery.isSuccess &&
+    (accounts.length === 0 || accountFilter !== undefined);
+  const accountId =
+    typeof accountFilter === "string" ? accountFilter : null;
+
   const overviewQuery = useQuery({
-    queryKey: ["analytics-overview", workspaceId, dateWindow, accountId],
+    queryKey: ["analytics-overview", workspaceId, dateWindow, accountFilter],
     queryFn: () =>
       getAnalyticsOverview({
         ...windowQueryParams(dateWindow),
         accountId: accountId || undefined,
       }),
-    enabled: !!session && permissionsReady && canViewAnalytics && workspaceReady,
+    enabled:
+      !!session &&
+      permissionsReady &&
+      canViewAnalytics &&
+      workspaceReady &&
+      accountReady,
     ...PAGE_LIVE_QUERY,
   });
 
@@ -81,13 +96,20 @@ export function AnalyticsPage() {
     staleTime: 5 * 60_000,
   });
 
-  const accounts = accountsQuery.data ?? [];
-
   useEffect(() => {
-    if (!accountsQuery.isSuccess || !accounts.length) return;
-    if (accountId && accounts.some((a) => a.id === accountId)) return;
-    setAccountId(accounts[0]!.id);
-  }, [accountId, accounts, accountsQuery.isSuccess]);
+    if (!accountsQuery.isSuccess) return;
+    if (accountFilter !== undefined) {
+      if (
+        typeof accountFilter === "string" &&
+        accounts.length > 0 &&
+        !accounts.some((a) => a.id === accountFilter)
+      ) {
+        setAccountFilter(accounts[0]!.id);
+      }
+      return;
+    }
+    setAccountFilter(accounts[0]?.id ?? null);
+  }, [accountFilter, accounts, accountsQuery.isSuccess]);
 
   const reconnect = useMemo(() => {
     const fromOverview = overviewQuery.data?.accountsNeedingReconnect;
@@ -192,7 +214,7 @@ export function AnalyticsPage() {
           onClick={(e) => {
             const force = e.shiftKey;
             void qc.fetchQuery({
-              queryKey: ["analytics-overview", workspaceId, dateWindow, accountId],
+              queryKey: ["analytics-overview", workspaceId, dateWindow, accountFilter],
               queryFn: () =>
                 getAnalyticsOverview({
                   ...windowQueryParams(dateWindow),
@@ -222,9 +244,9 @@ export function AnalyticsPage() {
       <div className="shrink-0">
         <AccountFilterChips
           accounts={accounts}
-          selectedId={accountId}
-          onSelect={setAccountId}
-          loading={accountsQuery.isLoading}
+          selectedId={accountFilter === undefined ? undefined : accountId}
+          onSelect={setAccountFilter}
+          loading={accountsQuery.isLoading || !accountReady}
           emptyLabel="Connect an account to see analytics."
         />
       </div>

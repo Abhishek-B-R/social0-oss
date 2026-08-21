@@ -123,9 +123,7 @@ async function createSession(
   handle: string,
   appPassword: string,
 ): Promise<{ accessJwt: string; did: string } | null> {
-  const allowed = await enforceRateLimit(createSessionLimiter, accountId, {
-    failClosedWhenUnavailable: false,
-  });
+  const allowed = await enforceRateLimit(createSessionLimiter, accountId);
   if (!allowed.allowed) {
     console.warn(
       `[bluesky] createSession rate limited for account ${accountId}`,

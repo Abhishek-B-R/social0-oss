@@ -26,7 +26,8 @@ export function AccountFilterChips({
   emptyLabel,
 }: {
   accounts: FilterAccount[];
-  selectedId: string | null;
+  /** `undefined` = not yet resolved (nothing selected); `null` = All */
+  selectedId: string | null | undefined;
   onSelect: (id: string | null) => void;
   loading?: boolean;
   emptyLabel: string;
@@ -46,21 +47,22 @@ export function AccountFilterChips({
   if (!accounts.length) {
     return <p className="text-sm text-text-muted">{emptyLabel}</p>;
   }
+  const allSelected = selectedId === null;
   return (
     <div className="flex flex-wrap items-start gap-3">
-      <ChipButton selected={selectedId == null} onClick={() => onSelect(null)}>
+      <ChipButton selected={allSelected} onClick={() => onSelect(null)}>
         <span
           className={cn(
             "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-[transform,border-color,background-color,color,opacity] duration-150 ease-out",
-            selectedId == null
+            allSelected
               ? "border-accent bg-accent/15 text-accent"
               : "border-transparent bg-bg-muted text-text-muted opacity-70 hover:opacity-100",
           )}
         >
-          <SquaresFour size={22} weight={selectedId == null ? "fill" : "regular"} />
-          {selectedId == null ? <SelectedCheck /> : null}
+          <SquaresFour size={22} weight={allSelected ? "fill" : "regular"} />
+          {allSelected ? <SelectedCheck /> : null}
         </span>
-        <ChipLabel selected={selectedId == null}>All</ChipLabel>
+        <ChipLabel selected={allSelected}>All</ChipLabel>
       </ChipButton>
       {accounts.map((a) => {
         const selected = selectedId === a.id;

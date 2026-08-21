@@ -435,7 +435,7 @@ async function runPlatformRead<T>(opts: {
   const accountAllowed = await enforceRateLimit(
     accountLimiter,
     opts.accountId,
-    { failClosedWhenUnavailable: false },
+    // Production must not open the floodgates if Redis is down.
   );
   if (!accountAllowed.allowed) {
     return serveStaleOrCooldown<T>(opts.key, opts.platform, Date.now() + 60_000);
@@ -445,7 +445,6 @@ async function runPlatformRead<T>(opts: {
   const globalAllowed = await enforceRateLimit(
     globalLimiter,
     "global",
-    { failClosedWhenUnavailable: false },
   );
   if (!globalAllowed.allowed) {
     return serveStaleOrCooldown<T>(opts.key, opts.platform, Date.now() + 60_000);
