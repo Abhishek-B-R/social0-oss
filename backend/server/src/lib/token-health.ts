@@ -35,15 +35,66 @@ export { NEVER_EXPIRES_PLATFORMS } from "@social0/shared";
 export type AccountForHealthCheck = {
   id: string;
   platform: string;
+  platformUserId?: string | null;
   encryptedAccessToken: string;
   encryptedRefreshToken: string | null;
   tokenExpiresAt: Date | null;
   lastSyncedAt: Date | null;
   tokenStatus: string | null;
+  platformMetadata?: Record<string, unknown> | null;
 };
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Instagram via Facebook Page stores a Page token, not an Instagram Login token. */
+export function isInstagramFacebookPageAccount(
+  account: Pick<AccountForHealthCheck, "platform" | "platformMetadata">,
+): boolean {
+  if (account.platform !== "instagram") return false;
+  const method = account.platformMetadata?.connectionMethod;
+  return method === "facebook-page";
+}
+
+async function verifyInstagramToken(
+  accessToken: string,
+  account: AccountForHealthCheck,
+): Promise<number> {
+  const headers = { Authorization: `Bearer ${accessToken}` };
+  const igUserId = account.platformUserId?.trim();
+
+  // Facebook Login / Page tokens must be checked on graph.facebook.com.
+  // graph.instagram.com/me only accepts Instagram Login user tokens - using it
+  // on Page tokens falsely marks every FB-linked IG account as expired.
+  if (isInstagramFacebookPageAccount(account)) {
+    if (!igUserId) return 401;
+    const r = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(igUserId)}?fields=id`,
+      { headers },
+    );
+    return r.status;
+  }
+
+  const direct = await fetch("https://graph.instagram.com/me?fields=id", {
+    headers,
+  });
+  if (direct.status === 200) return 200;
+
+  // Legacy rows may lack connectionMethod. If Instagram Login fails, try the
+  // Page-token path before declaring the account dead.
+  if (
+    igUserId &&
+    (direct.status === 401 || direct.status === 403 || direct.status === 400)
+  ) {
+    const viaFb = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(igUserId)}?fields=id`,
+      { headers },
+    );
+    if (viaFb.status === 200) return 200;
+  }
+
+  return direct.status;
 }
 
 /** Cheapest validation request per platform. Returns response status (200, 401, 403, or other). */
@@ -51,6 +102,7 @@ async function verifyToken(
   platform: string,
   accessToken: string,
   accessSecret: string | null,
+  account?: AccountForHealthCheck,
 ): Promise<number> {
   switch (platform) {
     case "linkedin": {
@@ -91,10 +143,13 @@ async function verifyToken(
       return r.status;
     }
     case "instagram": {
-      const r = await fetch("https://graph.instagram.com/me?fields=id", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      return r.status;
+      if (!account) {
+        const r = await fetch("https://graph.instagram.com/me?fields=id", {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        return r.status;
+      }
+      return verifyInstagramToken(accessToken, account);
     }
     case "facebook": {
       const r = await fetch("https://graph.facebook.com/me?fields=id", {
@@ -174,6 +229,8 @@ const META_REFRESH_PLATFORMS = new Set([
 
 function canProactiveRefresh(account: AccountForHealthCheck): boolean {
   if (!REFRESH_ON_HEALTH.has(account.platform)) return false;
+  // Page tokens are not Instagram Login tokens - ig_refresh_token would fail.
+  if (isInstagramFacebookPageAccount(account)) return false;
   if (META_REFRESH_PLATFORMS.has(account.platform)) return true;
   return Boolean(account.encryptedRefreshToken);
 }
@@ -186,7 +243,7 @@ export async function runTokenHealthCheck(
   accounts: AccountForHealthCheck[],
   options: {
     now?: Date;
-    /** @deprecated use tryRefresh — kept so existing callers keep working */
+    /** @deprecated use tryRefresh - kept so existing callers keep working */
     tryRefreshYouTubeTikTok?: boolean;
     tryRefresh?: boolean;
     twitterAccessSecretByAccountId?: Map<string, string>;
@@ -244,6 +301,7 @@ export async function runTokenHealthCheck(
       account.platform,
       accessToken,
       accessSecret,
+      account,
     );
 
     if (status === 200) {
@@ -321,11 +379,13 @@ export async function runTokenHealthCheckForUser(
     .select({
       id: connectedAccounts.id,
       platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
       encryptedAccessToken: connectedAccounts.encryptedAccessToken,
       encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
       tokenExpiresAt: connectedAccounts.tokenExpiresAt,
       lastSyncedAt: connectedAccounts.lastSyncedAt,
       tokenStatus: connectedAccounts.tokenStatus,
+      platformMetadata: connectedAccounts.platformMetadata,
     })
     .from(connectedAccounts)
     .where(
@@ -333,6 +393,9 @@ export async function runTokenHealthCheckForUser(
         eq(connectedAccounts.userId, userId),
         eq(connectedAccounts.isActive, true),
         or(
+          // Always re-verify rows already marked expired so a bad health check
+          // (e.g. FB-page Instagram tokens vs graph.instagram.com) can heal.
+          eq(connectedAccounts.tokenStatus, "expired"),
           isNull(connectedAccounts.lastSyncedAt),
           lt(connectedAccounts.lastSyncedAt, sixHoursAgo),
         ),
@@ -341,11 +404,15 @@ export async function runTokenHealthCheckForUser(
 
   if (accounts.length === 0) return;
 
-  const toCheck = filterAccountsNeedingHealthCheck(accounts, {
+  const stale = filterAccountsNeedingHealthCheck(accounts, {
     now,
     maxAgeMs: 6 * 60 * 60 * 1000,
     strictMaxAgeMs: 6 * 60 * 60 * 1000,
   });
+  const expired = accounts.filter((a) => a.tokenStatus === "expired");
+  const byId = new Map<string, (typeof accounts)[number]>();
+  for (const a of [...stale, ...expired]) byId.set(a.id, a);
+  const toCheck = [...byId.values()];
 
   for (let i = 0; i < toCheck.length; i += BATCH_SIZE) {
     const batch = toCheck.slice(i, i + BATCH_SIZE);

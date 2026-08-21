@@ -66,6 +66,8 @@ export type LoadConnectionsPageDataResult =
           isTwitterPremium: boolean;
           tokenStatus: "ok" | "expired";
           expiresInDays: number | null;
+          /** Instagram: "direct" | "facebook-page" */
+          connectionMethod?: string | null;
         }>;
         accountLimit:
           | {

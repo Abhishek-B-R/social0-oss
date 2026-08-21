@@ -66,12 +66,17 @@ export function OAuthErrorHandler({
           break;
         case "tiktok_scope_required":
           setMessage(
-            "TikTok did not grant profile access (user.info.basic). In the TikTok app go to Settings → Security → Manage app permissions, remove Social0, then click Connect here again and approve all permissions.",
+            "TikTok did not grant profile access (user.info.basic). In the TikTok app go to Settings -> Security -> Manage app permissions, remove Social0, then click Connect here again and approve all permissions.",
           );
           break;
         case "tiktok_profile_failed":
           setMessage(
-            "Could not load your TikTok profile. Remove Social0 from TikTok app permissions (Settings → Security → Manage app permissions), then Connect again.",
+            "Could not load your TikTok profile. Remove Social0 from TikTok app permissions (Settings -> Security -> Manage app permissions), then Connect again.",
+          );
+          break;
+        case "instagram_profile_failed":
+          setMessage(
+            "Instagram connected, but we could not load your profile. Use Reconnect on the expired account (not a fresh Connect), or try Connect via Facebook Page.",
           );
           break;
         default:

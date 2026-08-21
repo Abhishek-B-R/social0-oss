@@ -9,7 +9,7 @@ import {
   runTokenHealthCheck,
 } from "../lib/token-health.js";
 
-/** Proactive token validation sweep — only job on the token queue. */
+/** Proactive token validation sweep - only job on the token queue. */
 export function startTokenWorker(
   connection: ConnectionOptions,
   concurrency: number,
@@ -28,11 +28,13 @@ export function startTokenWorker(
         .select({
           id: connectedAccounts.id,
           platform: connectedAccounts.platform,
+          platformUserId: connectedAccounts.platformUserId,
           encryptedAccessToken: connectedAccounts.encryptedAccessToken,
           encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
           tokenExpiresAt: connectedAccounts.tokenExpiresAt,
           lastSyncedAt: connectedAccounts.lastSyncedAt,
           tokenStatus: connectedAccounts.tokenStatus,
+          platformMetadata: connectedAccounts.platformMetadata,
         })
         .from(connectedAccounts)
         .where(

@@ -2,7 +2,7 @@ import { useState } from "react";
 import Link from "@/components/AppLink";
 import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
 import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
-import type { BillingInterval } from "@/lib/plans";
+import { getPlanLimits, type BillingInterval } from "@/lib/plans";
 import {
   billedAsYearlyLabel,
   getEffectiveMonthly,
@@ -18,7 +18,7 @@ import {
 } from "@/lib/plan-features";
 
 const basePlanCard =
-  "flex h-full flex-col rounded-2xl border border-border bg-card p-8 md:p-10 dark:border-white/10 dark:bg-[#1A1A1A]";
+  "flex h-full flex-col rounded-2xl border border-border bg-card p-6 md:p-8 dark:border-white/10 dark:bg-[#1A1A1A]";
 
 const basePlanLabel =
   "text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
@@ -52,6 +52,8 @@ type PricingCardsProps = {
   compareHref?: string;
   /** Section element id (landing uses #pricing) */
   id?: string;
+  /** Full-bleed cards on /pricing; landing stays the older narrower width. */
+  wide?: boolean;
 };
 
 export function PricingCards({
@@ -61,12 +63,14 @@ export function PricingCards({
   headingAs = "h2",
   compareHref = "#compare",
   id,
+  wide = false,
 }: PricingCardsProps) {
   const [showMax, setShowMax] = useState(false);
   const starter = getPlanPrice("starter", interval);
   const growth = getPlanPrice("growth", interval);
   const pro = getPlanPrice("pro", interval);
   const max = getPlanPrice("max", interval);
+  const freePosts = getPlanLimits("free").maxFreePosts;
   const Heading = headingAs;
   const paidCta = signedIn ? "Go to dashboard →" : "Get started";
   const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signin";
@@ -81,7 +85,7 @@ export function PricingCards({
 
   return (
     <section id={id} className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-      <div className="mx-auto max-w-280">
+      <div className={wide ? "mx-auto w-full max-w-350" : "mx-auto max-w-280"}>
         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
@@ -114,9 +118,13 @@ export function PricingCards({
           — we&apos;ll make it right.
         </p>
 
-        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-5">
           <div className={basePlanCard}>
-            <div className="mb-6 min-h-7.5" aria-hidden />
+            <div className="mb-6 min-h-7.5">
+              <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
+                {freePosts} posts for trial
+              </span>
+            </div>
             <div className={basePlanLabel}>Free</div>
             <div className="mt-6 mb-2 flex items-baseline gap-2">
               <div className={basePlanPrice}>
@@ -125,7 +133,7 @@ export function PricingCards({
                 </sup>
                 0
               </div>
-              <div className="text-[13px] text-muted-foreground">forever</div>
+              <div className="text-[13px] text-muted-foreground">to start</div>
             </div>
             <p className={`mb-8 ${basePlanDesc}`}>
               Publish across every platform and see why creators switch — before

@@ -1,9 +1,11 @@
 
 import { signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import { resetVemetricUser } from "@/lib/vemetric";
 
 export function SignOutButton({ className }: { className?: string }) {
   const handleSignOut = async () => {
+    await resetVemetricUser();
     await signOut();
     window.location.href = "/";
   };

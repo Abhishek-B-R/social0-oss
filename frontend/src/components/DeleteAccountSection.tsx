@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { deleteAccount } from "@/api/settings";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
+import { resetVemetricUser } from "@/lib/vemetric";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ export function DeleteAccountSection({ className }: { className?: string }) {
       }
       // Clear Better Auth cookies client-side (cookie cache can outlive DB delete).
       try {
+        await resetVemetricUser();
         await authClient.signOut();
       } catch {
         /* account/session may already be gone */

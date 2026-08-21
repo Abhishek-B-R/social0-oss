@@ -43,6 +43,7 @@ export default function PricingPage() {
         interval={interval}
         onIntervalChange={setInterval}
         headingAs="h1"
+        wide
       />
       <PricingComparisonTable interval={interval} signedIn={signedIn} />
       <PricingFaq />

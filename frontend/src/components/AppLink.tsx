@@ -5,6 +5,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
+import { resolveAppLinkTo } from "@/lib/app-link-to";
 
 type AppLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
   href: string;
@@ -13,28 +14,6 @@ type AppLinkProps = Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href"> & {
   /** React Router location state (e.g. `{ from }` for back navigation). */
   state?: unknown;
 };
-
-function routerTo(
-  href: string,
-  currentPathname: string,
-  currentSearch: string,
-): RouterLinkProps["to"] {
-  if (!href.includes("#")) return href;
-  // Hash-only (#compare) must stay on the current route — URL(base) would make pathname "/".
-  if (href.startsWith("#")) {
-    return {
-      pathname: currentPathname || "/",
-      search: currentSearch,
-      hash: href,
-    };
-  }
-  const url = new URL(href, "https://social0.app");
-  return {
-    pathname: url.pathname || "/",
-    search: url.search,
-    hash: url.hash,
-  };
-}
 
 export default function AppLink({
   href,
@@ -60,38 +39,18 @@ export default function AppLink({
       </a>
     );
   }
-  const to = routerTo(href, location.pathname, location.search);
+  const to = resolveAppLinkTo(href, location.pathname, location.search);
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
     onClick?.(event);
     if (event.defaultPrevented || !href.includes("#")) return;
 
-    if (href.startsWith("#")) {
-      event.preventDefault();
-      navigate(
-        {
-          pathname: location.pathname,
-          search: location.search,
-          hash: href,
-        },
-        state !== undefined ? { state } : undefined,
-      );
-      return;
-    }
+    if (typeof to === "string") return;
 
-    const url = new URL(href, "https://social0.app");
-    const samePath =
-      url.pathname === location.pathname && url.search === location.search;
+    const samePath = to.pathname === location.pathname;
     if (!samePath) return;
 
     event.preventDefault();
-    navigate(
-      {
-        pathname: url.pathname,
-        search: url.search,
-        hash: url.hash,
-      },
-      state !== undefined ? { state } : undefined,
-    );
+    navigate(to, state !== undefined ? { state } : undefined);
   };
 
   return (

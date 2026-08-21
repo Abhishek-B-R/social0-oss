@@ -31,6 +31,10 @@ import {
 } from "../lib/youtube-token.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 import { grantedScopesForConnect } from "../lib/oauth-granted-scopes.js";
+import {
+  normalizeInstagramTokenResponse,
+  parseInstagramMeResponse,
+} from "../lib/instagram-oauth.js";
 
 function normalizeWorkspaceId(value: unknown): string | null {
   return typeof value === "string" ? value : null;
@@ -523,6 +527,27 @@ export async function platformCallback(
       }
 
       tokens = await tokenResponse.json();
+      // Instagram Login often returns { data: [{ access_token, user_id, permissions }] }
+      // instead of a flat object - unwrap before anything else uses the token.
+      if (platform === "instagram") {
+        const normalized = normalizeInstagramTokenResponse(tokens);
+        if (!normalized) {
+          console.error(
+            "Instagram token exchange: missing access_token/user_id",
+            tokens,
+          );
+          throw new Error(
+            "Token exchange failed: invalid Instagram token response",
+          );
+        }
+        tokens = {
+          ...tokens,
+          access_token: normalized.access_token,
+          user_id: normalized.user_id,
+          expires_in: normalized.expires_in ?? 3600,
+          permissions: normalized.permissions,
+        };
+      }
       // Meta Graph API returns: { access_token, token_type, expires_in }
       // Normalize to standard format
       if (tokens.access_token && !tokens.refresh_token) {
@@ -688,7 +713,7 @@ export async function platformCallback(
 
     if (platform === "linkedin" && !tokens.refresh_token) {
       // Standard LinkedIn apps are not in the Marketing Developer Platform
-      // refresh-token program — LinkedIn returns a 60-day access token only.
+      // refresh-token program - LinkedIn returns a 60-day access token only.
       console.warn(
         "[LinkedIn] token exchange had no refresh_token (expected without MDP); expires_in=",
         tokens.expires_in ?? null,
@@ -931,6 +956,26 @@ export async function platformCallback(
       }
     }
 
+    // Never persist a ghost Instagram row (@user / synthetic id). That is what
+    // the Connections "Token expired" reconnect bug was creating when /me failed.
+    if (platform === "instagram") {
+      const badId =
+        !userInfo.id ||
+        userInfo.id.startsWith("instagram-") ||
+        userInfo.id.startsWith("unknown-");
+      const badUsername = !userInfo.username?.trim();
+      if (badId || badUsername) {
+        console.error("Instagram connect aborted: incomplete profile", {
+          id: userInfo.id,
+          username: userInfo.username,
+        });
+        return safeRedirect(
+          `/dashboard/connections?error=instagram_profile_failed&platform=instagram`,
+          "/dashboard/connections",
+        );
+      }
+    }
+
     if (platform === "youtube") {
       const usable = await isYouTubeAccessTokenUsable(tokens.access_token);
       if (!usable) {
@@ -997,7 +1042,7 @@ export async function platformCallback(
               userId,
               workspaceId,
               accessToken: tokens.access_token,
-              // Must survive the company/personal select step — without this,
+              // Must survive the company/personal select step - without this,
               // LinkedIn accounts die after ~1h with no way to refresh.
               refreshToken:
                 typeof tokens.refresh_token === "string"
@@ -1309,15 +1354,16 @@ async function fetchPlatformUserInfo(
 
     case "instagram": {
       try {
+        // Prefer user_id (IG professional account id) per current Meta docs.
         const response = await fetch(
-          `https://graph.instagram.com/me?fields=id,username,profile_picture_url&access_token=${accessToken}`,
+          `https://graph.instagram.com/me?fields=user_id,id,username,profile_picture_url&access_token=${encodeURIComponent(accessToken)}`,
         );
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Instagram Graph API userinfo error:", errorText);
-          // Fallback: personal/non-business accounts may not have profile_picture_url permission
+          // Fallback without profile_picture_url if that field is unavailable
           const fallbackRes = await fetch(
-            `https://graph.instagram.com/me?fields=id,username,account_type&access_token=${accessToken}`,
+            `https://graph.instagram.com/me?fields=user_id,id,username,account_type&access_token=${encodeURIComponent(accessToken)}`,
           );
           if (fallbackRes.ok) {
             const fallbackData = await fallbackRes.json();
@@ -1325,11 +1371,14 @@ async function fetchPlatformUserInfo(
               "Instagram direct user data (fallback):",
               JSON.stringify(fallbackData, null, 2),
             );
-            return {
-              id: fallbackData.id || `instagram-${Date.now()}`,
-              username: fallbackData.username || null,
-              profileImageUrl: null,
-            };
+            const parsed = parseInstagramMeResponse(fallbackData);
+            if (parsed) {
+              return {
+                id: parsed.id,
+                username: parsed.username,
+                profileImageUrl: null,
+              };
+            }
           }
           break;
         }
@@ -1338,24 +1387,12 @@ async function fetchPlatformUserInfo(
           "Instagram direct user data:",
           JSON.stringify(data, null, 2),
         );
-        let profileImageUrl: string | null = null;
-        try {
-          const raw = data.profile_picture_url;
-          // Remote URL is mirrored to R2 before DB write; keep validation only.
-          if (
-            typeof raw === "string" &&
-            (raw.startsWith("http://") || raw.startsWith("https://"))
-          ) {
-            profileImageUrl = raw;
-          }
-        } catch (pfpErr) {
-          rethrowRouteRedirect(pfpErr);
-          console.error("Instagram profile_picture_url parse failed:", pfpErr);
-        }
+        const parsed = parseInstagramMeResponse(data);
+        if (!parsed) break;
         return {
-          id: data.id || `instagram-${Date.now()}`,
-          username: data.username || null,
-          profileImageUrl,
+          id: parsed.id,
+          username: parsed.username,
+          profileImageUrl: parsed.profileImageUrl,
         };
       } catch (err) {
         rethrowRouteRedirect(err);

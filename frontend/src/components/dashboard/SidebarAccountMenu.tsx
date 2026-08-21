@@ -6,6 +6,7 @@ import { signOut } from "@/lib/auth-client";
 import { DOCS_DASHBOARD_URL } from "@/lib/docs-url";
 import { LEGAL_ENTITY } from "@/lib/legal-entity";
 import { cn } from "@/lib/utils";
+import { resetVemetricUser } from "@/lib/vemetric";
 import {
   ArrowSquareOut,
   BookOpen,
@@ -359,6 +360,7 @@ export function SidebarAccountMenu({
 
   const handleSignOut = async () => {
     close();
+    await resetVemetricUser();
     await signOut();
     window.location.href = "/";
   };

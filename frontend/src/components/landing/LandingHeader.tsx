@@ -5,15 +5,23 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import Image from "@/components/AppImage";
+import { useLandingModeOrDefault } from "./landing-mode";
 
 type NavLink = { href: string; label: string };
 
-// Keep nav short — one job: stay on-page and convert
-const landingNavLinks: NavLink[] = [
-  { href: "/#features", label: "Product" },
-  { href: "/#stories", label: "Stories" },
-  { href: "/#pricing", label: "Pricing" },
-];
+function landingNavLinks(mode: "normal" | "agent"): NavLink[] {
+  return [
+    { href: "/#features", label: "Features" },
+    ...(mode === "agent"
+      ? [{ href: "/#agent-demos", label: "Agents" }]
+      : []),
+    { href: "/#platforms", label: "Platforms" },
+    { href: "/#developers", label: "Developers" },
+    { href: "/#stories", label: "Reviews" },
+    { href: "/#pricing", label: "Pricing" },
+    { href: "/#faq", label: "FAQ" },
+  ];
+}
 
 /** On /home, same-page anchors must use /home#… so they don't hit / and redirect logged-in users. */
 function landingNavHref(href: string, pathname: string | null) {
@@ -23,13 +31,10 @@ function landingNavHref(href: string, pathname: string | null) {
   return href;
 }
 
-function navLinksForPath(): NavLink[] {
-  return landingNavLinks;
-}
-
 export function LandingHeader() {
   const pathname = useLocation().pathname;
-  const navLinks = navLinksForPath();
+  const { mode } = useLandingModeOrDefault();
+  const navLinks = landingNavLinks(mode);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session } = useSession();
   const user = session?.user;
@@ -64,25 +69,7 @@ export function LandingHeader() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-8 lg:flex">
-          <Link
-            href="/features"
-            className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Features
-          </Link>
-          <Link
-            href="/tools"
-            className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Tools
-          </Link>
-          <Link
-            href="/alternatives"
-            className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Compare
-          </Link>
+        <nav className="hidden items-center gap-6 lg:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
@@ -146,27 +133,6 @@ export function LandingHeader() {
       {mobileMenuOpen && (
         <div className="border-t border-border bg-background px-6 py-4 lg:hidden">
           <nav className="flex flex-col gap-4">
-            <Link
-              href="/features"
-              className="text-[15px] text-muted-foreground transition-colors hover:text-foreground"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Features
-            </Link>
-            <Link
-              href="/tools"
-              className="text-[15px] text-muted-foreground transition-colors hover:text-foreground"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Tools
-            </Link>
-            <Link
-              href="/alternatives"
-              className="text-[15px] text-muted-foreground transition-colors hover:text-foreground"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Compare
-            </Link>
             {navLinks.map((link) => (
               <Link
                 key={link.href}
