@@ -64,6 +64,24 @@ describe("platform-api-cache helpers", () => {
     ).toBe(false);
   });
 
+  it("does not cache DM lists with only placeholder peer identity", () => {
+    expect(
+      shouldCachePlatformRead({
+        status: "ok",
+        threads: [
+          { peerName: "X user", peerHandle: null },
+          { peerName: "X user", peerHandle: null },
+        ],
+      }),
+    ).toBe(false);
+    expect(
+      shouldCachePlatformRead({
+        status: "ok",
+        threads: [{ peerName: "Ada", peerHandle: "ada" }],
+      }),
+    ).toBe(true);
+  });
+
   it("exposes a finite in-memory cache cap", () => {
     expect(MEM_CACHE_MAX_ENTRIES).toBeGreaterThan(0);
     expect(MEM_CACHE_MAX_ENTRIES).toBeLessThanOrEqual(2_000);

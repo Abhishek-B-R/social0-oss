@@ -11,7 +11,6 @@ import {
   graphPictureUrl,
   instagramProfilePicUrl,
   isInboxSelfActor,
-  isWeakDmPeerName,
   peerFromParticipants,
   type InboxAttachment,
   type InboxDmMessage,
@@ -26,6 +25,8 @@ import {
   type XMediaLike,
 } from "./parse-attachment.js";
 import { mapPool } from "../map-pool.js";
+import { redis } from "../redis.js";
+import { withRedisTimeout } from "../redis-safe.js";
 import {
   isTikTokBmOwnMessage,
   tiktokBmConversations,
@@ -521,39 +522,133 @@ function xAvatarUrl(url: string | null | undefined): string | null {
   return url.replace(/_normal(\.\w+)$/, "_bigger$1");
 }
 
+/**
+ * 1:1 X DM conversation ids are `{smallerId}-{largerId}` (both numeric).
+ * Outbound-only threads often omit usable participant expansions, so this is
+ * the reliable way to recover the peer id.
+ */
+export function peerIdFromXConversation(
+  conversationId: string,
+  selfId: string,
+): string {
+  const parts = conversationId.split("-");
+  if (parts.length !== 2) return "";
+  const [a, b] = parts;
+  if (!a || !b || !/^\d+$/.test(a) || !/^\d+$/.test(b)) return "";
+  if (a === selfId) return b;
+  if (b === selfId) return a;
+  return "";
+}
+
+function xPeerIdsFromEvents(
+  events: XDmEvent[],
+  selfId: string,
+  conversationId?: string,
+): string[] {
+  const ids = new Set<string>();
+  for (const ev of events) {
+    for (const pid of ev.participant_ids ?? []) {
+      if (pid && pid !== selfId) ids.add(pid);
+    }
+    if (ev.sender_id && ev.sender_id !== selfId) ids.add(ev.sender_id);
+  }
+  if (conversationId) {
+    const fromConvo = peerIdFromXConversation(conversationId, selfId);
+    if (fromConvo) ids.add(fromConvo);
+  }
+  return [...ids];
+}
+
+const X_USER_CACHE_PREFIX = "x:user:profile:";
+const X_USER_CACHE_TTL_SEC = 24 * 60 * 60;
+const xUserMem = new Map<string, { exp: number; user: XUser }>();
+
+async function readCachedXUser(id: string): Promise<XUser | null> {
+  const mem = xUserMem.get(id);
+  if (mem && mem.exp > Date.now()) return mem.user;
+  if (!redis) return null;
+  const raw = await withRedisTimeout(
+    `x-user get ${id}`,
+    async () => redis!.get<XUser>(`${X_USER_CACHE_PREFIX}${id}`),
+    null,
+  );
+  if (!raw || typeof raw !== "object" || !raw.id) return null;
+  xUserMem.set(id, { exp: Date.now() + X_USER_CACHE_TTL_SEC * 1000, user: raw });
+  return raw;
+}
+
+async function writeCachedXUser(user: XUser): Promise<void> {
+  xUserMem.set(user.id, {
+    exp: Date.now() + X_USER_CACHE_TTL_SEC * 1000,
+    user,
+  });
+  if (!redis) return;
+  await withRedisTimeout(
+    `x-user set ${user.id}`,
+    async () => {
+      await redis!.set(`${X_USER_CACHE_PREFIX}${user.id}`, user, {
+        ex: X_USER_CACHE_TTL_SEC,
+      });
+    },
+    undefined,
+  );
+}
+
+/** Fill `users` for missing ids via Redis cache, then one batched users lookup. */
+async function fillTwitterUsers(
+  client: TwitterApi,
+  users: Map<string, XUser>,
+  ids: string[],
+): Promise<void> {
+  const missing: string[] = [];
+  for (const id of [...new Set(ids)].filter(Boolean)) {
+    if (users.has(id)) continue;
+    const cached = await readCachedXUser(id);
+    if (cached) {
+      users.set(cached.id, cached);
+      continue;
+    }
+    missing.push(id);
+  }
+  for (let i = 0; i < missing.length; i += 100) {
+    const chunk = missing.slice(i, i + 100);
+    if (!chunk.length) continue;
+    try {
+      const looked = await client.v2.users(chunk, {
+        "user.fields": ["name", "username", "profile_image_url"],
+      });
+      const rows = Array.isArray(looked.data)
+        ? looked.data
+        : looked.data
+          ? [looked.data]
+          : [];
+      for (const row of rows as XUser[]) {
+        if (!row?.id) continue;
+        users.set(row.id, row);
+        await writeCachedXUser(row);
+      }
+    } catch {
+      // Profile hydration is best-effort; keep placeholders over failing the list.
+    }
+  }
+}
+
 async function resolveTwitterPeer(
   client: TwitterApi,
   users: Map<string, XUser>,
   peerId: string,
   events: XDmEvent[],
   selfId: string,
+  conversationId?: string,
 ): Promise<{ peerId: string; peer: XUser | undefined }> {
-  let resolvedId = peerId;
-  if (!resolvedId) {
-    const ids = new Set<string>();
-    for (const ev of events) {
-      for (const pid of ev.participant_ids ?? []) ids.add(pid);
-      if (ev.sender_id) ids.add(ev.sender_id);
-    }
-    ids.delete(selfId);
-    resolvedId = [...ids][0] ?? "";
+  const candidates = peerId
+    ? [peerId, ...xPeerIdsFromEvents(events, selfId, conversationId)]
+    : xPeerIdsFromEvents(events, selfId, conversationId);
+  const resolvedId = candidates.find(Boolean) ?? "";
+  if (resolvedId) {
+    await fillTwitterUsers(client, users, [resolvedId]);
   }
-  let peer = resolvedId ? users.get(resolvedId) : undefined;
-  if (resolvedId && !peer) {
-    try {
-      const looked = await client.v2.user(resolvedId, {
-        "user.fields": ["name", "username", "profile_image_url"],
-      });
-      const data = looked.data as XUser | undefined;
-      if (data?.id) {
-        users.set(data.id, data);
-        peer = data;
-      }
-    } catch {
-      // Peer lookup is best-effort.
-    }
-  }
-  return { peerId: resolvedId, peer };
+  return { peerId: resolvedId, peer: resolvedId ? users.get(resolvedId) : undefined };
 }
 
 function twitterClient(account: DmAccount): TwitterApi | null {
@@ -587,7 +682,8 @@ async function fetchTwitterList(
     const users = new Map<string, XUser>();
     const mediaByKey = new Map<string, XMedia>();
     let paginationToken: string | undefined;
-    for (let page = 0; page < 5; page++) {
+    // Cap pages — X DM read quota is scarce; identity is hydrated separately.
+    for (let page = 0; page < 3; page++) {
       const raw = (await client.v2.get("dm_events", {
         max_results: 100,
         event_types: "MessageCreate",
@@ -626,18 +722,23 @@ async function fetchTwitterList(
       list.push(ev);
       byConvo.set(cid, list);
     }
+
+    const peerIds: string[] = [];
+    const convoPeers = new Map<string, string>();
+    for (const [conversationId, list] of byConvo) {
+      const ids = xPeerIdsFromEvents(list, account.platformUserId, conversationId);
+      const peerId = ids[0] ?? "";
+      convoPeers.set(conversationId, peerId);
+      if (peerId) peerIds.push(peerId);
+    }
+    await fillTwitterUsers(client, users, peerIds);
+
     const threads: InboxDmThread[] = [];
     for (const [conversationId, list] of byConvo) {
       list.sort((a, b) => (a.created_at ?? "").localeCompare(b.created_at ?? ""));
       const last = list[list.length - 1];
       if (!inDateWindow(last?.created_at ?? null, since, until, { keepUndated: false })) continue;
-      const participantIds = new Set<string>();
-      for (const ev of list) {
-        for (const pid of ev.participant_ids ?? []) participantIds.add(pid);
-        if (ev.sender_id) participantIds.add(ev.sender_id);
-      }
-      participantIds.delete(account.platformUserId);
-      const peerId = [...participantIds][0] ?? "";
+      const peerId = convoPeers.get(conversationId) ?? "";
       const peer = peerId ? users.get(peerId) : undefined;
       const attachment = last ? xMediaAttachment(last, mediaByKey) : null;
       threads.push(
@@ -649,7 +750,7 @@ async function fetchTwitterList(
           peerAvatarUrl: xAvatarUrl(peer?.profile_image_url),
           lastMessageAt: last?.created_at ?? null,
           snippet: snippetOf(last?.text || (attachment ? `[${attachment.type}]` : "")),
-          canReply: Boolean(conversationId || peerId),
+          canReply: Boolean(conversationId),
         }),
       );
     }
@@ -722,6 +823,7 @@ async function fetchTwitterThread(
       peerId,
       sorted,
       account.platformUserId,
+      conversationId,
     );
     const messages: InboxDmMessage[] = sorted.map((ev) => {
       const isOwn = ev.sender_id === account.platformUserId;
@@ -744,25 +846,21 @@ async function fetchTwitterThread(
       };
     });
     const last = messages[messages.length - 1];
-    const peerName = peer?.name ?? peer?.username ?? "X user";
-    const thread = isWeakDmPeerName(peerName) && !peer?.username && !peer?.profile_image_url
-      ? undefined
-      : threadMeta(account, {
-          conversationId,
-          peerId: resolvedPeerId,
-          peerName,
-          peerHandle: peer?.username ?? null,
-          peerAvatarUrl: xAvatarUrl(peer?.profile_image_url),
-          lastMessageAt: last?.createdAt ?? null,
-          snippet: snippetOf(
-            last?.text || (last?.attachment ? `[${last.attachment.type}]` : ""),
-          ),
-          canReply: Boolean(resolvedPeerId),
-        });
     return {
       messages,
       status: "ok",
-      thread,
+      thread: threadMeta(account, {
+        conversationId,
+        peerId: resolvedPeerId,
+        peerName: peer?.name ?? peer?.username ?? "X user",
+        peerHandle: peer?.username ?? null,
+        peerAvatarUrl: xAvatarUrl(peer?.profile_image_url),
+        lastMessageAt: last?.createdAt ?? null,
+        snippet: snippetOf(
+          last?.text || (last?.attachment ? `[${last.attachment.type}]` : ""),
+        ),
+        canReply: Boolean(conversationId),
+      }),
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "X thread failed";

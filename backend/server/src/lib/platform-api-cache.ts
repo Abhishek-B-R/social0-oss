@@ -357,9 +357,30 @@ export type PlatformReadResult<T> = {
 /** Do not cache scope/permission failures - reconnect would stay "broken" until TTL. */
 export function shouldCachePlatformRead(data: unknown): boolean {
   if (!data || typeof data !== "object") return true;
-  const o = data as { status?: string; missingScopes?: unknown };
+  const o = data as {
+    status?: string;
+    missingScopes?: unknown;
+    threads?: Array<{ peerName?: string; peerHandle?: string | null }>;
+  };
   if (o.status === "scope_missing" || o.status === "error") return false;
   if (Array.isArray(o.missingScopes) && o.missingScopes.length > 0) return false;
+  // Don't cache DM lists that failed to resolve any peer identity — otherwise
+  // "X user" placeholders stick until TTL and Refresh can't recover them.
+  if (Array.isArray(o.threads) && o.threads.length > 0) {
+    const allWeak = o.threads.every((t) => {
+      if (t.peerHandle?.trim()) return false;
+      const name = (t.peerName ?? "").trim();
+      return (
+        !name ||
+        name === "X user" ||
+        name === "Unknown" ||
+        name === "Bluesky user" ||
+        name === "Conversation" ||
+        name === "TikTok user"
+      );
+    });
+    if (allWeak) return false;
+  }
   return true;
 }
 
@@ -404,7 +425,7 @@ async function runPlatformRead<T>(opts: {
   }
 
   const cached = await readCache<T>(opts.key);
-  if (cached) {
+  if (cached && shouldCachePlatformRead(cached.data)) {
     if (!opts.fresh || !shouldBypassCacheForFresh(cached.cachedAt)) {
       return { data: cached.data, fromCache: true };
     }

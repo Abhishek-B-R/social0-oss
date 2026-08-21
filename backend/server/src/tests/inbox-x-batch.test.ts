@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { peerIdFromXConversation } from "../lib/inbox/fetch-dms.js";
 import {
   chunkXConversations,
   type CommentFetchInput,
@@ -20,6 +21,18 @@ function input(id: string): CommentFetchInput {
     postContent: "content",
   };
 }
+
+describe("peerIdFromXConversation", () => {
+  it("extracts the other user from a 1:1 conversation id", () => {
+    expect(peerIdFromXConversation("100-200", "100")).toBe("200");
+    expect(peerIdFromXConversation("100-200", "200")).toBe("100");
+  });
+
+  it("ignores non 1:1 conversation ids", () => {
+    expect(peerIdFromXConversation("group-abc", "100")).toBe("");
+    expect(peerIdFromXConversation("100", "100")).toBe("");
+  });
+});
 
 describe("chunkXConversations", () => {
   it("packs many conversations into one query chunk", () => {
