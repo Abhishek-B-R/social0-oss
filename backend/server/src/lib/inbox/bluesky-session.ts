@@ -51,18 +51,35 @@ export function dropBlueskySession(accountId: string): void {
 
 async function readSession(accountId: string): Promise<Cached | null> {
   const mem = memCache.get(accountId);
-  if (mem && mem.exp > Date.now()) return mem;
-  if (!redis) return mem && mem.exp > Date.now() ? mem : null;
+  if (mem) {
+    // Keep expired entries that still have a refreshJwt so we can refresh
+    // instead of burning createSession quota.
+    if (mem.exp > Date.now() || mem.refreshJwt) {
+      // Fall through to also check Redis for a newer copy when mem is expired.
+      if (mem.exp > Date.now()) return mem;
+    } else {
+      memCache.delete(accountId);
+    }
+  }
+  if (!redis) {
+    const local = memCache.get(accountId);
+    if (local && (local.exp > Date.now() || local.refreshJwt)) return local;
+    return null;
+  }
   const raw = await withRedisTimeout(
     `bsky-session get ${accountId}`,
     async () => redis!.get<Cached>(redisKey(accountId)),
     null,
   );
-  if (!raw || typeof raw !== "object") return null;
+  if (!raw || typeof raw !== "object") {
+    const local = memCache.get(accountId);
+    if (local && (local.exp > Date.now() || local.refreshJwt)) return local;
+    return null;
+  }
   if (!raw.accessJwt || !raw.did || typeof raw.exp !== "number") return null;
-  if (raw.exp <= Date.now()) return null;
   memCache.set(accountId, raw);
-  return raw;
+  if (raw.exp > Date.now() || raw.refreshJwt) return raw;
+  return null;
 }
 
 async function writeSession(
@@ -80,7 +97,10 @@ async function writeSession(
     await withRedisTimeout(
       `bsky-session set ${accountId}`,
       async () => {
-        await redis!.set(redisKey(accountId), cached, { ex: REDIS_TTL_SEC });
+        // Keep refresh material slightly longer than access TTL window.
+        await redis!.set(redisKey(accountId), cached, {
+          ex: REDIS_TTL_SEC + 30 * 60,
+        });
       },
       undefined,
     );
@@ -161,16 +181,13 @@ async function resolveSession(
   appPassword: string,
   opts?: { force?: boolean },
 ): Promise<{ accessJwt: string; did: string } | null> {
-  if (!opts?.force) {
-    const cached = await readSession(accountId);
-    if (cached) {
-      return { accessJwt: cached.accessJwt, did: cached.did };
-    }
+  const cached = await readSession(accountId);
+  if (!opts?.force && cached && cached.exp > Date.now()) {
+    return { accessJwt: cached.accessJwt, did: cached.did };
   }
 
-  const existing = await readSession(accountId);
-  if (existing?.refreshJwt) {
-    const refreshed = await refreshSession(accountId, existing.refreshJwt);
+  if (cached?.refreshJwt) {
+    const refreshed = await refreshSession(accountId, cached.refreshJwt);
     if (refreshed) return refreshed;
   } else if (opts?.force) {
     dropBlueskySession(accountId);

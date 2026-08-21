@@ -82,6 +82,27 @@ describe("platform-api-cache helpers", () => {
     ).toBe(true);
   });
 
+  it("does not cache weak singular DM threads or failed X comment batches", () => {
+    expect(
+      shouldCachePlatformRead({
+        status: "ok",
+        thread: { peerName: "X user", peerHandle: null },
+      }),
+    ).toBe(false);
+    expect(
+      shouldCachePlatformRead({
+        "pub-1": { status: "error", comments: [], error: "boom" },
+        "pub-2": { status: "ok", comments: [] },
+      }),
+    ).toBe(false);
+    expect(
+      shouldCachePlatformRead({
+        "pub-1": { status: "ok", comments: [] },
+        "pub-2": { status: "ok", comments: [] },
+      }),
+    ).toBe(true);
+  });
+
   it("exposes a finite in-memory cache cap", () => {
     expect(MEM_CACHE_MAX_ENTRIES).toBeGreaterThan(0);
     expect(MEM_CACHE_MAX_ENTRIES).toBeLessThanOrEqual(2_000);

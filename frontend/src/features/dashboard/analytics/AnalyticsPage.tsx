@@ -67,9 +67,7 @@ export function AnalyticsPage() {
   });
 
   const accounts = accountsQuery.data ?? [];
-  const accountReady =
-    accountsQuery.isSuccess &&
-    (accounts.length === 0 || accountFilter !== undefined);
+  const accountReady = accountFilter !== undefined;
   const accountId =
     typeof accountFilter === "string" ? accountFilter : null;
 
@@ -97,6 +95,10 @@ export function AnalyticsPage() {
   });
 
   useEffect(() => {
+    if (accountsQuery.isError) {
+      if (accountFilter === undefined) setAccountFilter(null);
+      return;
+    }
     if (!accountsQuery.isSuccess) return;
     if (accountFilter !== undefined) {
       if (
@@ -109,7 +111,7 @@ export function AnalyticsPage() {
       return;
     }
     setAccountFilter(accounts[0]?.id ?? null);
-  }, [accountFilter, accounts, accountsQuery.isSuccess]);
+  }, [accountFilter, accounts, accountsQuery.isSuccess, accountsQuery.isError]);
 
   const reconnect = useMemo(() => {
     const fromOverview = overviewQuery.data?.accountsNeedingReconnect;
@@ -246,10 +248,21 @@ export function AnalyticsPage() {
           accounts={accounts}
           selectedId={accountFilter === undefined ? undefined : accountId}
           onSelect={setAccountFilter}
-          loading={accountsQuery.isLoading || !accountReady}
+          loading={
+            accountsQuery.isLoading ||
+            (!accountReady && !accountsQuery.isError)
+          }
           emptyLabel="Connect an account to see analytics."
         />
       </div>
+
+      {accountsQuery.isError ? (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
+          {accountsQuery.error instanceof Error
+            ? accountsQuery.error.message
+            : "Failed to load accounts"}
+        </div>
+      ) : null}
 
       {reconnect.length && !reconnectDismissed ? (
         <div className="relative rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 pr-11 text-sm text-amber-900 dark:text-amber-100">

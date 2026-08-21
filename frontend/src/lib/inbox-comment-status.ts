@@ -28,7 +28,8 @@ export type InboxStatusThread<T extends InboxStatusComment = InboxStatusComment>
 };
 
 export function isInboxThreadAnswered(thread: InboxStatusThread): boolean {
-  return Boolean(thread.comment.isOwn) || thread.replies.some((r) => r.isOwn);
+  // Own root (e.g. reply-as-post) is not "answered" — only an own reply is.
+  return thread.replies.some((r) => r.isOwn);
 }
 
 export function inboxThreadMatchesFilter(

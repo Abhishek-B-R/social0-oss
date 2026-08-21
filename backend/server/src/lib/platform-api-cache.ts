@@ -3,7 +3,7 @@
  *
  * Goals at multi-tenant scale:
  * - Prefer Redis/memory cache over live platform calls
- * - Singleflight identical in-flight reads (tabs / users / workers share work)
+ * - Singleflight identical in-flight outbound reads (tabs / users share work)
  * - Per-account AND global (egress-IP) outbound budgets
  * - Soft-fresh: Refresh does not burn quota on warm cache
  * - Cooldown + stale serve on platform 429
@@ -153,11 +153,19 @@ export const MEM_COOLDOWN_MAX_ENTRIES = 200;
 const memCache = new Map<string, { exp: number; raw: string }>();
 const memCooldown = new Map<string, number>();
 
-/** In-process singleflight for identical cache keys. */
+/** In-process singleflight for identical outbound cache keys. */
 const inflight = new Map<string, Promise<PlatformReadResult<unknown>>>();
 
 const outboundLimiters = new Map<string, Ratelimit>();
 const globalOutboundLimiters = new Map<string, Ratelimit>();
+
+const WEAK_PEER_NAMES = new Set([
+  "X user",
+  "Unknown",
+  "Bluesky user",
+  "Conversation",
+  "TikTok user",
+]);
 
 /** Drop expired entries, then FIFO-evict until at/under maxSize. */
 export function pruneBoundedMap<V extends { exp?: number } | number>(
@@ -354,6 +362,22 @@ export type PlatformReadResult<T> = {
   rateLimited?: boolean;
 };
 
+function isWeakPeerIdentity(peer: {
+  peerName?: string;
+  peerHandle?: string | null;
+}): boolean {
+  if (peer.peerHandle?.trim()) return false;
+  const name = (peer.peerName ?? "").trim();
+  return !name || WEAK_PEER_NAMES.has(name);
+}
+
+function isCommentFetchResult(value: unknown): value is {
+  status?: string;
+  missingScopes?: unknown;
+} {
+  return Boolean(value && typeof value === "object" && "status" in value);
+}
+
 /** Do not cache scope/permission failures - reconnect would stay "broken" until TTL. */
 export function shouldCachePlatformRead(data: unknown): boolean {
   if (!data || typeof data !== "object") return true;
@@ -361,26 +385,38 @@ export function shouldCachePlatformRead(data: unknown): boolean {
     status?: string;
     missingScopes?: unknown;
     threads?: Array<{ peerName?: string; peerHandle?: string | null }>;
+    thread?: { peerName?: string; peerHandle?: string | null };
   };
   if (o.status === "scope_missing" || o.status === "error") return false;
   if (Array.isArray(o.missingScopes) && o.missingScopes.length > 0) return false;
-  // Don't cache DM lists that failed to resolve any peer identity — otherwise
-  // "X user" placeholders stick until TTL and Refresh can't recover them.
-  if (Array.isArray(o.threads) && o.threads.length > 0) {
-    const allWeak = o.threads.every((t) => {
-      if (t.peerHandle?.trim()) return false;
-      const name = (t.peerName ?? "").trim();
-      return (
-        !name ||
-        name === "X user" ||
-        name === "Unknown" ||
-        name === "Bluesky user" ||
-        name === "Conversation" ||
-        name === "TikTok user"
-      );
-    });
-    if (allWeak) return false;
+
+  // X comment batches are Record<publicationId, CommentFetchResult> with no
+  // top-level status — refuse cache if any entry failed.
+  const values = Object.values(o as Record<string, unknown>);
+  if (
+    values.length > 0 &&
+    values.every(isCommentFetchResult) &&
+    !("threads" in o) &&
+    !("thread" in o) &&
+    !("comments" in o)
+  ) {
+    if (
+      values.some((v) => {
+        const row = v as { status?: string; missingScopes?: unknown };
+        if (row.status === "error" || row.status === "scope_missing") return true;
+        return Array.isArray(row.missingScopes) && row.missingScopes.length > 0;
+      })
+    ) {
+      return false;
+    }
   }
+
+  // Don't cache DM lists / threads that failed to resolve peer identity.
+  if (Array.isArray(o.threads) && o.threads.length > 0) {
+    if (o.threads.every(isWeakPeerIdentity)) return false;
+  }
+  if (o.thread && isWeakPeerIdentity(o.thread)) return false;
+
   return true;
 }
 
@@ -403,49 +439,28 @@ async function serveStaleOrCooldown<T>(
   retryAt: number,
 ): Promise<PlatformReadResult<T>> {
   const stale = await readCache<T>(key);
-  if (stale) {
+  if (stale && shouldCachePlatformRead(stale.data)) {
     return { data: stale.data, fromCache: true, rateLimited: true };
   }
   throw new PlatformApiCooldownError(platform, retryAt);
 }
 
-async function runPlatformRead<T>(opts: {
+async function outboundPlatformRead<T>(opts: {
   platform: string;
   accountId: string;
   kind: PlatformReadKind;
-  suffix: string;
-  fresh?: boolean;
   fetch: () => Promise<T>;
   key: string;
   ttl: number;
 }): Promise<PlatformReadResult<T>> {
-  const cooledUntil = await cooldownUntil(opts.platform, opts.accountId);
-  if (cooledUntil > Date.now()) {
-    return serveStaleOrCooldown<T>(opts.key, opts.platform, cooledUntil);
-  }
-
-  const cached = await readCache<T>(opts.key);
-  if (cached && shouldCachePlatformRead(cached.data)) {
-    if (!opts.fresh || !shouldBypassCacheForFresh(cached.cachedAt)) {
-      return { data: cached.data, fromCache: true };
-    }
-  }
-
   const accountLimiter = getOutboundLimiter(opts.platform, opts.kind);
-  const accountAllowed = await enforceRateLimit(
-    accountLimiter,
-    opts.accountId,
-    // Production must not open the floodgates if Redis is down.
-  );
+  const accountAllowed = await enforceRateLimit(accountLimiter, opts.accountId);
   if (!accountAllowed.allowed) {
     return serveStaleOrCooldown<T>(opts.key, opts.platform, Date.now() + 60_000);
   }
 
   const globalLimiter = getGlobalOutboundLimiter(opts.platform, opts.kind);
-  const globalAllowed = await enforceRateLimit(
-    globalLimiter,
-    "global",
-  );
+  const globalAllowed = await enforceRateLimit(globalLimiter, "global");
   if (!globalAllowed.allowed) {
     return serveStaleOrCooldown<T>(opts.key, opts.platform, Date.now() + 60_000);
   }
@@ -473,7 +488,8 @@ async function runPlatformRead<T>(opts: {
 /**
  * Serve cached platform data when possible; enforce outbound limits; back off on 429.
  * `fresh` only bypasses cache when the entry is older than SOFT_FRESH_MIN_AGE_MS.
- * Concurrent callers for the same key share one outbound fetch (singleflight).
+ * Cache/soft-fresh decisions run before singleflight so Refresh cannot join a
+ * non-fresh inflight and miss its bypass. Only outbound fetches are coalesced.
  */
 export async function withPlatformReadCache<T>(opts: {
   platform: string;
@@ -486,12 +502,31 @@ export async function withPlatformReadCache<T>(opts: {
   const key = cacheKey(opts.kind, opts.platform, opts.accountId, opts.suffix);
   const ttl = ttlSec(opts.platform, opts.kind);
 
+  const cooledUntil = await cooldownUntil(opts.platform, opts.accountId);
+  if (cooledUntil > Date.now()) {
+    return serveStaleOrCooldown<T>(key, opts.platform, cooledUntil);
+  }
+
+  const cached = await readCache<T>(key);
+  if (cached && shouldCachePlatformRead(cached.data)) {
+    if (!opts.fresh || !shouldBypassCacheForFresh(cached.cachedAt)) {
+      return { data: cached.data, fromCache: true };
+    }
+  }
+
   const existing = inflight.get(key);
   if (existing) {
     return existing as Promise<PlatformReadResult<T>>;
   }
 
-  const promise = runPlatformRead<T>({ ...opts, key, ttl }).finally(() => {
+  const promise = outboundPlatformRead<T>({
+    platform: opts.platform,
+    accountId: opts.accountId,
+    kind: opts.kind,
+    fetch: opts.fetch,
+    key,
+    ttl,
+  }).finally(() => {
     inflight.delete(key);
   });
   inflight.set(key, promise as Promise<PlatformReadResult<unknown>>);

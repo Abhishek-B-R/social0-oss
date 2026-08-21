@@ -641,14 +641,22 @@ async function resolveTwitterPeer(
   selfId: string,
   conversationId?: string,
 ): Promise<{ peerId: string; peer: XUser | undefined }> {
-  const candidates = peerId
-    ? [peerId, ...xPeerIdsFromEvents(events, selfId, conversationId)]
-    : xPeerIdsFromEvents(events, selfId, conversationId);
-  const resolvedId = candidates.find(Boolean) ?? "";
-  if (resolvedId) {
-    await fillTwitterUsers(client, users, [resolvedId]);
+  // Prefer ids derived from conversation/events — client peerId can be stale.
+  const fromEvents = xPeerIdsFromEvents(events, selfId, conversationId);
+  const candidates = [
+    ...fromEvents,
+    ...(peerId && peerId !== selfId ? [peerId] : []),
+  ];
+  const unique = [...new Set(candidates.filter(Boolean))];
+  if (unique.length) {
+    await fillTwitterUsers(client, users, unique);
   }
-  return { peerId: resolvedId, peer: resolvedId ? users.get(resolvedId) : undefined };
+  const resolvedId =
+    unique.find((id) => users.has(id)) ?? unique[0] ?? "";
+  return {
+    peerId: resolvedId,
+    peer: resolvedId ? users.get(resolvedId) : undefined,
+  };
 }
 
 function twitterClient(account: DmAccount): TwitterApi | null {

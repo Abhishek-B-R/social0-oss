@@ -108,17 +108,21 @@ export function InboxPage() {
   // Prefer a single account so "All" is an explicit choice, not the default
   // storm that fans out across every connected platform.
   useEffect(() => {
+    if (accountsQuery.isError) return;
     if (!accountsQuery.isSuccess) return;
     if (!accounts.length) return;
     if (accountParam === "all") return;
     if (accountParam && accounts.some((a) => a.id === accountParam)) return;
     setAccountId(accounts[0]!.id);
-  }, [accountParam, accounts, accountsQuery.isSuccess]);
+  }, [accountParam, accounts, accountsQuery.isSuccess, accountsQuery.isError]);
 
   /** Live list fetches wait until account is pinned or user chose All. */
   const accountFilterReady =
-    accountsQuery.isSuccess &&
-    (accounts.length === 0 || accountParam !== null);
+    accountsQuery.isError ||
+    (accountsQuery.isSuccess &&
+      (accounts.length === 0 ||
+        accountParam === "all" ||
+        Boolean(accountParam && accounts.some((a) => a.id === accountParam))));
 
   const listQueryKey = useMemo(
     () =>
@@ -182,6 +186,7 @@ export function InboxPage() {
             type="button"
             title="Refresh from cache. Hold Shift to force a live platform fetch."
             onClick={(e) => {
+              if (!accountFilterReady) return;
               // Soft refresh by default — server still serves warm cache.
               // Shift+click forces a live bypass (subject to soft-fresh age).
               const force = e.shiftKey;
@@ -203,7 +208,11 @@ export function InboxPage() {
                   }),
                 );
                 const convo = searchParams.get("convo");
-                const dmAccount = searchParams.get("account") || accountId;
+                const accountRaw = searchParams.get("account");
+                const dmAccount =
+                  accountRaw && accountRaw !== "all"
+                    ? accountRaw
+                    : accountId || undefined;
                 if (convo && dmAccount) {
                   void qc.invalidateQueries({
                     queryKey: ["inbox-dm-thread", workspaceId, dmAccount, convo],
@@ -223,7 +232,7 @@ export function InboxPage() {
                 }
               }
             }}
-            disabled={loading}
+            disabled={loading || !accountFilterReady}
             className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-bg-elevated px-3 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
           >
             <ArrowClockwise
@@ -250,7 +259,10 @@ export function InboxPage() {
         accounts={accounts}
         selectedId={accountParam === "all" ? null : accountId}
         onSelect={setAccountId}
-        loading={accountsQuery.isLoading || !accountFilterReady}
+        loading={
+          accountsQuery.isLoading ||
+          (!accountFilterReady && !accountsQuery.isError)
+        }
         emptyLabel={
           mode === "comments"
             ? "Connect an account to see comments."
@@ -260,6 +272,13 @@ export function InboxPage() {
         }
       />
 
+      {accountsQuery.isError ? (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
+          {accountsQuery.error instanceof Error
+            ? accountsQuery.error.message
+            : "Failed to load accounts"}
+        </div>
+      ) : null}
       {mode === "comments" ? (
         <div className="flex min-h-0 flex-1 flex-col">
           <InboxCommentsPane

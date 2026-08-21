@@ -508,6 +508,16 @@ export function InboxCommentsPane({
               ? `Comments on Social0 posts from ${emptyRangeLabel} show up here.`
               : "Try All, or a longer date range."}
           </p>
+          {hasNextComments ? (
+            <button
+              type="button"
+              onClick={loadOlderComments}
+              disabled={fetchingNextComments}
+              className="mt-4 rounded-full border border-border bg-bg-subtle px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60"
+            >
+              {fetchingNextComments ? "Loading..." : "Load older"}
+            </button>
+          ) : null}
         </div>
       ) : postGroups.length === 0 && hiddenUnansweredCount > 0 ? (
         <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
@@ -529,6 +539,16 @@ export function InboxCommentsPane({
           >
             Restore hidden posts
           </button>
+          {hasNextComments ? (
+            <button
+              type="button"
+              onClick={loadOlderComments}
+              disabled={fetchingNextComments}
+              className="mt-3 rounded-full border border-border bg-bg-subtle px-4 py-2 text-sm font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60"
+            >
+              {fetchingNextComments ? "Loading..." : "Load older"}
+            </button>
+          ) : null}
         </div>
       ) : (
         <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-bg-elevated shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] dark:border-white/[0.08] lg:grid-cols-[19rem_minmax(0,1fr)]">

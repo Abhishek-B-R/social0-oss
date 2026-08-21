@@ -237,7 +237,9 @@ export function InboxDmsPane({
     if (pickedId && keys.includes(pickedId)) return;
 
     const convo = searchParams.get("convo");
-    const accountFromUrl = searchParams.get("account") || accountId;
+    const accountRaw = searchParams.get("account");
+    const accountFromUrl =
+      accountRaw && accountRaw !== "all" ? accountRaw : accountId;
     const fromUrl = convo
       ? threads.find(
           (t) =>
@@ -546,6 +548,8 @@ export function InboxDmsPane({
                         (prev) => {
                           const next = new URLSearchParams(prev);
                           next.set("convo", t.conversationId);
+                          // Keep deep links restorable when viewing All accounts.
+                          next.set("account", t.accountId);
                           return next;
                         },
                         { replace: true },

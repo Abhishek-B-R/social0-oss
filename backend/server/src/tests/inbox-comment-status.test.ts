@@ -9,7 +9,7 @@ type Comment = { id: string; parentId?: string | null; isOwn?: boolean };
 type Thread = { comment: Comment; replies: Comment[] };
 
 function isAnswered(thread: Thread): boolean {
-  return Boolean(thread.comment.isOwn) || thread.replies.some((r) => r.isOwn);
+  return thread.replies.some((r) => r.isOwn);
 }
 
 function threadMatches(thread: Thread, filter: Filter): boolean {
@@ -63,5 +63,14 @@ describe("comment status filters", () => {
   it("own root post does not count as an own reply", () => {
     const flat = [{ comment: { id: "root", isOwn: true }, depth: 0 }];
     expect(visibleComments(flat, "unanswered")).toEqual(flat);
+  });
+
+  it("own root thread with inbound replies stays unanswered until we reply", () => {
+    const thread: Thread = {
+      comment: { id: "root", isOwn: true },
+      replies: [{ id: "them" }],
+    };
+    expect(threadMatches(thread, "unanswered")).toBe(true);
+    expect(threadMatches(thread, "answered")).toBe(false);
   });
 });
