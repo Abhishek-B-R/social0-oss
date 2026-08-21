@@ -11,6 +11,7 @@ import {
   graphPictureUrl,
   instagramProfilePicUrl,
   isInboxSelfActor,
+  isWeakDmPeerName,
   peerFromParticipants,
   type InboxAttachment,
   type InboxDmMessage,
@@ -94,54 +95,90 @@ function personAvatar(person: GraphPerson | undefined): string | null {
   return graphPictureUrl(person?.picture);
 }
 
-async function fetchInstagramProfilePic(
+type IgUserProfile = {
+  name: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+};
+
+async function fetchInstagramUserProfile(
   account: DmAccount,
   igsid: string,
-): Promise<string | null> {
+): Promise<IgUserProfile | null> {
   if (!igsid) return null;
   const id = encodeURIComponent(igsid);
   const token = encodeURIComponent(account.accessToken);
-  // Instagram Conversations participants omit avatars; User Profile API exposes
-  // `profile_pic` on the Instagram-scoped user id (IGSID). Use CDN URL directly
-  // on read paths — do not mirror to R2 on every poll.
+  // Instagram Conversations participants often omit name/avatar; User Profile
+  // API can return name, username, and profile_pic for the Instagram-scoped id.
   const hosts = [
     "https://graph.instagram.com/v21.0",
     "https://graph.facebook.com/v21.0",
   ];
   for (const host of hosts) {
-    const url = `${host}/${id}?fields=profile_pic&access_token=${token}`;
+    const url = `${host}/${id}?fields=name,username,profile_pic&access_token=${token}`;
     try {
       const { ok, data } = await jsonGet(url);
-      if (!ok) continue;
-      const pic = instagramProfilePicUrl(data);
-      if (pic) return pic;
+      if (!ok || !data || typeof data !== "object") continue;
+      const row = data as {
+        name?: unknown;
+        username?: unknown;
+        profile_pic?: unknown;
+      };
+      const name = typeof row.name === "string" && row.name.trim() ? row.name.trim() : null;
+      const username =
+        typeof row.username === "string" && row.username.trim()
+          ? row.username.trim()
+          : null;
+      const avatarUrl = instagramProfilePicUrl(data);
+      if (name || username || avatarUrl) {
+        return { name, username, avatarUrl };
+      }
     } catch {
-      // Avatar lookup is cosmetic; never fail the DM payload.
+      // Profile lookup is cosmetic; never fail the DM payload.
     }
   }
   return null;
 }
 
-async function fillInstagramAvatars(
+function applyIgProfile(
+  thread: InboxDmThread,
+  profile: IgUserProfile | null,
+): InboxDmThread {
+  if (!profile) return thread;
+  const nextName =
+    profile.name ??
+    (thread.peerName === "Unknown" || thread.peerName === thread.peerHandle
+      ? profile.username
+      : null) ??
+    thread.peerName;
+  return {
+    ...thread,
+    peerName: nextName,
+    peerHandle: profile.username ?? thread.peerHandle,
+    peerAvatarUrl: profile.avatarUrl ?? thread.peerAvatarUrl,
+  };
+}
+
+async function fillInstagramProfiles(
   ids: string[],
   account: DmAccount,
-  into: Map<string, string | null>,
+  into: Map<string, IgUserProfile>,
 ): Promise<void> {
   const missing = [...new Set(ids)].filter(
     (id) =>
-      !into.get(id) &&
+      !into.has(id) &&
       !isInboxSelfActor(
         { id },
         account.platformUserId,
         account.platformUsername,
       ),
   );
-  await mapPool(missing, 4, async (id) => {
+  await mapPool(missing, 2, async (id) => {
     try {
-      const pic = await fetchInstagramProfilePic(account, id);
-      if (pic) into.set(id, pic);
+      const profile = await fetchInstagramUserProfile(account, id);
+      if (profile) into.set(id, profile);
     } catch {
-      // Ignore per-peer avatar failures.
+      // Ignore per-peer profile failures.
     }
   });
 }
@@ -301,15 +338,15 @@ async function fetchInstagramList(
   }
   let enriched = threads;
   try {
-    enriched = await mapPool(threads, 4, async (thread) => {
-      if (!thread.peerId || thread.peerAvatarUrl) return thread;
-      try {
-        const pic = await fetchInstagramProfilePic(account, thread.peerId);
-        return pic ? { ...thread, peerAvatarUrl: pic } : thread;
-      } catch {
-        return thread;
-      }
-    });
+    const profiles = new Map<string, IgUserProfile>();
+    await fillInstagramProfiles(
+      threads.map((t) => t.peerId).filter(Boolean),
+      account,
+      profiles,
+    );
+    enriched = threads.map((thread) =>
+      applyIgProfile(thread, thread.peerId ? profiles.get(thread.peerId) ?? null : null),
+    );
   } catch {
     enriched = threads;
   }
@@ -319,7 +356,7 @@ async function fetchInstagramList(
 function graphMessagesToInbox(
   rows: Array<Record<string, unknown>>,
   account: DmAccount,
-  avatarById: Map<string, string | null>,
+  profilesById: Map<string, IgUserProfile>,
 ): InboxDmMessage[] {
   const out: InboxDmMessage[] = [];
   for (const row of rows) {
@@ -334,6 +371,7 @@ function graphMessagesToInbox(
       String(row.message ?? ""),
       parseGraphAttachments(row.attachments),
     );
+    const profile = from?.id ? profilesById.get(from.id) : undefined;
     out.push({
       id: String(row.id ?? ""),
       text: media.text,
@@ -342,11 +380,13 @@ function graphMessagesToInbox(
       isOwn,
       authorName: isOwn
         ? "You"
-        : (from?.name ?? from?.username ?? "Unknown"),
-      authorHandle: from?.username ?? from?.id ?? null,
+        : (profile?.name ?? from?.name ?? from?.username ?? profile?.username ?? "Unknown"),
+      authorHandle: isOwn
+        ? null
+        : (profile?.username ?? from?.username ?? from?.id ?? null),
       authorAvatarUrl: isOwn
         ? account.profileImageUrl ?? null
-        : (from?.id ? avatarById.get(from.id) : null) ?? personAvatar(from),
+        : profile?.avatarUrl ?? personAvatar(from),
       attachment: media.attachment,
     });
   }
@@ -354,10 +394,15 @@ function graphMessagesToInbox(
   return out;
 }
 
-function participantAvatars(participants: GraphPerson[]): Map<string, string | null> {
-  const map = new Map<string, string | null>();
+function participantProfiles(participants: GraphPerson[]): Map<string, IgUserProfile> {
+  const map = new Map<string, IgUserProfile>();
   for (const p of participants) {
-    if (p.id) map.set(p.id, personAvatar(p));
+    if (!p.id) continue;
+    map.set(p.id, {
+      name: p.name?.trim() || null,
+      username: p.username?.trim() || null,
+      avatarUrl: personAvatar(p),
+    });
   }
   return map;
 }
@@ -388,18 +433,17 @@ async function fetchInstagramThread(
     account.platformUserId,
     account.platformUsername,
   );
-  const avatars = participantAvatars(participants);
+  const profiles = participantProfiles(participants);
   try {
-    await fillInstagramAvatars(
+    await fillInstagramProfiles(
       participants.flatMap((p) => (p.id ? [p.id] : [])),
       account,
-      avatars,
+      profiles,
     );
   } catch {
-    // Avatar enrichment is cosmetic.
+    // Profile enrichment is cosmetic.
   }
-  const peerAvatarUrl =
-    (peer.id ? avatars.get(peer.id) : null) ?? peer.avatarUrl;
+  const peerProfile = peer.id ? profiles.get(peer.id) : undefined;
   const msgUrl = `https://graph.instagram.com/v21.0/${id}/messages?fields=id,created_time,from{id,username,name},message,${GRAPH_MSG_ATTACHMENT_FIELDS}&limit=50&access_token=${token}`;
   const msgRes = await jsonGet(msgUrl);
   if (!msgRes.ok) {
@@ -417,22 +461,28 @@ async function fetchInstagramThread(
     msgRes.data as GraphPage,
     new Date(0),
     "created_time",
+    3,
   );
-  const messages = graphMessagesToInbox(msgs, account, avatars);
+  const messages = graphMessagesToInbox(msgs, account, profiles);
   const last = messages[messages.length - 1];
+  const baseThread = threadMeta(account, {
+    conversationId,
+    peerId: peer.id,
+    peerName: peer.name,
+    peerHandle: peer.handle,
+    peerAvatarUrl: peer.avatarUrl,
+    lastMessageAt:
+      last?.createdAt ??
+      (typeof row.updated_time === "string" ? row.updated_time : null),
+    snippet: snippetOf(
+      last?.text || (last?.attachment ? `[${last.attachment.type}]` : ""),
+    ),
+    canReply: Boolean(peer.id),
+  });
   return {
     messages,
     status: "ok",
-    thread: threadMeta(account, {
-      conversationId,
-      peerId: peer.id,
-      peerName: peer.name,
-      peerHandle: peer.handle,
-      peerAvatarUrl,
-      lastMessageAt: last?.createdAt ?? (typeof row.updated_time === "string" ? row.updated_time : null),
-      snippet: snippetOf(last?.text || (last?.attachment ? `[${last.attachment.type}]` : "")),
-      canReply: Boolean(peer.id),
-    }),
+    thread: applyIgProfile(baseThread, peerProfile ?? null),
   };
 }
 
@@ -463,6 +513,47 @@ function xMediaAttachment(
   const key = ev.attachments?.[0]?.media_keys?.[0];
   if (!key) return null;
   return xMediaToAttachment(mediaByKey.get(key));
+}
+
+function xAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  // Prefer larger profile images in the inbox UI.
+  return url.replace(/_normal(\.\w+)$/, "_bigger$1");
+}
+
+async function resolveTwitterPeer(
+  client: TwitterApi,
+  users: Map<string, XUser>,
+  peerId: string,
+  events: XDmEvent[],
+  selfId: string,
+): Promise<{ peerId: string; peer: XUser | undefined }> {
+  let resolvedId = peerId;
+  if (!resolvedId) {
+    const ids = new Set<string>();
+    for (const ev of events) {
+      for (const pid of ev.participant_ids ?? []) ids.add(pid);
+      if (ev.sender_id) ids.add(ev.sender_id);
+    }
+    ids.delete(selfId);
+    resolvedId = [...ids][0] ?? "";
+  }
+  let peer = resolvedId ? users.get(resolvedId) : undefined;
+  if (resolvedId && !peer) {
+    try {
+      const looked = await client.v2.user(resolvedId, {
+        "user.fields": ["name", "username", "profile_image_url"],
+      });
+      const data = looked.data as XUser | undefined;
+      if (data?.id) {
+        users.set(data.id, data);
+        peer = data;
+      }
+    } catch {
+      // Peer lookup is best-effort.
+    }
+  }
+  return { peerId: resolvedId, peer };
 }
 
 function twitterClient(account: DmAccount): TwitterApi | null {
@@ -555,7 +646,7 @@ async function fetchTwitterList(
           peerId,
           peerName: peer?.name ?? peer?.username ?? "X user",
           peerHandle: peer?.username ?? null,
-          peerAvatarUrl: peer?.profile_image_url ?? null,
+          peerAvatarUrl: xAvatarUrl(peer?.profile_image_url),
           lastMessageAt: last?.created_at ?? null,
           snippet: snippetOf(last?.text || (attachment ? `[${attachment.type}]` : "")),
           canReply: Boolean(conversationId || peerId),
@@ -596,8 +687,8 @@ async function fetchTwitterThread(
           max_results: 100,
           event_types: "MessageCreate",
           "dm_event.fields":
-            "id,text,event_type,dm_conversation_id,created_at,sender_id,attachments",
-          expansions: "sender_id,attachments.media_keys",
+            "id,text,event_type,dm_conversation_id,created_at,sender_id,participant_ids,attachments",
+          expansions: "sender_id,participant_ids,attachments.media_keys",
           "user.fields": "name,username,profile_image_url",
           "media.fields": "url,preview_image_url,type,variants",
           ...(paginationToken ? { pagination_token: paginationToken } : {}),
@@ -625,6 +716,13 @@ async function fetchTwitterThread(
     const sorted = [...unique.values()].sort((a, b) =>
       (a.created_at ?? "").localeCompare(b.created_at ?? ""),
     );
+    const { peerId: resolvedPeerId, peer } = await resolveTwitterPeer(
+      client,
+      users,
+      peerId,
+      sorted,
+      account.platformUserId,
+    );
     const messages: InboxDmMessage[] = sorted.map((ev) => {
       const isOwn = ev.sender_id === account.platformUserId;
       const user = ev.sender_id ? users.get(ev.sender_id) : undefined;
@@ -641,25 +739,30 @@ async function fetchTwitterThread(
         authorHandle: user?.username ?? null,
         authorAvatarUrl: isOwn
           ? account.profileImageUrl ?? null
-          : user?.profile_image_url ?? null,
+          : xAvatarUrl(user?.profile_image_url),
         attachment: media.attachment,
       };
     });
     const last = messages[messages.length - 1];
-    const peer = peerId ? users.get(peerId) : undefined;
+    const peerName = peer?.name ?? peer?.username ?? "X user";
+    const thread = isWeakDmPeerName(peerName) && !peer?.username && !peer?.profile_image_url
+      ? undefined
+      : threadMeta(account, {
+          conversationId,
+          peerId: resolvedPeerId,
+          peerName,
+          peerHandle: peer?.username ?? null,
+          peerAvatarUrl: xAvatarUrl(peer?.profile_image_url),
+          lastMessageAt: last?.createdAt ?? null,
+          snippet: snippetOf(
+            last?.text || (last?.attachment ? `[${last.attachment.type}]` : ""),
+          ),
+          canReply: Boolean(resolvedPeerId),
+        });
     return {
       messages,
       status: "ok",
-      thread: threadMeta(account, {
-        conversationId,
-        peerId,
-        peerName: peer?.name ?? peer?.username ?? "X user",
-        peerHandle: peer?.username ?? null,
-        peerAvatarUrl: peer?.profile_image_url ?? null,
-        lastMessageAt: last?.createdAt ?? null,
-        snippet: snippetOf(last?.text || (last?.attachment ? `[${last.attachment.type}]` : "")),
-        canReply: Boolean(peerId),
-      }),
+      thread,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "X thread failed";
@@ -729,7 +832,8 @@ type BskyConvo = {
 };
 
 function bskyPeer(members: BskyMember[] | undefined, selfDid: string): BskyMember {
-  return members?.find((m) => m.did && m.did !== selfDid) ?? members?.[0] ?? {};
+  const others = (members ?? []).filter((m) => m.did && m.did !== selfDid);
+  return others[0] ?? {};
 }
 
 async function fetchBlueskyList(
@@ -904,19 +1008,24 @@ async function fetchBlueskyThread(
     })
     .sort((a, b) => (a.createdAt ?? "").localeCompare(b.createdAt ?? ""));
   const last = messages[messages.length - 1];
+  const peerName = peer.displayName ?? peer.handle ?? "Bluesky user";
+  const hasIdentity = Boolean(peer.handle || peer.displayName || peer.avatar);
   return {
     messages,
     status: "ok",
-    thread: threadMeta(account, {
-      conversationId,
-      peerId: peer.did ?? "",
-      peerName: peer.displayName ?? peer.handle ?? "Bluesky user",
-      peerHandle: peer.handle ?? null,
-      peerAvatarUrl: peer.avatar ?? null,
-      lastMessageAt: last?.createdAt ?? null,
-      snippet: snippetOf(last?.text),
-      canReply: true,
-    }),
+    // Omit empty peer identity so the client keeps richer list-row data.
+    thread: hasIdentity
+      ? threadMeta(account, {
+          conversationId,
+          peerId: peer.did ?? "",
+          peerName,
+          peerHandle: peer.handle ?? null,
+          peerAvatarUrl: peer.avatar ?? null,
+          lastMessageAt: last?.createdAt ?? null,
+          snippet: snippetOf(last?.text),
+          canReply: true,
+        })
+      : undefined,
   };
 }
 

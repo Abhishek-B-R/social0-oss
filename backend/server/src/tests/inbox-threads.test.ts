@@ -3,6 +3,8 @@ import {
   instagramDmsNeedInstagramLogin,
   instagramProfilePicUrl,
   isInboxSelfActor,
+  isWeakDmPeerName,
+  mergeDmThreadIdentity,
   missingDmScopes,
   missingInboxScopes,
   peerFromParticipants,
@@ -11,6 +13,7 @@ import {
   youtubeAuthorChannelId,
   sameLinkedInActor,
   type InboxComment,
+  type InboxDmThread,
 } from "../lib/inbox/types.js";
 
 function comment(partial: Partial<InboxComment> & Pick<InboxComment, "id">): InboxComment {
@@ -190,6 +193,44 @@ describe("peerFromParticipants", () => {
       "page",
     );
     expect(peer.id).toBe("");
+  });
+});
+
+describe("mergeDmThreadIdentity", () => {
+  const base = {
+    conversationId: "c1",
+    platform: "twitter_x",
+    accountId: "acc",
+    accountLabel: "me",
+    peerId: "p1",
+    lastMessageAt: null,
+    snippet: "hi",
+    canReply: true,
+  } satisfies Omit<InboxDmThread, "peerName" | "peerHandle" | "peerAvatarUrl">;
+
+  it("keeps richer list identity over weak thread placeholders", () => {
+    const list: InboxDmThread = {
+      ...base,
+      peerName: "Ada Lovelace",
+      peerHandle: "ada",
+      peerAvatarUrl: "https://cdn.example/ada.jpg",
+    };
+    const thread: InboxDmThread = {
+      ...base,
+      peerName: "X user",
+      peerHandle: null,
+      peerAvatarUrl: null,
+    };
+    expect(mergeDmThreadIdentity(thread, list)).toMatchObject({
+      peerName: "Ada Lovelace",
+      peerHandle: "ada",
+      peerAvatarUrl: "https://cdn.example/ada.jpg",
+    });
+  });
+
+  it("detects weak placeholder names", () => {
+    expect(isWeakDmPeerName("X user")).toBe(true);
+    expect(isWeakDmPeerName("Ada")).toBe(false);
   });
 });
 

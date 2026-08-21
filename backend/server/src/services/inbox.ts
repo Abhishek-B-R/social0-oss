@@ -54,6 +54,8 @@ import {
   INBOX_UNSUPPORTED,
   instagramDmsNeedInstagramLogin,
   isInboxDmPlatform,
+  isWeakDmPeerName,
+  mergeDmThreadIdentity,
   missingDmScopes,
   missingInboxScopes,
   reconnectScopesFromFetch,
@@ -1061,9 +1063,23 @@ export async function getInboxDmThread(input: {
       snippet: result.messages.at(-1)?.text ?? "",
       canReply: true,
     };
+    const thread = result.thread
+      ? mergeDmThreadIdentity(result.thread, fallback)
+      : fallback;
+    // Prefer a non-placeholder author on the latest inbound message when thread
+    // identity is still weak (common when X/Bluesky omit participant expands).
+    if (isWeakDmPeerName(thread.peerName)) {
+      const inbound = [...result.messages].reverse().find((m) => !m.isOwn);
+      if (inbound && !isWeakDmPeerName(inbound.authorName)) {
+        thread.peerName = inbound.authorName;
+        thread.peerHandle = inbound.authorHandle ?? thread.peerHandle;
+        thread.peerAvatarUrl =
+          inbound.authorAvatarUrl ?? thread.peerAvatarUrl ?? null;
+      }
+    }
     return {
       conversationId: input.conversationId,
-      thread: result.thread ?? fallback,
+      thread,
       messages: result.messages,
       fetchedAt: new Date().toISOString(),
     };

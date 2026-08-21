@@ -50,6 +50,7 @@ import {
   inboxGetNextPageParam,
 } from "@/lib/inbox-page-param";
 import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
+import { dmPeerHandleLabel, mergeDmThreadIdentity } from "./dm-identity";
 
 function dmKey(t: InboxDmThread): string {
   return `${t.accountId}:${t.conversationId}`;
@@ -487,7 +488,9 @@ export function InboxDmsPane({
       return { ...prev, [key]: next };
     });
   }, [threadQuery.data?.messages, selected]);
-  const activeThread = threadQuery.data?.thread ?? selected;
+  const activeThread = threadQuery.data?.thread
+    ? mergeDmThreadIdentity(threadQuery.data.thread, selected)
+    : selected;
 
   return (
     <>
@@ -531,6 +534,7 @@ export function InboxDmsPane({
                     addSuffix: false,
                   })
                 : "";
+              const peerHandle = dmPeerHandleLabel(t.peerName, t.peerHandle);
               return (
                 <li key={key} className="border-b border-border last:border-b-0">
                   <button
@@ -566,6 +570,11 @@ export function InboxDmsPane({
                         <span className="truncate text-[13px] font-semibold text-text">
                           {t.peerName}
                         </span>
+                        {peerHandle ? (
+                          <span className="truncate text-[12px] text-text-muted">
+                            @{peerHandle}
+                          </span>
+                        ) : null}
                         <span className="ml-auto shrink-0 text-[10px] tabular-nums text-text-muted">
                           {when}
                         </span>
@@ -686,9 +695,7 @@ function DmConversationPane({
     });
   }, [messages.length, reduceMotion, thread.conversationId]);
 
-  const peerLabel = thread.peerHandle
-    ? `${thread.peerName} (@${thread.peerHandle.replace(/^@/, "")})`
-    : thread.peerName;
+  const peerHandle = dmPeerHandleLabel(thread.peerName, thread.peerHandle);
 
   return (
     <>
@@ -709,9 +716,14 @@ function DmConversationPane({
           className="mt-0.5 shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-text">
-            {peerLabel}
-          </p>
+          <div className="flex min-w-0 items-baseline gap-1.5">
+            <p className="truncate text-[13px] font-semibold text-text">
+              {thread.peerName}
+            </p>
+            {peerHandle ? (
+              <p className="truncate text-[12px] text-text-muted">@{peerHandle}</p>
+            ) : null}
+          </div>
           <p className="mt-0.5 text-[11px] text-text-muted">
             {PLATFORM_LABEL[thread.platform] ?? thread.platform}
             {thread.accountLabel
@@ -799,6 +811,9 @@ function DmBubble({
         }
       : null);
   const body = resolveInboxBody(message.text, attachment);
+  const authorHandle = own
+    ? null
+    : dmPeerHandleLabel(message.authorName, message.authorHandle);
 
   return (
     <div className={cn("flex gap-2.5", own && "flex-row-reverse")}>
@@ -824,8 +839,8 @@ function DmBubble({
             <span className="font-semibold">
               {own ? "You" : message.authorName}
             </span>
-            {!own && message.authorHandle ? (
-              <span className="text-text-muted">@{message.authorHandle}</span>
+            {authorHandle ? (
+              <span className="text-text-muted">@{authorHandle}</span>
             ) : null}
           {when ? <span className="text-text-muted">· {when}</span> : null}
           {sending ? (
