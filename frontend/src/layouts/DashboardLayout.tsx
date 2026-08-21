@@ -5,6 +5,7 @@ import { dashboardSeo } from "@/lib/page-metadata";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { DashboardShellSkeleton } from "@/components/dashboard/DashboardShellSkeleton";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
 import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
 import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
@@ -93,7 +94,7 @@ export function DashboardLayout() {
     !onConnectionsPage;
 
   if (isPending || !session) {
-    return null;
+    return <DashboardShellSkeleton />;
   }
 
   const sidebarUser = layoutData
@@ -103,6 +104,7 @@ export function DashboardLayout() {
         image: layoutData.profileImage ?? session.user.image,
       }
     : session.user;
+  const layoutPending = !layoutData;
 
   return (
     <div className="dashboard-shell flex h-screen overflow-hidden bg-bg">
@@ -119,6 +121,7 @@ export function DashboardLayout() {
           layoutData ? getPlanLabel(layoutData.subscriptionTier) : "..."
         }
         sessionPending={isPending}
+        layoutPending={layoutPending}
         canCreatePosts={layoutData?.canCreatePosts ?? false}
         canViewAnalytics={layoutData?.canViewAnalytics ?? false}
         canViewInbox={layoutData?.canViewInbox ?? false}

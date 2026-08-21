@@ -20,6 +20,7 @@ import { useSession } from "@/lib/auth-client";
 import { useQuery } from "@tanstack/react-query";
 import { loadDashboardLayoutData } from "@/api/dashboard-data";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
+import { SkeletonBone } from "@/components/ui/skeleton-bone";
 
 function getPlanLabel(tier: string): string {
   if (tier === "pro") return "Pro plan";
@@ -71,6 +72,7 @@ export function MorePage() {
   const canViewInbox = layoutReady ? (layoutData?.canViewInbox ?? false) : false;
 
   const moreLinks = MORE_LINKS.filter((link) => {
+    if (!layoutReady) return true;
     if (link.href === "/dashboard/analytics") return canViewAnalytics;
     if (link.href === "/dashboard/inbox") return canViewInbox;
     return true;
@@ -94,23 +96,33 @@ export function MorePage() {
         />
       )}
 
-      {canCreatePosts ? (
+      {!layoutReady || canCreatePosts ? (
         <section className="mt-6">
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-muted">
             Manual posting
           </h2>
           <ul className="space-y-0.5 rounded-xl border border-border bg-bg-elevated shadow-sm sm:space-y-1">
-            {MANUAL_POSTING_LINKS.map(({ href, label, icon: Icon }) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors active:bg-bg-muted touch-manipulation"
-                >
-                  <Icon className="h-4 w-4 shrink-0 text-text-muted" />
-                  {label}
-                </Link>
-              </li>
-            ))}
+            {!layoutReady
+              ? MANUAL_POSTING_LINKS.map(({ href }) => (
+                  <li
+                    key={href}
+                    className="flex min-h-[44px] items-center gap-3 px-4 py-3"
+                  >
+                    <SkeletonBone className="h-4 w-4 rounded" />
+                    <SkeletonBone className="h-3 w-28" />
+                  </li>
+                ))
+              : MANUAL_POSTING_LINKS.map(({ href, label, icon: Icon }) => (
+                  <li key={href}>
+                    <Link
+                      href={href}
+                      className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text transition-colors hover:bg-bg-subtle active:bg-bg-muted touch-manipulation"
+                    >
+                      <Icon className="h-4 w-4 shrink-0 text-text-muted" />
+                      {label}
+                    </Link>
+                  </li>
+                ))}
           </ul>
         </section>
       ) : null}
@@ -120,18 +132,34 @@ export function MorePage() {
           Posts & tools
         </h2>
         <ul className="space-y-0.5 rounded-xl border border-border bg-bg-elevated shadow-sm sm:space-y-1">
-          {moreLinks.map(({ href, label, icon: Icon, experimental }) => (
-            <li key={href}>
-              <Link
-                href={href}
-                className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text hover:bg-bg-subtle transition-colors active:bg-bg-muted touch-manipulation"
-              >
-                <Icon className="h-4 w-4 shrink-0 text-text-muted" />
-                <span className="flex-1">{label}</span>
-                {experimental ? <ExperimentalBadge compact /> : null}
-              </Link>
-            </li>
-          ))}
+          {moreLinks.map(({ href, label, icon: Icon, experimental }) => {
+            const pendingGate =
+              !layoutReady &&
+              (href === "/dashboard/analytics" || href === "/dashboard/inbox");
+            if (pendingGate) {
+              return (
+                <li
+                  key={href}
+                  className="flex min-h-[44px] items-center gap-3 px-4 py-3"
+                >
+                  <SkeletonBone className="h-4 w-4 rounded" />
+                  <SkeletonBone className="h-3 w-24" />
+                </li>
+              );
+            }
+            return (
+              <li key={href}>
+                <Link
+                  href={href}
+                  className="flex min-h-[44px] items-center gap-3 px-4 py-3 text-sm font-medium text-text transition-colors hover:bg-bg-subtle active:bg-bg-muted touch-manipulation"
+                >
+                  <Icon className="h-4 w-4 shrink-0 text-text-muted" />
+                  <span className="flex-1">{label}</span>
+                  {experimental ? <ExperimentalBadge compact /> : null}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </section>
     </div>

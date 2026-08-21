@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
-import { ArrowClockwise, X } from "@/icons/phosphor";
+import { ArrowClockwise, ArrowSquareOut, X } from "@/icons/phosphor";
 import { useSession } from "@/lib/auth-client";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
@@ -429,40 +429,61 @@ export function AnalyticsPage() {
           </p>
         ) : (
           <ul className="divide-y divide-border">
-            {data.topPosts.map((post) => (
-              <li
-                key={post.postId}
-                className="flex flex-col gap-1 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <Link
-                    href={dash(`posts/${post.postId}`)}
-                    className="line-clamp-2 text-sm font-medium text-text hover:text-accent"
-                  >
-                    {post.snippet}
-                  </Link>
-                  <p className="mt-0.5 text-xs text-text-muted">
-                    {post.platforms
-                      .map((p) => PLATFORM_LABEL[p] ?? p)
-                      .join(" · ")}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-4 text-xs text-text-muted">
-                  <span>
-                    <span className="font-semibold text-text">
-                      {formatMetric(viewsOf(post.metrics))}
-                    </span>{" "}
-                    views
-                  </span>
-                  <span>
-                    <span className="font-semibold text-text">
-                      {formatMetric(engagementOf(post.metrics))}
-                    </span>{" "}
-                    eng.
-                  </span>
-                </div>
-              </li>
-            ))}
+            {data.topPosts.map((post) => {
+              const platformUrl =
+                data.publications.find(
+                  (p) => p.postId === post.postId && p.platformPostUrl,
+                )?.platformPostUrl ?? null;
+              const detailHref = dash(`posts/${post.postId}`);
+              return (
+                <li key={post.postId}>
+                  <div className="group relative flex items-stretch gap-2">
+                    <Link
+                      href={detailHref}
+                      className="flex min-w-0 flex-1 flex-col gap-1 py-3 transition-colors hover:bg-bg-subtle/60 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 text-sm font-medium text-text group-hover:text-accent">
+                          {post.snippet}
+                        </p>
+                        <p className="mt-0.5 text-xs text-text-muted">
+                          {post.platforms
+                            .map((p) => PLATFORM_LABEL[p] ?? p)
+                            .join(" · ")}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-4 text-xs text-text-muted">
+                        <span>
+                          <span className="font-semibold text-text">
+                            {formatMetric(viewsOf(post.metrics))}
+                          </span>{" "}
+                          views
+                        </span>
+                        <span>
+                          <span className="font-semibold text-text">
+                            {formatMetric(engagementOf(post.metrics))}
+                          </span>{" "}
+                          eng.
+                        </span>
+                      </div>
+                    </Link>
+                    {platformUrl ? (
+                      <a
+                        href={platformUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="my-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-muted hover:text-accent active:scale-[0.97]"
+                        aria-label="Open on platform"
+                        title="Open on platform"
+                      >
+                        <ArrowSquareOut size={14} />
+                      </a>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
         {data?.sampled ? (

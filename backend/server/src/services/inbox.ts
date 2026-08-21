@@ -678,6 +678,7 @@ export async function replyToInboxComment(input: {
 export async function likeInboxComment(input: {
   publicationId?: unknown;
   commentId?: unknown;
+  unlike?: unknown;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const ctx = await requireUser("reply_comments");
   if (typeof input.publicationId !== "string" || !input.publicationId) {
@@ -686,6 +687,7 @@ export async function likeInboxComment(input: {
   if (typeof input.commentId !== "string" || !input.commentId) {
     return { ok: false, error: "commentId required" };
   }
+  const unlike = input.unlike === true;
 
   const postFilter = postScopeCondition({
     resourceUserId: ctx.resourceUserId,
@@ -718,7 +720,7 @@ export async function likeInboxComment(input: {
   if (!inboxCommentLikeSupported(row.platform)) {
     return {
       ok: false,
-      error: `Liking comments is not supported for ${row.platform} yet.`,
+      error: `${unlike ? "Unliking" : "Liking"} comments is not supported for ${row.platform} yet.`,
     };
   }
 
@@ -742,11 +744,12 @@ export async function likeInboxComment(input: {
       platformUserId: row.platformUserId ?? "me",
       accountId: row.accountId,
       accountHandle: row.platformUsername,
+      unlike,
     });
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Like failed",
+      error: e instanceof Error ? e.message : unlike ? "Unlike failed" : "Like failed",
     };
   }
 }

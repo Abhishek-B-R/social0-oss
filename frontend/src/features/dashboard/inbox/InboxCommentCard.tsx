@@ -18,6 +18,10 @@ import {
 } from "@/api/inbox";
 import { resolveInboxBody } from "@/lib/inbox-display";
 import {
+  inboxAuthorProfileUrl,
+  inboxCommentPlatformUrl,
+} from "@/lib/inbox-comment-url";
+import {
   inboxCommentHideSupported,
   inboxCommentLikeSupported,
 } from "@/lib/inbox-comment-status";
@@ -35,6 +39,45 @@ function quoteForComposer(comment: InboxComment): string {
   const body = comment.text.trim();
   if (!body) return "";
   return `Replying to @${handle} on ${platform}:\n\n"${body}"\n\n`;
+}
+
+function CommentBodyText({
+  text,
+  platform,
+}: {
+  text: string;
+  platform: string;
+}) {
+  const parts = text.split(/(@[A-Za-z0-9_.]+)/g);
+  return (
+    <p className="mt-1.5 whitespace-pre-wrap break-words text-[15px] leading-[1.45] tracking-[-0.01em] text-text">
+      {parts.map((part, i) => {
+        if (!part.startsWith("@")) return <span key={i}>{part}</span>;
+        const profileUrl = inboxAuthorProfileUrl({
+          platform,
+          authorHandle: part,
+        });
+        if (!profileUrl) {
+          return (
+            <span key={i} className="text-text-muted">
+              {part}
+            </span>
+          );
+        }
+        return (
+          <a
+            key={i}
+            href={profileUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-text-muted transition-colors hover:text-accent"
+          >
+            {part}
+          </a>
+        );
+      })}
+    </p>
+  );
 }
 
 export function InboxCommentCard({
@@ -87,26 +130,33 @@ export function InboxCommentCard({
       ? likeOverride.count
       : (comment.likeCount ?? 0);
 
-  const canLike =
-    allowReply &&
-    !own &&
-    inboxCommentLikeSupported(comment.platform) &&
-    !liked;
+  const canToggleLike =
+    allowReply && !own && inboxCommentLikeSupported(comment.platform);
 
   const canHide =
     allowReply &&
     !own &&
     inboxCommentHideSupported(comment.platform);
 
-  const postUrl = comment.platformPostUrl;
+  const postUrl = inboxCommentPlatformUrl(comment);
+  const authorProfileUrl = inboxAuthorProfileUrl({
+    platform: comment.platform,
+    authorHandle: comment.authorHandle,
+  });
 
-  const onLike = async () => {
-    if (!canLike || liking) return;
+  const onToggleLike = async () => {
+    if (!canToggleLike || liking) return;
+    const nextLiked = !liked;
+    const baseCount =
+      likeOverride?.id === comment.id
+        ? likeOverride.count
+        : (comment.likeCount ?? 0);
     setLiking(true);
     try {
       const res = await likeInboxComment({
         publicationId: comment.publicationId,
         commentId: comment.id,
+        unlike: !nextLiked,
       });
       if (!res.ok) {
         toast.error(res.error);
@@ -114,11 +164,17 @@ export function InboxCommentCard({
       }
       setLikeOverride({
         id: comment.id,
-        liked: true,
-        count: (comment.likeCount ?? 0) + 1,
+        liked: nextLiked,
+        count: Math.max(0, baseCount + (nextLiked ? 1 : -1)),
       });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Like failed");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : nextLiked
+            ? "Like failed"
+            : "Unlike failed",
+      );
     } finally {
       setLiking(false);
     }
@@ -205,9 +261,20 @@ export function InboxCommentCard({
                 {own ? "You" : comment.authorName}
               </p>
               {!own && comment.authorHandle ? (
-                <p className="truncate text-[12px] text-text-muted">
-                  @{handle}
-                </p>
+                authorProfileUrl ? (
+                  <a
+                    href={authorProfileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate text-[12px] text-text-muted transition-colors hover:text-accent"
+                  >
+                    @{handle}
+                  </a>
+                ) : (
+                  <p className="truncate text-[12px] text-text-muted">
+                    @{handle}
+                  </p>
+                )
               ) : null}
               {own ? (
                 <button
@@ -227,9 +294,7 @@ export function InboxCommentCard({
               </p>
             </div>
             {body.text ? (
-              <p className="mt-1.5 whitespace-pre-wrap break-words text-[15px] leading-[1.45] tracking-[-0.01em] text-text">
-                {body.text}
-              </p>
+              <CommentBodyText text={body.text} platform={comment.platform} />
             ) : null}
             {body.attachment ? (
               <InboxAttachmentView
@@ -248,28 +313,31 @@ export function InboxCommentCard({
               </button>
             ) : null}
             <div className="mt-2.5 flex items-center gap-1">
-              {canLike || liked || likeCount > 0 ? (
+              {canToggleLike || liked || likeCount > 0 ? (
                 <button
                   type="button"
-                  onClick={() => void onLike()}
-                  disabled={own || !canLike || liking}
+                  onClick={() => void onToggleLike()}
+                  disabled={own || !canToggleLike || liking}
                   className={cn(
                     "inline-flex h-8 items-center gap-1.5 rounded-full px-1.5 text-text-muted transition-[transform,color,background-color] duration-150 ease-out",
                     own
                       ? "cursor-default"
                       : "hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]",
-                    liked && "text-rose-500",
+                    (liked || liking) && "text-rose-500",
                   )}
                   aria-label={
                     own
                       ? `${likeCount} like${likeCount === 1 ? "" : "s"} on your reply`
                       : liked
-                        ? "Liked"
+                        ? "Unlike comment"
                         : "Like comment"
                   }
                 >
                   {liking ? (
-                    <CircleNotch size={16} className="animate-spin" />
+                    <CircleNotch
+                      size={16}
+                      className="animate-spin text-rose-500"
+                    />
                   ) : (
                     <Heart
                       size={16}
@@ -305,8 +373,8 @@ export function InboxCommentCard({
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-accent active:scale-[0.97]"
-                      aria-label="Open post"
-                      title="Open post"
+                      aria-label="Open on platform"
+                      title="Open on platform"
                     >
                       <ArrowSquareOut size={14} />
                     </a>

@@ -170,6 +170,7 @@ export function replyToInboxComment(input: {
 export function likeInboxComment(input: {
   publicationId: string;
   commentId: string;
+  unlike?: boolean;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   return rpc("inbox.likeComment", input);
 }
