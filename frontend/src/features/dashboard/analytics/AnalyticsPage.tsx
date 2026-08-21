@@ -372,7 +372,7 @@ export function AnalyticsPage() {
                 Totals across publications in this range.
               </p>
               {loading && !data ? (
-                <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
+                <div className="h-80 animate-pulse rounded-xl bg-bg-muted sm:h-[22rem]" />
               ) : (
                 <PlatformBreakdownChart data={platformChart} />
               )}

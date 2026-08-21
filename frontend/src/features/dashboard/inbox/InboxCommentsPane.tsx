@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { ChatCircle } from "@/icons/phosphor";
+import { ChatCircle, EyeSlash } from "@/icons/phosphor";
 import type { InboxAccount } from "@/api/inbox";
 import {
   listInboxComments,
@@ -36,6 +36,12 @@ import {
   commentIdsFromThreads,
   markInboxCommentsSeen,
 } from "@/lib/inbox-unread";
+import {
+  clearHiddenInboxPublications,
+  hideInboxPublication,
+  loadHiddenInboxPublications,
+  subscribeHiddenInboxPublications,
+} from "@/lib/inbox-hidden-posts";
 import { useSession } from "@/lib/auth-client";
 import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
@@ -183,6 +189,29 @@ export function InboxCommentsPane({
   const [failedReplyIds, setFailedReplyIds] = useState<Set<string>>(new Set());
   const [sendingReplyIds, setSendingReplyIds] = useState<Set<string>>(new Set());
   const retryPayloads = useRef(new Map<string, RetryPayload>());
+  const [hiddenTick, setHiddenTick] = useState(0);
+
+  useEffect(() => {
+    return subscribeHiddenInboxPublications(userId, () => {
+      setHiddenTick((n) => n + 1);
+    });
+  }, [userId]);
+
+  const hiddenSet = useMemo(() => {
+    void hiddenTick;
+    return new Set(loadHiddenInboxPublications(userId));
+  }, [userId, hiddenTick]);
+
+  const hidePost = useCallback(
+    (publicationId: string) => {
+      hideInboxPublication(userId, publicationId);
+      setHiddenTick((n) => n + 1);
+      toast.message("Hidden from Unanswered", {
+        description: "Still visible under All.",
+      });
+    },
+    [userId],
+  );
 
   const sendReply = async (
     thread: InboxThread,
@@ -354,11 +383,21 @@ export function InboxCommentsPane({
       }))
       .filter((g) => {
         if (!g.threads.length) return false;
-        if (statusFilter === "unanswered") return g.unanswered > 0;
+        if (statusFilter === "unanswered") {
+          if (hiddenSet.has(g.publicationId)) return false;
+          return g.unanswered > 0;
+        }
         if (statusFilter === "answered") return g.unanswered === 0;
         return true;
       });
-  }, [postGroupsAll, statusFilter]);
+  }, [postGroupsAll, statusFilter, hiddenSet]);
+
+  const hiddenUnansweredCount = useMemo(() => {
+    if (statusFilter !== "unanswered") return 0;
+    return postGroupsAll.filter(
+      (g) => g.unanswered > 0 && hiddenSet.has(g.publicationId),
+    ).length;
+  }, [postGroupsAll, hiddenSet, statusFilter]);
 
   const needsReplyGroups = postGroups.filter((g) => g.unanswered > 0);
   const repliedGroups = postGroups.filter((g) => g.unanswered === 0);
@@ -453,7 +492,8 @@ export function InboxCommentsPane({
 
       {loading && !data ? (
         <InboxSplitSkeleton />
-      ) : !data || postGroups.length === 0 ? (
+      ) : !data ||
+        (postGroups.length === 0 && hiddenUnansweredCount === 0) ? (
         <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
           <ChatCircle size={28} className="text-text-muted" />
           <p className="mt-3 text-sm font-medium text-text">
@@ -469,6 +509,27 @@ export function InboxCommentsPane({
               : "Try All, or a longer date range."}
           </p>
         </div>
+      ) : postGroups.length === 0 && hiddenUnansweredCount > 0 ? (
+        <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
+          <EyeSlash size={28} className="text-text-muted" />
+          <p className="mt-3 text-sm font-medium text-text">
+            {hiddenUnansweredCount} post
+            {hiddenUnansweredCount === 1 ? "" : "s"} hidden
+          </p>
+          <p className="mt-1 max-w-sm text-sm text-text-muted">
+            Hidden posts stay out of Unanswered. They still show under All.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              clearHiddenInboxPublications(userId);
+              setHiddenTick((n) => n + 1);
+            }}
+            className="mt-4 rounded-full bg-accent px-4 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+          >
+            Restore hidden posts
+          </button>
+        </div>
       ) : (
         <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-bg-elevated shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] dark:border-white/[0.08] lg:grid-cols-[19rem_minmax(0,1fr)]">
           <div
@@ -477,10 +538,24 @@ export function InboxCommentsPane({
               showList ? "block" : "hidden lg:block",
             )}
           >
-            <div className="sticky top-0 z-10 flex items-center border-b border-border/80 bg-bg-elevated/80 px-3 py-2 backdrop-blur-md">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-                Posts
-              </p>
+            <div className="sticky top-0 z-10 border-b border-border/80 bg-bg-elevated/80 px-3 py-2 backdrop-blur-md">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                  Posts
+                </p>
+                {hiddenUnansweredCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearHiddenInboxPublications(userId);
+                      setHiddenTick((n) => n + 1);
+                    }}
+                    className="text-[11px] font-medium text-accent hover:underline"
+                  >
+                    Restore {hiddenUnansweredCount} hidden
+                  </button>
+                ) : null}
+              </div>
             </div>
             {needsReplyGroups.length > 0 && repliedGroups.length > 0 ? (
               <>
@@ -488,6 +563,8 @@ export function InboxCommentsPane({
                   title="Needs a reply"
                   groups={needsReplyGroups}
                   selectedPostId={selectedPost?.publicationId ?? null}
+                  canHide={statusFilter === "unanswered"}
+                  onHide={hidePost}
                   onPick={(group) => {
                     setPickedPostId(group.publicationId);
                     setPickedId(threadKey(group.threads[0]!));
@@ -525,6 +602,8 @@ export function InboxCommentsPane({
               <PostGroupList
                 groups={postGroups}
                 selectedPostId={selectedPost?.publicationId ?? null}
+                canHide={statusFilter === "unanswered"}
+                onHide={hidePost}
                 onPick={(group) => {
                   setPickedPostId(group.publicationId);
                   setPickedId(threadKey(group.threads[0]!));
@@ -570,6 +649,11 @@ export function InboxCommentsPane({
                 sendingReplyIds={sendingReplyIds}
                 failedReplyIds={failedReplyIds}
                 highlightCommentId={selected?.comment.id}
+                onHideFromUnanswered={
+                  statusFilter === "unanswered"
+                    ? () => hidePost(selectedPost.publicationId)
+                    : undefined
+                }
                 onBack={() => setMobileDetail(false)}
                 onReply={(uiParentId, payload, optimisticId) => {
                   const thread =
@@ -631,11 +715,15 @@ function PostGroupList({
   title,
   groups,
   selectedPostId,
+  canHide,
+  onHide,
   onPick,
 }: {
   title?: string;
   groups: PostGroup[];
   selectedPostId: string | null;
+  canHide?: boolean;
+  onHide?: (publicationId: string) => void;
   onPick: (group: PostGroup) => void;
 }) {
   if (!groups.length) return null;
@@ -655,51 +743,62 @@ function PostGroupList({
           const badge = group.unanswered;
           return (
             <li key={group.publicationId} className="px-2 py-0.5">
-              <button
-                type="button"
-                onClick={() => onPick(group)}
+              <div
                 className={cn(
-                  "relative flex w-full gap-2.5 rounded-2xl px-2.5 py-2.5 text-left transition-[background-color,transform,box-shadow] duration-150 ease-out active:scale-[0.99]",
+                  "relative flex w-full gap-2.5 rounded-2xl px-2.5 py-2.5 text-left transition-[background-color,box-shadow] duration-150 ease-out",
                   active
                     ? "bg-accent/[0.08] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)]"
                     : "hover:bg-bg-subtle/80",
                 )}
               >
-                <InboxPostThumbnail
-                  mediaUrl={group.postMediaUrl}
-                  content={group.postContent || group.postSnippet}
-                  platform={group.platform}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5">
-                    <span className="truncate text-[12px] font-medium text-text-muted">
-                      {PLATFORM_LABEL[group.platform] ?? group.platform} · {via}
-                    </span>
-                    {badge > 0 ? (
-                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold text-white">
-                        {badge}
+                <button
+                  type="button"
+                  onClick={() => onPick(group)}
+                  className="flex min-w-0 flex-1 gap-2.5 text-left transition-transform duration-150 ease-out active:scale-[0.99]"
+                >
+                  <InboxPostThumbnail
+                    mediaUrl={group.postMediaUrl}
+                    content={group.postContent || group.postSnippet}
+                    platform={group.platform}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-1.5">
+                      <span className="min-w-0 truncate text-[12px] font-medium text-text-muted">
+                        {PLATFORM_LABEL[group.platform] ?? group.platform} ·{" "}
+                        {via}
                       </span>
-                    ) : null}
-                  </span>
-                  <span className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-text">
-                    {group.postContent || group.postSnippet || "(No caption)"}
-                  </span>
-                  <span className="mt-1 text-[11px] text-text-muted">
-                    {group.threads.length} comment
-                    {group.threads.length === 1 ? "" : "s"}
-                    {group.unanswered > 0
-                      ? ` · ${group.unanswered} unanswered`
-                      : " · replied from Social0"}
-                  </span>
-                  {group.unanswered > 0 ? (
-                    <span className="mt-2 block h-0.5 w-full overflow-hidden rounded-full bg-bg-muted">
-                      <span className="block h-full w-1/3 rounded-full bg-amber-400" />
+                      {badge > 0 ? (
+                        <span className="ml-auto inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold text-white">
+                          {badge}
+                        </span>
+                      ) : (
+                        <span className="ml-auto" />
+                      )}
                     </span>
-                  ) : (
-                    <span className="mt-2 block h-0.5 w-full rounded-full bg-accent/40" />
-                  )}
-                </span>
-              </button>
+                    <span className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-text">
+                      {group.postContent || group.postSnippet || "(No caption)"}
+                    </span>
+                    <span className="mt-1 text-[11px] text-text-muted">
+                      {group.threads.length} comment
+                      {group.threads.length === 1 ? "" : "s"}
+                      {group.unanswered > 0
+                        ? ` · ${group.unanswered} unanswered`
+                        : " · replied from Social0"}
+                    </span>
+                  </span>
+                </button>
+                {canHide && onHide ? (
+                  <button
+                    type="button"
+                    onClick={() => onHide(group.publicationId)}
+                    className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center self-start rounded-full text-text-muted transition-[background-color,color] hover:bg-bg-muted hover:text-text"
+                    aria-label="Hide from Unanswered"
+                    title="Hide from Unanswered"
+                  >
+                    <EyeSlash size={14} />
+                  </button>
+                ) : null}
+              </div>
             </li>
           );
         })}

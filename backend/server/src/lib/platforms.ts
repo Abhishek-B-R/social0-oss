@@ -60,7 +60,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     tokenUrl: "https://graph.threads.net/oauth/access_token",
     // threads_manage_insights: post/user insights (Meta App Review)
     scope:
-      "threads_basic,threads_content_publish,threads_manage_replies,threads_manage_insights",
+      "threads_basic,threads_content_publish,threads_read_replies,threads_manage_replies,threads_manage_insights",
   },
   bluesky: null, // Bluesky uses BYOK (Bring Your Own Keys) - handle + app password
   pinterest: {

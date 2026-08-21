@@ -462,7 +462,7 @@ export const PlatformBreakdownChart = memo(function PlatformBreakdownChart({
   }
 
   return (
-    <ChartShell>
+    <div className="h-80 w-full min-w-0 sm:h-[22rem] [&_.recharts-surface]:outline-none">
       <ResponsiveContainer width="100%" height="100%" debounce={120}>
         <BarChart
           data={model.rows}
@@ -512,7 +512,7 @@ export const PlatformBreakdownChart = memo(function PlatformBreakdownChart({
           ))}
         </BarChart>
       </ResponsiveContainer>
-    </ChartShell>
+    </div>
   );
 });
 

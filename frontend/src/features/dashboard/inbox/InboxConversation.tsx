@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion } from "framer-motion";
-import { ArrowLeft, ArrowSquareOut } from "@/icons/phosphor";
+import { ArrowLeft, ArrowSquareOut, EyeSlash } from "@/icons/phosphor";
 import type { InboxAccount, InboxComment, InboxThread } from "@/api/inbox";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import {
@@ -124,6 +124,7 @@ export function InboxConversation({
   failedReplyIds,
   highlightCommentId,
   onBack,
+  onHideFromUnanswered,
   onReply,
   onRetryReply,
 }: {
@@ -135,6 +136,7 @@ export function InboxConversation({
   failedReplyIds: Set<string>;
   highlightCommentId?: string | null;
   onBack: () => void;
+  onHideFromUnanswered?: () => void;
   onReply: (
     uiParentId: string,
     payload: InboxComposerPayload,
@@ -241,6 +243,18 @@ export function InboxConversation({
             {` · Includes replies via ${PLATFORM_LABEL[root.platform] ?? root.platform}`}
           </p>
         </div>
+        {onHideFromUnanswered ? (
+          <button
+            type="button"
+            onClick={onHideFromUnanswered}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97]"
+            aria-label="Hide from Unanswered"
+            title="Hide from Unanswered"
+          >
+            <EyeSlash size={14} />
+            <span className="hidden sm:inline">Hide</span>
+          </button>
+        ) : null}
         {root.platformPostUrl ? (
           <a
             href={root.platformPostUrl}
