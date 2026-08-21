@@ -43,40 +43,39 @@ function parseThreadsPublishId(data: unknown): string | null {
   return null;
 }
 
-/** Threads shortcode charset (+ and _). */
-const THREADS_SHORTCODE_CHARSET =
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+_";
-
 /**
- * Encode numeric media ID to shortcode (base-64 style, 64-char alphabet).
- * Returns "" if id is invalid or charset is not length 64.
+ * Fetch permalink via GET /{threadId}?fields=id,permalink — never invent shortcodes.
+ * Cosmetic only; never fail a live Threads publish over permalink lookup.
  */
-function mediaIdToShortcode(id: string | number, charset: string): string {
-  if (charset.length !== 64) return "";
-  const idStr =
-    typeof id === "number" ? String(Math.floor(id)) : String(id).trim();
-  if (!idStr) return "";
-  let n: bigint;
+async function fetchThreadsPermalink(
+  threadId: string,
+  accessToken: string,
+  fallbackProfileUrl: string | null,
+): Promise<string | null> {
   try {
-    n = BigInt(idStr);
-  } catch {
-    return "";
+    const params = new URLSearchParams({
+      fields: "id,permalink",
+      access_token: accessToken,
+    });
+    const res = await fetch(
+      `https://graph.threads.net/v1.0/${encodeURIComponent(threadId)}?${params}`,
+    );
+    if (!res.ok) return fallbackProfileUrl;
+    const data = (await res.json().catch(() => ({}))) as {
+      permalink?: string;
+    };
+    const permalink = data.permalink?.trim();
+    if (permalink && /^https:\/\//i.test(permalink)) return permalink;
+  } catch (err) {
+    publishLog.warn("Threads permalink fetch failed (using profile fallback):", err);
   }
-  const zero = BigInt(0);
-  const sixtyFour = BigInt(64);
-  if (n <= zero) return "";
-  let result = "";
-  while (n > zero) {
-    const remainder = n % sixtyFour;
-    result = charset[Number(remainder)] + result;
-    n = (n - remainder) / sixtyFour;
-  }
-  return result;
+  return fallbackProfileUrl;
 }
 
-function threadsMediaIdToShortcode(id: string | number): string {
-  const s = mediaIdToShortcode(id, THREADS_SHORTCODE_CHARSET);
-  return s || "";
+function threadsProfileFallback(pub: Pub): string | null {
+  return pub.platformUsername
+    ? `https://www.threads.net/@${pub.platformUsername.replace(/^@/, "")}`
+    : null;
 }
 
 /**
@@ -300,13 +299,10 @@ async function publishThreadsThread(
   }
 
   const rootId = firstPublishedId ?? previousPublishedId;
-  const threadShortcode = rootId ? threadsMediaIdToShortcode(rootId) : "";
-  const platformPostUrl =
-    threadShortcode && pub.platformUsername
-      ? `https://www.threads.net/@${pub.platformUsername}/post/${threadShortcode}`
-      : pub.platformUsername
-        ? `https://www.threads.net/@${pub.platformUsername}`
-        : null;
+  const profileFallback = threadsProfileFallback(pub);
+  const platformPostUrl = rootId
+    ? await fetchThreadsPermalink(rootId, accessToken, profileFallback)
+    : profileFallback;
   return {
     status: "published",
     platformPostId: rootId ?? null,
@@ -635,13 +631,12 @@ export async function publishToThreads(
       error: "Publish failed",
     };
   }
-  const threadShortcode = threadsMediaIdToShortcode(publishedSingleId);
-  const platformPostUrl =
-    threadShortcode && pub.platformUsername
-      ? `https://www.threads.net/@${pub.platformUsername}/post/${threadShortcode}`
-      : pub.platformUsername
-        ? `https://www.threads.net/@${pub.platformUsername}`
-        : null;
+  const profileFallback = threadsProfileFallback(pub);
+  const platformPostUrl = await fetchThreadsPermalink(
+    publishedSingleId,
+    accessToken,
+    profileFallback,
+  );
   return {
     status: "published",
     platformPostId: publishedSingleId,

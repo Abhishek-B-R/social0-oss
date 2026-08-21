@@ -9,9 +9,16 @@ import {
   processImageForTikTok,
   TikTokImageError,
 } from "@/lib/tiktok-photo-process";
-import { resolveTikTokProfileUrl } from "@/lib/platform-view-url";
+import {
+  buildTikTokVideoUrl,
+  isLikelyTikTokHandle,
+  parseTikTokHandleFromProfileUrl,
+  resolveTikTokProfileUrl,
+} from "@/lib/platform-view-url";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import {
+  firstTikTokPublicVideoId,
+  isTikTokVideoId,
   parseTikTokJson,
   storedTikTokPostId,
 } from "@/lib/tiktok-post-id";
@@ -43,23 +50,72 @@ async function tiktokApiFetch(
   });
 }
 
+function resolveTikTokHandle(pub: Pub, profileUrl: string | null): string | null {
+  if (pub.platformUsername && isLikelyTikTokHandle(pub.platformUsername)) {
+    return pub.platformUsername.replace(/^@/, "").trim();
+  }
+  if (profileUrl) {
+    const fromUrl = parseTikTokHandleFromProfileUrl(profileUrl);
+    if (fromUrl && isLikelyTikTokHandle(fromUrl)) return fromUrl;
+  }
+  const metaUrl =
+    typeof pub.platformMetadata?.profileUrl === "string"
+      ? pub.platformMetadata.profileUrl
+      : null;
+  if (metaUrl) {
+    const fromMeta = parseTikTokHandleFromProfileUrl(metaUrl);
+    if (fromMeta && isLikelyTikTokHandle(fromMeta)) return fromMeta;
+  }
+  return null;
+}
+
+/**
+ * On PUBLISH_COMPLETE use publicaly_available_post_id →
+ * https://www.tiktok.com/@{profile}/video/{id}. Profile-only if id missing.
+ * Inbox draft → messages URL (no public video yet).
+ */
 async function buildTikTokPublishedResult(
   pub: Pub,
   accessToken: string,
-  platformPostId?: string | null,
+  opts: {
+    platformPostId?: string | null;
+    status?: string;
+    publicIds?: unknown;
+  },
 ): Promise<PublishPlatformResult> {
-  let platformPostUrl: string | null;
+  let profileUrl: string | null;
   try {
-    platformPostUrl = await resolveTikTokPublishedProfileUrl(pub, accessToken);
+    profileUrl = await resolveTikTokPublishedProfileUrl(pub, accessToken);
   } catch {
-    platformPostUrl = resolveTikTokProfileUrl({
+    profileUrl = resolveTikTokProfileUrl({
       platformUsername: pub.platformUsername,
       platformMetadata: pub.platformMetadata,
     });
   }
+
+  if (opts.status === "SEND_TO_USER_INBOX") {
+    return {
+      status: "published",
+      platformPostId: opts.platformPostId ?? null,
+      platformPostUrl: "https://www.tiktok.com/messages?lang=en",
+      publishedAt: new Date(),
+    };
+  }
+
+  const publicVideoId =
+    firstTikTokPublicVideoId(opts.publicIds) ??
+    (opts.platformPostId && isTikTokVideoId(opts.platformPostId)
+      ? opts.platformPostId
+      : null);
+  const handle = resolveTikTokHandle(pub, profileUrl);
+  const platformPostUrl =
+    publicVideoId && handle
+      ? buildTikTokVideoUrl(handle, publicVideoId)
+      : profileUrl;
+
   return {
     status: "published",
-    platformPostId: platformPostId ?? null,
+    platformPostId: opts.platformPostId ?? null,
     platformPostUrl,
     publishedAt: new Date(),
   };
@@ -497,23 +553,21 @@ export async function publishToTikTok(
     }
 
     if (status && TIKTOK_ACCEPTED_STATUSES.has(status)) {
-      return buildTikTokPublishedResult(
-        pub,
-        accessToken,
-        storedTikTokPostId({
+      return buildTikTokPublishedResult(pub, accessToken, {
+        platformPostId: storedTikTokPostId({
           publishId,
           publicIds: statusData.data?.publicaly_available_post_id,
         }),
-      );
+        status,
+        publicIds: statusData.data?.publicaly_available_post_id,
+      });
     }
   }
 
   // TikTok accepted the upload but is still processing - don't block the UI/server action.
   publishLog.warn("[TikTok] Publish status still processing after poll cap; marking published",
     { publishId },);
-  return buildTikTokPublishedResult(
-    pub,
-    accessToken,
-    storedTikTokPostId({ publishId }),
-  );
+  return buildTikTokPublishedResult(pub, accessToken, {
+    platformPostId: storedTikTokPostId({ publishId }),
+  });
 }
