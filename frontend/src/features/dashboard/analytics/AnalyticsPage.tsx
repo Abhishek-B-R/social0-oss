@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
 import { ArrowClockwise, X } from "@/icons/phosphor";
 import { useSession } from "@/lib/auth-client";
@@ -35,10 +35,6 @@ import { PLATFORM_LABEL } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
-import {
-  PAGE_LIVE_POLL_MS,
-  useVisibilityPoll,
-} from "@/lib/use-visibility-poll";
 
 export function AnalyticsPage() {
   const { data: session, isPending: sessionPending } = useSession();
@@ -78,23 +74,6 @@ export function AnalyticsPage() {
     ...PAGE_LIVE_QUERY,
   });
 
-  const pollOverview = useCallback(() => {
-    void qc.fetchQuery({
-      queryKey: ["analytics-overview", workspaceId, dateWindow, accountId],
-      queryFn: () =>
-        getAnalyticsOverview({
-          ...windowQueryParams(dateWindow),
-          accountId: accountId || undefined,
-        }),
-    });
-  }, [qc, workspaceId, dateWindow, accountId]);
-
-  useVisibilityPoll(
-    pollOverview,
-    PAGE_LIVE_POLL_MS,
-    !!session && permissionsReady && canViewAnalytics && workspaceReady,
-  );
-
   const settingsQuery = useQuery({
     queryKey: ["user-settings-snapshot"],
     queryFn: getUserSettingsSnapshot,
@@ -105,8 +84,9 @@ export function AnalyticsPage() {
   const accounts = accountsQuery.data ?? [];
 
   useEffect(() => {
-    if (!accountId || !accountsQuery.isSuccess) return;
-    if (!accounts.some((a) => a.id === accountId)) setAccountId(null);
+    if (!accountsQuery.isSuccess || !accounts.length) return;
+    if (accountId && accounts.some((a) => a.id === accountId)) return;
+    setAccountId(accounts[0]!.id);
   }, [accountId, accounts, accountsQuery.isSuccess]);
 
   const reconnect = useMemo(() => {
@@ -208,14 +188,16 @@ export function AnalyticsPage() {
         </div>
         <button
           type="button"
-          onClick={() => {
+          title="Refresh from cache. Hold Shift to force a live platform fetch."
+          onClick={(e) => {
+            const force = e.shiftKey;
             void qc.fetchQuery({
               queryKey: ["analytics-overview", workspaceId, dateWindow, accountId],
               queryFn: () =>
                 getAnalyticsOverview({
                   ...windowQueryParams(dateWindow),
                   accountId: accountId || undefined,
-                  fresh: true,
+                  fresh: force,
                 }),
             });
           }}

@@ -4,7 +4,8 @@ export const PAGE_LIVE_QUERY = {
   refetchOnReconnect: false,
   refetchInterval: false as const,
   refetchOnMount: true as const,
-  // Keep results briefly so Strict Mode remounts / filter toggles don't flash empty.
-  staleTime: 30_000,
-  gcTime: 5 * 60_000,
+  // Align with server soft-fresh / Redis TTLs so remounts and chip toggles
+  // reuse warm data instead of re-fanning out to platforms.
+  staleTime: 120_000,
+  gcTime: 10 * 60_000,
 };

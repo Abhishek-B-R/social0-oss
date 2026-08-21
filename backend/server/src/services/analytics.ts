@@ -39,12 +39,13 @@ import {
 } from "../lib/analytics/types.js";
 import {
   PlatformApiCooldownError,
+  platformFetchConcurrency,
   withPlatformReadCache,
 } from "../lib/platform-api-cache.js";
 
 /** Cap live fan-out so overview RPCs stay within the request budget. */
-const SAMPLE_LIMIT = 48;
-const CONCURRENCY = 3;
+const SAMPLE_LIMIT = 24;
+const CONCURRENCY = 2;
 
 type PubRow = {
   publicationId: string;
@@ -436,14 +437,20 @@ export async function getAnalyticsOverview(input: {
     since,
     until,
     accountId,
-    limit: SAMPLE_LIMIT,
+    limit: accountId ? SAMPLE_LIMIT : Math.min(SAMPLE_LIMIT, 12),
   });
 
   const budget = createLiveRequestBudget();
   let partial = false;
+  const overviewConcurrency = accountId
+    ? platformFetchConcurrency(
+        pubs[0]?.account?.platform ?? "default",
+        CONCURRENCY,
+      )
+    : 1;
   const results = await mapPool(
     pubs,
-    CONCURRENCY,
+    overviewConcurrency,
     (row) => metricsForPub(row, { since, until, timeZone }, fresh),
     {
       shouldContinue: () => {
@@ -547,7 +554,7 @@ export async function getPostAnalytics(input: {
   let partial = false;
   const results = await mapPool(
     pubs,
-    CONCURRENCY,
+    Math.min(CONCURRENCY, 2),
     (row) => metricsForPub(row, { since, until, timeZone }, false),
     {
       shouldContinue: () => {

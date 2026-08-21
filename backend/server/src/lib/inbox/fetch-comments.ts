@@ -101,7 +101,7 @@ async function restOfGraphPages(
   first: GraphPage,
   sinceMs: number | null,
   timeField: string,
-  cap = 8,
+  cap = 3,
 ): Promise<Array<Record<string, unknown>>> {
   const out = [...(first.data ?? [])];
   let next = first.paging?.next ?? null;
@@ -301,7 +301,7 @@ async function fetchYoutubeReplies(
 ): Promise<Array<{ id: string; snippet: Record<string, unknown> }>> {
   const out: Array<{ id: string; snippet: Record<string, unknown> }> = [];
   let pageToken: string | undefined;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 2; i++) {
     const url = new URL("https://www.googleapis.com/youtube/v3/comments");
     url.searchParams.set("part", "snippet");
     url.searchParams.set("parentId", parentId);
@@ -332,7 +332,7 @@ async function fetchYouTube(
   const common = base(input);
   let pageToken: string | undefined;
   let first = true;
-  for (let page = 0; page < 4; page++) {
+  for (let page = 0; page < 2; page++) {
     const url = new URL(
       "https://www.googleapis.com/youtube/v3/commentThreads",
     );
@@ -397,7 +397,7 @@ async function fetchYouTube(
           ? (item.snippet as { totalReplyCount: number }).totalReplyCount
           : embedded.length;
       const replies =
-        totalReplyCount > embedded.length
+        totalReplyCount > embedded.length && comments.length < 40
           ? await fetchYoutubeReplies(top.id, input.accessToken)
           : embedded.filter((r): r is { id: string; snippet: Record<string, unknown> } =>
               Boolean(r.id && r.snippet),
@@ -676,7 +676,7 @@ async function fetchBluesky(
   const urlFor = (uri: string) => {
     const url = new URL("https://bsky.social/xrpc/app.bsky.feed.getPostThread");
     url.searchParams.set("uri", uri);
-    url.searchParams.set("depth", "6");
+    url.searchParams.set("depth", "3");
     return url.toString();
   };
 

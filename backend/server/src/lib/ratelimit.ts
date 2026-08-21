@@ -210,3 +210,15 @@ export const rpcMutationLimiter = redis
       prefix: "rl:rpc_mut",
     })
   : null;
+
+/**
+ * Live platform reads (inbox + analytics). Separate from general RPC so a
+ * chatty dashboard cannot burn platform egress via list/refetch storms.
+ */
+export const rpcLiveReadLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(20, "1 m"),
+      prefix: "rl:rpc_live",
+    })
+  : null;

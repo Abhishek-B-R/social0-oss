@@ -5,6 +5,7 @@ import { requireSessionUserId, unauthorized } from "../../middleware/auth.js";
 import {
   enforceRateLimit,
   rpcLimiter,
+  rpcLiveReadLimiter,
   rpcMutationLimiter,
 } from "../../lib/ratelimit.js";
 import * as dashboardData from "../../services/dashboard-data.js";
@@ -47,6 +48,15 @@ const RPC_MUTATION_HANDLERS = new Set([
   "inbox.replyToComment",
   "inbox.likeComment",
   "inbox.replyToDm",
+]);
+
+/** Live platform fan-outs — stricter per-user budget than general RPC. */
+const RPC_LIVE_READ_HANDLERS = new Set([
+  "inbox.listComments",
+  "inbox.listDms",
+  "inbox.getDmThread",
+  "analytics.getOverview",
+  "analytics.getPostAnalytics",
 ]);
 
 const RPC_HANDLERS: Record<string, RpcHandler> = {
@@ -157,8 +167,13 @@ export async function registerRpcRoutes(app: FastifyInstance) {
 
     const limiter = RPC_MUTATION_HANDLERS.has(fn)
       ? rpcMutationLimiter
-      : rpcLimiter;
-    const rate = await enforceRateLimit(limiter, `rpc:${userId}`);
+      : RPC_LIVE_READ_HANDLERS.has(fn)
+        ? rpcLiveReadLimiter
+        : rpcLimiter;
+    const rate = await enforceRateLimit(
+      limiter,
+      RPC_LIVE_READ_HANDLERS.has(fn) ? `rpc:live:${userId}` : `rpc:${userId}`,
+    );
     if (!rate.allowed) {
       return reply.status(rate.status).send({ error: rate.error });
     }

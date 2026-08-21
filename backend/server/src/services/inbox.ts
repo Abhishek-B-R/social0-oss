@@ -45,6 +45,7 @@ import { createLiveRequestBudget, raceTimeout, LIVE_RPC_BUDGET_MS } from "../lib
 import {
   PlatformApiCooldownError,
   platformCommentPageRounds,
+  platformFetchConcurrency,
   platformInboxSampleLimit,
   withPlatformReadCache,
   type PlatformReadResult,
@@ -71,11 +72,11 @@ function parsePlatform(value: unknown): Platform | undefined {
 }
 
 /** Keep fan-out small enough to finish inside the live RPC budget. */
-const SAMPLE_LIMIT = 24;
+const SAMPLE_LIMIT = 12;
 const CONCURRENCY = 2;
 /** Posts published before the window can still receive in-window comments. */
 const POST_PUBLISH_SLACK_MS = 90 * 24 * 60 * 60 * 1000;
-const PAGE_LIMIT_MAX = 40;
+const PAGE_LIMIT_MAX = 24;
 const COMMENT_PAGE_ROUNDS_MAX = 2;
 
 function filterThreadsByActivity(
@@ -300,9 +301,14 @@ export async function listInboxComments(input: {
   const fresh = input.fresh === true;
   const limit = parsePageLimit(
     input.limit,
-    platformInboxSampleLimit(platform, SAMPLE_LIMIT),
+    platformInboxSampleLimit(platform, SAMPLE_LIMIT, {
+      allAccounts: !accountId,
+    }),
   );
   const pageRounds = platformCommentPageRounds(platform, COMMENT_PAGE_ROUNDS_MAX);
+  const fetchConcurrency = platform
+    ? platformFetchConcurrency(platform, CONCURRENCY)
+    : 1;
 
   const reconnect = new Map<string, InboxReconnectHint>();
   /** Accounts that returned comments/OK this request - do not nag from stale DB scopes. */
@@ -402,7 +408,7 @@ export async function listInboxComments(input: {
 
     await mapPool(
       pubs,
-      CONCURRENCY,
+      fetchConcurrency,
       async (row) => {
       if (!row.platformPostId || !row.account) return;
       if (INBOX_UNSUPPORTED.has(row.account.platform)) {
@@ -780,8 +786,8 @@ async function loadDmAccounts(
     );
 }
 
-const DM_CONCURRENCY = 2;
-const DM_SAMPLE_LIMIT = 20;
+const DM_CONCURRENCY = 1;
+const DM_SAMPLE_LIMIT = 8;
 
 export async function listInboxDms(input: {
   accountId?: unknown;
@@ -809,6 +815,7 @@ export async function listInboxDms(input: {
   const untilForFetch = beforeMs != null ? new Date(beforeMs) : until;
 
   const accounts = await loadDmAccounts(ctx, accountId);
+  const dmAccounts = accountId ? accounts : accounts.slice(0, DM_SAMPLE_LIMIT);
   const reconnect = new Map<string, InboxReconnectHint>();
   const unsupported = new Set<string>();
   const fetchErrors: InboxDmListResult["fetchErrors"] = [];
@@ -818,7 +825,7 @@ export async function listInboxDms(input: {
   let budgetHit = false;
 
   await mapPool(
-    accounts,
+    dmAccounts,
     DM_CONCURRENCY,
     async (row) => {
     if (!isInboxDmPlatform(row.platform)) {

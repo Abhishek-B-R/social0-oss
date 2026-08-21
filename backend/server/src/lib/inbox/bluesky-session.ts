@@ -1,4 +1,17 @@
+/**
+ * Bluesky AT Proto session cache.
+ * Shared across PM2 workers via Redis so createSession is not hammered
+ * (createSession is a known rate-limit hotspot on bsky.social).
+ */
+
+import { Ratelimit } from "@upstash/ratelimit";
+import { redis } from "../redis.js";
+import { withRedisTimeout } from "../redis-safe.js";
+import { enforceRateLimit } from "../ratelimit.js";
+
 const TTL_MS = 50 * 60 * 1000;
+const REDIS_KEY_PREFIX = "bsky:session:";
+const REDIS_TTL_SEC = 50 * 60;
 
 type Cached = {
   accessJwt: string;
@@ -7,23 +20,72 @@ type Cached = {
   exp: number;
 };
 
-const cache = new Map<string, Cached>();
+const memCache = new Map<string, Cached>();
+/** Singleflight login/refresh per account within this process. */
+const inflight = new Map<string, Promise<{ accessJwt: string; did: string } | null>>();
 
-export function dropBlueskySession(accountId: string): void {
-  cache.delete(accountId);
+const createSessionLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(3, "1 h"),
+      prefix: "rl:bsky_create_session",
+    })
+  : null;
+
+function redisKey(accountId: string): string {
+  return `${REDIS_KEY_PREFIX}${accountId}`;
 }
 
-function store(
+export function dropBlueskySession(accountId: string): void {
+  memCache.delete(accountId);
+  if (redis) {
+    void withRedisTimeout(
+      `bsky-session del ${accountId}`,
+      async () => {
+        await redis!.del(redisKey(accountId));
+      },
+      undefined,
+    );
+  }
+}
+
+async function readSession(accountId: string): Promise<Cached | null> {
+  const mem = memCache.get(accountId);
+  if (mem && mem.exp > Date.now()) return mem;
+  if (!redis) return mem && mem.exp > Date.now() ? mem : null;
+  const raw = await withRedisTimeout(
+    `bsky-session get ${accountId}`,
+    async () => redis!.get<Cached>(redisKey(accountId)),
+    null,
+  );
+  if (!raw || typeof raw !== "object") return null;
+  if (!raw.accessJwt || !raw.did || typeof raw.exp !== "number") return null;
+  if (raw.exp <= Date.now()) return null;
+  memCache.set(accountId, raw);
+  return raw;
+}
+
+async function writeSession(
   accountId: string,
-  data: { accessJwt: string; refreshJwt?: string; did: string },
-): { accessJwt: string; did: string } {
-  cache.set(accountId, {
+  data: { accessJwt: string; refreshJwt?: string | null; did: string },
+): Promise<{ accessJwt: string; did: string }> {
+  const cached: Cached = {
     accessJwt: data.accessJwt,
     refreshJwt: data.refreshJwt ?? null,
     did: data.did,
     exp: Date.now() + TTL_MS,
-  });
-  return { accessJwt: data.accessJwt, did: data.did };
+  };
+  memCache.set(accountId, cached);
+  if (redis) {
+    await withRedisTimeout(
+      `bsky-session set ${accountId}`,
+      async () => {
+        await redis!.set(redisKey(accountId), cached, { ex: REDIS_TTL_SEC });
+      },
+      undefined,
+    );
+  }
+  return { accessJwt: cached.accessJwt, did: cached.did };
 }
 
 async function refreshSession(
@@ -46,10 +108,14 @@ async function refreshSession(
   const accessJwt = data.accessJwt;
   const did = data.did;
   if (!res.ok || !accessJwt || !did) {
-    cache.delete(accountId);
+    dropBlueskySession(accountId);
     return null;
   }
-  return store(accountId, { accessJwt, refreshJwt: data.refreshJwt, did });
+  return writeSession(accountId, {
+    accessJwt,
+    refreshJwt: data.refreshJwt,
+    did,
+  });
 }
 
 async function createSession(
@@ -57,6 +123,16 @@ async function createSession(
   handle: string,
   appPassword: string,
 ): Promise<{ accessJwt: string; did: string } | null> {
+  const allowed = await enforceRateLimit(createSessionLimiter, accountId, {
+    failClosedWhenUnavailable: false,
+  });
+  if (!allowed.allowed) {
+    console.warn(
+      `[bluesky] createSession rate limited for account ${accountId}`,
+    );
+    return null;
+  }
+
   const res = await fetch(
     "https://bsky.social/xrpc/com.atproto.server.createSession",
     {
@@ -74,7 +150,35 @@ async function createSession(
   const accessJwt = data.accessJwt;
   const did = data.did;
   if (!res.ok || !accessJwt || !did) return null;
-  return store(accountId, { accessJwt, refreshJwt: data.refreshJwt, did });
+  return writeSession(accountId, {
+    accessJwt,
+    refreshJwt: data.refreshJwt,
+    did,
+  });
+}
+
+async function resolveSession(
+  accountId: string,
+  handle: string,
+  appPassword: string,
+  opts?: { force?: boolean },
+): Promise<{ accessJwt: string; did: string } | null> {
+  if (!opts?.force) {
+    const cached = await readSession(accountId);
+    if (cached) {
+      return { accessJwt: cached.accessJwt, did: cached.did };
+    }
+  }
+
+  const existing = await readSession(accountId);
+  if (existing?.refreshJwt) {
+    const refreshed = await refreshSession(accountId, existing.refreshJwt);
+    if (refreshed) return refreshed;
+  } else if (opts?.force) {
+    dropBlueskySession(accountId);
+  }
+
+  return createSession(accountId, handle, appPassword);
 }
 
 /** Cached session - refresh JWT when possible; password login is last resort. */
@@ -84,17 +188,17 @@ export async function blueskySession(
   appPassword: string,
   opts?: { force?: boolean },
 ): Promise<{ accessJwt: string; did: string } | null> {
-  const cached = cache.get(accountId);
-  if (!opts?.force && cached && cached.exp > Date.now()) {
-    return { accessJwt: cached.accessJwt, did: cached.did };
-  }
-  if (cached?.refreshJwt) {
-    const refreshed = await refreshSession(accountId, cached.refreshJwt);
-    if (refreshed) return refreshed;
-  } else if (opts?.force) {
-    cache.delete(accountId);
-  }
-  return createSession(accountId, handle, appPassword);
+  const flightKey = `${accountId}:${opts?.force ? "force" : "soft"}`;
+  const existing = inflight.get(flightKey);
+  if (existing) return existing;
+
+  const promise = resolveSession(accountId, handle, appPassword, opts).finally(
+    () => {
+      inflight.delete(flightKey);
+    },
+  );
+  inflight.set(flightKey, promise);
+  return promise;
 }
 
 /** Drop a dead access JWT, refresh if possible, otherwise re-login. */

@@ -745,7 +745,7 @@ async function fetchBlueskyList(
   const seen = new Set<string>();
   let cursor: string | undefined;
   let session: { accessJwt: string; did: string } | null = null;
-  for (let page = 0; page < 8; page++) {
+  for (let page = 0; page < 3; page++) {
     const { ok, data, session: nextSession } = await blueskyChatAuthed(
       account,
       handle,

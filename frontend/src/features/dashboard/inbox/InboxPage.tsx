@@ -101,11 +101,12 @@ export function InboxPage() {
 
   const accounts = accountsQuery.data ?? [];
 
+  // Prefer a single account so "All" is an explicit choice, not the default
+  // storm that fans out across every connected platform.
   useEffect(() => {
-    if (!accountId || !accountsQuery.isSuccess) return;
-    if (!accounts.some((a) => a.id === accountId)) {
-      setAccountId(null);
-    }
+    if (!accountsQuery.isSuccess || !accounts.length) return;
+    if (accountId && accounts.some((a) => a.id === accountId)) return;
+    setAccountId(accounts[0]!.id);
   }, [accountId, accounts, accountsQuery.isSuccess]);
 
   const listQueryKey = useMemo(
@@ -168,14 +169,18 @@ export function InboxPage() {
           <InboxModeToggle value={mode} onChange={setMode} />
           <button
             type="button"
-            onClick={() => {
+            title="Refresh from cache. Hold Shift to force a live platform fetch."
+            onClick={(e) => {
+              // Soft refresh by default — server still serves warm cache.
+              // Shift+click forces a live bypass (subject to soft-fresh age).
+              const force = e.shiftKey;
               void qc.invalidateQueries({ queryKey: ["inbox-accounts", workspaceId] });
               if (mode === "comments") {
                 void refreshInboxInfiniteFirstPage(qc, listQueryKey, () =>
                   listInboxComments({
                     ...initialInboxPageParam(dateWindow),
                     accountId: accountId || undefined,
-                    fresh: true,
+                    fresh: force,
                   }),
                 );
               } else {
@@ -183,7 +188,7 @@ export function InboxPage() {
                   listInboxDms({
                     ...initialInboxPageParam(dateWindow),
                     accountId: accountId || undefined,
-                    fresh: true,
+                    fresh: force,
                   }),
                 );
                 const convo = searchParams.get("convo");
@@ -195,7 +200,7 @@ export function InboxPage() {
                   void getInboxDmThread({
                     accountId: dmAccount,
                     conversationId: convo,
-                    fresh: true,
+                    fresh: force,
                   }).then((result) => {
                     if (!("error" in result)) {
                       qc.setQueryData(

@@ -1,6 +1,12 @@
 /**
  * Cache + outbound rate limits for live platform reads (inbox, analytics).
- * Prevents hammering platform APIs when the UI polls or users refresh often.
+ *
+ * Goals at multi-tenant scale:
+ * - Prefer Redis/memory cache over live platform calls
+ * - Singleflight identical in-flight reads (tabs / users / workers share work)
+ * - Per-account AND global (egress-IP) outbound budgets
+ * - Soft-fresh: Refresh does not burn quota on warm cache
+ * - Cooldown + stale serve on platform 429
  */
 
 import { Ratelimit } from "@upstash/ratelimit";
@@ -15,46 +21,127 @@ export type PlatformReadKind =
   | "inbox_dm_thread"
   | "analytics";
 
-/** TTL seconds per platform + read kind. */
+type CacheEnvelope<T> = { v: T; t: number };
+
+/** TTL seconds per platform + read kind. Longer = fewer platform hits. */
 const TTL_SEC: Record<string, Partial<Record<PlatformReadKind, number>>> = {
   twitter_x: {
-    // Recent Search quota is tiny - lean on cache; Refresh uses fresh=true.
+    // Recent Search quota is tiny - lean on cache; soft-fresh still applies.
+    inbox_comments: 900,
+    inbox_dms: 180,
+    inbox_dm_thread: 120,
+    analytics: 300,
+  },
+  bluesky: {
+    // AppView / PDS limits are shared by egress IP across all tenants.
+    inbox_comments: 600,
+    inbox_dms: 180,
+    inbox_dm_thread: 120,
+    analytics: 300,
+  },
+  youtube: {
     inbox_comments: 600,
     inbox_dms: 120,
     inbox_dm_thread: 90,
     analytics: 300,
   },
+  threads: {
+    inbox_comments: 300,
+    inbox_dms: 120,
+    inbox_dm_thread: 90,
+    analytics: 180,
+  },
+  facebook: {
+    inbox_comments: 300,
+    inbox_dms: 120,
+    inbox_dm_thread: 90,
+    analytics: 180,
+  },
+  linkedin: {
+    inbox_comments: 300,
+    analytics: 180,
+  },
   instagram: {
-    inbox_comments: 180,
-    inbox_dms: 90,
-    inbox_dm_thread: 60,
+    inbox_comments: 300,
+    inbox_dms: 120,
+    inbox_dm_thread: 90,
     analytics: 180,
   },
   default: {
-    inbox_comments: 180,
-    inbox_dms: 60,
-    inbox_dm_thread: 45,
-    analytics: 120,
+    inbox_comments: 300,
+    inbox_dms: 120,
+    inbox_dm_thread: 90,
+    analytics: 180,
   },
 };
 
-/** Max outbound platform calls per account per minute (before cache miss). */
+/**
+ * Max outbound platform calls per account per minute (cache misses only).
+ * Kept intentionally below a full cold page so one power-user cannot exhaust
+ * shared platform app / IP quotas alone.
+ */
 const OUTBOUND_PER_MIN: Record<string, Partial<Record<PlatformReadKind, number>>> = {
   twitter_x: {
-    // Comments are batched: 1 cached read covers a whole page of posts.
-    inbox_comments: 3,
+    inbox_comments: 2,
     inbox_dms: 2,
     inbox_dm_thread: 2,
-    analytics: 5,
+    analytics: 4,
+  },
+  bluesky: {
+    inbox_comments: 6,
+    inbox_dms: 3,
+    inbox_dm_thread: 4,
+    analytics: 6,
+  },
+  youtube: {
+    inbox_comments: 8,
+    inbox_dms: 4,
+    inbox_dm_thread: 4,
+    analytics: 10,
   },
   default: {
-    // Must cover a full uncached page (up to 24 posts) for one account.
-    inbox_comments: 30,
+    inbox_comments: 12,
+    inbox_dms: 6,
+    inbox_dm_thread: 8,
+    analytics: 12,
+  },
+};
+
+/**
+ * Global (all accounts / all tenants on this Redis) outbound caps per minute.
+ * Platforms that rate-limit by app id or egress IP need this layer.
+ */
+const GLOBAL_OUTBOUND_PER_MIN: Record<string, Partial<Record<PlatformReadKind, number>>> = {
+  bluesky: {
+    inbox_comments: 20,
+    inbox_dms: 10,
+    inbox_dm_thread: 15,
+    analytics: 20,
+  },
+  youtube: {
+    inbox_comments: 40,
+    analytics: 40,
+  },
+  twitter_x: {
+    inbox_comments: 15,
     inbox_dms: 10,
     inbox_dm_thread: 10,
     analytics: 20,
   },
+  threads: {
+    inbox_comments: 30,
+    analytics: 30,
+  },
+  default: {
+    inbox_comments: 60,
+    inbox_dms: 30,
+    inbox_dm_thread: 40,
+    analytics: 60,
+  },
 };
+
+/** Manual Refresh still serves cache younger than this (ms). */
+export const SOFT_FRESH_MIN_AGE_MS = 90_000;
 
 const COOLDOWN_PREFIX = "platform:cooldown:";
 const CACHE_PREFIX = "platform:read:";
@@ -66,7 +153,11 @@ export const MEM_COOLDOWN_MAX_ENTRIES = 200;
 const memCache = new Map<string, { exp: number; raw: string }>();
 const memCooldown = new Map<string, number>();
 
+/** In-process singleflight for identical cache keys. */
+const inflight = new Map<string, Promise<PlatformReadResult<unknown>>>();
+
 const outboundLimiters = new Map<string, Ratelimit>();
+const globalOutboundLimiters = new Map<string, Ratelimit>();
 
 /** Drop expired entries, then FIFO-evict until at/under maxSize. */
 export function pruneBoundedMap<V extends { exp?: number } | number>(
@@ -101,6 +192,14 @@ function outboundLimit(platform: string, kind: PlatformReadKind): number {
   );
 }
 
+function globalOutboundLimit(platform: string, kind: PlatformReadKind): number {
+  return (
+    GLOBAL_OUTBOUND_PER_MIN[platform]?.[kind] ??
+    GLOBAL_OUTBOUND_PER_MIN.default[kind] ??
+    60
+  );
+}
+
 function cacheKey(kind: PlatformReadKind, platform: string, accountId: string, suffix: string): string {
   return `${CACHE_PREFIX}${kind}:${platform}:${accountId}:${suffix}`;
 }
@@ -124,36 +223,64 @@ function getOutboundLimiter(platform: string, kind: PlatformReadKind): Ratelimit
   return limiter;
 }
 
-async function readCache<T>(key: string): Promise<T | null> {
+function getGlobalOutboundLimiter(platform: string, kind: PlatformReadKind): Ratelimit | null {
+  if (!redis) return null;
+  const id = `g:${platform}:${kind}`;
+  let limiter = globalOutboundLimiters.get(id);
+  if (!limiter) {
+    limiter = new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(globalOutboundLimit(platform, kind), "1 m"),
+      prefix: `rl:out:global:${platform}:${kind}`,
+    });
+    globalOutboundLimiters.set(id, limiter);
+  }
+  return limiter;
+}
+
+function parseEnvelope<T>(raw: unknown): { data: T; cachedAt: number } | null {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    try {
+      return parseEnvelope<T>(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw === "object" && raw !== null && "v" in raw && "t" in raw) {
+    const env = raw as CacheEnvelope<T>;
+    return {
+      data: env.v,
+      cachedAt: typeof env.t === "number" ? env.t : 0,
+    };
+  }
+  // Legacy bare payload (pre-envelope) — treat as aged so soft-fresh may refresh once.
+  return { data: raw as T, cachedAt: 0 };
+}
+
+async function readCache<T>(
+  key: string,
+): Promise<{ data: T; cachedAt: number } | null> {
   const mem = memCache.get(key);
   if (mem && Date.now() <= mem.exp) {
-    try {
-      return JSON.parse(mem.raw) as T;
-    } catch {
-      memCache.delete(key);
-    }
+    const parsed = parseEnvelope<T>(mem.raw);
+    if (parsed) return parsed;
+    memCache.delete(key);
   }
   if (!redis) return null;
   return withRedisTimeout(
     `platform-cache get ${key}`,
     async () => {
-      const raw = await redis!.get<string>(key);
-      if (raw == null) return null;
-      if (typeof raw === "string") {
-        try {
-          return JSON.parse(raw) as T;
-        } catch {
-          return null;
-        }
-      }
-      return raw as T;
+      const raw = await redis!.get<string | CacheEnvelope<T>>(key);
+      return parseEnvelope<T>(raw);
     },
     null,
   );
 }
 
 async function writeCache(key: string, value: unknown, ttl: number): Promise<void> {
-  const raw = JSON.stringify(value);
+  const envelope: CacheEnvelope<unknown> = { v: value, t: Date.now() };
+  const raw = JSON.stringify(envelope);
   memCache.set(key, { exp: Date.now() + ttl * 1000, raw });
   pruneBoundedMap(memCache, MEM_CACHE_MAX_ENTRIES);
   if (!redis) return;
@@ -237,8 +364,96 @@ export function shouldCachePlatformRead(data: unknown): boolean {
 }
 
 /**
+ * Whether a manual Refresh (`fresh`) should skip this cached entry.
+ * Warm entries stay served so Refresh cannot hammer platforms.
+ */
+export function shouldBypassCacheForFresh(
+  cachedAt: number,
+  now = Date.now(),
+  minAgeMs = SOFT_FRESH_MIN_AGE_MS,
+): boolean {
+  if (!cachedAt) return true;
+  return now - cachedAt >= minAgeMs;
+}
+
+async function serveStaleOrCooldown<T>(
+  key: string,
+  platform: string,
+  retryAt: number,
+): Promise<PlatformReadResult<T>> {
+  const stale = await readCache<T>(key);
+  if (stale) {
+    return { data: stale.data, fromCache: true, rateLimited: true };
+  }
+  throw new PlatformApiCooldownError(platform, retryAt);
+}
+
+async function runPlatformRead<T>(opts: {
+  platform: string;
+  accountId: string;
+  kind: PlatformReadKind;
+  suffix: string;
+  fresh?: boolean;
+  fetch: () => Promise<T>;
+  key: string;
+  ttl: number;
+}): Promise<PlatformReadResult<T>> {
+  const cooledUntil = await cooldownUntil(opts.platform, opts.accountId);
+  if (cooledUntil > Date.now()) {
+    return serveStaleOrCooldown<T>(opts.key, opts.platform, cooledUntil);
+  }
+
+  const cached = await readCache<T>(opts.key);
+  if (cached) {
+    if (!opts.fresh || !shouldBypassCacheForFresh(cached.cachedAt)) {
+      return { data: cached.data, fromCache: true };
+    }
+  }
+
+  const accountLimiter = getOutboundLimiter(opts.platform, opts.kind);
+  const accountAllowed = await enforceRateLimit(
+    accountLimiter,
+    opts.accountId,
+    { failClosedWhenUnavailable: false },
+  );
+  if (!accountAllowed.allowed) {
+    return serveStaleOrCooldown<T>(opts.key, opts.platform, Date.now() + 60_000);
+  }
+
+  const globalLimiter = getGlobalOutboundLimiter(opts.platform, opts.kind);
+  const globalAllowed = await enforceRateLimit(
+    globalLimiter,
+    "global",
+    { failClosedWhenUnavailable: false },
+  );
+  if (!globalAllowed.allowed) {
+    return serveStaleOrCooldown<T>(opts.key, opts.platform, Date.now() + 60_000);
+  }
+
+  try {
+    const data = await opts.fetch();
+    if (shouldCachePlatformRead(data)) {
+      await writeCache(opts.key, data, opts.ttl);
+    }
+    return { data, fromCache: false };
+  } catch (e) {
+    if (isPlatformRateLimitError(e)) {
+      const wait = retryAfterSeconds(e);
+      await setCooldown(opts.platform, opts.accountId, wait);
+      return serveStaleOrCooldown<T>(
+        opts.key,
+        opts.platform,
+        Date.now() + wait * 1000,
+      );
+    }
+    throw e;
+  }
+}
+
+/**
  * Serve cached platform data when possible; enforce outbound limits; back off on 429.
- * `fresh` skips cache read but still respects cooldown and outbound limits.
+ * `fresh` only bypasses cache when the entry is older than SOFT_FRESH_MIN_AGE_MS.
+ * Concurrent callers for the same key share one outbound fetch (singleflight).
  */
 export async function withPlatformReadCache<T>(opts: {
   platform: string;
@@ -251,51 +466,16 @@ export async function withPlatformReadCache<T>(opts: {
   const key = cacheKey(opts.kind, opts.platform, opts.accountId, opts.suffix);
   const ttl = ttlSec(opts.platform, opts.kind);
 
-  const cooledUntil = await cooldownUntil(opts.platform, opts.accountId);
-  if (cooledUntil > Date.now()) {
-    const stale = await readCache<T>(key);
-    if (stale) {
-      return { data: stale, fromCache: true, rateLimited: true };
-    }
-    throw new PlatformApiCooldownError(opts.platform, cooledUntil);
+  const existing = inflight.get(key);
+  if (existing) {
+    return existing as Promise<PlatformReadResult<T>>;
   }
 
-  if (!opts.fresh) {
-    const cached = await readCache<T>(key);
-    if (cached) return { data: cached, fromCache: true };
-  }
-
-  const limiter = getOutboundLimiter(opts.platform, opts.kind);
-  const allowed = await enforceRateLimit(
-    limiter,
-    opts.accountId,
-    { failClosedWhenUnavailable: false },
-  );
-  if (!allowed.allowed) {
-    const stale = await readCache<T>(key);
-    if (stale) {
-      return { data: stale, fromCache: true, rateLimited: true };
-    }
-    throw new PlatformApiCooldownError(opts.platform, Date.now() + 60_000);
-  }
-
-  try {
-    const data = await opts.fetch();
-    if (shouldCachePlatformRead(data)) {
-      await writeCache(key, data, ttl);
-    }
-    return { data, fromCache: false };
-  } catch (e) {
-    if (isPlatformRateLimitError(e)) {
-      const wait = retryAfterSeconds(e);
-      await setCooldown(opts.platform, opts.accountId, wait);
-      const stale = await readCache<T>(key);
-      if (stale) {
-        return { data: stale, fromCache: true, rateLimited: true };
-      }
-    }
-    throw e;
-  }
+  const promise = runPlatformRead<T>({ ...opts, key, ttl }).finally(() => {
+    inflight.delete(key);
+  });
+  inflight.set(key, promise as Promise<PlatformReadResult<unknown>>);
+  return promise;
 }
 
 export class PlatformApiCooldownError extends Error {
@@ -310,23 +490,41 @@ export class PlatformApiCooldownError extends Error {
   }
 }
 
-/** Lower concurrency for expensive platforms (X search, etc.). */
+/** Lower concurrency for expensive / IP-limited platforms. */
 export function platformFetchConcurrency(platform: string, defaultConcurrency: number): number {
   if (platform === "twitter_x") return 1;
+  if (platform === "bluesky") return 1;
+  if (platform === "youtube") return 1;
   if (platform === "instagram") return 2;
-  return defaultConcurrency;
+  return Math.min(defaultConcurrency, 2);
 }
 
-/** Cap publications fetched per inbox comments page for expensive platforms. */
-export function platformInboxSampleLimit(platform: string | undefined, defaultLimit: number): number {
-  // X comments are batched (~13 conversations per search call); a full page
-  // costs at most 2 calls, so no extra cap is needed anymore.
-  if (platform === "twitter_x") return Math.min(defaultLimit, 24);
-  return defaultLimit;
+/**
+ * Cap publications fetched per inbox comments page.
+ * "All accounts" mode uses a tighter default via `allAccounts`.
+ */
+export function platformInboxSampleLimit(
+  platform: string | undefined,
+  defaultLimit: number,
+  opts?: { allAccounts?: boolean },
+): number {
+  const all = Boolean(opts?.allAccounts);
+  if (platform === "twitter_x") {
+    // Batched: one search covers many posts; full page is fine.
+    return Math.min(defaultLimit, all ? 16 : 24);
+  }
+  if (platform === "bluesky") return Math.min(defaultLimit, all ? 4 : 8);
+  if (platform === "youtube") return Math.min(defaultLimit, all ? 4 : 8);
+  if (platform === "threads" || platform === "facebook") {
+    return Math.min(defaultLimit, all ? 6 : 10);
+  }
+  if (all) return Math.min(defaultLimit, 8);
+  return Math.min(defaultLimit, 12);
 }
 
-/** Stop walking empty pub windows sooner on X (each round = another search). */
+/** Stop walking empty pub windows sooner on scarce APIs. */
 export function platformCommentPageRounds(platform: string | undefined, defaultRounds: number): number {
   if (platform === "twitter_x") return 1;
-  return defaultRounds;
+  if (platform === "bluesky" || platform === "youtube") return 1;
+  return Math.min(defaultRounds, 2);
 }
