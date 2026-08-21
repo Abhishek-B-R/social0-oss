@@ -34,7 +34,6 @@ import { toast } from "sonner";
 import { InboxAttachmentView } from "./InboxAttachmentView";
 import { InboxAvatar } from "./InboxAvatar";
 import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
-import { InboxScrollSentinel } from "./InboxScrollSentinel";
 import { InboxStatusBanners } from "./InboxStatusBanners";
 import { inboxMetaFromPages } from "./inbox-meta";
 import { resolveInboxBody } from "@/lib/inbox-display";
@@ -43,14 +42,13 @@ import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import {
   initialInboxPageParam,
-  nextInboxPageParam,
   refreshInboxInfiniteFirstPage,
   type InboxPageParam,
 } from "@/lib/inbox-infinite";
 import {
-  PAGE_LIVE_POLL_MS,
-  useVisibilityPoll,
-} from "@/lib/use-visibility-poll";
+  INBOX_MAX_PAGES,
+  inboxGetNextPageParam,
+} from "@/lib/inbox-page-param";
 import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
 
 function dmKey(t: InboxDmThread): string {
@@ -195,18 +193,10 @@ export function InboxDmsPane({
         accountId: accountId || undefined,
       }),
     initialPageParam: initialInboxPageParam(dateWindow),
-    getNextPageParam: (last) =>
-      nextInboxPageParam({
-        hasMore: last.hasMore,
-        sampled: last.sampled,
-        nextBefore: last.nextBefore,
-        since: last.since,
-        until: last.until,
-        itemCount: last.threads.length,
-      }),
+    getNextPageParam: inboxGetNextPageParam,
     enabled: enabled && workspaceReady,
     ...PAGE_LIVE_QUERY,
-    maxPages: 24,
+    maxPages: INBOX_MAX_PAGES,
   });
 
   const fetchNextDms = listQuery.fetchNextPage;
@@ -279,19 +269,8 @@ export function InboxDmsPane({
     enabled: enabled && Boolean(selected),
     ...PAGE_LIVE_QUERY,
   });
-  const refetchThread = threadQuery.refetch;
 
-  const pollDms = useCallback(() => {
-    void refreshInboxInfiniteFirstPage(qc, listKey, () =>
-      listInboxDms({
-        ...initialInboxPageParam(dateWindow),
-        accountId: accountId || undefined,
-      }),
-    );
-    if (selected) void refetchThread();
-  }, [qc, listKey, dateWindow, accountId, selected, refetchThread]);
-
-  useVisibilityPoll(pollDms, PAGE_LIVE_POLL_MS, enabled && workspaceReady);
+  // No background poll - same as comments. Manual Refresh only.
 
   const updatePending = useCallback(
     (key: string, updater: (prev: LocalInboxDmMessage[]) => LocalInboxDmMessage[]) => {
@@ -605,11 +584,18 @@ export function InboxDmsPane({
                 </li>
               );
             })}
-            <InboxScrollSentinel
-              onVisible={loadOlderDms}
-              disabled={!hasNextDms || fetchingNextDms}
-              loading={fetchingNextDms}
-            />
+            {hasNextDms ? (
+              <li className="list-none px-2 py-2">
+                <button
+                  type="button"
+                  onClick={loadOlderDms}
+                  disabled={fetchingNextDms}
+                  className="flex w-full items-center justify-center rounded-xl border border-border bg-bg-subtle px-3 py-2 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60"
+                >
+                  {fetchingNextDms ? "Loading..." : "Load older"}
+                </button>
+              </li>
+            ) : null}
           </ul>
 
           <section

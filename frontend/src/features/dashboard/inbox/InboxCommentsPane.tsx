@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ChatCircle } from "@/icons/phosphor";
@@ -25,7 +25,6 @@ import { toast } from "sonner";
 import type { InboxComposerPayload } from "./InboxComposer";
 import { InboxConversation } from "./InboxConversation";
 import { InboxPostThumbnail } from "./InboxPostCard";
-import { InboxScrollSentinel } from "./InboxScrollSentinel";
 import { InboxStatusBanners } from "./InboxStatusBanners";
 import type { InboxCommentStatusFilter } from "./InboxStatusFilter";
 import { inboxMetaFromPages } from "./inbox-meta";
@@ -40,15 +39,11 @@ import {
 import { useSession } from "@/lib/auth-client";
 import { listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
+import { initialInboxPageParam } from "@/lib/inbox-infinite";
 import {
-  initialInboxPageParam,
-  nextInboxPageParam,
-  refreshInboxInfiniteFirstPage,
-} from "@/lib/inbox-infinite";
-import {
-  PAGE_LIVE_POLL_MS,
-  useVisibilityPoll,
-} from "@/lib/use-visibility-poll";
+  INBOX_MAX_PAGES,
+  inboxGetNextPageParam,
+} from "@/lib/inbox-page-param";
 import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
 
 type PostGroup = {
@@ -139,7 +134,6 @@ export function InboxCommentsPane({
   allowReply?: boolean;
   statusFilter?: InboxCommentStatusFilter;
 }) {
-  const qc = useQueryClient();
   const { data: session } = useSession();
   const userId = session?.user?.id;
   const workspacesQuery = useQuery({
@@ -153,14 +147,6 @@ export function InboxCommentsPane({
   const [searchParams, setSearchParams] = useSearchParams();
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [mobileDetail, setMobileDetail] = useState(false);
-  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(
-    () => () => {
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
-    },
-    [],
-  );
 
   const queryKey = useMemo(
     () => ["inbox-comments", workspaceId, dateWindow, accountId] as const,
@@ -175,30 +161,14 @@ export function InboxCommentsPane({
         accountId: accountId || undefined,
       }),
     initialPageParam: initialInboxPageParam(dateWindow),
-    getNextPageParam: (last) =>
-      nextInboxPageParam({
-        hasMore: last.hasMore,
-        sampled: last.sampled,
-        nextBefore: last.nextBefore,
-        since: last.since,
-        until: last.until,
-        itemCount: last.threads.length,
-      }),
+    getNextPageParam: inboxGetNextPageParam,
     enabled: enabled && workspaceReady,
     ...PAGE_LIVE_QUERY,
-    maxPages: 24,
+    maxPages: INBOX_MAX_PAGES,
   });
 
-  const pollComments = useCallback(() => {
-    void refreshInboxInfiniteFirstPage(qc, queryKey, () =>
-      listInboxComments({
-        ...initialInboxPageParam(dateWindow),
-        accountId: accountId || undefined,
-      }),
-    );
-  }, [qc, queryKey, dateWindow, accountId]);
-
-  useVisibilityPoll(pollComments, PAGE_LIVE_POLL_MS, enabled && workspaceReady);
+  // Intentionally no visibility/interval poll. Auto-refresh was the "infinite
+  // refresh" users hit; Reload is the Refresh button on InboxPage only.
 
   const fetchNextComments = inboxQuery.fetchNextPage;
   const hasNextComments = Boolean(inboxQuery.hasNextPage);
@@ -297,15 +267,8 @@ export function InboxCommentsPane({
           r.id === optimisticId ? { ...r, id: res.replyId ?? r.id } : r,
         ),
       );
-      if (refreshTimer.current) clearTimeout(refreshTimer.current);
-      refreshTimer.current = setTimeout(() => {
-        void refreshInboxInfiniteFirstPage(qc, queryKey, () =>
-          listInboxComments({
-            ...initialInboxPageParam(dateWindow),
-            accountId: accountId || undefined,
-          }),
-        );
-      }, 8000);
+      // No delayed list refetch - optimistic reply already shows. Auto-refresh
+      // after reply was another surprise "reload" while sitting on the page.
     } catch (e) {
       setFailedReplyIds((s) => new Set(s).add(optimisticId));
       toast.error(e instanceof Error ? e.message : "Reply failed");
@@ -399,9 +362,9 @@ export function InboxCommentsPane({
 
   const needsReplyGroups = postGroups.filter((g) => g.unanswered > 0);
   const repliedGroups = postGroups.filter((g) => g.unanswered === 0);
-  const threads = postGroups.flatMap((g) => g.threads);
 
   const [pickedPostId, setPickedPostId] = useState<string | null>(null);
+  const threadFromUrl = searchParams.get("thread");
 
   useEffect(() => {
     if (!mergedThreads.length) return;
@@ -423,27 +386,31 @@ export function InboxCommentsPane({
   useEffect(() => {
     if (!postGroups.length) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPickedPostId(null);
-      setPickedId(null);
+      setPickedPostId((prev) => (prev === null ? prev : null));
+      setPickedId((prev) => (prev === null ? prev : null));
       return;
     }
-    const fromUrl = searchParams.get("thread");
-    const match = fromUrl
-      ? threads.find((t) => t.comment.id === fromUrl)
+    const match = threadFromUrl
+      ? postGroups
+          .flatMap((g) => g.threads)
+          .find((t) => t.comment.id === threadFromUrl)
       : null;
     if (match) {
-      setPickedPostId(match.comment.publicationId);
-      setPickedId(threadKey(match));
+      const nextPostId = match.comment.publicationId;
+      const nextKey = threadKey(match);
+      setPickedPostId((prev) => (prev === nextPostId ? prev : nextPostId));
+      setPickedId((prev) => (prev === nextKey ? prev : nextKey));
       return;
     }
     const post =
       postGroups.find((g) => g.publicationId === pickedPostId) ?? postGroups[0];
-    setPickedPostId(post.publicationId);
+    const nextPostId = post.publicationId;
     const keys = post.threads.map(threadKey);
-    if (!pickedId || !keys.includes(pickedId)) {
-      setPickedId(keys[0] ?? null);
-    }
-  }, [postGroups, threads, pickedPostId, pickedId, searchParams]);
+    const nextKey =
+      pickedId && keys.includes(pickedId) ? pickedId : (keys[0] ?? null);
+    setPickedPostId((prev) => (prev === nextPostId ? prev : nextPostId));
+    setPickedId((prev) => (prev === nextKey ? prev : nextKey));
+  }, [postGroups, pickedPostId, pickedId, threadFromUrl]);
 
   const selectedPost =
     postGroups.find((g) => g.publicationId === pickedPostId) ?? postGroups[0] ?? null;
@@ -453,29 +420,17 @@ export function InboxCommentsPane({
     null;
 
   // Keep the sidebar Inbox badge accurate: viewing a post marks its comments seen.
+  const selectedPostId = selectedPost?.publicationId ?? null;
   useEffect(() => {
     if (!enabled || !userId || !selectedPost) return;
     const ids = commentIdsFromThreads(selectedPost.threads);
     if (!ids.length) return;
     markInboxCommentsSeen(userId, ids);
-  }, [enabled, userId, selectedPost]);
+    // Depend on publication id, not the post object (new reference every render).
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- threads content keyed by selectedPostId
+  }, [enabled, userId, selectedPostId]);
 
   const loading = inboxQuery.isPending || (inboxQuery.isFetching && !inboxQuery.data);
-
-  useEffect(() => {
-    if (!enabled || loading || fetchingNextComments) return;
-    if (mergedThreads.length === 0 && threads.length === 0 && hasNextComments) {
-      void fetchNextComments();
-    }
-  }, [
-    enabled,
-    loading,
-    fetchingNextComments,
-    mergedThreads.length,
-    threads.length,
-    hasNextComments,
-    fetchNextComments,
-  ]);
 
   const emptyRangeLabel =
     dateWindow.range === "custom"
@@ -496,10 +451,7 @@ export function InboxCommentsPane({
 
       <InboxStatusBanners {...inboxMeta} />
 
-      {loading && !data ||
-      (postGroups.length === 0 &&
-        (fetchingNextComments ||
-          (hasNextComments && mergedThreads.length === 0))) ? (
+      {loading && !data ? (
         <InboxSplitSkeleton />
       ) : !data || postGroups.length === 0 ? (
         <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
@@ -588,11 +540,18 @@ export function InboxCommentsPane({
                 }}
               />
             )}
-            <InboxScrollSentinel
-              onVisible={loadOlderComments}
-              disabled={!hasNextComments || fetchingNextComments}
-              loading={fetchingNextComments}
-            />
+            {hasNextComments ? (
+              <div className="px-2 py-2">
+                <button
+                  type="button"
+                  onClick={loadOlderComments}
+                  disabled={fetchingNextComments}
+                  className="flex w-full items-center justify-center rounded-xl border border-border bg-bg-subtle px-3 py-2 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60"
+                >
+                  {fetchingNextComments ? "Loading..." : "Load older posts"}
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <section
