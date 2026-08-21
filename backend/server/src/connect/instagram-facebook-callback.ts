@@ -273,7 +273,9 @@ export async function igFbCallback(
             encryptedAccessToken: encryptToken(pageData.pageAccessToken, existing.id),
             encryptedRefreshToken: null,
             tokenExpiresAt: null,
-            platformUsername: pageData.instagramUsername,
+            tokenStatus: "active",
+            platformUsername:
+              pageData.instagramUsername ?? existing.platformUsername,
             profileImageUrl,
             platformMetadata: {
               facebookPageId: pageData.pageId,
@@ -316,6 +318,7 @@ export async function igFbCallback(
         encryptedAccessToken: encryptToken(pageData.pageAccessToken, accountId),
         encryptedRefreshToken: null,
         tokenExpiresAt: null,
+        tokenStatus: "active",
         isActive: true,
         platformMetadata: {
           facebookPageId: pageData.pageId,

@@ -57,7 +57,27 @@ type Account = {
   isTwitterPremium?: boolean;
   tokenStatus: "ok" | "expired";
   expiresInDays: number | null;
+  /** Instagram: "direct" | "facebook-page" */
+  connectionMethod?: string | null;
 };
+
+function reconnectUrl(account: Account): string {
+  // Always reauth the same row. Expired Instagram used to hit /connect/instagram
+  // without accountId, which created a broken @user duplicate.
+  if (account.platform === "instagram") {
+    if (account.connectionMethod === "facebook-page") {
+      return apiUrl(
+        `/api/connect/instagram-facebook?reauth=1&accountId=${encodeURIComponent(account.id)}`,
+      );
+    }
+    return apiUrl(
+      `/api/connect/instagram/reauth?accountId=${encodeURIComponent(account.id)}`,
+    );
+  }
+  return apiUrl(
+    `/api/connect/${account.platform}/reauth?accountId=${encodeURIComponent(account.id)}`,
+  );
+}
 
 type AccountLimit = {
   currentTotal: number;
@@ -461,7 +481,7 @@ export function ConnectionsList({
                           )}
                           {canManageConnections && isExpired && (
                             <Link
-                              href={apiUrl(`/api/connect/${account.platform}`)}
+                              href={reconnectUrl(account)}
                               className="shrink-0 inline-flex items-center gap-1 rounded border border-destructive/50 bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive transition-colors hover:bg-destructive/20"
                               title="Token expired - Reconnect"
                             >

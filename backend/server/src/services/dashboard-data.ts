@@ -378,6 +378,9 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
       a.tokenExpiresAt ?? null,
       a.platform,
     );
+    const meta = (a.platformMetadata ?? null) as Record<string, unknown> | null;
+    const connectionMethod =
+      typeof meta?.connectionMethod === "string" ? meta.connectionMethod : null;
     return {
       id: a.id,
       platform: a.platform,
@@ -388,6 +391,7 @@ export async function loadConnectionsPageData(): Promise<LoadConnectionsPageData
       isTwitterPremium: a.isTwitterPremium ?? false,
       tokenStatus: status,
       expiresInDays: null,
+      connectionMethod,
     };
   });
 

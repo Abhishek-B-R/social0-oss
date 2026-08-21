@@ -183,26 +183,28 @@ export async function igFbSelectPost(req: AppRequest) {
       }),
       existing.profileImageUrl,
     );
-    await db
-      .update(connectedAccounts)
-      .set({
-        encryptedAccessToken: encryptToken(
-          pageData.pageAccessToken,
-          existing.id,
-        ),
-        encryptedRefreshToken: null,
-        tokenExpiresAt: null,
-        platformUsername: pageData.instagramUsername,
-        profileImageUrl,
-        platformMetadata: {
-          facebookPageId: pageData.pageId,
-          instagramBusinessAccountId: pageData.instagramAccountId,
-          connectionMethod: "facebook-page",
-        },
-        isActive: true,
-        updatedAt: new Date(),
-      })
-      .where(eq(connectedAccounts.id, existing.id));
+        await db
+          .update(connectedAccounts)
+          .set({
+            encryptedAccessToken: encryptToken(
+              pageData.pageAccessToken,
+              existing.id,
+            ),
+            encryptedRefreshToken: null,
+            tokenExpiresAt: null,
+            tokenStatus: "active",
+            platformUsername:
+              pageData.instagramUsername ?? existing.platformUsername,
+            profileImageUrl,
+            platformMetadata: {
+              facebookPageId: pageData.pageId,
+              instagramBusinessAccountId: pageData.instagramAccountId,
+              connectionMethod: "facebook-page",
+            },
+            isActive: true,
+            updatedAt: new Date(),
+          })
+          .where(eq(connectedAccounts.id, existing.id));
   } else {
     const remaining = await getRemainingSlots(resourceUserId);
     if (remaining <= 0) {
@@ -235,6 +237,7 @@ export async function igFbSelectPost(req: AppRequest) {
       encryptedAccessToken: encryptToken(pageData.pageAccessToken, accountId),
       encryptedRefreshToken: null,
       tokenExpiresAt: null,
+      tokenStatus: "active",
       isActive: true,
       platformMetadata: {
         facebookPageId: pageData.pageId,
