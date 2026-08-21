@@ -3,6 +3,7 @@ import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { resetVemetricUser } from "@/lib/vemetric";
 
 export function SignOutAllDevicesButton({ className }: { className?: string }) {
   const [loading, setLoading] = useState(false);
@@ -17,6 +18,7 @@ export function SignOutAllDevicesButton({ className }: { className?: string }) {
         setLoading(false);
         return;
       }
+      await resetVemetricUser();
       await authClient.signOut();
       window.location.href = "/";
     } catch {
