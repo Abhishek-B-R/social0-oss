@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
-import { ArrowClockwise } from "@/icons/phosphor";
+import { ArrowClockwise, X } from "@/icons/phosphor";
 import { useSession } from "@/lib/auth-client";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
@@ -48,6 +48,7 @@ export function AnalyticsPage() {
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [trendChartView, setTrendChartView] = useState<TrendChartView>("line");
+  const [reconnectDismissed, setReconnectDismissed] = useState(false);
 
   const qc = useQueryClient();
   const workspacesQuery = useQuery({
@@ -246,8 +247,8 @@ export function AnalyticsPage() {
         />
       </div>
 
-      {reconnect.length ? (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+      {reconnect.length && !reconnectDismissed ? (
+        <div className="relative rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 pr-11 text-sm text-amber-900 dark:text-amber-100">
           <p className="font-medium">Reconnect for full insights</p>
           <p className="mt-1 text-amber-800/90 dark:text-amber-100/80">
             These accounts still have posting access. Reconnect to grant
@@ -267,6 +268,14 @@ export function AnalyticsPage() {
           >
             Open Connections
           </Link>
+          <button
+            type="button"
+            onClick={() => setReconnectDismissed(true)}
+            className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-md text-current opacity-70 transition-[transform,opacity,background-color] duration-150 ease-out hover:bg-black/10 hover:opacity-100 active:scale-[0.94] dark:hover:bg-white/10"
+            aria-label="Dismiss"
+          >
+            <X size={14} weight="bold" />
+          </button>
         </div>
       ) : null}
 

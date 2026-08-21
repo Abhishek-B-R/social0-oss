@@ -18,19 +18,20 @@ export type PlatformReadKind =
 /** TTL seconds per platform + read kind. */
 const TTL_SEC: Record<string, Partial<Record<PlatformReadKind, number>>> = {
   twitter_x: {
-    inbox_comments: 180,
+    // Recent Search quota is tiny - lean on cache; Refresh uses fresh=true.
+    inbox_comments: 600,
     inbox_dms: 120,
     inbox_dm_thread: 90,
     analytics: 300,
   },
   instagram: {
-    inbox_comments: 90,
+    inbox_comments: 180,
     inbox_dms: 90,
     inbox_dm_thread: 60,
     analytics: 180,
   },
   default: {
-    inbox_comments: 60,
+    inbox_comments: 180,
     inbox_dms: 60,
     inbox_dm_thread: 45,
     analytics: 120,
@@ -40,13 +41,15 @@ const TTL_SEC: Record<string, Partial<Record<PlatformReadKind, number>>> = {
 /** Max outbound platform calls per account per minute (before cache miss). */
 const OUTBOUND_PER_MIN: Record<string, Partial<Record<PlatformReadKind, number>>> = {
   twitter_x: {
+    // Comments are batched: 1 cached read covers a whole page of posts.
     inbox_comments: 3,
     inbox_dms: 2,
     inbox_dm_thread: 2,
     analytics: 5,
   },
   default: {
-    inbox_comments: 15,
+    // Must cover a full uncached page (up to 24 posts) for one account.
+    inbox_comments: 30,
     inbox_dms: 10,
     inbox_dm_thread: 10,
     analytics: 20,
@@ -316,11 +319,13 @@ export function platformFetchConcurrency(platform: string, defaultConcurrency: n
 
 /** Cap publications fetched per inbox comments page for expensive platforms. */
 export function platformInboxSampleLimit(platform: string | undefined, defaultLimit: number): number {
-  if (platform === "twitter_x") return Math.min(defaultLimit, 12);
+  // X comments are batched (~13 conversations per search call); a full page
+  // costs at most 2 calls, so no extra cap is needed anymore.
+  if (platform === "twitter_x") return Math.min(defaultLimit, 24);
   return defaultLimit;
 }
 
-/** Stop walking empty pub windows sooner on X (each round = many searches). */
+/** Stop walking empty pub windows sooner on X (each round = another search). */
 export function platformCommentPageRounds(platform: string | undefined, defaultRounds: number): number {
   if (platform === "twitter_x") return 1;
   return defaultRounds;

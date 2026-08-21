@@ -48,7 +48,7 @@ export function InboxPage() {
   const accountId = searchParams.get("account");
   const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
   const [statusFilter, setStatusFilter] =
-    useState<InboxCommentStatusFilter>("all");
+    useState<InboxCommentStatusFilter>("unanswered");
 
   const setMode = (next: InboxMode) => {
     setSearchParams(
@@ -219,7 +219,7 @@ export function InboxPage() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <RangeToolbar
           value={dateWindow}
           onChange={setDateWindow}

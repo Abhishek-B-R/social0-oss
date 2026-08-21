@@ -2,8 +2,9 @@
  * Live comment fetchers. Failures degrade - never throw past the dispatcher.
  */
 
-import { TwitterApi } from "twitter-api-v2";
+import { TwitterApi, type TweetV2 } from "twitter-api-v2";
 import { env } from "../env.js";
+import { extractHttpStatus } from "../twitter-errors.js";
 import { jsonGet } from "../http-json.js";
 import type { InboxComment } from "./types.js";
 import {
@@ -460,32 +461,134 @@ async function fetchYouTube(
   return { comments, status: "ok" };
 }
 
-async function fetchTwitter(
+/** Recent Search allows 512-char queries; leave headroom for safety. */
+const X_QUERY_MAX_CHARS = 480;
+const X_SEARCH_PAGE_CAP = 5;
+
+function tweetsToComments(
   input: CommentFetchInput,
-): Promise<CommentFetchResult> {
+  tweets: TweetV2[],
+  users: Map<string, { name?: string; username?: string }>,
+  mediaByKey: Map<string, XMediaLike>,
+): InboxComment[] {
+  const common = base(input);
+  const comments: InboxComment[] = [];
+  const seen = new Set<string>();
+  const repliedToOf = new Map<string, string | undefined>();
+  const authorOf = new Map<string, string | undefined>();
+  for (const tweet of tweets) {
+    if (!tweet.id) continue;
+    const repliedTo = tweet.referenced_tweets?.find(
+      (r) => r.type === "replied_to",
+    )?.id;
+    repliedToOf.set(tweet.id, repliedTo);
+    authorOf.set(tweet.id, tweet.author_id);
+  }
+  const ownSelfThread = (tweetId: string): boolean => {
+    let id: string | undefined = repliedToOf.get(tweetId);
+    const walked = new Set<string>();
+    while (id && !walked.has(id)) {
+      walked.add(id);
+      if (id === input.platformPostId) return true;
+      if (authorOf.get(id) !== input.platformUserId) return false;
+      id = repliedToOf.get(id);
+    }
+    return false;
+  };
+  for (const tweet of tweets) {
+    if (!tweet.id || seen.has(tweet.id)) continue;
+    seen.add(tweet.id);
+    if (tweet.id === input.platformPostId) continue;
+    const isOwn = Boolean(
+      tweet.author_id && tweet.author_id === input.platformUserId,
+    );
+    const repliedTo = repliedToOf.get(tweet.id);
+    if (isOwn && (!repliedTo || ownSelfThread(tweet.id))) continue;
+    const user = tweet.author_id ? users.get(tweet.author_id) : undefined;
+    const handle = user?.username ?? null;
+    const parentId =
+      !repliedTo || repliedTo === input.platformPostId ? null : repliedTo;
+    const mediaKey = tweet.attachments?.media_keys?.[0];
+    comments.push({
+      ...common,
+      id: tweet.id,
+      authorName: isOwn ? "You" : (user?.name ?? "X user"),
+      authorHandle: handle,
+      text: tweet.text ?? "",
+      attachment: mediaKey ? xMediaToAttachment(mediaByKey.get(mediaKey)) : null,
+      createdAt: tweet.created_at ?? null,
+      likeCount: tweet.public_metrics?.like_count,
+      parentId,
+      isOwn: isOwn || withAuthor(input, handle).isOwn,
+    });
+  }
+  return comments;
+}
+
+/** Split posts into OR-query chunks that fit the Recent Search query limit. */
+export function chunkXConversations(
+  inputs: CommentFetchInput[],
+): CommentFetchInput[][] {
+  const chunks: CommentFetchInput[][] = [];
+  let current: CommentFetchInput[] = [];
+  let length = 0;
+  for (const input of inputs) {
+    const part = `conversation_id:${input.platformPostId}`;
+    const extra = current.length ? part.length + 4 : part.length;
+    if (current.length && length + extra > X_QUERY_MAX_CHARS) {
+      chunks.push(current);
+      current = [];
+      length = 0;
+    }
+    length += current.length ? part.length + 4 : part.length;
+    current.push(input);
+  }
+  if (current.length) chunks.push(current);
+  return chunks;
+}
+
+/**
+ * Fetch comments for MANY X posts of one account with as few Recent Search
+ * calls as possible (one per ~13 posts instead of one per post).
+ * Throws on HTTP 429 so the platform cache layer can set a cooldown and
+ * serve stale data.
+ */
+export async function fetchTwitterCommentsBatch(
+  inputs: CommentFetchInput[],
+): Promise<Record<string, CommentFetchResult>> {
+  const out: Record<string, CommentFetchResult> = {};
+  if (!inputs.length) return out;
   const appKey = env.TWITTER_CONSUMER_KEY;
   const appSecret = env.TWITTER_CONSUMER_SECRET;
-  if (!appKey || !appSecret || !input.accessSecret) {
-    return err("Twitter credentials incomplete. Reconnect the X account.");
+  const first = inputs[0]!;
+  if (!appKey || !appSecret || !first.accessSecret) {
+    for (const input of inputs) {
+      out[input.publicationId] = err(
+        "Twitter credentials incomplete. Reconnect the X account.",
+      );
+    }
+    return out;
   }
-  try {
-    const client = new TwitterApi({
-      appKey,
-      appSecret,
-      accessToken: input.accessToken,
-      accessSecret: input.accessSecret,
-    });
-    const searchQuery = `conversation_id:${input.platformPostId}`;
-    const sevenDayMs = 7 * 24 * 60 * 60 * 1000;
-    const edgeSlackMs = 2 * 60 * 1000;
-    const windowMs = input.since ? Date.now() - Date.parse(input.since) : Infinity;
-    const startTime =
-      Number.isFinite(windowMs) && windowMs <= sevenDayMs - edgeSlackMs
-        ? undefined
-        : new Date(Date.now() - sevenDayMs + edgeSlackMs).toISOString();
-    const search = await client.v2.search(
-      searchQuery,
-      {
+  const client = new TwitterApi({
+    appKey,
+    appSecret,
+    accessToken: first.accessToken,
+    accessSecret: first.accessSecret,
+  });
+  const sevenDayMs = 7 * 24 * 60 * 60 * 1000;
+  const edgeSlackMs = 2 * 60 * 1000;
+  const windowMs = first.since ? Date.now() - Date.parse(first.since) : Infinity;
+  const startTime =
+    Number.isFinite(windowMs) && windowMs <= sevenDayMs - edgeSlackMs
+      ? undefined
+      : new Date(Date.now() - sevenDayMs + edgeSlackMs).toISOString();
+
+  for (const chunk of chunkXConversations(inputs)) {
+    const query = chunk
+      .map((i) => `conversation_id:${i.platformPostId}`)
+      .join(" OR ");
+    try {
+      const search = await client.v2.search(query, {
         max_results: 100,
         ...(startTime ? { start_time: startTime } : {}),
         "tweet.fields": [
@@ -499,84 +602,64 @@ async function fetchTwitter(
         expansions: ["author_id", "attachments.media_keys"],
         "user.fields": ["name", "username"],
         "media.fields": ["url", "preview_image_url", "type", "variants"],
-      },
-    );
-    const users = new Map<string, { name?: string; username?: string }>();
-    const mediaByKey = new Map<string, XMediaLike>();
-    const tweets: Array<(typeof search.tweets)[number]> = [];
-    for (let page = 0; page < 5; page++) {
-      for (const u of search.includes?.users ?? []) {
-        users.set(u.id, { name: u.name, username: u.username });
-      }
-      for (const m of search.includes?.media ?? []) {
-        if (m.media_key) mediaByKey.set(m.media_key, m);
-      }
-      tweets.push(...(search.tweets ?? []));
-      if (search.done) break;
-      try {
-        await search.fetchNext();
-      } catch {
-        break;
-      }
-    }
-    const common = base(input);
-    const comments: InboxComment[] = [];
-    const seen = new Set<string>();
-    const repliedToOf = new Map<string, string | undefined>();
-    const authorOf = new Map<string, string | undefined>();
-    for (const tweet of tweets) {
-      if (!tweet.id) continue;
-      const repliedTo = tweet.referenced_tweets?.find(
-        (r) => r.type === "replied_to",
-      )?.id;
-      repliedToOf.set(tweet.id, repliedTo);
-      authorOf.set(tweet.id, tweet.author_id);
-    }
-    const ownSelfThread = (tweetId: string): boolean => {
-      let id: string | undefined = repliedToOf.get(tweetId);
-      const walked = new Set<string>();
-      while (id && !walked.has(id)) {
-        walked.add(id);
-        if (id === input.platformPostId) return true;
-        if (authorOf.get(id) !== input.platformUserId) return false;
-        id = repliedToOf.get(id);
-      }
-      return false;
-    };
-    for (const tweet of tweets) {
-      if (!tweet.id || seen.has(tweet.id)) continue;
-      seen.add(tweet.id);
-      if (tweet.id === input.platformPostId) continue;
-      const isOwn = Boolean(
-        tweet.author_id && tweet.author_id === input.platformUserId,
-      );
-      const repliedTo = repliedToOf.get(tweet.id);
-      if (isOwn && (!repliedTo || ownSelfThread(tweet.id))) continue;
-      const user = tweet.author_id ? users.get(tweet.author_id) : undefined;
-      const handle = user?.username ?? null;
-      const parentId =
-        !repliedTo || repliedTo === input.platformPostId ? null : repliedTo;
-      const mediaKey = tweet.attachments?.media_keys?.[0];
-      comments.push({
-        ...common,
-        id: tweet.id,
-        authorName: isOwn ? "You" : (user?.name ?? "X user"),
-        authorHandle: handle,
-        text: tweet.text ?? "",
-        attachment: mediaKey ? xMediaToAttachment(mediaByKey.get(mediaKey)) : null,
-        createdAt: tweet.created_at ?? null,
-        likeCount: tweet.public_metrics?.like_count,
-        parentId,
-        isOwn: isOwn || withAuthor(input, handle).isOwn,
       });
+      const users = new Map<string, { name?: string; username?: string }>();
+      const mediaByKey = new Map<string, XMediaLike>();
+      const tweets: TweetV2[] = [];
+      for (let page = 0; page < X_SEARCH_PAGE_CAP; page++) {
+        for (const u of search.includes?.users ?? []) {
+          users.set(u.id, { name: u.name, username: u.username });
+        }
+        for (const m of search.includes?.media ?? []) {
+          if (m.media_key) mediaByKey.set(m.media_key, m);
+        }
+        tweets.push(...(search.tweets ?? []));
+        if (search.done) break;
+        try {
+          await search.fetchNext();
+        } catch {
+          break;
+        }
+      }
+      const byConversation = new Map<string, TweetV2[]>();
+      for (const tweet of tweets) {
+        const cid = tweet.conversation_id;
+        if (!cid) continue;
+        const list = byConversation.get(cid);
+        if (list) list.push(tweet);
+        else byConversation.set(cid, [tweet]);
+      }
+      for (const input of chunk) {
+        out[input.publicationId] = {
+          comments: tweetsToComments(
+            input,
+            byConversation.get(input.platformPostId) ?? [],
+            users,
+            mediaByKey,
+          ),
+          status: "ok",
+          error: startTime
+            ? "X comments only go back 7 days (Recent Search)."
+            : undefined,
+        };
+      }
+    } catch (e) {
+      if (extractHttpStatus(e) === 429) throw e;
+      const msg = e instanceof Error ? e.message : "X replies failed";
+      for (const input of chunk) {
+        out[input.publicationId] = err(msg);
+      }
     }
-    return {
-      comments,
-      status: "ok",
-      error: startTime
-        ? "X comments only go back 7 days (Recent Search)."
-        : undefined,
-    };
+  }
+  return out;
+}
+
+async function fetchTwitter(
+  input: CommentFetchInput,
+): Promise<CommentFetchResult> {
+  try {
+    const results = await fetchTwitterCommentsBatch([input]);
+    return results[input.publicationId] ?? err("X replies failed");
   } catch (e) {
     return err(e instanceof Error ? e.message : "X replies failed");
   }

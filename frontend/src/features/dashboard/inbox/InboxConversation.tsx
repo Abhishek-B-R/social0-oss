@@ -120,7 +120,6 @@ export function InboxConversation({
   accounts,
   allowReply,
   statusFilter,
-  seen,
   sendingReplyIds,
   failedReplyIds,
   highlightCommentId,
@@ -132,7 +131,6 @@ export function InboxConversation({
   accounts: InboxAccount[];
   allowReply: boolean;
   statusFilter: InboxCommentStatusFilter;
-  seen: { seeded: boolean; ids: ReadonlySet<string> };
   sendingReplyIds: Set<string>;
   failedReplyIds: Set<string>;
   highlightCommentId?: string | null;
@@ -268,7 +266,7 @@ export function InboxConversation({
         <div className="flex flex-col gap-6 px-3 py-4 sm:px-4">
           {threads.map((thread) => {
             const flat = flattenInboxThread(thread.comment, thread.replies);
-            const visible = visibleInboxComments(flat, statusFilter, seen);
+            const visible = visibleInboxComments(flat, statusFilter);
             if (!visible.length) return null;
             const tree = treeFromFlatInbox(visible);
             return (

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AccountAvatar } from "@/components/AccountAvatar";
-import { PlatformIcon } from "@/components/PlatformIcon";
+import { AccountPlatformMark } from "@/components/PlatformIcon";
 import { SquaresFour } from "@/icons/phosphor";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
@@ -92,9 +92,7 @@ export function AccountFilterChips({
                   fill
                 />
               </span>
-              <span className="absolute -bottom-0.5 -right-0.5 flex h-[18px] w-[18px] items-center justify-center rounded-full border-2 border-bg bg-bg-elevated shadow-sm">
-                <PlatformIcon platform={a.platform} size={11} />
-              </span>
+              <AccountPlatformMark platform={a.platform} />
               {selected ? <SelectedCheck /> : null}
               {needsReconnect ? (
                 <span className="absolute -top-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-bg bg-amber-500" />

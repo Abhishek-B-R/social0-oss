@@ -111,9 +111,9 @@ export function InboxCommentCard({
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline gap-2">
               <p className="truncate text-[13px] font-semibold tracking-tight text-text">
-                {own ? "You" : handle}
+                {own ? "You" : comment.authorName}
               </p>
-              {!own && comment.authorHandle && comment.authorName !== handle ? (
+              {!own && comment.authorHandle ? (
                 <p className="truncate text-[12px] text-text-muted">
                   @{handle}
                 </p>

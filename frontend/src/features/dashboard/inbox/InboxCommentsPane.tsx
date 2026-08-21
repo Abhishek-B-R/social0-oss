@@ -1,20 +1,10 @@
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useReducedMotion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
-import { formatDistanceToNow } from "date-fns";
-import {
-  ArrowLeft,
-  ArrowSquareOut,
-  ChatCircle,
-  CircleNotch,
-  Heart,
-  WarningCircle,
-} from "@/icons/phosphor";
+import { ChatCircle } from "@/icons/phosphor";
 import type { InboxAccount } from "@/api/inbox";
 import {
   listInboxComments,
-  likeInboxComment,
   replyToInboxComment,
   type InboxComment,
   type InboxThread,
@@ -27,26 +17,24 @@ import {
 } from "@/lib/date-window";
 import {
   inboxReplyTargetId,
-  formatInboxReplyText,
-  inboxReplyDraftMax,
   inboxReplyTextsMatch,
 } from "@/lib/inbox-reply";
 import { uploadFile } from "@/lib/upload-file";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { InboxAttachmentView } from "./InboxAttachmentView";
-import { InboxAvatar } from "./InboxAvatar";
-import { InboxComposer, type InboxComposerPayload } from "./InboxComposer";
-import { InboxPostCard, InboxPostThumbnail } from "./InboxPostCard";
+import type { InboxComposerPayload } from "./InboxComposer";
+import { InboxConversation } from "./InboxConversation";
+import { InboxPostThumbnail } from "./InboxPostCard";
 import { InboxScrollSentinel } from "./InboxScrollSentinel";
 import { InboxStatusBanners } from "./InboxStatusBanners";
 import type { InboxCommentStatusFilter } from "./InboxStatusFilter";
 import { inboxMetaFromPages } from "./inbox-meta";
-import { resolveInboxBody } from "@/lib/inbox-display";
-import { flattenInboxThread } from "@/lib/inbox-thread";
+import {
+  inboxThreadMatchesFilter,
+  isInboxThreadAnswered,
+} from "@/lib/inbox-comment-status";
 import {
   commentIdsFromThreads,
-  loadInboxSeen,
   markInboxCommentsSeen,
 } from "@/lib/inbox-unread";
 import { useSession } from "@/lib/auth-client";
@@ -63,14 +51,6 @@ import {
 } from "@/lib/use-visibility-poll";
 import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
 
-const LIKE_SUPPORTED = new Set([
-  "facebook",
-  "instagram",
-  "twitter_x",
-  "bluesky",
-  "threads",
-]);
-
 type PostGroup = {
   publicationId: string;
   platform: string;
@@ -81,7 +61,6 @@ type PostGroup = {
   accountLabel: string | null;
   threads: InboxThread[];
   unanswered: number;
-  unread: number;
   lastActivity: string;
 };
 
@@ -95,13 +74,6 @@ function threadLastActivity(thread: InboxThread): string {
 
 function threadKey(thread: InboxThread): string {
   return `${thread.comment.publicationId}-${thread.comment.id}`;
-}
-
-function replyMax(platform: string): number {
-  if (platform === "twitter_x") return 280;
-  if (platform === "bluesky") return 300;
-  if (platform === "threads") return 500;
-  return 2000;
 }
 
 function replyLooksSent(
@@ -158,7 +130,7 @@ export function InboxCommentsPane({
   accounts,
   enabled,
   allowReply = true,
-  statusFilter = "all",
+  statusFilter = "unanswered",
 }: {
   dateWindow: DateWindow;
   accountId: string | null;
@@ -365,46 +337,25 @@ export function InboxCommentsPane({
 
   const data = inboxQuery.data?.pages[0];
   const inboxMeta = inboxMetaFromPages(inboxQuery.data?.pages);
-  const [seenTick, setSeenTick] = useState(0);
-  const seen = useMemo(() => {
-    void seenTick;
-    return loadInboxSeen(userId);
-  }, [userId, seenTick]);
-  const seenSet = useMemo(() => new Set(seen.comments), [seen.comments]);
 
-  const isThreadUnread = useCallback(
-    (t: InboxThread) => {
-      if (!seen.seeded) return true;
-      const ids = commentIdsFromThreads([t]);
-      return ids.some((id) => !seenSet.has(id));
-    },
-    [seen.seeded, seenSet],
-  );
-  const isThreadAnswered = (t: InboxThread) =>
-    t.replies.some((r) => r.isOwn);
-
-  const threads = mergePendingReplies(
-    mergedThreads.filter((t) => {
-      if (!t.comment.isOwn) {
-        /* keep */
-      } else if (!t.replies.some((r) => !r.isOwn)) {
-        return false;
-      }
-      if (statusFilter === "unanswered") return !isThreadAnswered(t);
-      if (statusFilter === "answered") return isThreadAnswered(t);
-      if (statusFilter === "unread") return isThreadUnread(t);
-      return true;
-    }),
-    pendingReplies,
+  const inboundThreads = useMemo(
+    () =>
+      mergePendingReplies(
+        mergedThreads.filter((t) => {
+          if (!t.comment.isOwn) return true;
+          return t.replies.some((r) => !r.isOwn);
+        }),
+        pendingReplies,
+      ),
+    [mergedThreads, pendingReplies],
   );
 
-  const postGroups = useMemo(() => {
+  const postGroupsAll = useMemo(() => {
     const map = new Map<string, PostGroup>();
-    for (const t of threads) {
+    for (const t of inboundThreads) {
       const id = t.comment.publicationId;
       const cur = map.get(id);
-      const unanswered = isThreadAnswered(t) ? 0 : 1;
-      const unread = isThreadUnread(t) ? 1 : 0;
+      const unanswered = isInboxThreadAnswered(t) ? 0 : 1;
       const activity = threadLastActivity(t);
       if (!cur) {
         map.set(id, {
@@ -417,20 +368,38 @@ export function InboxCommentsPane({
           accountLabel: t.comment.accountLabel,
           threads: [t],
           unanswered,
-          unread,
           lastActivity: activity,
         });
       } else {
         cur.threads.push(t);
         cur.unanswered += unanswered;
-        cur.unread += unread;
         if (activity > cur.lastActivity) cur.lastActivity = activity;
       }
     }
     return [...map.values()].sort((a, b) =>
       b.lastActivity.localeCompare(a.lastActivity),
     );
-  }, [threads, isThreadUnread]);
+  }, [inboundThreads]);
+
+  const postGroups = useMemo(() => {
+    return postGroupsAll
+      .map((g) => ({
+        ...g,
+        threads: g.threads.filter((t) =>
+          inboxThreadMatchesFilter(t, statusFilter),
+        ),
+      }))
+      .filter((g) => {
+        if (!g.threads.length) return false;
+        if (statusFilter === "unanswered") return g.unanswered > 0;
+        if (statusFilter === "answered") return g.unanswered === 0;
+        return true;
+      });
+  }, [postGroupsAll, statusFilter]);
+
+  const needsReplyGroups = postGroups.filter((g) => g.unanswered > 0);
+  const repliedGroups = postGroups.filter((g) => g.unanswered === 0);
+  const threads = postGroups.flatMap((g) => g.threads);
 
   const [pickedPostId, setPickedPostId] = useState<string | null>(null);
 
@@ -483,14 +452,13 @@ export function InboxCommentsPane({
     selectedPost?.threads[0] ??
     null;
 
+  // Keep the sidebar Inbox badge accurate: viewing a post marks its comments seen.
   useEffect(() => {
-    if (!enabled || !userId || !selected) return;
-    const ids = commentIdsFromThreads([selected]);
+    if (!enabled || !userId || !selectedPost) return;
+    const ids = commentIdsFromThreads(selectedPost.threads);
     if (!ids.length) return;
     markInboxCommentsSeen(userId, ids);
-    // Defer tick so we don't cascade render in this effect
-    queueMicrotask(() => setSeenTick((n) => n + 1));
-  }, [enabled, userId, selected?.comment.id]);
+  }, [enabled, userId, selectedPost]);
 
   const loading = inboxQuery.isPending || (inboxQuery.isFetching && !inboxQuery.data);
 
@@ -528,16 +496,20 @@ export function InboxCommentsPane({
 
       <InboxStatusBanners {...inboxMeta} />
 
-      {loading && !data ? (
-        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
-          <div className="h-full animate-pulse bg-bg-muted/60" />
-          <div className="hidden h-full animate-pulse bg-bg-muted/40 lg:block" />
-        </div>
-      ) : !data || (postGroups.length === 0 && !hasNextComments) ? (
+      {loading && !data ||
+      (postGroups.length === 0 &&
+        (fetchingNextComments ||
+          (hasNextComments && mergedThreads.length === 0))) ? (
+        <InboxSplitSkeleton />
+      ) : !data || postGroups.length === 0 ? (
         <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
           <ChatCircle size={28} className="text-text-muted" />
           <p className="mt-3 text-sm font-medium text-text">
-            {statusFilter === "all" ? "No comments yet" : "Nothing in this filter"}
+            {statusFilter === "unanswered"
+              ? "You're all caught up"
+              : statusFilter === "answered"
+                ? "No answered threads yet"
+                : "No comments yet"}
           </p>
           <p className="mt-1 max-w-sm text-sm text-text-muted">
             {statusFilter === "all"
@@ -545,89 +517,83 @@ export function InboxCommentsPane({
               : "Try All, or a longer date range."}
           </p>
         </div>
-      ) : postGroups.length === 0 && hasNextComments ? (
-        <div className="flex min-h-[24rem] flex-1 flex-col items-center justify-center rounded-xl border border-border bg-bg-elevated px-6">
-          <CircleNotch size={24} className="animate-spin text-text-muted" />
-          <p className="mt-3 text-sm text-text-muted">Loading older posts...</p>
-        </div>
       ) : (
-        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
-          <ul
+        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-bg-elevated shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] dark:border-white/[0.08] lg:grid-cols-[19rem_minmax(0,1fr)]">
+          <div
             className={cn(
               "max-h-[min(70vh,40rem)] min-h-0 overflow-y-auto border-border lg:max-h-none lg:border-r",
               showList ? "block" : "hidden lg:block",
             )}
           >
-            <li className="sticky top-0 z-10 border-b border-border bg-bg-elevated px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-              Posts
-            </li>
-            {postGroups.map((group) => {
-              const active = selectedPost?.publicationId === group.publicationId;
-              const via = group.accountLabel
-                ? `@${group.accountLabel.replace(/^@/, "")}`
-                : PLATFORM_LABEL[group.platform] ?? group.platform;
-              const badge = group.unread || group.unanswered;
-              return (
-                <li key={group.publicationId} className="border-b border-border last:border-b-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPickedPostId(group.publicationId);
-                      setPickedId(threadKey(group.threads[0]!));
-                      setMobileDetail(true);
-                      setSearchParams(
-                        (prev) => {
-                          const next = new URLSearchParams(prev);
-                          next.set("thread", group.threads[0]!.comment.id);
-                          return next;
-                        },
-                        { replace: true },
-                      );
-                    }}
-                    className={cn(
-                      "relative flex w-full gap-2.5 px-3 py-2.5 text-left transition-[background-color,transform] duration-150 ease-out active:scale-[0.995]",
-                      active
-                        ? "bg-accent/[0.08] before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent"
-                        : "hover:bg-bg-subtle/80",
-                    )}
-                  >
-                    <InboxPostThumbnail
-                      mediaUrl={group.postMediaUrl}
-                      content={group.postContent || group.postSnippet}
-                      platform={group.platform}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="truncate text-[12px] font-medium text-text-muted">
-                          {PLATFORM_LABEL[group.platform] ?? group.platform} · {via}
-                        </span>
-                        {badge > 0 ? (
-                          <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold text-white">
-                            {badge}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-text">
-                        {group.postContent || group.postSnippet || "(No caption)"}
-                      </span>
-                      <span className="mt-1 text-[10px] text-text-muted">
-                        {group.threads.length} comment
-                        {group.threads.length === 1 ? "" : "s"}
-                        {group.unanswered > 0
-                          ? ` · ${group.unanswered} unanswered`
-                          : " · answered"}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
+            <div className="sticky top-0 z-10 flex items-center border-b border-border/80 bg-bg-elevated/80 px-3 py-2 backdrop-blur-md">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+                Posts
+              </p>
+            </div>
+            {needsReplyGroups.length > 0 && repliedGroups.length > 0 ? (
+              <>
+                <PostGroupList
+                  title="Needs a reply"
+                  groups={needsReplyGroups}
+                  selectedPostId={selectedPost?.publicationId ?? null}
+                  onPick={(group) => {
+                    setPickedPostId(group.publicationId);
+                    setPickedId(threadKey(group.threads[0]!));
+                    setMobileDetail(true);
+                    setSearchParams(
+                      (prev) => {
+                        const next = new URLSearchParams(prev);
+                        next.set("thread", group.threads[0]!.comment.id);
+                        return next;
+                      },
+                      { replace: true },
+                    );
+                  }}
+                />
+                <PostGroupList
+                  title="Replied"
+                  groups={repliedGroups}
+                  selectedPostId={selectedPost?.publicationId ?? null}
+                  onPick={(group) => {
+                    setPickedPostId(group.publicationId);
+                    setPickedId(threadKey(group.threads[0]!));
+                    setMobileDetail(true);
+                    setSearchParams(
+                      (prev) => {
+                        const next = new URLSearchParams(prev);
+                        next.set("thread", group.threads[0]!.comment.id);
+                        return next;
+                      },
+                      { replace: true },
+                    );
+                  }}
+                />
+              </>
+            ) : (
+              <PostGroupList
+                groups={postGroups}
+                selectedPostId={selectedPost?.publicationId ?? null}
+                onPick={(group) => {
+                  setPickedPostId(group.publicationId);
+                  setPickedId(threadKey(group.threads[0]!));
+                  setMobileDetail(true);
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.set("thread", group.threads[0]!.comment.id);
+                      return next;
+                    },
+                    { replace: true },
+                  );
+                }}
+              />
+            )}
             <InboxScrollSentinel
               onVisible={loadOlderComments}
               disabled={!hasNextComments || fetchingNextComments}
               loading={fetchingNextComments}
             />
-          </ul>
+          </div>
 
           <section
             className={cn(
@@ -635,35 +601,39 @@ export function InboxCommentsPane({
               showDetail ? "flex" : "hidden lg:flex",
             )}
           >
-            {selected && selectedPost ? (
-              <ConversationPane
-                thread={selected}
-                siblingThreads={selectedPost.threads}
+            {selectedPost ? (
+              <InboxConversation
+                key={`${selectedPost.publicationId}-${statusFilter}`}
+                threads={selectedPost.threads}
                 accounts={accounts}
                 allowReply={allowReply}
+                statusFilter={statusFilter}
                 sendingReplyIds={sendingReplyIds}
-                pendingReplies={pendingReplies}
                 failedReplyIds={failedReplyIds}
-                onSelectThread={(t) => {
-                  setPickedId(threadKey(t));
-                  setSearchParams(
-                    (prev) => {
-                      const next = new URLSearchParams(prev);
-                      next.set("thread", t.comment.id);
-                      return next;
-                    },
-                    { replace: true },
-                  );
-                }}
+                highlightCommentId={selected?.comment.id}
                 onBack={() => setMobileDetail(false)}
-                onReply={(uiParentId, payload, optimisticId) =>
-                  void sendReply(selected, uiParentId, payload, { optimisticId })
-                }
+                onReply={(uiParentId, payload, optimisticId) => {
+                  const thread =
+                    selectedPost.threads.find(
+                      (t) =>
+                        t.comment.id === uiParentId ||
+                        t.replies.some((r) => r.id === uiParentId),
+                    ) ?? selectedPost.threads[0];
+                  if (!thread) return;
+                  void sendReply(thread, uiParentId, payload, { optimisticId });
+                }}
                 onRetryReply={(id) => {
                   const stored = retryPayloads.current.get(id);
                   if (!stored) return;
                   const { parentCommentId, ...payload } = stored;
-                  void sendReply(selected, parentCommentId, payload, {
+                  const thread =
+                    selectedPost.threads.find(
+                      (t) =>
+                        t.comment.id === parentCommentId ||
+                        t.replies.some((r) => r.id === parentCommentId),
+                    ) ?? selectedPost.threads[0];
+                  if (!thread) return;
+                  void sendReply(thread, parentCommentId, payload, {
                     optimisticId: id,
                   });
                 }}
@@ -686,370 +656,95 @@ export function InboxCommentsPane({
   );
 }
 
-function ConversationPane({
-  thread,
-  siblingThreads,
-  accounts,
-  allowReply,
-  sendingReplyIds,
-  pendingReplies,
-  failedReplyIds,
-  onSelectThread,
-  onBack,
-  onReply,
-  onRetryReply,
-}: {
-  thread: InboxThread;
-  siblingThreads: InboxThread[];
-  accounts: InboxAccount[];
-  allowReply: boolean;
-  sendingReplyIds: Set<string>;
-  pendingReplies: InboxComment[];
-  failedReplyIds: Set<string>;
-  onSelectThread: (t: InboxThread) => void;
-  onBack: () => void;
-  onReply: (
-    uiParentId: string,
-    payload: InboxComposerPayload,
-    optimisticId?: string,
-  ) => void;
-  onRetryReply: (optimisticId: string) => void;
-}) {
-  const reduceMotion = useReducedMotion();
-  const root = thread.comment;
-  const account = accounts.find((a) => a.id === root.accountId);
-  const [replyTarget, setReplyTarget] = useState<InboxComment>(root);
-  const composerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setReplyTarget(root);
-  }, [root]);
-
-  const flat = useMemo(
-    () => flattenInboxThread(root, thread.replies),
-    [root, thread.replies],
-  );
-
-  const sending = pendingReplies.some(
-    (p) =>
-      p.publicationId === root.publicationId && sendingReplyIds.has(p.id),
-  );
-
-  const answered = thread.replies.some((r) => r.isOwn);
-  const totalComments = siblingThreads.reduce(
-    (n, t) => n + 1 + t.replies.length,
-    0,
-  );
-  const repliedCount = siblingThreads.filter((t) =>
-    t.replies.some((r) => r.isOwn),
-  ).length;
-
+function InboxSplitSkeleton() {
   return (
-    <>
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2.5 sm:px-4">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97] lg:hidden"
-          aria-label="Back to list"
-        >
-          <ArrowLeft size={16} />
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-text">
-            {PLATFORM_LABEL[root.platform] ?? root.platform}
-            {root.accountLabel
-              ? ` · @${root.accountLabel.replace(/^@/, "")}`
-              : ""}
-          </p>
-          <p className="mt-0.5 text-[11px] text-text-muted">
-            {repliedCount} replied / {totalComments} total comments
-            {answered ? " · includes your reply" : " · awaiting reply"}
-          </p>
-        </div>
-        {root.platformPostUrl ? (
-          <a
-            href={root.platformPostUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-accent active:scale-[0.97]"
-            aria-label="View post"
-          >
-            <ArrowSquareOut size={14} />
-          </a>
-        ) : null}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="border-b border-border p-3 sm:p-4">
-          <InboxPostCard
-            comment={root}
-            accountLabel={account?.username ?? root.accountLabel}
-            accountProfileImageUrl={account?.profileImageUrl}
-          />
-        </div>
-
-        {siblingThreads.length > 1 ? (
-          <div className="flex gap-1 overflow-x-auto border-b border-border px-3 py-2">
-            {siblingThreads.map((t) => {
-              const active = t.comment.id === root.id;
-              const needs = !t.replies.some((r) => r.isOwn);
-              return (
-                <button
-                  key={t.comment.id}
-                  type="button"
-                  onClick={() => onSelectThread(t)}
-                  className={cn(
-                    "shrink-0 rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors",
-                    active
-                      ? "bg-accent/15 text-accent"
-                      : "bg-bg-muted text-text-muted hover:text-text",
-                  )}
-                >
-                  @{t.comment.authorHandle?.replace(/^@/, "") || t.comment.authorName}
-                  {needs ? " · new" : ""}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
-        <div className="flex flex-col">
-          {flat.map(({ comment, depth }) => (
-            <CommentRow
-              key={comment.id}
-              comment={comment}
-              depth={depth}
-              root={root}
-              account={account}
-              allowReply={allowReply}
-              active={replyTarget.id === comment.id}
-              sending={sendingReplyIds.has(comment.id)}
-              failed={failedReplyIds.has(comment.id)}
-              onReply={() => {
-                if (comment.isOwn) return;
-                setReplyTarget(comment);
-                composerRef.current?.scrollIntoView({
-                  behavior: reduceMotion ? "auto" : "smooth",
-                  block: "nearest",
-                });
-              }}
-              onRetry={
-                comment.isOwn && failedReplyIds.has(comment.id)
-                  ? () => onRetryReply(comment.id)
-                  : undefined
-              }
-            />
-          ))}
-        </div>
-      </div>
-
-      {root.canReply && allowReply ? (
-        <div ref={composerRef} className="shrink-0">
-          <InboxComposer
-            key={root.id}
-            platform={root.platform}
-            mode="comment"
-            maxLength={inboxReplyDraftMax({
-              platform: root.platform,
-              targetHandle: replyTarget.authorHandle,
-              isRoot: replyTarget.id === root.id,
-              limit: replyMax(root.platform),
-            })}
-            placeholder={
-              replyTarget.id !== root.id
-                ? `Reply to @${(replyTarget.authorHandle ?? replyTarget.authorName).replace(/^@/, "")}...`
-                : "Type in your reply..."
-            }
-            sending={sending}
-            replyTo={
-              replyTarget.id !== root.id
-                ? {
-                    name: replyTarget.authorName,
-                    onClear: () => setReplyTarget(root),
-                  }
-                : null
-            }
-            onSend={(payload) => {
-              const text = formatInboxReplyText({
-                platform: root.platform,
-                targetHandle: replyTarget.authorHandle,
-                isRoot: replyTarget.id === root.id,
-                text: payload.text,
-              });
-              onReply(replyTarget.id, { ...payload, text });
-            }}
-          />
-        </div>
-      ) : (
-        <p className="shrink-0 border-t border-border px-4 py-3 text-sm text-text-muted">
-          {allowReply
-            ? `Replies aren't available for ${PLATFORM_LABEL[root.platform] ?? root.platform} yet.`
-            : "Your role can view this thread but not reply."}
-        </p>
-      )}
-    </>
+    <div
+      className="grid min-h-[24rem] flex-1 overflow-hidden rounded-2xl border border-border bg-bg-elevated lg:grid-cols-[19rem_minmax(0,1fr)]"
+      aria-busy
+    >
+      <div className="h-full min-h-[20rem] animate-pulse bg-bg-muted/60" />
+      <div className="hidden h-full animate-pulse bg-bg-muted/40 lg:block" />
+    </div>
   );
 }
 
-function CommentRow({
-  comment,
-  depth,
-  root,
-  account,
-  allowReply,
-  active,
-  sending,
-  failed,
-  onReply,
-  onRetry,
+function PostGroupList({
+  title,
+  groups,
+  selectedPostId,
+  onPick,
 }: {
-  comment: InboxComment;
-  depth: number;
-  root: InboxComment;
-  account?: InboxAccount;
-  allowReply: boolean;
-  active: boolean;
-  sending: boolean;
-  failed: boolean;
-  onReply: () => void;
-  onRetry?: () => void;
+  title?: string;
+  groups: PostGroup[];
+  selectedPostId: string | null;
+  onPick: (group: PostGroup) => void;
 }) {
-  const when = comment.createdAt
-    ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })
-    : null;
-  const own = Boolean(comment.isOwn);
-  const avatarUrl = own
-    ? account?.profileImageUrl ?? comment.authorAvatarUrl
-    : comment.authorAvatarUrl;
-  const body = resolveInboxBody(comment.text, comment.attachment);
-  const [liked, setLiked] = useState(false);
-  const [liking, setLiking] = useState(false);
-  const canLike =
-    allowReply && !own && LIKE_SUPPORTED.has(comment.platform) && !liked;
-
-  const onLike = async () => {
-    if (!canLike || liking) return;
-    setLiking(true);
-    try {
-      const res = await likeInboxComment({
-        publicationId: comment.publicationId,
-        commentId: comment.id,
-      });
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      setLiked(true);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Like failed");
-    } finally {
-      setLiking(false);
-    }
-  };
-
+  if (!groups.length) return null;
   return (
-    <article
-      className={cn(
-        "relative px-3 py-3 sm:px-4",
-        active && "bg-accent/[0.04]",
-        own && "bg-bg-subtle/30",
-        failed && "bg-red-500/[0.04]",
-      )}
-    >
-      {depth > 0
-        ? Array.from({ length: depth }, (_, i) => (
-            <span
-              key={i}
-              aria-hidden
-              className="pointer-events-none absolute top-0 bottom-0 w-px bg-border"
-              style={{ left: 22 + i * 18 }}
-            />
-          ))
-        : null}
-      <div className="flex gap-2.5" style={{ paddingLeft: depth * 18 }}>
-        <InboxAvatar
-          profileImageUrl={avatarUrl}
-          username={comment.authorHandle ?? comment.authorName}
-          platform={comment.platform}
-          size={depth === 0 ? 36 : 30}
-          className="shrink-0"
-        />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="text-[13px] font-semibold text-text">
-              {own ? "You" : comment.authorName}
-            </span>
-            {!own && comment.authorHandle ? (
-              <span className="text-[12px] text-text-muted">
-                @{comment.authorHandle.replace(/^@/, "")}
-              </span>
-            ) : null}
-            <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-text-muted">
-              {sending ? <CircleNotch size={12} className="animate-spin" /> : null}
-              {when}
-            </span>
-          </div>
-          {body.text ? (
-            <p className="mt-1.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-text">
-              {body.text}
-            </p>
-          ) : null}
-          {body.attachment ? (
-            <InboxAttachmentView attachment={body.attachment} className="max-w-sm" />
-          ) : null}
-          {failed && onRetry ? (
-            <button
-              type="button"
-              onClick={onRetry}
-              className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-500 transition-[transform,color] duration-150 ease-out hover:text-red-400 active:scale-[0.97]"
-            >
-              <WarningCircle size={14} weight="fill" />
-              Failed · Retry
-            </button>
-          ) : null}
-          <div className="mt-2 flex items-center gap-3">
-            {canLike || liked ? (
+    <div>
+      {title ? (
+        <p className="px-3 pb-1 pt-3 text-[11px] font-semibold tracking-tight text-text-muted">
+          {title}
+        </p>
+      ) : null}
+      <ul>
+        {groups.map((group) => {
+          const active = selectedPostId === group.publicationId;
+          const via = group.accountLabel
+            ? `@${group.accountLabel.replace(/^@/, "")}`
+            : PLATFORM_LABEL[group.platform] ?? group.platform;
+          const badge = group.unanswered;
+          return (
+            <li key={group.publicationId} className="px-2 py-0.5">
               <button
                 type="button"
-                onClick={() => void onLike()}
-                disabled={!canLike || liking}
+                onClick={() => onPick(group)}
                 className={cn(
-                  "inline-flex h-8 w-8 items-center justify-center rounded-full border border-border transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.95]",
-                  liked
-                    ? "bg-rose-500/10 text-rose-500"
-                    : "text-text-muted hover:bg-bg-subtle hover:text-rose-500",
-                )}
-                aria-label={liked ? "Liked" : "Like comment"}
-              >
-                {liking ? (
-                  <CircleNotch size={14} className="animate-spin" />
-                ) : (
-                  <Heart size={14} weight={liked ? "fill" : "regular"} />
-                )}
-              </button>
-            ) : null}
-            {typeof comment.likeCount === "number" && comment.likeCount > 0 ? (
-              <span className="text-[11px] tabular-nums text-text-muted">
-                {comment.likeCount + (liked ? 1 : 0)}
-              </span>
-            ) : null}
-            {root.canReply && allowReply && !own ? (
-              <button
-                type="button"
-                onClick={onReply}
-                className={cn(
-                  "text-[12px] font-semibold transition-[transform,color] duration-150 ease-out active:scale-[0.97]",
-                  active ? "text-accent" : "text-text-muted hover:text-accent",
+                  "relative flex w-full gap-2.5 rounded-2xl px-2.5 py-2.5 text-left transition-[background-color,transform,box-shadow] duration-150 ease-out active:scale-[0.99]",
+                  active
+                    ? "bg-accent/[0.08] shadow-[inset_0_0_0_1px_rgba(16,185,129,0.28)]"
+                    : "hover:bg-bg-subtle/80",
                 )}
               >
-                Reply
+                <InboxPostThumbnail
+                  mediaUrl={group.postMediaUrl}
+                  content={group.postContent || group.postSnippet}
+                  platform={group.platform}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-[12px] font-medium text-text-muted">
+                      {PLATFORM_LABEL[group.platform] ?? group.platform} · {via}
+                    </span>
+                    {badge > 0 ? (
+                      <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-semibold text-white">
+                        {badge}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="mt-0.5 line-clamp-2 text-[13px] leading-snug text-text">
+                    {group.postContent || group.postSnippet || "(No caption)"}
+                  </span>
+                  <span className="mt-1 text-[11px] text-text-muted">
+                    {group.threads.length} comment
+                    {group.threads.length === 1 ? "" : "s"}
+                    {group.unanswered > 0
+                      ? ` · ${group.unanswered} unanswered`
+                      : " · replied from Social0"}
+                  </span>
+                  {group.unanswered > 0 ? (
+                    <span className="mt-2 block h-0.5 w-full overflow-hidden rounded-full bg-bg-muted">
+                      <span className="block h-full w-1/3 rounded-full bg-amber-400" />
+                    </span>
+                  ) : (
+                    <span className="mt-2 block h-0.5 w-full rounded-full bg-accent/40" />
+                  )}
+                </span>
               </button>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </article>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }

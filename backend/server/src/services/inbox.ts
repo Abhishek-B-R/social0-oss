@@ -22,7 +22,13 @@ import { resolveAccountAccess } from "../lib/account-access.js";
 import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
 import { mapPool } from "../lib/map-pool.js";
 import { PLATFORMS, type Platform } from "../lib/platforms.js";
-import { fetchPublicationComments } from "../lib/inbox/fetch-comments.js";
+import {
+  fetchPublicationComments,
+  fetchTwitterCommentsBatch,
+  type CommentFetchInput,
+  type CommentFetchResult,
+} from "../lib/inbox/fetch-comments.js";
+import { createHash } from "node:crypto";
 import { replyOnPlatform } from "../lib/inbox/reply-comment.js";
 import {
   inboxCommentLikeSupported,
@@ -41,6 +47,7 @@ import {
   platformCommentPageRounds,
   platformInboxSampleLimit,
   withPlatformReadCache,
+  type PlatformReadResult,
 } from "../lib/platform-api-cache.js";
 import {
   INBOX_UNSUPPORTED,
@@ -334,6 +341,65 @@ export async function listInboxComments(input: {
 
     const mediaById = await resolvePostMediaUrls(pubs);
 
+    const fetchInputFor = (
+      row: PubRow,
+      accessToken: string,
+      accessSecret: string | null | undefined,
+    ): CommentFetchInput => ({
+      platform: row.account!.platform,
+      platformPostId: row.platformPostId!,
+      platformPostUrl: row.platformPostUrl,
+      platformUserId: row.account!.platformUserId,
+      accessToken,
+      accessSecret,
+      accountId: row.account!.id,
+      accountLabel: row.account!.platformUsername,
+      postId: row.postId,
+      publicationId: row.publicationId,
+      postSnippet: snippet(row.content),
+      postContent: row.content?.trim() || snippet(row.content),
+      postMediaUrl: firstPostMediaUrl(row.mediaIds, mediaById),
+      postPublishedAt: row.publishedAt?.toISOString() ?? null,
+      postAccountImageUrl: row.account!.profileImageUrl,
+      since: since.toISOString(),
+    });
+
+    // X Recent Search is the scarcest API we call: batch every X post on
+    // this page into ONE cached search per account instead of one per post.
+    const xBatches = new Map<
+      string,
+      Promise<PlatformReadResult<Record<string, CommentFetchResult>>>
+    >();
+    const xAccountBatch = (account: NonNullable<PubRow["account"]>) => {
+      let batch = xBatches.get(account.id);
+      if (!batch) {
+        batch = (async () => {
+          const { accessToken, accessSecret } =
+            await resolveAccountAccess(account);
+          const rows = pubs.filter(
+            (r) => r.account?.id === account.id && r.platformPostId,
+          );
+          const inputs = rows.map((r) =>
+            fetchInputFor(r, accessToken, accessSecret),
+          );
+          const idsKey = createHash("sha1")
+            .update(rows.map((r) => r.platformPostId).sort().join(","))
+            .digest("hex")
+            .slice(0, 16);
+          return withPlatformReadCache({
+            platform: account.platform,
+            accountId: account.id,
+            kind: "inbox_comments",
+            suffix: `batch:${idsKey}:${since.toISOString()}`,
+            fresh,
+            fetch: () => fetchTwitterCommentsBatch(inputs),
+          });
+        })();
+        xBatches.set(account.id, batch);
+      }
+      return batch;
+    };
+
     await mapPool(
       pubs,
       CONCURRENCY,
@@ -345,37 +411,33 @@ export async function listInboxComments(input: {
       }
       const missing = missingInboxScopes(row.account.platform, row.account.scopes);
       try {
-        const { accessToken, accessSecret } = await resolveAccountAccess(row.account);
-        let result;
+        let result: CommentFetchResult;
         try {
-          const cached = await withPlatformReadCache({
-            platform: row.account.platform,
-            accountId: row.account.id,
-            kind: "inbox_comments",
-            suffix: `${row.publicationId}:${since.toISOString()}`,
-            fresh,
-            fetch: () =>
-              fetchPublicationComments({
-                platform: row.account!.platform,
-                platformPostId: row.platformPostId!,
-                platformPostUrl: row.platformPostUrl,
-                platformUserId: row.account!.platformUserId,
-                accessToken,
-                accessSecret,
-                accountId: row.account!.id,
-                accountLabel: row.account!.platformUsername,
-                postId: row.postId,
-                publicationId: row.publicationId,
-                postSnippet: snippet(row.content),
-                postContent: row.content?.trim() || snippet(row.content),
-                postMediaUrl: firstPostMediaUrl(row.mediaIds, mediaById),
-                postPublishedAt: row.publishedAt?.toISOString() ?? null,
-                postAccountImageUrl: row.account!.profileImageUrl,
-                since: since.toISOString(),
-              }),
-          });
-          result = cached.data;
-          if (cached.rateLimited) {
+          let rateLimited = false;
+          if (row.account.platform === "twitter_x") {
+            const cached = await xAccountBatch(row.account);
+            result =
+              cached.data[row.publicationId] ??
+              ({ comments: [], status: "ok" } satisfies CommentFetchResult);
+            rateLimited = Boolean(cached.rateLimited);
+          } else {
+            const { accessToken, accessSecret } =
+              await resolveAccountAccess(row.account);
+            const cached = await withPlatformReadCache({
+              platform: row.account.platform,
+              accountId: row.account.id,
+              kind: "inbox_comments",
+              suffix: `${row.publicationId}:${since.toISOString()}`,
+              fresh,
+              fetch: () =>
+                fetchPublicationComments(
+                  fetchInputFor(row, accessToken, accessSecret),
+                ),
+            });
+            result = cached.data;
+            rateLimited = Boolean(cached.rateLimited);
+          }
+          if (rateLimited) {
             noteFetchNotice(notices, {
               platform: row.account.platform,
               message: "Showing cached comments - platform rate limit reached.",

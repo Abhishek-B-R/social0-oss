@@ -1,16 +1,12 @@
 import { cn } from "@/lib/utils";
+import type { InboxCommentStatusFilter } from "@/lib/inbox-comment-status";
 
-export type InboxCommentStatusFilter =
-  | "all"
-  | "unread"
-  | "unanswered"
-  | "answered";
+export type { InboxCommentStatusFilter };
 
 const OPTIONS: Array<{ id: InboxCommentStatusFilter; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "unread", label: "Unread" },
   { id: "unanswered", label: "Unanswered" },
   { id: "answered", label: "Answered" },
+  { id: "all", label: "All" },
 ];
 
 export function InboxStatusFilter({
@@ -34,9 +30,9 @@ export function InboxStatusFilter({
           aria-selected={value === opt.id}
           onClick={() => onChange(opt.id)}
           className={cn(
-            "flex-1 rounded-full px-3 py-1.5 text-xs font-medium transition-colors sm:flex-none",
+            "flex-1 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wide transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.97] sm:flex-none",
             value === opt.id
-              ? "bg-bg-elevated text-text shadow-sm"
+              ? "bg-foreground text-background shadow-sm"
               : "text-text-muted hover:text-text",
           )}
         >

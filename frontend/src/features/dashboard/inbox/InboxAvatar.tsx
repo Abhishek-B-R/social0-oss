@@ -1,5 +1,5 @@
 import { AccountAvatar } from "@/components/AccountAvatar";
-import { PlatformIcon } from "@/components/PlatformIcon";
+import { AccountPlatformMark } from "@/components/PlatformIcon";
 import { cn } from "@/lib/utils";
 
 export function InboxAvatar({
@@ -15,7 +15,6 @@ export function InboxAvatar({
   size?: number;
   className?: string;
 }) {
-  const badge = Math.max(10, Math.round(size * 0.38));
   return (
     <span
       className={cn("relative inline-flex shrink-0", className)}
@@ -29,12 +28,7 @@ export function InboxAvatar({
           fill
         />
       </span>
-      <span
-        className="absolute -bottom-0.5 -right-0.5 flex items-center justify-center rounded-full border border-bg bg-bg-elevated shadow-sm"
-        style={{ width: badge + 4, height: badge + 4 }}
-      >
-        <PlatformIcon platform={platform} size={badge} />
-      </span>
+      <AccountPlatformMark platform={platform} compact={size <= 32} />
     </span>
   );
 }

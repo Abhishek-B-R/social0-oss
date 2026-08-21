@@ -1,6 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { ArrowSquareOut } from "@/icons/phosphor";
-import { PlatformIcon } from "@/components/PlatformIcon";
+import { AccountPlatformMark } from "@/components/PlatformIcon";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import { InboxAvatar } from "./InboxAvatar";
 import type { InboxComment } from "@/api/inbox";
@@ -20,35 +20,32 @@ export function InboxPostThumbnail({
   const isVideo = mediaUrl?.match(/\.(mp4|mov|webm)(\?|$)/i);
   return (
     <div
-      className={cn(
-        "relative flex h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-bg-muted",
-        className,
-      )}
+      className={cn("relative h-12 w-12 shrink-0", className)}
     >
-      {mediaUrl ? (
-        isVideo ? (
-          <video
-            src={mediaUrl}
-            className="h-full w-full object-cover"
-            muted
-            playsInline
-          />
+      <div className="flex h-full w-full overflow-hidden rounded-lg border border-border bg-bg-muted">
+        {mediaUrl ? (
+          isVideo ? (
+            <video
+              src={mediaUrl}
+              className="h-full w-full object-cover"
+              muted
+              playsInline
+            />
+          ) : (
+            <img
+              src={mediaUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          )
         ) : (
-          <img
-            src={mediaUrl}
-            alt=""
-            className="h-full w-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        )
-      ) : (
-        <span className="line-clamp-3 p-1 text-[8px] leading-tight text-text-muted">
-          {content?.slice(0, 60) || "Post"}
-        </span>
-      )}
-      <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border border-bg bg-bg-elevated shadow-sm">
-        <PlatformIcon platform={platform} size={10} />
-      </span>
+          <span className="line-clamp-3 p-1 text-[8px] leading-tight text-text-muted">
+            {content?.slice(0, 60) || "Post"}
+          </span>
+        )}
+      </div>
+      <AccountPlatformMark platform={platform} compact />
     </div>
   );
 }
@@ -72,46 +69,56 @@ export function InboxPostCard({
   return (
     <article
       className={cn(
-        "rounded-xl border border-border bg-bg-subtle/40 p-3 sm:p-4",
+        "rounded-2xl border border-black/[0.06] bg-bg-elevated p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] dark:border-white/[0.08]",
         className,
       )}
     >
-      <div className="flex gap-3">
-        <InboxPostThumbnail
-          mediaUrl={comment.postMediaUrl}
-          content={comment.postContent}
+      <div className="flex items-start gap-3">
+        <InboxAvatar
+          profileImageUrl={accountProfileImageUrl ?? comment.postAccountImageUrl}
+          username={handle}
           platform={comment.platform}
+          size={36}
+          className="shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <InboxAvatar
-              profileImageUrl={accountProfileImageUrl ?? comment.postAccountImageUrl}
-              username={handle}
-              platform={comment.platform}
-              size={24}
-            />
-            <span className="text-[13px] font-semibold text-text">
+          <div className="flex items-baseline gap-2">
+            <p className="truncate text-[13px] font-semibold tracking-tight text-text">
               {handle ? `@${handle.replace(/^@/, "")}` : "Your post"}
-            </span>
-            <span className="text-[11px] text-text-muted">
-              {PLATFORM_LABEL[comment.platform] ?? comment.platform}
-            </span>
-            {when ? <span className="text-[11px] text-text-muted">· {when}</span> : null}
-            {comment.platformPostUrl ? (
-              <a
-                href={comment.platformPostUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="ml-auto inline-flex items-center gap-0.5 text-[11px] text-text-muted hover:text-accent"
-              >
-                View post
-                <ArrowSquareOut size={11} />
-              </a>
+            </p>
+            {when ? (
+              <p className="ml-auto shrink-0 text-[11px] tabular-nums text-text-muted">
+                {when}
+              </p>
             ) : null}
           </div>
-          <p className="mt-2 whitespace-pre-wrap text-[13px] leading-relaxed text-text">
+          <p className="text-[11px] text-text-muted">
+            {PLATFORM_LABEL[comment.platform] ?? comment.platform}
+          </p>
+          <p className="mt-2 whitespace-pre-wrap break-words text-[15px] leading-[1.45] tracking-[-0.01em] text-text">
             {comment.postContent || comment.postSnippet}
           </p>
+          {comment.postMediaUrl ? (
+            <div className="mt-3 max-w-[12rem]">
+              <InboxPostThumbnail
+                mediaUrl={comment.postMediaUrl}
+                content={comment.postContent}
+                platform={comment.platform}
+                className="h-24 w-full rounded-xl"
+              />
+            </div>
+          ) : null}
+          {comment.platformPostUrl ? (
+            <a
+              href={comment.platformPostUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-flex items-center gap-0.5 text-[11px] font-medium text-text-muted transition-colors hover:text-accent"
+            >
+              View post
+              <ArrowSquareOut size={11} />
+            </a>
+          ) : null}
         </div>
       </div>
     </article>

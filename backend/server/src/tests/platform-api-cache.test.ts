@@ -10,7 +10,10 @@ import {
 
 describe("platform-api-cache helpers", () => {
   it("caps X inbox sample size", () => {
-    expect(platformInboxSampleLimit("twitter_x", 40)).toBe(12);
+    // X comment fetches are batched (one search per ~13 posts), so a full
+    // default page is fine; only oversized explicit limits get capped.
+    expect(platformInboxSampleLimit("twitter_x", 40)).toBe(24);
+    expect(platformInboxSampleLimit("twitter_x", 24)).toBe(24);
     expect(platformInboxSampleLimit("instagram", 40)).toBe(40);
   });
 
