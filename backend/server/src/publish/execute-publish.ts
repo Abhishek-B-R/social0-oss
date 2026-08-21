@@ -32,7 +32,7 @@ import {
   uploadTwitterVideo,
 } from "../lib/twitter-media.js";
 import { getTwitterErrorMessage } from "../lib/twitter-errors.js";
-import { parseTikTokHandleFromProfileUrl } from "../lib/platform-view-url.js";
+import { buildTikTokProfileUrl, parseTikTokHandleFromProfileUrl } from "../lib/platform-view-url.js";
 import {
   createTwitterTweetFetch,
   type CreateTwitterTweetPayload,
@@ -1475,13 +1475,14 @@ export async function executePublish(
           if (handle) {
             const existingMeta =
               (pub.platformMetadata as Record<string, unknown> | null) ?? {};
+            // Always store the profile URL (not /video/{id}) on the account.
             await db
               .update(connectedAccounts)
               .set({
                 platformUsername: handle,
                 platformMetadata: {
                   ...existingMeta,
-                  profileUrl: platformPostResult.platformPostUrl,
+                  profileUrl: buildTikTokProfileUrl(handle),
                 },
                 updatedAt: new Date(),
               })

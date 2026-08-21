@@ -267,8 +267,10 @@ async function publishBlueskyThread(
     };
   }
   const rkey = rootRef.uri.split("/").pop();
+  // Prefer DID in the path (stable). Handle renames break handle-based URLs.
+  const profileKey = did || handle;
   const platformPostUrl = rkey
-    ? `https://bsky.app/profile/${handle}/post/${rkey}`
+    ? `https://bsky.app/profile/${encodeURIComponent(profileKey)}/post/${rkey}`
     : rootRef.uri;
   return {
     status: "published",
@@ -723,10 +725,11 @@ export async function publishToBluesky(
       return { status: "failed", lastError: err, error: err };
     }
 
-    // Build post URL
+    // Build post URL — prefer DID (stored as the account's internal id).
     const rkey = createData.uri?.split("/").pop();
+    const profileKey = did || handle;
     const platformPostUrl = rkey
-      ? `https://bsky.app/profile/${handle}/post/${rkey}`
+      ? `https://bsky.app/profile/${encodeURIComponent(profileKey)}/post/${rkey}`
       : (createData.uri ?? null);
 
     return {
