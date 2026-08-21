@@ -41,6 +41,7 @@ function CommentBranch({
   composer,
   onReply,
   onRetryReply,
+  onHidden,
 }: {
   node: BranchNode;
   account?: InboxAccount;
@@ -52,6 +53,7 @@ function CommentBranch({
   composer: ReactNode;
   onReply: (comment: InboxComment) => void;
   onRetryReply: (id: string) => void;
+  onHidden?: (commentId: string) => void;
 }) {
   const comment = node.comment;
   const showTail = node.children.length > 0 || comment.id === replyTargetId;
@@ -66,6 +68,7 @@ function CommentBranch({
         sending={sendingReplyIds.has(comment.id)}
         failed={failedReplyIds.has(comment.id)}
         onReply={() => onReply(comment)}
+        onHidden={onHidden}
         onRetry={
           comment.isOwn && failedReplyIds.has(comment.id)
             ? () => onRetryReply(comment.id)
@@ -89,6 +92,7 @@ function CommentBranch({
                   composer={composer}
                   onReply={onReply}
                   onRetryReply={onRetryReply}
+                  onHidden={onHidden}
                 />
               ))}
             </div>
@@ -125,6 +129,7 @@ export function InboxConversation({
   highlightCommentId,
   onBack,
   onHideFromUnanswered,
+  hideFromUnansweredLabel,
   onReply,
   onRetryReply,
 }: {
@@ -137,6 +142,7 @@ export function InboxConversation({
   highlightCommentId?: string | null;
   onBack: () => void;
   onHideFromUnanswered?: () => void;
+  hideFromUnansweredLabel?: string;
   onReply: (
     uiParentId: string,
     payload: InboxComposerPayload,
@@ -150,11 +156,20 @@ export function InboxConversation({
     ? accounts.find((a) => a.id === root.accountId)
     : undefined;
   const [replyTargetId, setReplyTargetId] = useState<string | null>(null);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
   const highlightRef = useRef<HTMLDivElement>(null);
 
-  const fallbackTarget = defaultReplyTarget(threads);
+  const visibleThreads = threads
+    .map((t) => ({
+      ...t,
+      replies: t.replies.filter((r) => !hiddenIds.has(r.id)),
+    }))
+    .filter((t) => !hiddenIds.has(t.comment.id));
+
+  const fallbackTarget = defaultReplyTarget(visibleThreads);
   const target =
-    commentsIn(threads).find((c) => c.id === replyTargetId) ?? fallbackTarget;
+    commentsIn(visibleThreads).find((c) => c.id === replyTargetId) ??
+    fallbackTarget;
 
   useEffect(() => {
     if (!highlightCommentId) return;
@@ -164,11 +179,11 @@ export function InboxConversation({
     });
   }, [highlightCommentId, reduceMotion]);
 
-  const totalComments = threads.reduce(
+  const totalComments = visibleThreads.reduce(
     (n, t) => n + 1 + t.replies.length,
     0,
   );
-  const repliedCount = threads.filter(
+  const repliedCount = visibleThreads.filter(
     (t) => t.comment.isOwn || t.replies.some((r) => r.isOwn),
   ).length;
   const sending = sendingReplyIds.size > 0;
@@ -248,11 +263,13 @@ export function InboxConversation({
             type="button"
             onClick={onHideFromUnanswered}
             className="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97]"
-            aria-label="Hide from Unanswered"
-            title="Hide from Unanswered"
+            aria-label={hideFromUnansweredLabel ?? "Hide from Unanswered"}
+            title={hideFromUnansweredLabel ?? "Hide from Unanswered"}
           >
             <EyeSlash size={14} />
-            <span className="hidden sm:inline">Hide</span>
+            <span className="hidden sm:inline">
+              {hideFromUnansweredLabel ?? "Hide"}
+            </span>
           </button>
         ) : null}
         {root.platformPostUrl ? (
@@ -278,7 +295,7 @@ export function InboxConversation({
         </div>
 
         <div className="flex flex-col gap-6 px-3 py-4 sm:px-4">
-          {threads.map((thread) => {
+          {visibleThreads.map((thread) => {
             const flat = flattenInboxThread(thread.comment, thread.replies);
             const visible = visibleInboxComments(flat, statusFilter);
             if (!visible.length) return null;
@@ -308,6 +325,12 @@ export function InboxConversation({
                       setReplyTargetId(comment.id);
                     }}
                     onRetryReply={onRetryReply}
+                    onHidden={(id) => {
+                      setHiddenIds((prev) => new Set(prev).add(id));
+                      if (replyTargetId === id) {
+                        setReplyTargetId(null);
+                      }
+                    }}
                   />
                 ))}
               </div>

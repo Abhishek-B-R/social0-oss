@@ -12,8 +12,14 @@ export const INBOX_LIKE_PLATFORMS = [
   "linkedin",
 ] as const;
 
+export const INBOX_HIDE_PLATFORMS = ["instagram", "facebook"] as const;
+
 export function inboxCommentLikeSupported(platform: string): boolean {
   return (INBOX_LIKE_PLATFORMS as readonly string[]).includes(platform);
+}
+
+export function inboxCommentHideSupported(platform: string): boolean {
+  return (INBOX_HIDE_PLATFORMS as readonly string[]).includes(platform);
 }
 
 export type InboxStatusComment = {

@@ -47,6 +47,7 @@ const RPC_MUTATION_HANDLERS = new Set([
   "onboarding.setOnboardingCompleted",
   "inbox.replyToComment",
   "inbox.likeComment",
+  "inbox.hideComment",
   "inbox.replyToDm",
 ]);
 
@@ -100,6 +101,7 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   "inbox.listComments": inbox.listInboxComments,
   "inbox.replyToComment": inbox.replyToInboxComment,
   "inbox.likeComment": inbox.likeInboxComment,
+  "inbox.hideComment": inbox.hideInboxComment,
   "inbox.listDms": inbox.listInboxDms,
   "inbox.listAccounts": inbox.listInboxAccounts,
   "inbox.getDmThread": inbox.getInboxDmThread,
