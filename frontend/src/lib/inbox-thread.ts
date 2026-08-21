@@ -86,3 +86,27 @@ export function flattenInboxThread<T extends InboxThreadNode>(
   walk(tops, 1);
   return out;
 }
+
+export type InboxCommentTree<T> = {
+  comment: T;
+  children: InboxCommentTree<T>[];
+};
+
+/** Rebuild a tree from flattenInboxThread output (depth-contiguous). */
+export function treeFromFlatInbox<T>(
+  flat: Array<{ comment: T; depth: number }>,
+): InboxCommentTree<T>[] {
+  const roots: InboxCommentTree<T>[] = [];
+  const stack: InboxCommentTree<T>[] = [];
+  for (const { comment, depth } of flat) {
+    const node: InboxCommentTree<T> = { comment, children: [] };
+    stack.length = depth;
+    if (depth <= 0) {
+      roots.push(node);
+    } else {
+      stack[depth - 1]?.children.push(node);
+    }
+    stack[depth] = node;
+  }
+  return roots;
+}

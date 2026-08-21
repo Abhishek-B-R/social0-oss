@@ -6,6 +6,7 @@ import {
   missingDmScopes,
   missingInboxScopes,
   peerFromParticipants,
+  reconnectScopesFromFetch,
   toInboxThreads,
   youtubeAuthorChannelId,
   sameLinkedInActor,
@@ -57,6 +58,24 @@ describe("missingInboxScopes", () => {
         "https://www.googleapis.com/auth/youtube.force-ssl",
       ),
     ).toEqual([]);
+  });
+
+  it("matches Google short scope names against full auth URLs", () => {
+    expect(
+      missingInboxScopes("youtube", "youtube.force-ssl youtube.readonly"),
+    ).toEqual([]);
+  });
+});
+
+describe("reconnectScopesFromFetch", () => {
+  it("ignores DB-style missing after a successful fetch", () => {
+    expect(reconnectScopesFromFetch({ status: "ok" })).toEqual([]);
+    expect(
+      reconnectScopesFromFetch({
+        status: "scope_missing",
+        missingScopes: ["threads_manage_replies"],
+      }),
+    ).toEqual(["threads_manage_replies"]);
   });
 });
 

@@ -14,7 +14,7 @@ export function initialInboxPageParam(dateWindow: DateWindow): InboxPageParam {
   return windowQueryParams(dateWindow);
 }
 
-/** Poll refresh: replace page 0 only so older infinite pages are not re-fetched. */
+/** Poll/manual refresh: replace page 0; drop older infinite pages so banners stay current. */
 export async function refreshInboxInfiniteFirstPage<TPage>(
   qc: QueryClient,
   queryKey: readonly unknown[],
@@ -22,17 +22,20 @@ export async function refreshInboxInfiniteFirstPage<TPage>(
 ): Promise<void> {
   try {
     const first = await fetchFirstPage();
+    const pageParam = undefined;
     qc.setQueryData<InfiniteData<TPage>>(queryKey, (old) => {
       if (!old?.pages.length) {
-        return { pages: [first], pageParams: [undefined] };
+        return { pages: [first], pageParams: [pageParam] };
       }
+      // Keep only the refreshed first page - older pages can carry stale
+      // reconnect / fetch-error banners after a reconnect.
       return {
-        ...old,
-        pages: [first, ...old.pages.slice(1)],
+        pages: [first],
+        pageParams: [old.pageParams[0] ?? pageParam],
       };
     });
   } catch {
-    // Background poll — ignore.
+    // Background poll - ignore.
   }
 }
 

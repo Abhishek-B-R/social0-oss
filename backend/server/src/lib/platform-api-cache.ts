@@ -224,6 +224,15 @@ export type PlatformReadResult<T> = {
   rateLimited?: boolean;
 };
 
+/** Do not cache scope/permission failures - reconnect would stay "broken" until TTL. */
+export function shouldCachePlatformRead(data: unknown): boolean {
+  if (!data || typeof data !== "object") return true;
+  const o = data as { status?: string; missingScopes?: unknown };
+  if (o.status === "scope_missing" || o.status === "error") return false;
+  if (Array.isArray(o.missingScopes) && o.missingScopes.length > 0) return false;
+  return true;
+}
+
 /**
  * Serve cached platform data when possible; enforce outbound limits; back off on 429.
  * `fresh` skips cache read but still respects cooldown and outbound limits.
@@ -269,7 +278,9 @@ export async function withPlatformReadCache<T>(opts: {
 
   try {
     const data = await opts.fetch();
-    await writeCache(key, data, ttl);
+    if (shouldCachePlatformRead(data)) {
+      await writeCache(key, data, ttl);
+    }
     return { data, fromCache: false };
   } catch (e) {
     if (isPlatformRateLimitError(e)) {

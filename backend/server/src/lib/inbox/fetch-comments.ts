@@ -53,7 +53,7 @@ export type CommentFetchResult = {
 
 function base(input: CommentFetchInput): Omit<
   InboxComment,
-  "id" | "authorName" | "authorHandle" | "text" | "createdAt" | "parentId" | "likeCount" | "isOwn"
+  "id" | "authorName" | "authorHandle" | "text" | "createdAt" | "parentId" | "likeCount" | "likedByMe" | "isOwn"
 > {
   return {
     platform: input.platform,
@@ -125,7 +125,7 @@ async function fetchFacebook(
   const id = encodeURIComponent(input.platformPostId);
   const sinceMs = input.since ? Date.parse(input.since) : null;
   const fields =
-    "id,from,message,created_time,like_count,attachment,comments.limit(25){id,from,message,created_time,attachment}";
+    "id,from,message,created_time,like_count,user_likes,attachment,comments.limit(25){id,from,message,created_time,like_count,user_likes,attachment}";
   const startUrl = `https://graph.facebook.com/v21.0/${id}/comments?fields=${fields}&limit=25&order=reverse_chronological&access_token=${token}`;
   const { ok, data } = await jsonGet(startUrl);
   if (!ok) {
@@ -161,6 +161,7 @@ async function fetchFacebook(
       createdAt: typeof row.created_time === "string" ? row.created_time : null,
       likeCount:
         typeof row.like_count === "number" ? row.like_count : undefined,
+      likedByMe: typeof row.user_likes === "boolean" ? row.user_likes : undefined,
       parentId,
       isOwn: Boolean(from?.id && from.id === input.platformUserId),
     };
@@ -171,7 +172,7 @@ async function fetchFacebook(
     const nestedObj = row.comments as GraphPage | undefined;
     let nested = [...(nestedObj?.data ?? [])];
     if (nestedObj?.paging?.next || nested.length >= 25) {
-      const nestedUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/comments?fields=id,from,message,created_time,attachment&limit=50&order=reverse_chronological&access_token=${token}`;
+      const nestedUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/comments?fields=id,from,message,created_time,like_count,user_likes,attachment&limit=50&order=reverse_chronological&access_token=${token}`;
       const nestedRes = await jsonGet(nestedUrl);
       if (nestedRes.ok) nested = await restOfGraphPages(nestedRes.data as GraphPage, sinceMs, "created_time");
     }
@@ -188,7 +189,7 @@ async function fetchInstagram(
   const token = encodeURIComponent(input.accessToken);
   const id = encodeURIComponent(input.platformPostId);
   const sinceMs = input.since ? Date.parse(input.since) : null;
-  const url = `https://graph.instagram.com/v21.0/${id}/comments?fields=id,text,username,timestamp,like_count,replies.limit(50){id,text,username,timestamp}&limit=50&access_token=${token}`;
+  const url = `https://graph.instagram.com/v21.0/${id}/comments?fields=id,text,username,timestamp,like_count,user_likes,replies.limit(50){id,text,username,timestamp,like_count,user_likes}&limit=50&access_token=${token}`;
   const { ok, data } = await jsonGet(url);
   if (!ok) {
     const msg =
@@ -217,6 +218,7 @@ async function fetchInstagram(
       createdAt: typeof row.timestamp === "string" ? row.timestamp : null,
       likeCount:
         typeof row.like_count === "number" ? row.like_count : undefined,
+      likedByMe: typeof row.user_likes === "boolean" ? row.user_likes : undefined,
       parentId,
       ...withAuthor(input, handle),
     };
@@ -227,7 +229,7 @@ async function fetchInstagram(
     const nestedObj = row.replies as GraphPage | undefined;
     let nested = [...(nestedObj?.data ?? [])];
     if (nestedObj?.paging?.next || nested.length >= 50) {
-      const nestedUrl = `https://graph.instagram.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/replies?fields=id,text,username,timestamp&limit=50&access_token=${token}`;
+      const nestedUrl = `https://graph.instagram.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/replies?fields=id,text,username,timestamp,like_count,user_likes&limit=50&access_token=${token}`;
       const nestedRes = await jsonGet(nestedUrl);
       if (nestedRes.ok) {
         nested = await restOfGraphPages(nestedRes.data as GraphPage, sinceMs, "timestamp");
@@ -245,10 +247,10 @@ async function fetchThreads(
 ): Promise<CommentFetchResult> {
   const id = encodeURIComponent(input.platformPostId);
   const token = encodeURIComponent(input.accessToken);
-  const convoUrl = `https://graph.threads.net/v1.0/${id}/conversation?fields=id,text,username,timestamp,replied_to{id}&limit=50&access_token=${token}`;
+  const convoUrl = `https://graph.threads.net/v1.0/${id}/conversation?fields=id,text,username,timestamp,like_count,replied_to{id}&limit=50&access_token=${token}`;
   let { ok, data } = await jsonGet(convoUrl);
   if (!ok) {
-    const fallback = `https://graph.threads.net/v1.0/${id}/replies?fields=id,text,username,timestamp,replied_to{id}&limit=25&access_token=${token}`;
+    const fallback = `https://graph.threads.net/v1.0/${id}/replies?fields=id,text,username,timestamp,like_count,replied_to{id}&limit=25&access_token=${token}`;
     const retry = await jsonGet(fallback);
     ok = retry.ok;
     data = retry.data;
@@ -277,6 +279,8 @@ async function fetchThreads(
       authorHandle: handle,
       text: String(row.text ?? ""),
       createdAt: typeof row.timestamp === "string" ? row.timestamp : null,
+      likeCount:
+        typeof row.like_count === "number" ? row.like_count : undefined,
       parentId,
       ...withAuthor(input, handle),
     };
@@ -380,6 +384,7 @@ async function fetchYouTube(
         text: String(sn.textDisplay ?? sn.textOriginal ?? ""),
         createdAt: typeof sn.publishedAt === "string" ? sn.publishedAt : null,
         likeCount: typeof sn.likeCount === "number" ? sn.likeCount : undefined,
+        likedByMe: sn.viewerRating === "like",
         parentId: null,
         isOwn: youtubeAuthorChannelId(sn.authorChannelId) === input.platformUserId,
       });
@@ -405,6 +410,7 @@ async function fetchYouTube(
         createdAt: string | null;
         isOwn: boolean;
         likeCount: number | undefined;
+        likedByMe?: boolean;
       };
       const replyComments = nestMentionReplies<YoutubeNestRow>(
         {
@@ -416,6 +422,7 @@ async function fetchYouTube(
           createdAt: typeof sn.publishedAt === "string" ? sn.publishedAt : null,
           isOwn: youtubeAuthorChannelId(sn.authorChannelId) === input.platformUserId,
           likeCount: typeof sn.likeCount === "number" ? sn.likeCount : undefined,
+          likedByMe: sn.viewerRating === "like",
         },
         replies.map((r) => {
           const rs = r.snippet;
@@ -428,6 +435,7 @@ async function fetchYouTube(
             createdAt: typeof rs.publishedAt === "string" ? rs.publishedAt : null,
             isOwn: youtubeAuthorChannelId(rs.authorChannelId) === input.platformUserId,
             likeCount: typeof rs.likeCount === "number" ? rs.likeCount : undefined,
+            likedByMe: rs.viewerRating === "like",
           };
         }),
       );
@@ -441,6 +449,7 @@ async function fetchYouTube(
           createdAt: r.createdAt,
           parentId: r.parentId,
           likeCount: r.likeCount,
+          likedByMe: r.likedByMe,
           isOwn: r.isOwn,
         });
       }
@@ -485,6 +494,7 @@ async function fetchTwitter(
           "referenced_tweets",
           "conversation_id",
           "attachments",
+          "public_metrics",
         ],
         expansions: ["author_id", "attachments.media_keys"],
         "user.fields": ["name", "username"],
@@ -555,6 +565,7 @@ async function fetchTwitter(
         text: tweet.text ?? "",
         attachment: mediaKey ? xMediaToAttachment(mediaByKey.get(mediaKey)) : null,
         createdAt: tweet.created_at ?? null,
+        likeCount: tweet.public_metrics?.like_count,
         parentId,
         isOwn: isOwn || withAuthor(input, handle).isOwn,
       });
@@ -626,6 +637,7 @@ async function fetchBluesky(
       record?: { text?: string; createdAt?: string };
       embed?: unknown;
       likeCount?: number;
+      viewer?: { like?: string };
     };
     replies?: ThreadNode[];
   };
@@ -657,6 +669,7 @@ async function fetchBluesky(
         attachment: parseBskyViewEmbed(node.post.embed),
         createdAt: node.post.record?.createdAt ?? null,
         likeCount: node.post.likeCount,
+        likedByMe: Boolean(node.post.viewer?.like),
         parentId,
         ...withAuthor(input, node.post.author?.handle ?? null),
       });
@@ -705,10 +718,13 @@ async function fetchLinkedIn(
       (typeof created?.actor === "string" && created.actor) ||
       (typeof el.commenter === "string" && el.commenter) ||
       null;
+    const likes = el.likesSummary as
+      | { totalLikes?: number; selected?: boolean }
+      | undefined;
     const isOwn = sameLinkedInActor(actor, input.platformUserId);
     return {
       ...common,
-      id: String(el.id ?? el.$URN ?? ""),
+      id: String(el.$URN ?? el.commentUrn ?? el.id ?? ""),
       authorName: isOwn ? "You" : "LinkedIn user",
       authorHandle: actor,
       text: msg?.text ?? "",
@@ -716,6 +732,8 @@ async function fetchLinkedIn(
         typeof created?.time === "number"
           ? new Date(created.time).toISOString()
           : null,
+      likeCount: typeof likes?.totalLikes === "number" ? likes.totalLikes : undefined,
+      likedByMe: typeof likes?.selected === "boolean" ? likes.selected : undefined,
       parentId: null,
       isOwn,
     };

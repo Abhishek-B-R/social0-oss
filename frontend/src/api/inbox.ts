@@ -30,6 +30,7 @@ export type InboxComment = {
   attachment?: InboxAttachment | null;
   createdAt: string | null;
   likeCount?: number;
+  likedByMe?: boolean;
   parentId: string | null;
   canReply: boolean;
   isOwn?: boolean;

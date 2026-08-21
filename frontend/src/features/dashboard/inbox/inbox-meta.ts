@@ -23,6 +23,19 @@ function mergeInboxMeta<T extends { platform: string }>(
   return out;
 }
 
+/**
+ * Reconnect hints must come from the freshest page only.
+ * Infinite scroll keeps older pages; merging reconnect across them leaves
+ * accounts nagging after a successful reconnect + first-page refresh.
+ */
+export function inboxReconnectFromPages(
+  pages:
+    | Array<{ accountsNeedingReconnect?: InboxReconnectHint[] }>
+    | undefined,
+): InboxReconnectHint[] {
+  return pages?.[0]?.accountsNeedingReconnect ?? [];
+}
+
 export function inboxMetaFromPages(
   pages:
     | Array<{
@@ -34,11 +47,7 @@ export function inboxMetaFromPages(
     | undefined,
 ) {
   return {
-    reconnect: mergeInboxMeta<InboxReconnectHint>(
-      pages,
-      "accountsNeedingReconnect",
-      (a) => a.accountId,
-    ),
+    reconnect: inboxReconnectFromPages(pages),
     notices: mergeInboxMeta<InboxNotice>(
       pages,
       "notices",

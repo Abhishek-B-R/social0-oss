@@ -166,6 +166,43 @@ async function likeThreads(input: LikeCommentInput): Promise<LikeCommentResult> 
   return { ok: true };
 }
 
+async function likeYouTube(input: LikeCommentInput): Promise<LikeCommentResult> {
+  const url = new URL("https://www.googleapis.com/youtube/v3/comments/rate");
+  url.searchParams.set("id", input.commentId);
+  url.searchParams.set("rating", "like");
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${input.accessToken}` },
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (res.status === 204 || res.ok) return { ok: true };
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: { message?: string };
+  };
+  return fail(data.error?.message ?? "YouTube like failed");
+}
+
+async function likeLinkedIn(input: LikeCommentInput): Promise<LikeCommentResult> {
+  const urn = input.commentId.includes("urn:")
+    ? input.commentId
+    : `urn:li:comment:(${input.commentId})`;
+  const url = `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(urn)}/likes`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${input.accessToken}`,
+      "LinkedIn-Version": "202411",
+      "X-Restli-Protocol-Version": "2.0.0",
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (res.status === 201 || res.status === 204 || res.ok) return { ok: true };
+  const data = (await res.json().catch(() => ({}))) as { message?: string };
+  return fail(data.message ?? "LinkedIn like failed");
+}
+
 export async function likeCommentOnPlatform(
   input: LikeCommentInput,
 ): Promise<LikeCommentResult> {
@@ -180,6 +217,10 @@ export async function likeCommentOnPlatform(
       return likeBluesky(input);
     case "threads":
       return likeThreads(input);
+    case "youtube":
+      return likeYouTube(input);
+    case "linkedin":
+      return likeLinkedIn(input);
     default:
       return fail(`Liking comments is not supported for ${input.platform} yet.`);
   }
@@ -191,6 +232,8 @@ export function inboxCommentLikeSupported(platform: string): boolean {
     platform === "instagram" ||
     platform === "twitter_x" ||
     platform === "bluesky" ||
-    platform === "threads"
+    platform === "threads" ||
+    platform === "youtube" ||
+    platform === "linkedin"
   );
 }

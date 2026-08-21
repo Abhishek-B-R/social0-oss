@@ -4,6 +4,7 @@ import {
   platformInboxSampleLimit,
   isPlatformRateLimitError,
   pruneBoundedMap,
+  shouldCachePlatformRead,
   MEM_CACHE_MAX_ENTRIES,
 } from "../lib/platform-api-cache.js";
 
@@ -22,6 +23,19 @@ describe("platform-api-cache helpers", () => {
     expect(isPlatformRateLimitError({ status: 429 })).toBe(true);
     expect(isPlatformRateLimitError(new Error("Rate limit exceeded"))).toBe(true);
     expect(isPlatformRateLimitError(new Error("Forbidden"))).toBe(false);
+  });
+
+  it("does not cache scope-missing platform reads", () => {
+    expect(shouldCachePlatformRead({ status: "ok", comments: [] })).toBe(true);
+    expect(
+      shouldCachePlatformRead({
+        status: "scope_missing",
+        missingScopes: ["threads_manage_replies"],
+      }),
+    ).toBe(false);
+    expect(
+      shouldCachePlatformRead({ status: "ok", missingScopes: ["x"] }),
+    ).toBe(false);
   });
 
   it("exposes a finite in-memory cache cap", () => {

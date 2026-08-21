@@ -48,6 +48,7 @@ import {
   isInboxDmPlatform,
   missingDmScopes,
   missingInboxScopes,
+  reconnectScopesFromFetch,
   toInboxThreads,
   type InboxComment,
   type InboxDmListResult,
@@ -297,6 +298,8 @@ export async function listInboxComments(input: {
   const pageRounds = platformCommentPageRounds(platform, COMMENT_PAGE_ROUNDS_MAX);
 
   const reconnect = new Map<string, InboxReconnectHint>();
+  /** Accounts that returned comments/OK this request - do not nag from stale DB scopes. */
+  const fetchOkAccounts = new Set<string>();
   const unsupported = new Set<string>();
   const fetchErrors: InboxListResult["fetchErrors"] = [];
   const notices: InboxListResult["notices"] = [];
@@ -390,9 +393,10 @@ export async function listInboxComments(input: {
           throw e;
         }
         allComments.push(...result.comments);
-        const scopes = result.missingScopes?.length
-          ? result.missingScopes
-          : missing;
+        if (result.status === "ok" || result.comments.length > 0) {
+          fetchOkAccounts.add(row.account.id);
+        }
+        const scopes = reconnectScopesFromFetch(result);
         if (scopes.length) {
           reconnect.set(row.account.id, {
             accountId: row.account.id,
@@ -469,6 +473,8 @@ export async function listInboxComments(input: {
   const accountRows = await listActiveConnectedAccounts(ctx);
   for (const a of accountRows) {
     if (!isPlatformLive("inboxComments", a.platform)) continue;
+    // Skip accounts that already worked this request (stale scopes column).
+    if (fetchOkAccounts.has(a.id)) continue;
     const missing = missingInboxScopes(a.platform, a.scopes);
     if (missing.length && !reconnect.has(a.id)) {
       reconnect.set(a.id, {
@@ -823,7 +829,7 @@ export async function listInboxDms(input: {
         throw e;
       }
       threads.push(...result.threads);
-      const scopes = result.missingScopes?.length ? result.missingScopes : missing;
+      const scopes = reconnectScopesFromFetch(result);
       if (scopes.length) {
         reconnect.set(row.id, {
           accountId: row.id,

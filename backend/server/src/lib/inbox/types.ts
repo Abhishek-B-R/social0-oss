@@ -29,6 +29,7 @@ export type InboxComment = {
   attachment?: InboxAttachment | null;
   createdAt: string | null;
   likeCount?: number;
+  likedByMe?: boolean;
   parentId: string | null;
   canReply: boolean;
   /** True when the comment author is the connected Social0 account. */
@@ -245,11 +246,37 @@ export function inboxScopeGranted(
   needed: string,
 ): boolean {
   if (!granted) return false;
+  const need = normalizeOAuthScope(needed);
   return granted
     .split(/[,\s]+/)
     .map((s) => s.trim())
     .filter(Boolean)
-    .some((p) => p === needed || p.endsWith(needed));
+    .some((p) => {
+      const got = normalizeOAuthScope(p);
+      // Exact match, or Google short name vs full auth URL (normalized).
+      return got === need || p === needed;
+    });
+}
+
+/** Strip Google auth URL prefix so stored short names still match. */
+export function normalizeOAuthScope(scope: string): string {
+  return scope
+    .trim()
+    .replace(/^https:\/\/www\.googleapis\.com\/auth\//i, "")
+    .toLowerCase();
+}
+
+/**
+ * Reconnect hints from a live fetch - only when the platform reported a scope
+ * problem. Do not fall back to DB scope strings after a successful read (stale
+ * `connected_accounts.scopes` would nag forever even when comments work).
+ */
+export function reconnectScopesFromFetch(result: {
+  status?: string;
+  missingScopes?: string[];
+}): string[] {
+  if (result.missingScopes?.length) return [...result.missingScopes];
+  return [];
 }
 
 export function missingInboxScopes(

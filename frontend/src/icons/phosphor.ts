@@ -17,6 +17,7 @@ export { CaretRight } from "@phosphor-icons/react/dist/csr/CaretRight";
 export { ChartBar } from "@phosphor-icons/react/dist/csr/ChartBar";
 export { ChartLine } from "@phosphor-icons/react/dist/csr/ChartLine";
 export { ChatCircle } from "@phosphor-icons/react/dist/csr/ChatCircle";
+export { Check } from "@phosphor-icons/react/dist/csr/Check";
 export { CheckCircle } from "@phosphor-icons/react/dist/csr/CheckCircle";
 export { CircleNotch } from "@phosphor-icons/react/dist/csr/CircleNotch";
 export { Clock } from "@phosphor-icons/react/dist/csr/Clock";

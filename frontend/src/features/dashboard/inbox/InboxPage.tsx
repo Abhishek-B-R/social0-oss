@@ -169,6 +169,7 @@ export function InboxPage() {
           <button
             type="button"
             onClick={() => {
+              void qc.invalidateQueries({ queryKey: ["inbox-accounts", workspaceId] });
               if (mode === "comments") {
                 void refreshInboxInfiniteFirstPage(qc, listQueryKey, () =>
                   listInboxComments({
