@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { CircleNotch } from "@/icons/phosphor";
 
 export function InboxScrollSentinel({
   onVisible,
@@ -27,13 +26,15 @@ export function InboxScrollSentinel({
   }, [onVisible, disabled, loading]);
 
   return (
-    <li
-      ref={ref}
-      className="flex list-none items-center justify-center py-3"
-      aria-hidden={!loading}
-    >
+    <li ref={ref} className="list-none px-2 py-0.5" aria-hidden={!loading}>
       {loading ? (
-        <CircleNotch size={16} className="animate-spin text-text-muted" />
+        <div className="flex gap-2.5 rounded-2xl px-2.5 py-2.5" aria-busy>
+          <div className="h-12 w-12 shrink-0 animate-pulse rounded-lg bg-bg-muted" />
+          <div className="min-w-0 flex-1 space-y-2 py-0.5">
+            <div className="h-3 w-2/5 animate-pulse rounded bg-bg-muted" />
+            <div className="h-3 w-4/5 animate-pulse rounded bg-bg-muted/70" />
+          </div>
+        </div>
       ) : null}
     </li>
   );
