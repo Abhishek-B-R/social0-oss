@@ -1,15 +1,31 @@
 /**
  * X (Twitter) media upload helpers.
- * Always uses fetch + OAuth 1.0a (Worker-safe). Never twitter-api-v2 —
- * that SDK calls Node https.request, which fails under CF Workers / unenv.
+ * Node uses twitter-api-v2. Cloudflare Workers use fetch + OAuth 1.0a -
+ * the SDK calls Node https.request, which fails under unenv.
  */
 
+import { TwitterApi } from "twitter-api-v2";
 import { formatTwitterMediaError } from "@/lib/twitter-errors";
 import { fetchAllowedMedia } from "@/lib/media-fetch";
 import {
+  isPublishWorkerRuntime,
   uploadTwitterImageFetch,
   uploadTwitterVideoFetch,
 } from "@/lib/twitter-media-upload-fetch";
+
+function getTwitterClient(accessToken: string, accessSecret: string): TwitterApi {
+  const appKey = process.env.TWITTER_CONSUMER_KEY;
+  const appSecret = process.env.TWITTER_CONSUMER_SECRET;
+  if (!appKey || !appSecret) {
+    throw new Error("Twitter consumer key/secret not configured");
+  }
+  return new TwitterApi({
+    appKey,
+    appSecret,
+    accessToken,
+    accessSecret,
+  });
+}
 
 /**
  * Upload an image to X/Twitter and return the media_id
@@ -28,13 +44,28 @@ export async function uploadTwitterImage(
   const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
   const contentType = imageRes.headers.get("content-type") || "image/jpeg";
 
+  if (isPublishWorkerRuntime()) {
+    try {
+      return await uploadTwitterImageFetch(
+        imageBuffer,
+        contentType,
+        accessToken,
+        accessSecret,
+      );
+    } catch (e) {
+      throw new Error(formatTwitterMediaError(e, "Twitter image upload"), {
+        cause: e,
+      });
+    }
+  }
+
+  const client = getTwitterClient(accessToken, accessSecret);
+
   try {
-    return await uploadTwitterImageFetch(
-      imageBuffer,
-      contentType,
-      accessToken,
-      accessSecret,
-    );
+    const mediaId = await client.v1.uploadMedia(imageBuffer, {
+      mimeType: contentType,
+    });
+    return mediaId;
   } catch (e) {
     throw new Error(formatTwitterMediaError(e, "Twitter image upload"), {
       cause: e,
@@ -70,24 +101,80 @@ export async function uploadTwitterVideo(
   const videoBuffer = Buffer.from(await videoRes.arrayBuffer());
   const contentType = videoRes.headers.get("content-type") || "video/mp4";
 
-  let lastError: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      return await uploadTwitterVideoFetch(
-        videoBuffer,
-        contentType,
-        accessToken,
-        accessSecret,
-      );
-    } catch (e) {
-      lastError = e;
-      if (attempt < 2) {
-        await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+  if (isPublishWorkerRuntime()) {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await uploadTwitterVideoFetch(
+          videoBuffer,
+          contentType,
+          accessToken,
+          accessSecret,
+        );
+      } catch (e) {
+        lastError = e;
+        if (attempt < 2) {
+          await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+        }
       }
     }
+    throw new Error(formatTwitterMediaError(lastError, "Twitter video upload"), {
+      cause: lastError,
+    });
   }
 
-  throw new Error(formatTwitterMediaError(lastError, "Twitter video upload"), {
-    cause: lastError,
-  });
+  const client = getTwitterClient(accessToken, accessSecret);
+
+  try {
+    let mediaId: string | undefined;
+    let lastUploadError: unknown;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        mediaId = await client.v1.uploadMedia(videoBuffer, {
+          mimeType: contentType,
+        });
+        break;
+      } catch (e) {
+        lastUploadError = e;
+        if (attempt < 2)
+          await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      }
+    }
+    if (!mediaId)
+      throw new Error(
+        formatTwitterMediaError(lastUploadError, "Twitter video upload"),
+        { cause: lastUploadError },
+      );
+
+    let status = await client.v1.mediaInfo(mediaId);
+    let attempts = 0;
+    const maxAttempts = 60;
+    type ProcessingInfo = { state?: string; error?: { message?: string } };
+    const getInfo = (s: typeof status): ProcessingInfo | undefined =>
+      "processing_info" in s ? (s as { processing_info?: ProcessingInfo }).processing_info : undefined;
+
+    for (let info = getInfo(status); info?.state === "pending" || info?.state === "in_progress"; info = getInfo(status)) {
+      if (attempts >= maxAttempts) {
+        throw new Error("Video processing timeout - video is still being processed");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      status = await client.v1.mediaInfo(mediaId);
+      const next = getInfo(status);
+      if (next?.state === "failed") {
+        throw new Error(`Video processing failed: ${next.error?.message ?? "Unknown error"}`);
+      }
+      attempts++;
+    }
+
+    const final = getInfo(status);
+    if (final?.state === "failed") {
+      throw new Error(`Video processing failed: ${final.error?.message ?? "Unknown error"}`);
+    }
+
+    return mediaId;
+  } catch (e) {
+    throw new Error(formatTwitterMediaError(e, "Twitter video upload"), {
+      cause: e,
+    });
+  }
 }

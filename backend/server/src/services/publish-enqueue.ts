@@ -188,7 +188,7 @@ export async function prepareAndEnqueuePublish(
     };
 
     if (backend === "cloudflare" && SERVER_SIDE_PUBLISH_PLATFORMS.has(t.platform)) {
-      // Kill switch TWITTER_PUBLISH_ON_API=1 — otherwise X goes to CF like other platforms.
+      // X stays on the API unless TWITTER_PUBLISH_ON_CF=1.
       void runPlatformJobOnServer(app, platformJob).catch((err) => {
         console.error("[publish] server-side platform job failed", err);
       });
