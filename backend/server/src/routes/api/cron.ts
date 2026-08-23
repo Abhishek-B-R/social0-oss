@@ -122,7 +122,7 @@ export async function registerCronRoutes(app: FastifyInstance) {
     }
     if (!SERVER_SIDE_PUBLISH_PLATFORMS.has(job.platform)) {
       return reply.status(400).send({
-        error: `Platform ${job.platform} is not configured for server-side publish (set TWITTER_PUBLISH_ON_API=1 for X)`,
+        error: `Platform ${job.platform} is not configured for server-side publish (X is on the API by default; set TWITTER_PUBLISH_ON_CF=1 to send it to the worker)`,
       });
     }
     void runPlatformJobOnServer(request.server, job).catch((err) => {

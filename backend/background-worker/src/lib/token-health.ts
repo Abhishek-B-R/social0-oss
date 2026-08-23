@@ -410,7 +410,7 @@ export async function runTokenHealthCheckForUser(
     strictMaxAgeMs: 6 * 60 * 60 * 1000,
   });
   const expired = accounts.filter((a) => a.tokenStatus === "expired");
-  const byId = new Map<string, (typeof accounts)[number]>();
+  const byId = new Map<string, AccountForHealthCheck>();
   for (const a of [...stale, ...expired]) byId.set(a.id, a);
   const toCheck = [...byId.values()];
 

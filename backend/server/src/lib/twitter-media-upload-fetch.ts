@@ -76,6 +76,12 @@ async function postUrlEncoded(
   return data;
 }
 
+function copyBytes(chunk: Uint8Array): Uint8Array {
+  const bytes = new Uint8Array(chunk.byteLength);
+  bytes.set(chunk);
+  return bytes;
+}
+
 async function postAppendChunk(
   mediaId: string,
   segmentIndex: number,
@@ -83,20 +89,20 @@ async function postAppendChunk(
   accessToken: string,
   accessSecret: string,
 ): Promise<void> {
-  const signParams = {
-    command: "APPEND",
-    media_id: mediaId,
-    segment_index: String(segmentIndex),
-  };
+  const bytes = copyBytes(chunk);
   const form = new FormData();
   form.append("command", "APPEND");
   form.append("media_id", mediaId);
   form.append("segment_index", String(segmentIndex));
-  form.append("media", new Blob([Buffer.from(chunk)]), "media");
+  // Text fields survive Worker/Node FormData; Blob(Buffer) file parts do not
+  // (Twitter then returns "media parameter is missing"). media_data is base64.
+  form.append("media_data", Buffer.from(bytes).toString("base64"));
 
+  // Multipart APPEND must sign oauth_* only. Including command/media_id/segment_index
+  // in the signature makes Twitter return 401 / code 32 "Could not authenticate you".
   const res = await fetch(UPLOAD_URL, {
     method: "POST",
-    headers: oauthHeader(UPLOAD_URL, "POST", signParams, accessToken, accessSecret),
+    headers: oauthHeader(UPLOAD_URL, "POST", {}, accessToken, accessSecret),
     body: form,
   });
   if (!res.ok) {
