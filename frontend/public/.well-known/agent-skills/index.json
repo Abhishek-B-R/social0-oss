@@ -1,0 +1,16 @@
+{
+  "skills": [
+    {
+      "name": "social0-publish",
+      "description": "Publish and schedule social posts to Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Bluesky, and Pinterest via Social0 MCP, API, or CLI."
+    },
+    {
+      "name": "social0-accounts",
+      "description": "List connected Social0 social accounts and resolve platform names to account UUIDs before publishing."
+    },
+    {
+      "name": "social0-jobs",
+      "description": "Poll Social0 publish jobs by tracking_id until completed, failed, or partial."
+    }
+  ]
+}

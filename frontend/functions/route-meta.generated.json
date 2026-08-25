@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-20T10:08:05.492Z",
+  "generatedAt": "2026-08-25T02:54:59.837Z",
   "static": {
     "/": {
       "title": "Social0 — AI Agents & Multi-Platform Social Scheduling",
@@ -40,6 +40,18 @@
     "/data-deletion": {
       "title": "Data Deletion | Social0",
       "description": "How to delete your Social0 account or request deletion of your account data."
+    },
+    "/about": {
+      "title": "About Social0 - multi-platform scheduler for humans and agents",
+      "description": "Social0 is an independent social media scheduler for creators, founders, and AI agents. Compose once and publish to nine networks via dashboard, MCP, API, or CLI."
+    },
+    "/contact": {
+      "title": "Contact Social0 - support, legal, and privacy",
+      "description": "Email support@social0.app for product help, legal@social0.app for legal requests, and privacy@social0.app for privacy. Include your account email and any tracking_id."
+    },
+    "/developers": {
+      "title": "Social0 developer resources - API, OpenAPI, MCP, and CLI",
+      "description": "Self-serve Social0 developer access: OpenAPI at api.social0.app/openapi.json, hosted MCP at mcp.social0.app, npm CLI, API keys, and docs.social0.app."
     },
     "/llms.txt": {
       "title": "Social0 llms.txt",

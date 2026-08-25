@@ -225,11 +225,19 @@ export function buildOrganizationJsonLd() {
     name: "Social0",
     url: siteUrl,
     logo: absoluteUrl("/og-image.jpg"),
-    sameAs: ["https://x.com/social0_app"],
+    sameAs: [
+      "https://x.com/social0_app",
+      "https://www.linkedin.com/company/social0/",
+    ],
     contactPoint: {
       "@type": "ContactPoint",
       email: "support@social0.app",
       contactType: "customer support",
+      url: absoluteUrl("/contact"),
+    },
+    address: {
+      "@type": "PostalAddress",
+      addressCountry: "IN",
     },
   };
 }

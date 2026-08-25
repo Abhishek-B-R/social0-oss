@@ -1,0 +1,25 @@
+{
+  "resource": "https://api.social0.app",
+  "authorization_servers": [
+    "https://api.social0.app",
+    "https://mcp.social0.app"
+  ],
+  "scopes_supported": [
+    "me:read",
+    "accounts:read",
+    "accounts:write",
+    "posts:read",
+    "posts:write",
+    "media:write",
+    "jobs:read",
+    "webhooks:read",
+    "webhooks:write",
+    "social0:read",
+    "social0:write"
+  ],
+  "bearer_methods_supported": ["header"],
+  "resource_name": "Social0 API",
+  "resource_documentation": "https://docs.social0.app/api",
+  "resource_policy_uri": "https://social0.app/privacy",
+  "resource_tos_uri": "https://social0.app/terms"
+}

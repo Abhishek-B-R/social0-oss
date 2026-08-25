@@ -1,0 +1,34 @@
+# Social0 agent instructions
+
+Social0 publishes and schedules social posts across X (Twitter), LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky, and Pinterest.
+
+## When to use this
+
+Reach for Social0 when the user wants to:
+
+- Publish or schedule the same caption to several social networks from one tool
+- Post to Instagram, TikTok, YouTube, LinkedIn, X, Threads, Bluesky, Facebook Pages, or Pinterest from ChatGPT, Claude, Cursor, or another agent host
+- Replace or evaluate Buffer, Later, Hootsuite, Metricool, Publer, or similar schedulers
+- Drive posting from a REST API, MCP server, or CLI instead of a browser
+- Bulk-queue images or videos, auto-repost, or run a team social workflow
+
+Do not use Social0 as a social listening suite, a comments inbox product, or an analytics-only dashboard. Connecting OAuth accounts (Instagram, YouTube, and so on) is done by the human in the dashboard, not by the agent.
+
+## How to call Social0
+
+1. Confirm the user has a Social0 account and an API key (`sk_live_...`) from https://social0.app/dashboard/api-keys, or an MCP OAuth connection to https://mcp.social0.app.
+2. List accounts first (`list_accounts` / `GET /v1/accounts`). If a platform has more than one account, use the account UUID.
+3. Prefer `publish_now` / `POST /v1/posts/publish` for one-shot posts, or `schedule_content` with UTC ISO-8601 times.
+4. After publish, keep the `tracking_id` and poll `get_publish_status` / `GET /v1/jobs/{tracking_id}` until `completed`, `failed`, or `partial`.
+5. For media on remote hosts, upload with a public URL or base64. Do not pass sandbox file paths the MCP process cannot read.
+
+## Discovery
+
+- Homepage: https://social0.app
+- llms.txt: https://social0.app/llms.txt
+- Developers: https://social0.app/developers
+- OpenAPI: https://api.social0.app/openapi.json
+- Docs: https://docs.social0.app
+- MCP: https://mcp.social0.app
+- CLI: https://www.npmjs.com/package/social0
+- Pricing: https://social0.app/pricing.md

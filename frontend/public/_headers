@@ -15,5 +15,45 @@
   Content-Type: text/plain; charset=utf-8
   Cache-Control: public, max-age=300
 
+/agent.txt
+  Content-Type: text/plain; charset=utf-8
+  Cache-Control: public, max-age=300
+
+/agents.md
+  Content-Type: text/markdown; charset=utf-8
+  Vary: Accept, Accept-Encoding
+  Cache-Control: public, max-age=300
+
+/pricing.md
+  Content-Type: text/markdown; charset=utf-8
+  Vary: Accept, Accept-Encoding
+  Cache-Control: public, max-age=300
+
+/api-versioning.md
+  Content-Type: text/markdown; charset=utf-8
+  Vary: Accept, Accept-Encoding
+  Cache-Control: public, max-age=300
+
+/.well-known/mcp
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=300
+
+/.well-known/mcp/server-card.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=300
+
+/.well-known/agent-card.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=300
+
+/.well-known/agent-skills/index.json
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=300
+
+/.well-known/oauth-protected-resource
+  Content-Type: application/json; charset=utf-8
+  Cache-Control: public, max-age=300
+
 /*
   Cache-Control: public, max-age=0, must-revalidate
+  Vary: Accept, Accept-Encoding

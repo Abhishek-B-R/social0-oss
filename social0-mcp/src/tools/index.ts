@@ -17,6 +17,7 @@ import {
   uploadMediaInputSchema,
 } from "../schemas/tools.js";
 import { TOOL_DEFINITIONS, type ToolName } from "./definitions.js";
+import { registerMcpResources } from "../resources.js";
 import {
   handleCreatePost,
   handleDeletePost,
@@ -92,6 +93,7 @@ export function createMcpServer(): Server {
     {
       capabilities: {
         tools: {},
+        resources: {},
       },
     },
   );
@@ -99,6 +101,8 @@ export function createMcpServer(): Server {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: TOOL_DEFINITIONS,
   }));
+
+  registerMcpResources(server);
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const name = resolveToolName(request.params.name);

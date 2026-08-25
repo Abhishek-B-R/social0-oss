@@ -3,30 +3,138 @@
   "info": {
     "title": "Social0 API",
     "version": "1.0.0",
-    "description": "Programmatic access to Social0 publishing. Authenticate with `Authorization: Bearer sk_live_...`.\n\n## Examples\n\n### cURL — list accounts\n```bash\ncurl https://api.social0.app/v1/accounts \\\n  -H \"Authorization: Bearer sk_live_YOUR_KEY\"\n```\n\n### JavaScript — create and publish\n```javascript\nconst res = await fetch('https://api.social0.app/v1/posts/publish', {\n  method: 'POST',\n  headers: {\n    'Authorization': 'Bearer sk_live_YOUR_KEY',\n    'Content-Type': 'application/json',\n    'Idempotency-Key': crypto.randomUUID(),\n  },\n  body: JSON.stringify({\n    content: 'Hello from the API!',\n    platforms: ['account-uuid-here'],\n  }),\n});\nconst { tracking_id } = await res.json();\n```\n\n### Python — schedule a post\n```python\nimport requests\n\nresp = requests.post(\n    'https://api.social0.app/v1/posts/schedule',\n    headers={'Authorization': 'Bearer sk_live_YOUR_KEY'},\n    json={\n        'content': 'Scheduled via API',\n        'platforms': ['account-uuid-here'],\n        'scheduledAt': '2026-07-15T10:00:00Z',\n    },\n)\nprint(resp.json())\n```"
+    "summary": "Publish and schedule social posts across 9 networks",
+    "description": "Programmatic access to Social0 publishing. Authenticate with `Authorization: Bearer sk_live_...` (API key) or OAuth 2.0 (MCP connector).\n\n## Versioning\nThe public API is versioned in the URL (`/v1`). Additive changes may ship in v1. Breaking changes get a new prefix or a Sunset window. Policy: https://social0.app/api-versioning.md\n\nDeprecated operations are marked `deprecated: true` in this spec and return `Deprecation: true`. When a removal date is known, responses include `Sunset`.\n\n## Rate limits\nResponses include `RateLimit`, `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`, and `RateLimit-Policy`. 429 responses also include `Retry-After`.\n\nFree 60/hour, Starter 300, Growth 1000, Pro 5000, Max 10000.\n\n## Async publish\n`POST /v1/posts/publish` and `POST /v1/posts/{id}/publish` return `202 Accepted` with `Location: /v1/jobs/{tracking_id}` and a `tracking_id` in the body. Poll `GET /v1/jobs/{tracking_id}` until `completed`, `failed`, or `partial`.\n\n## Examples\n\n### cURL - list accounts\n```bash\ncurl https://api.social0.app/v1/accounts \\\n  -H \"Authorization: Bearer sk_live_YOUR_KEY\"\n```\n\n### JavaScript - create and publish\n```javascript\nconst res = await fetch('https://api.social0.app/v1/posts/publish', {\n  method: 'POST',\n  headers: {\n    'Authorization': 'Bearer sk_live_YOUR_KEY',\n    'Content-Type': 'application/json',\n    'Idempotency-Key': crypto.randomUUID(),\n  },\n  body: JSON.stringify({\n    content: 'Hello from the API!',\n    platforms: ['account-uuid-here'],\n  }),\n});\nconst { tracking_id } = await res.json();\n```",
+    "termsOfService": "https://social0.app/terms",
+    "contact": {
+      "name": "Social0 support",
+      "email": "support@social0.app",
+      "url": "https://social0.app/contact"
+    },
+    "license": {
+      "name": "Proprietary"
+    }
   },
-  "servers": [{ "url": "https://api.social0.app", "description": "Production" }],
-  "security": [{ "bearerAuth": [] }],
+  "servers": [
+    { "url": "https://api.social0.app", "description": "Production" }
+  ],
+  "tags": [
+    { "name": "Auth", "description": "Authenticated user profile" },
+    { "name": "Accounts", "description": "Connected social accounts" },
+    { "name": "Posts", "description": "Drafts, schedules, and publishes" },
+    { "name": "Jobs", "description": "Async publish job status" },
+    { "name": "Media", "description": "Uploads for image and video posts" },
+    { "name": "Webhooks", "description": "Outbound event subscriptions" }
+  ],
+  "security": [{ "bearerAuth": [] }, { "oauth2": ["social0:read", "social0:write"] }],
   "components": {
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "API key with prefix sk_live_"
+        "bearerFormat": "API key",
+        "description": "Social0 API key (`sk_live_...`). Keys currently have full account access; prefer OAuth scopes when using MCP."
+      },
+      "oauth2": {
+        "type": "oauth2",
+        "description": "OAuth 2.0 authorization code + PKCE used by the hosted MCP connector. Request the narrowest scopes you need.",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://mcp.social0.app/oauth/authorize",
+            "tokenUrl": "https://mcp.social0.app/oauth/token",
+            "refreshUrl": "https://mcp.social0.app/oauth/token",
+            "scopes": {
+              "me:read": "Read the authenticated user profile and plan.",
+              "accounts:read": "List connected social accounts.",
+              "accounts:write": "Start OAuth connect and disconnect social accounts.",
+              "posts:read": "List and get posts and publication events.",
+              "posts:write": "Create, update, delete, schedule, and publish posts.",
+              "media:write": "Presign, confirm, and read media uploads.",
+              "jobs:read": "Read publish job status and event streams.",
+              "webhooks:read": "List webhook subscriptions.",
+              "webhooks:write": "Create, update, and delete webhook subscriptions.",
+              "social0:read": "Umbrella read access (MCP default).",
+              "social0:write": "Umbrella write access (MCP default)."
+            }
+          }
+        }
+      }
+    },
+    "headers": {
+      "X-Request-Id": { "schema": { "type": "string" }, "description": "Unique request ID for debugging" },
+      "Location": { "schema": { "type": "string" }, "description": "URL to poll for an async job" },
+      "RateLimit-Limit": { "schema": { "type": "integer" } },
+      "RateLimit-Remaining": { "schema": { "type": "integer" } },
+      "RateLimit-Reset": { "schema": { "type": "integer" }, "description": "Seconds until the window resets" }
+    },
+    "parameters": {
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": false,
+        "schema": { "type": "string" },
+        "description": "Client-supplied key so retries do not double-publish."
       }
     },
     "schemas": {
       "Error": {
         "type": "object",
+        "required": ["error"],
         "properties": {
           "error": {
             "type": "object",
+            "required": ["code", "message"],
             "properties": {
               "code": { "type": "string" },
-              "message": { "type": "string" }
-            },
-            "required": ["code", "message"]
+              "message": { "type": "string" },
+              "details": { "type": "object", "additionalProperties": true }
+            }
           }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string" },
+          "name": { "type": ["string", "null"] },
+          "image": { "type": ["string", "null"] },
+          "plan": { "type": "string" },
+          "timezone": { "type": "string" },
+          "created_at": { "type": ["string", "null"], "format": "date-time" },
+          "api_key": {
+            "type": ["object", "null"],
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "name": { "type": "string" },
+              "prefix": { "type": "string" }
+            }
+          }
+        }
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "platform": { "type": "string" },
+          "username": { "type": ["string", "null"] },
+          "profile_image_url": { "type": ["string", "null"] },
+          "is_active": { "type": "boolean" },
+          "token_expires_at": { "type": ["string", "null"], "format": "date-time" },
+          "token_status": { "type": ["string", "null"] },
+          "created_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "AccountList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Account" } }
+        }
+      },
+      "ConnectUrl": {
+        "type": "object",
+        "properties": {
+          "authorization_url": { "type": "string", "format": "uri" }
         }
       },
       "Post": {
@@ -35,212 +143,678 @@
           "id": { "type": "string", "format": "uuid" },
           "content": { "type": "string" },
           "status": { "type": "string" },
-          "scheduled_at": { "type": "string", "format": "date-time", "nullable": true },
+          "scheduled_at": { "type": ["string", "null"], "format": "date-time" },
+          "created_at": { "type": ["string", "null"], "format": "date-time" },
+          "updated_at": { "type": ["string", "null"], "format": "date-time" },
+          "failure_reason": { "type": ["string", "null"] },
+          "media_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          "metadata": { "type": ["object", "null"], "additionalProperties": true },
+          "platforms": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Publication" }
+          }
+        }
+      },
+      "Publication": {
+        "type": "object",
+        "properties": {
+          "publication_id": { "type": "string" },
+          "connected_account_id": { "type": ["string", "null"] },
+          "platform": { "type": "string" },
+          "status": { "type": "string" },
+          "platform_post_id": { "type": ["string", "null"] },
+          "platform_post_url": { "type": ["string", "null"] },
+          "published_at": { "type": ["string", "null"], "format": "date-time" },
+          "error": { "type": ["string", "null"] }
+        }
+      },
+      "PostList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Post" } },
+          "pagination": { "$ref": "#/components/schemas/Pagination" }
+        }
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": { "type": "integer" },
+          "limit": { "type": "integer" },
+          "total": { "type": "integer" },
+          "total_pages": { "type": "integer" }
+        }
+      },
+      "CreatePostRequest": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "content": { "type": "string" },
+          "platforms": { "type": "array", "items": { "type": "string" } },
+          "accounts": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          "media": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+          "metadata": { "type": "object", "additionalProperties": true },
+          "platform_options": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "CreatedPost": {
+        "type": "object",
+        "properties": { "id": { "type": "string", "format": "uuid" } }
+      },
+      "ScheduledPost": {
+        "type": "object",
+        "properties": {
+          "post_id": { "type": "string", "format": "uuid" },
+          "scheduled_at": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "example": "scheduled" }
+        }
+      },
+      "JobQueued": {
+        "type": "object",
+        "properties": {
+          "post_id": { "type": "string", "format": "uuid" },
+          "tracking_id": { "type": "string" },
+          "status": { "type": "string" },
+          "stream_url": { "type": "string" }
+        }
+      },
+      "Job": {
+        "type": "object",
+        "properties": {
+          "tracking_id": { "type": "string" },
+          "post_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["queued", "processing", "completed", "failed", "partial"] },
+          "total": { "type": "integer" },
+          "completed": { "type": "integer" },
+          "failed": { "type": "integer" },
+          "platform_statuses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": { "type": "string" },
+                "connected_account_id": { "type": ["string", "null"] },
+                "phase": { "type": "string" },
+                "message": { "type": ["string", "null"] },
+                "error": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": { "type": "string" },
+                "connected_account_id": { "type": ["string", "null"] },
+                "message": { "type": "string" }
+              }
+            }
+          },
+          "failure_reason": { "type": ["string", "null"] },
+          "created_at": { "type": ["string", "null"] },
+          "completed_at": { "type": ["string", "null"] }
+        }
+      },
+      "PostEvents": {
+        "type": "object",
+        "properties": {
+          "postId": { "type": "string" },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "phase": { "type": "string" },
+                "platform": { "type": ["string", "null"] },
+                "message": { "type": ["string", "null"] },
+                "created_at": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "PresignRequest": {
+        "type": "object",
+        "required": ["filename", "content_type", "size_bytes"],
+        "properties": {
+          "filename": { "type": "string" },
+          "content_type": { "type": "string" },
+          "size_bytes": { "type": "integer" }
+        }
+      },
+      "PresignResponse": {
+        "type": "object",
+        "properties": {
+          "upload_url": { "type": "string", "format": "uri" },
+          "key": { "type": "string" },
+          "storage_filename": { "type": "string" }
+        }
+      },
+      "ConfirmMediaRequest": {
+        "type": "object",
+        "required": ["key", "storage_filename", "original_filename", "content_type", "size_bytes"],
+        "properties": {
+          "key": { "type": "string" },
+          "storage_filename": { "type": "string" },
+          "original_filename": { "type": "string" },
+          "content_type": { "type": "string" },
+          "size_bytes": { "type": "integer" }
+        }
+      },
+      "Media": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "filename": { "type": "string" },
+          "content_type": { "type": "string" },
+          "size_bytes": { "type": "integer" },
+          "url": { "type": ["string", "null"] },
+          "status": { "type": "string" },
+          "created_at": { "type": ["string", "null"], "format": "date-time" }
+        }
+      },
+      "Webhook": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "url": { "type": "string", "format": "uri" },
+          "events": { "type": "array", "items": { "type": "string" } },
+          "active": { "type": "boolean" },
+          "secret": { "type": "string" },
           "created_at": { "type": "string", "format": "date-time" },
-          "media_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+          "updated_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "WebhookList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/Webhook" } }
         }
       }
     },
-    "headers": {
-      "X-Request-Id": { "schema": { "type": "string" }, "description": "Unique request ID for debugging" }
+    "responses": {
+      "Error": {
+        "description": "Error",
+        "content": {
+          "application/json": { "schema": { "$ref": "#/components/schemas/Error" } }
+        }
+      }
     }
   },
   "paths": {
     "/v1/me": {
       "get": {
+        "operationId": "getCurrentUser",
         "summary": "Get current user",
+        "description": "Return the API-key owner profile, plan, and key prefix.",
         "tags": ["Auth"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["me:read", "social0:read"] }],
         "responses": {
           "200": {
-            "description": "Authenticated user profile (name, email, plan)",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": { "type": "string" },
-                    "email": { "type": "string" },
-                    "name": { "type": "string", "nullable": true },
-                    "image": { "type": "string", "nullable": true },
-                    "plan": { "type": "string" },
-                    "timezone": { "type": "string" },
-                    "created_at": { "type": "string", "format": "date-time", "nullable": true },
-                    "api_key": {
-                      "type": "object",
-                      "nullable": true,
-                      "properties": {
-                        "id": { "type": "string", "format": "uuid" },
-                        "name": { "type": "string" },
-                        "prefix": { "type": "string" }
-                      }
-                    }
-                  }
-                }
-              }
-            }
+            "description": "Authenticated user profile",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/User" } } }
           },
-          "401": { "description": "Invalid API key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "401": { "$ref": "#/components/responses/Error" }
         }
       }
     },
     "/v1/accounts": {
       "get": {
+        "operationId": "listAccounts",
         "summary": "List connected accounts",
+        "description": "List social accounts in the personal workspace.",
         "tags": ["Accounts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["accounts:read", "social0:read"] }],
         "responses": {
-          "200": { "description": "List of connected social accounts" },
-          "401": { "description": "Invalid API key", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+          "200": {
+            "description": "List of connected social accounts",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AccountList" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
         }
       }
     },
     "/v1/accounts/connect": {
       "post": {
+        "operationId": "connectAccount",
         "summary": "Get OAuth authorization URL",
+        "description": "Return a URL the human should open to connect a platform.",
         "tags": ["Accounts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["accounts:write", "social0:write"] }],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": { "platform": { "type": "string", "example": "linkedin" } },
-                "required": ["platform"]
+                "required": ["platform"],
+                "properties": { "platform": { "type": "string", "example": "linkedin" } }
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Authorization URL" }
+          "200": {
+            "description": "Authorization URL",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConnectUrl" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" }
         }
       }
     },
     "/v1/accounts/{id}": {
       "delete": {
+        "operationId": "disconnectAccount",
         "summary": "Disconnect account",
+        "description": "Revoke and remove a connected social account.",
         "tags": ["Accounts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["accounts:write", "social0:write"] }],
         "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
-        "responses": { "204": { "description": "Disconnected" } }
+        "responses": {
+          "204": { "description": "Disconnected" },
+          "404": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
       }
     },
     "/v1/posts": {
       "get": {
+        "operationId": "listPosts",
         "summary": "List posts",
+        "description": "Paginated drafts, schedules, and published posts (offset/page).",
         "tags": ["Posts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:read", "social0:read"] }],
         "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer" } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "minimum": 1 } },
           { "name": "limit", "in": "query", "schema": { "type": "integer", "maximum": 100 } },
           { "name": "status", "in": "query", "schema": { "type": "string" } },
           { "name": "platform", "in": "query", "schema": { "type": "string" } },
-          { "name": "search", "in": "query", "schema": { "type": "string" } }
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "connected_account_id", "in": "query", "schema": { "type": "string", "format": "uuid" } }
         ],
-        "responses": { "200": { "description": "Paginated posts" } }
+        "responses": {
+          "200": {
+            "description": "Paginated posts",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PostList" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
       },
       "post": {
+        "operationId": "createDraft",
         "summary": "Create draft post",
+        "description": "Create an unpublished draft. Does not post to any network.",
         "tags": ["Posts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:write", "social0:write"] }],
         "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "content": { "type": "string" },
-                  "platforms": { "type": "array", "items": { "type": "string", "format": "uuid" } },
-                  "media": { "type": "array", "items": { "type": "string", "format": "uuid" } }
-                },
-                "required": ["content", "platforms"]
-              }
-            }
-          }
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatePostRequest" } } }
         },
-        "responses": { "201": { "description": "Post created" } }
+        "responses": {
+          "201": {
+            "description": "Post created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatedPost" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
       }
     },
     "/v1/posts/{id}": {
-      "get": { "summary": "Get post", "tags": ["Posts"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Post details" } } },
-      "patch": { "summary": "Update draft", "tags": ["Posts"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Updated post" } } },
-      "delete": { "summary": "Delete draft", "tags": ["Posts"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "Deleted" } } }
+      "get": {
+        "operationId": "getPost",
+        "summary": "Get post",
+        "description": "Post detail including per-platform publication rows.",
+        "tags": ["Posts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:read", "social0:read"] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "Post details",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Post" } } }
+          },
+          "404": { "$ref": "#/components/responses/Error" },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "patch": {
+        "operationId": "updateDraft",
+        "summary": "Update draft",
+        "description": "Update an unpublished draft or scheduled post.",
+        "tags": ["Posts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:write", "social0:write"] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatePostRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated post",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Post" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "delete": {
+        "operationId": "deleteDraft",
+        "summary": "Delete draft",
+        "description": "Delete an unpublished draft or scheduled post. Does not delete live network posts.",
+        "tags": ["Posts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:write", "social0:write"] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "204": { "description": "Deleted" },
+          "400": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/posts/{id}/events": {
+      "get": {
+        "operationId": "listPostEvents",
+        "summary": "List publish events for a post",
+        "description": "Timeline of per-platform publish phases.",
+        "tags": ["Posts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:read", "jobs:read", "social0:read"] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "Event timeline",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PostEvents" } } }
+          },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
     },
     "/v1/posts/{id}/publish": {
       "post": {
+        "operationId": "publishPost",
         "summary": "Publish post immediately",
+        "description": "Queue an existing draft for publish. Returns 202 and Location of the job.",
         "tags": ["Posts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:write", "social0:write"] }],
         "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string" } },
-          { "name": "Idempotency-Key", "in": "header", "schema": { "type": "string" } }
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "$ref": "#/components/parameters/IdempotencyKey" }
         ],
-        "responses": { "202": { "description": "Publish queued" } }
+        "responses": {
+          "202": {
+            "description": "Publish queued",
+            "headers": {
+              "Location": { "$ref": "#/components/headers/Location" }
+            },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JobQueued" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
       }
     },
     "/v1/posts/{id}/schedule": {
       "post": {
+        "operationId": "schedulePost",
         "summary": "Schedule post",
+        "description": "Schedule an existing draft for a UTC (or timezone-resolved) time.",
         "tags": ["Posts"],
-        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:write", "social0:write"] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": { "scheduledAt": { "type": "string", "format": "date-time" } },
-                "required": ["scheduledAt"]
+                "required": ["scheduledAt"],
+                "properties": {
+                  "scheduledAt": { "type": "string", "format": "date-time" },
+                  "timezone": { "type": "string" }
+                }
               }
             }
           }
         },
-        "responses": { "200": { "description": "Scheduled" } }
+        "responses": {
+          "200": {
+            "description": "Scheduled",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScheduledPost" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
       }
     },
     "/v1/posts/publish": {
       "post": {
+        "operationId": "createAndPublish",
         "summary": "Create and publish in one request",
+        "description": "Create a post and queue publish. 202 Accepted with Location of the job.",
         "tags": ["Posts"],
-        "parameters": [{ "name": "Idempotency-Key", "in": "header", "schema": { "type": "string" } }],
-        "responses": { "202": { "description": "Created and queued" } }
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:write", "social0:write"] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreatePostRequest" } } }
+        },
+        "responses": {
+          "202": {
+            "description": "Created and queued",
+            "headers": { "Location": { "$ref": "#/components/headers/Location" } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/JobQueued" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" }
+        }
       }
     },
     "/v1/posts/schedule": {
-      "post": { "summary": "Create and schedule in one request", "tags": ["Posts"], "responses": { "201": { "description": "Created and scheduled" } } }
-    },
-    "/v1/jobs/{trackingId}": {
-      "get": {
-        "summary": "Get publish job status",
-        "tags": ["Jobs"],
-        "parameters": [{ "name": "trackingId", "in": "path", "required": true, "schema": { "type": "string" } }],
-        "responses": { "200": { "description": "Job status and platform progress" } }
-      }
-    },
-    "/v1/media/presign": {
       "post": {
-        "summary": "Get presigned upload URL",
-        "tags": ["Media"],
+        "operationId": "createAndSchedule",
+        "summary": "Create and schedule in one request",
+        "description": "Create a post and schedule it.",
+        "tags": ["Posts"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["posts:write", "social0:write"] }],
         "requestBody": {
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "filename": { "type": "string" },
-                  "content_type": { "type": "string" },
-                  "size_bytes": { "type": "integer" }
-                },
-                "required": ["filename", "content_type", "size_bytes"]
+                "allOf": [
+                  { "$ref": "#/components/schemas/CreatePostRequest" },
+                  {
+                    "type": "object",
+                    "required": ["scheduledAt"],
+                    "properties": {
+                      "scheduledAt": { "type": "string", "format": "date-time" },
+                      "timezone": { "type": "string" }
+                    }
+                  }
+                ]
               }
             }
           }
         },
-        "responses": { "200": { "description": "Presigned URL" } }
+        "responses": {
+          "201": {
+            "description": "Created and scheduled",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScheduledPost" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/jobs/{trackingId}": {
+      "get": {
+        "operationId": "getPublishJob",
+        "summary": "Get publish job status",
+        "description": "Poll until status is completed, failed, or partial.",
+        "tags": ["Jobs"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["jobs:read", "social0:read"] }],
+        "parameters": [{ "name": "trackingId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "Job status and platform progress",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Job" } } }
+          },
+          "404": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/jobs/{trackingId}/stream": {
+      "get": {
+        "operationId": "streamPublishJob",
+        "summary": "Stream publish job events",
+        "description": "Server-sent events for an in-flight publish job.",
+        "tags": ["Jobs"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["jobs:read", "social0:read"] }],
+        "parameters": [{ "name": "trackingId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": {
+            "description": "SSE stream",
+            "content": { "text/event-stream": { "schema": { "type": "string" } } }
+          },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/media/presign": {
+      "post": {
+        "operationId": "presignMediaUpload",
+        "summary": "Get presigned upload URL",
+        "description": "Create an R2 presign for a media file, then PUT bytes to upload_url.",
+        "tags": ["Media"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["media:write", "social0:write"] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignRequest" } } }
+        },
+        "responses": {
+          "200": {
+            "description": "Presigned URL",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PresignResponse" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" }
+        }
       }
     },
     "/v1/media/confirm": {
-      "post": { "summary": "Confirm media upload", "tags": ["Media"], "responses": { "201": { "description": "Media ID" } } }
+      "post": {
+        "operationId": "confirmMediaUpload",
+        "summary": "Confirm media upload",
+        "description": "Finalize a presigned upload and return a media id for posts.",
+        "tags": ["Media"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["media:write", "social0:write"] }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ConfirmMediaRequest" } } }
+        },
+        "responses": {
+          "201": {
+            "description": "Media ID",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Media" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/v1/media/{id}": {
+      "get": {
+        "operationId": "getMedia",
+        "summary": "Get media",
+        "description": "Fetch a previously confirmed media object.",
+        "tags": ["Media"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["media:write", "social0:read"] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "Media object",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Media" } } }
+          },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
     },
     "/v1/webhooks": {
-      "get": { "summary": "List webhooks", "tags": ["Webhooks"], "responses": { "200": { "description": "Webhook subscriptions" } } },
-      "post": { "summary": "Create webhook", "tags": ["Webhooks"], "responses": { "201": { "description": "Webhook created with secret" } } }
+      "get": {
+        "operationId": "listWebhooks",
+        "summary": "List webhooks",
+        "description": "List webhook subscriptions for the API-key owner.",
+        "tags": ["Webhooks"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["webhooks:read", "social0:read"] }],
+        "responses": {
+          "200": {
+            "description": "Webhook subscriptions",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/WebhookList" } } }
+          },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "post": {
+        "operationId": "createWebhook",
+        "summary": "Create webhook",
+        "description": "Create a webhook. The secret is returned once.",
+        "tags": ["Webhooks"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["webhooks:write", "social0:write"] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["url", "events"],
+                "properties": {
+                  "url": { "type": "string", "format": "uri" },
+                  "events": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["post.published", "post.failed", "post.scheduled", "post.deleted"]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Webhook created with secret",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Webhook" } } }
+          },
+          "400": { "$ref": "#/components/responses/Error" }
+        }
+      }
     },
     "/v1/webhooks/{id}": {
-      "patch": { "summary": "Update webhook", "tags": ["Webhooks"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "Updated" } } },
-      "delete": { "summary": "Delete webhook", "tags": ["Webhooks"], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "204": { "description": "Deleted" } } }
+      "patch": {
+        "operationId": "updateWebhook",
+        "summary": "Update webhook",
+        "description": "Update URL, events, or active flag.",
+        "tags": ["Webhooks"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["webhooks:write", "social0:write"] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Webhook" } } }
+          },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWebhook",
+        "summary": "Delete webhook",
+        "description": "Remove a webhook subscription.",
+        "tags": ["Webhooks"],
+        "security": [{ "bearerAuth": [] }, { "oauth2": ["webhooks:write", "social0:write"] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "204": { "description": "Deleted" },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
     }
   }
 }
