@@ -15,7 +15,8 @@ import { PlatformBrandIcon } from "./PlatformStrip";
 import { useLandingMode } from "./landing-mode";
 
 /**
- * Storytelling loop (seconds), per sender:
+ * Storytelling loop (seconds), per sender — framer-motion `repeat: Infinity`
+ * (no React remounts per cycle):
  *   0.0        brighten active sender
  *   0.35       green signal on that cord
  *   ~1.2–1.6   Social0 pulses as the post arrives
@@ -27,7 +28,10 @@ const BRIGHTEN_BEFORE_SIGNAL = 0.35;
 const LEG_DURATION = 1.85;
 const DISPATCH_AFTER_SIGNAL_START = 1.15;
 const PLATFORM_DELAY = BRIGHTEN_BEFORE_SIGNAL + DISPATCH_AFTER_SIGNAL_START;
-const REPEAT_DELAY = Math.max(0.25, CYCLE - LEG_DURATION - BRIGHTEN_BEFORE_SIGNAL);
+const REPEAT_DELAY = Math.max(
+  0.25,
+  CYCLE - LEG_DURATION - BRIGHTEN_BEFORE_SIGNAL,
+);
 
 const HUB_PULSE_TIMES = [
   0,
@@ -119,12 +123,12 @@ const BEAM_PROPS = {
 /**
  * Animated flow: You (and Agent in agent mode) → Social0 → platforms.
  * Brighten sender first, then green signal — never the reverse.
+ * Animation is CSS/framer only — no per-cycle React remounts.
  */
 export function FlowAnimation({ className }: { className?: string }) {
   const { mode } = useLandingMode();
   const showAgent = mode === "agent";
   const [sender, setSender] = useState<"you" | "agent">("you");
-  const [cycleId, setCycleId] = useState(0);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
@@ -141,7 +145,6 @@ export function FlowAnimation({ className }: { className?: string }) {
     if (!showAgent) return;
     const id = window.setInterval(() => {
       setSender((s) => (s === "you" ? "agent" : "you"));
-      setCycleId((c) => c + 1);
     }, CYCLE * 1000);
     return () => window.clearInterval(id);
   }, [showAgent]);
@@ -179,11 +182,7 @@ export function FlowAnimation({ className }: { className?: string }) {
               showAgent ? "gap-6" : "",
             )}
           >
-            <Circle
-              ref={userRef}
-              label="You"
-              active={youActive}
-            >
+            <Circle ref={userRef} label="You" active={youActive}>
               <User
                 className="h-6 w-6 text-neutral-800 dark:text-white/80"
                 strokeWidth={1.8}
@@ -203,19 +202,20 @@ export function FlowAnimation({ className }: { className?: string }) {
             ) : null}
           </div>
           <div className="flex flex-col justify-center">
-            <motion.div
-              key={`hub-${cycleId}`}
-              animate={{ scale: [1, 1, 1.09, 1, 1] }}
-              transition={{
-                duration: CYCLE,
-                times: HUB_PULSE_TIMES,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
+            {/* Scale the logo only — hubRef stays unscaled so beam geometry is stable */}
+            <Circle
+              ref={hubRef}
+              className="size-[4.75rem] border-emerald-600/50 bg-white p-1 shadow-[0_0_28px_rgba(16,185,129,0.14)] dark:border-emerald-500/40 dark:bg-[#0A0A0A] dark:shadow-[0_0_28px_rgba(16,185,129,0.18)] sm:size-[5.25rem]"
             >
-              <Circle
-                ref={hubRef}
-                className="size-[4.75rem] border-emerald-600/50 bg-white p-1 shadow-[0_0_28px_rgba(16,185,129,0.14)] dark:border-emerald-500/40 dark:bg-[#0A0A0A] dark:shadow-[0_0_28px_rgba(16,185,129,0.18)] sm:size-[5.25rem]"
+              <motion.div
+                className="h-full w-full"
+                animate={{ scale: [1, 1, 1.09, 1, 1] }}
+                transition={{
+                  duration: CYCLE,
+                  times: HUB_PULSE_TIMES,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
               >
                 {/* Match header: circular mark on light, dark mark on dark */}
                 <img
@@ -234,14 +234,13 @@ export function FlowAnimation({ className }: { className?: string }) {
                   decoding="async"
                   className="hidden h-full w-full rounded-full dark:block"
                 />
-              </Circle>
-            </motion.div>
+              </motion.div>
+            </Circle>
           </div>
           <div className="flex flex-col justify-center gap-3.5 sm:gap-4">
             {platforms.map((p) => (
               <div key={p.name} className="relative">
                 <motion.div
-                  key={`glow-${p.name}-${cycleId}`}
                   className="pointer-events-none absolute inset-0 rounded-full shadow-[0_0_18px_2px_rgba(52,211,153,0.35)]"
                   animate={{ opacity: [0, 0, 1, 0, 0] }}
                   transition={{
@@ -251,7 +250,10 @@ export function FlowAnimation({ className }: { className?: string }) {
                     ease: "easeInOut",
                   }}
                 />
-                <Circle ref={p.ref} className="size-[3.5rem] p-2 sm:size-16 sm:p-2.5">
+                <Circle
+                  ref={p.ref}
+                  className="size-[3.5rem] p-2 sm:size-16 sm:p-2.5"
+                >
                   <PlatformBrandIcon
                     name={p.name}
                     src={p.src}
@@ -267,7 +269,7 @@ export function FlowAnimation({ className }: { className?: string }) {
 
         {/* Cords always connected. Green only after brighten (delay), on active sender. */}
         <AnimatedBeam
-          key={`you-cord-${youActive ? cycleId : "idle"}`}
+          key="you-cord"
           containerRef={containerRef}
           fromRef={userRef}
           toRef={hubRef}
@@ -278,7 +280,7 @@ export function FlowAnimation({ className }: { className?: string }) {
         />
         {showAgent ? (
           <AnimatedBeam
-            key={`agent-cord-${agentActive ? cycleId : "idle"}`}
+            key="agent-cord"
             containerRef={containerRef}
             fromRef={agentRef}
             toRef={hubRef}
@@ -290,7 +292,7 @@ export function FlowAnimation({ className }: { className?: string }) {
         ) : null}
         {platforms.map((p) => (
           <AnimatedBeam
-            key={`${p.name}-${cycleId}`}
+            key={p.name}
             containerRef={containerRef}
             fromRef={hubRef}
             toRef={p.ref}

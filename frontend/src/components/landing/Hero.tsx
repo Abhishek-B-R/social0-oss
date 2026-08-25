@@ -18,16 +18,16 @@ const copy = {
     titleAfter: ".",
     breakBeforeMid: false,
     clarifier:
-      "simple on purpose, fair and transparent pricing, start free, no card needed, with\u00A0human\u00A0support",
+      "Simple on purpose. Fair and transparent pricing — start free, no card needed, with\u00A0human\u00A0support.",
   },
   agent: {
-    titleBefore: "The social media management layer built for ",
+    titleBefore: "Post to all your social media accounts from ",
     titleMid: "",
-    titleEm: "AI agents",
+    titleEm: "your AI agents",
     titleAfter: ".",
     breakBeforeMid: false,
     clarifier:
-      "Plan, generate, review, and schedule with your AI agents. Simple by design, fair pricing, with human support whenever needed.",
+      "Plan, generate, review, and schedule with your AI agents. Simple by design, fair pricing, with human support.",
   },
 } as const;
 
