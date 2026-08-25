@@ -246,8 +246,11 @@ async function publishBlueskyThread(
     };
   }
   const rkey = rootRef.uri.split("/").pop();
+  // Prefer handle (readable). Fall back to DID unencoded — encodeURIComponent
+  // turns did:plc:… into did%3Aplc%3A… which bsky.app rejects.
+  const profileKey = handle || did;
   const platformPostUrl = rkey
-    ? `https://bsky.app/profile/${handle}/post/${rkey}`
+    ? `https://bsky.app/profile/${profileKey}/post/${rkey}`
     : rootRef.uri;
   return {
     status: "published",
@@ -696,10 +699,11 @@ export async function publishToBluesky(
       return { status: "failed", lastError: err, error: err };
     }
 
-    // Build post URL
+    // Prefer handle; DID must stay unencoded (colons). Encoded DIDs 404 on bsky.app.
     const rkey = createData.uri?.split("/").pop();
+    const profileKey = handle || did;
     const platformPostUrl = rkey
-      ? `https://bsky.app/profile/${handle}/post/${rkey}`
+      ? `https://bsky.app/profile/${profileKey}/post/${rkey}`
       : (createData.uri ?? null);
 
     return {

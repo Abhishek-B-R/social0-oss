@@ -3,7 +3,22 @@ import { isSafeHttpsLink } from "./safe-external-url";
 /** True when a string looks like a TikTok @handle (not a display name). */
 export function isLikelyTikTokHandle(value: string): boolean {
   const handle = value.replace(/^@/, "").trim();
-  return handle.length > 0 && !/\s/.test(handle);
+  return (
+    handle.length > 0 &&
+    !/\s/.test(handle) &&
+    /^[a-zA-Z0-9._]+$/.test(handle)
+  );
+}
+
+/** Best-effort @handle from account username / display name. */
+export function tiktokHandleCandidate(
+  username: string | null | undefined,
+): string | null {
+  if (!username) return null;
+  const trimmed = username.replace(/^@/, "").trim();
+  if (isLikelyTikTokHandle(trimmed)) return trimmed;
+  const first = trimmed.split(/\s+/)[0]?.replace(/[^a-zA-Z0-9._]/g, "") ?? "";
+  return first.length >= 2 && isLikelyTikTokHandle(first) ? first : null;
 }
 
 /** Parse @handle from a TikTok profile URL, e.g. https://www.tiktok.com/@abhishekbr1232 */
@@ -21,6 +36,38 @@ export function parseTikTokHandleFromProfileUrl(url: string): string | null {
 export function buildTikTokProfileUrl(handle: string): string {
   const clean = handle.replace(/^@/, "").trim();
   return `https://www.tiktok.com/@${encodeURIComponent(clean)}`;
+}
+
+/** TikTok public video URL. Prefer @handle; handle-free `/@/video/{id}` still works. */
+export function buildTikTokVideoUrl(
+  handle: string | null | undefined,
+  videoId: string,
+): string {
+  const clean = (handle ?? "").replace(/^@/, "").trim();
+  if (clean) {
+    return `https://www.tiktok.com/@${encodeURIComponent(clean)}/video/${videoId}`;
+  }
+  return `https://www.tiktok.com/@/video/${videoId}`;
+}
+
+function isTikTokVideoId(id: string | null | undefined): boolean {
+  return typeof id === "string" && /^\d{10,}$/.test(id);
+}
+
+/** True when URL is a concrete TikTok video (or photo) post, not just a profile. */
+export function isTikTokPostPermalink(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)tiktok\.com$/i.test(u.hostname)) return false;
+    return (
+      /^\/@[^/]*\/(video|photo)\/\d+/.test(u.pathname) ||
+      /^\/video\/\d+/.test(u.pathname) ||
+      /^\/v\/\d+/.test(u.pathname)
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** Resolve a TikTok profile link from stored account data (never uses display name). */
@@ -83,6 +130,21 @@ export function resolveInstagramProfileUrl(input: {
   return null;
 }
 
+/**
+ * True when URL is a real IG media permalink (/p/ or /reel/), not a profile.
+ * Graph media ids cannot be turned into these paths locally — use API `permalink`.
+ */
+export function isInstagramPostPermalink(url: string | null | undefined): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)instagram\.com$/i.test(u.hostname)) return false;
+    return /^\/(p|reel|reels|tv)\/[^/]+/i.test(u.pathname);
+  } catch {
+    return false;
+  }
+}
+
 /** Resolve the "View on platform" link for a publication row. */
 export function getPublicationViewUrl(pub: {
   platform: string;
@@ -96,20 +158,62 @@ export function getPublicationViewUrl(pub: {
   if (pub.status !== "published") return null;
 
   if (pub.platform === "instagram") {
-    return resolveInstagramProfileUrl({
+    if (
+      isInstagramPostPermalink(pub.platformPostUrl) &&
+      isSafeHttpsLink(pub.platformPostUrl)
+    ) {
+      return pub.platformPostUrl;
+    }
+    const profile = resolveInstagramProfileUrl({
       platformUsername: pub.platformUsername,
       platformUserId: pub.platformUserId,
     });
+    return profile && isSafeHttpsLink(profile) ? profile : null;
   }
 
   if (pub.platform === "tiktok") {
-    return (
-      resolveTikTokProfileUrl({
-        platformUsername: pub.platformUsername,
-        platformMetadata: pub.platformMetadata,
-        platformPostUrl: pub.platformPostUrl,
-      }) ?? null
-    );
+    if (
+      isTikTokPostPermalink(pub.platformPostUrl) &&
+      isSafeHttpsLink(pub.platformPostUrl)
+    ) {
+      return pub.platformPostUrl;
+    }
+
+    // Public video id alone is enough — do not require @handle.
+    if (pub.platformPostId && isTikTokVideoId(pub.platformPostId)) {
+      const handle =
+        (pub.platformUsername && isLikelyTikTokHandle(pub.platformUsername)
+          ? pub.platformUsername.replace(/^@/, "")
+          : null) ??
+        (pub.platformPostUrl
+          ? parseTikTokHandleFromProfileUrl(pub.platformPostUrl)
+          : null) ??
+        (typeof pub.platformMetadata?.profileUrl === "string"
+          ? parseTikTokHandleFromProfileUrl(pub.platformMetadata.profileUrl)
+          : null);
+      const videoUrl = buildTikTokVideoUrl(
+        handle && isLikelyTikTokHandle(handle) ? handle : null,
+        pub.platformPostId,
+      );
+      return isSafeHttpsLink(videoUrl) ? videoUrl : null;
+    }
+
+    const profile = resolveTikTokProfileUrl({
+      platformUsername: pub.platformUsername,
+      platformMetadata: pub.platformMetadata,
+      platformPostUrl: pub.platformPostUrl,
+    });
+    if (profile && isSafeHttpsLink(profile)) return profile;
+
+    if (
+      isSafeHttpsLink(pub.platformPostUrl) &&
+      pub.platformPostUrl !== "https://www.tiktok.com" &&
+      pub.platformPostUrl !== "https://www.tiktok.com/"
+    ) {
+      return pub.platformPostUrl;
+    }
+
+    return null;
   }
 
   return isSafeHttpsLink(pub.platformPostUrl) ? pub.platformPostUrl : null;
