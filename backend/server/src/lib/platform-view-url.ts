@@ -165,13 +165,19 @@ export function getPublicationViewUrl(pub: {
       }
     }
 
-    return (
-      resolveTikTokProfileUrl({
-        platformUsername: pub.platformUsername,
-        platformMetadata: pub.platformMetadata,
-        platformPostUrl: pub.platformPostUrl,
-      }) ?? null
-    );
+    const profile = resolveTikTokProfileUrl({
+      platformUsername: pub.platformUsername,
+      platformMetadata: pub.platformMetadata,
+      platformPostUrl: pub.platformPostUrl,
+    });
+    if (profile) return profile;
+
+    // Stored profile / messages / site fallback — never hide View when we have a URL.
+    if (pub.platformPostUrl && /^https:\/\//i.test(pub.platformPostUrl)) {
+      return pub.platformPostUrl;
+    }
+
+    return null;
   }
 
   return pub.platformPostUrl;

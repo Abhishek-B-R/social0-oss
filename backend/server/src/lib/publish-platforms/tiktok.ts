@@ -10,6 +10,7 @@ import {
   TikTokImageError,
 } from "@/lib/tiktok-photo-process";
 import {
+  buildTikTokProfileUrl,
   buildTikTokVideoUrl,
   isLikelyTikTokHandle,
   isTikTokVideoId,
@@ -74,10 +75,13 @@ function resolveTikTokHandle(pub: Pub, profileUrl: string | null): string | null
   return null;
 }
 
+const TIKTOK_SITE_FALLBACK = "https://www.tiktok.com";
+
 /**
  * On PUBLISH_COMPLETE use publicaly_available_post_id →
  * https://www.tiktok.com/@{profile}/video/{id}. Profile-only if id missing.
  * Inbox draft → messages URL (no public video yet).
+ * Never leave platformPostUrl null — View must not be blank.
  */
 async function buildTikTokPublishedResult(
   pub: Pub,
@@ -116,7 +120,7 @@ async function buildTikTokPublishedResult(
   const platformPostUrl =
     publicVideoId && handle
       ? buildTikTokVideoUrl(handle, publicVideoId)
-      : profileUrl;
+      : (profileUrl ?? TIKTOK_SITE_FALLBACK);
 
   return {
     status: "published",
@@ -126,14 +130,58 @@ async function buildTikTokPublishedResult(
   };
 }
 
+/**
+ * Prefer stored handle/profileUrl; otherwise try user.info for username /
+ * profile_deep_link (may fail without extra scopes — that's fine).
+ */
 async function resolveTikTokPublishedProfileUrl(
   pub: Pub,
-  _accessToken: string,
+  accessToken: string,
 ): Promise<string | null> {
-  return resolveTikTokProfileUrl({
+  const fromAccount = resolveTikTokProfileUrl({
     platformUsername: pub.platformUsername,
     platformMetadata: pub.platformMetadata,
   });
+  if (fromAccount) return fromAccount;
+
+  try {
+    const fields = "username,profile_deep_link,display_name";
+    const res = await tiktokApiFetch(
+      `https://open.tiktokapis.com/v2/user/info/?fields=${encodeURIComponent(fields)}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+      },
+    );
+    if (!res.ok) return null;
+    const body = (await res.json().catch(() => ({}))) as {
+      data?: {
+        user?: {
+          username?: string;
+          profile_deep_link?: string;
+        };
+      };
+      error?: { code?: string };
+    };
+    if (body.error?.code && body.error.code !== "ok") return null;
+    const user = body.data?.user;
+    const username =
+      typeof user?.username === "string" ? user.username.trim() : "";
+    if (username && isLikelyTikTokHandle(username)) {
+      return buildTikTokProfileUrl(username);
+    }
+    const deepLink =
+      typeof user?.profile_deep_link === "string"
+        ? user.profile_deep_link.trim()
+        : "";
+    if (deepLink && /^https:\/\//i.test(deepLink)) return deepLink;
+  } catch (err) {
+    publishLog.warn("TikTok profile URL lookup failed:", err);
+  }
+  return null;
 }
 
 export async function publishToTikTok(

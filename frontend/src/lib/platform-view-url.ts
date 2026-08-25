@@ -176,7 +176,10 @@ export function getPublicationViewUrl(pub: {
       platformMetadata: pub.platformMetadata,
       platformPostUrl: pub.platformPostUrl,
     });
-    return profile && isSafeHttpsLink(profile) ? profile : null;
+    if (profile && isSafeHttpsLink(profile)) return profile;
+
+    // Stored profile / messages / site fallback — never hide View when we have a URL.
+    return isSafeHttpsLink(pub.platformPostUrl) ? pub.platformPostUrl : null;
   }
 
   return isSafeHttpsLink(pub.platformPostUrl) ? pub.platformPostUrl : null;

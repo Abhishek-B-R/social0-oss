@@ -64,4 +64,26 @@ describe("platform-view-url permalinks", () => {
     });
     expect(url).toBe("https://www.tiktok.com/@creator");
   });
+
+  it("still shows View for TikTok site/messages fallback URLs", () => {
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: "https://www.tiktok.com",
+        platformPostId: null,
+        platformUsername: "Display Name With Spaces",
+      }),
+    ).toBe("https://www.tiktok.com");
+
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: "https://www.tiktok.com/messages?lang=en",
+        platformPostId: null,
+        platformUsername: null,
+      }),
+    ).toBe("https://www.tiktok.com/messages?lang=en");
+  });
 });
