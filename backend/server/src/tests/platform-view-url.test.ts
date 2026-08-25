@@ -98,7 +98,7 @@ describe("platform-view-url permalinks", () => {
     ).toBe("https://www.tiktok.com/@creator");
   });
 
-  it("does not send View to bare tiktok.com when nothing else is known", () => {
+  it("uses first token of display name for TikTok profile View", () => {
     expect(
       getPublicationViewUrl({
         platform: "tiktok",
@@ -106,6 +106,18 @@ describe("platform-view-url permalinks", () => {
         platformPostUrl: "https://www.tiktok.com/",
         platformPostId: null,
         platformUsername: "Display Name With Spaces",
+      }),
+    ).toBe("https://www.tiktok.com/@Display");
+  });
+
+  it("returns null only when there is no username and no video id", () => {
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: null,
+        platformPostId: null,
+        platformUsername: null,
       }),
     ).toBeNull();
   });
