@@ -1,3 +1,5 @@
+import { isTikTokVideoId } from "./tiktok-post-id.js";
+
 /** True when a string looks like a TikTok @handle (not a display name). */
 export function isLikelyTikTokHandle(value: string): boolean {
   const handle = value.replace(/^@/, "").trim();
@@ -36,10 +38,7 @@ export function buildTikTokVideoUrl(
   return `https://www.tiktok.com/@/video/${videoId}`;
 }
 
-/** Public TikTok video ids are long decimal integers (not `v_…` publish ids). */
-export function isTikTokVideoId(id: string | null | undefined): boolean {
-  return typeof id === "string" && /^\d{10,}$/.test(id);
-}
+export { isTikTokVideoId };
 
 /** True when URL is a concrete TikTok video (or photo) post, not just a profile. */
 export function isTikTokPostPermalink(url: string | null | undefined): boolean {

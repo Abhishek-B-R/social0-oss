@@ -13,10 +13,14 @@ import {
   buildTikTokProfileUrl,
   buildTikTokVideoUrl,
   isLikelyTikTokHandle,
-  isTikTokVideoId,
   parseTikTokHandleFromProfileUrl,
   resolveTikTokProfileUrl,
 } from "@/lib/platform-view-url";
+import {
+  firstTikTokPublicVideoId,
+  isTikTokVideoId,
+  parseTikTokJson,
+} from "@/lib/tiktok-post-id";
 import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import type {
   Post,
@@ -28,8 +32,14 @@ import { getMediaWithUrls } from "./media";
 
 const TIKTOK_FETCH_TIMEOUT_MS = 15_000;
 const TIKTOK_POLL_INTERVAL_MS = 4_000;
-/** Keep total TikTok wait under typical server-action limits (Vercel ~60s incl. init). */
-const TIKTOK_MAX_POLLS = 10;
+/**
+ * TikTok often returns PUBLISH_COMPLETE before publicaly_available_post_id.
+ * Keep polling so we can store a real /video/{id} link for View.
+ * CF worker / API can wait longer than the old Vercel ~60s server-action cap.
+ */
+const TIKTOK_MAX_POLLS = 20;
+/** Extra polls after PUBLISH_COMPLETE while waiting for the public video id. */
+const TIKTOK_PUBLIC_ID_EXTRA_POLLS = 8;
 
 const TIKTOK_ACCEPTED_STATUSES = new Set([
   "PUBLISH_COMPLETE",
@@ -46,14 +56,15 @@ async function tiktokApiFetch(
   });
 }
 
-function firstTikTokPublicVideoId(raw: unknown): string | null {
-  if (raw == null) return null;
-  if (typeof raw === "string" || typeof raw === "number" || typeof raw === "bigint") {
-    const s = String(raw);
-    return isTikTokVideoId(s) ? s : null;
+async function tiktokApiJson(res: Response): Promise<unknown> {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return parseTikTokJson(text);
+  } catch (err) {
+    publishLog.error("TikTok: failed to parse JSON", err);
+    return {};
   }
-  if (!Array.isArray(raw) || raw.length === 0) return null;
-  return firstTikTokPublicVideoId(raw[0]);
 }
 
 function resolveTikTokHandle(pub: Pub, profileUrl: string | null): string | null {
@@ -155,7 +166,7 @@ async function resolveTikTokPublishedProfileUrl(
       },
     );
     if (!res.ok) return null;
-    const body = (await res.json().catch(() => ({}))) as {
+    const body = (await tiktokApiJson(res)) as {
       data?: {
         user?: {
           username?: string;
@@ -469,10 +480,7 @@ export async function publishToTikTok(
     });
   }
 
-  const initData = (await initRes.json().catch((e) => {
-    publishLog.error("TikTok publish/init: failed to parse JSON", e);
-    return {};
-  })) as {
+  const initData = (await tiktokApiJson(initRes)) as {
     data?: { publish_id?: string };
     error?: { code?: string; message?: string; log_id?: string };
   };
@@ -549,10 +557,7 @@ export async function publishToTikTok(
         body: JSON.stringify({ publish_id: publishId }),
       },
     );
-    const statusData = (await statusRes.json().catch((e) => {
-      publishLog.error("TikTok publish/status: failed to parse JSON", e);
-      return {};
-    })) as {
+    const statusData = (await tiktokApiJson(statusRes)) as {
       data?: {
         status?: string;
         fail_reason?: string;
@@ -563,7 +568,11 @@ export async function publishToTikTok(
     return { statusRes, statusData };
   }
 
-  // Poll status; TikTok moderation can take a minute - cap wait so server actions finish.
+  let sawPublishComplete = false;
+  let lastPublicIds: unknown;
+  let publicIdWaitPolls = 0;
+
+  // Poll until we have a public video id when possible — that id is what View needs.
   for (let i = 0; i < TIKTOK_MAX_POLLS; i++) {
     if (i > 0) {
       await new Promise((r) => setTimeout(r, TIKTOK_POLL_INTERVAL_MS));
@@ -579,6 +588,9 @@ export async function publishToTikTok(
       continue;
     }
     const status = statusData.data?.status;
+    const publicIds = statusData.data?.publicaly_available_post_id;
+    const publicVideoId = firstTikTokPublicVideoId(publicIds);
+    if (publicIds != null) lastPublicIds = publicIds;
 
     if (
       status === "FAILED" ||
@@ -598,20 +610,58 @@ export async function publishToTikTok(
       return { status: "failed", lastError, error: "Publish failed" };
     }
 
-    if (status && TIKTOK_ACCEPTED_STATUSES.has(status)) {
-      const publicIds = statusData.data?.publicaly_available_post_id;
+    if (status === "SEND_TO_USER_INBOX") {
       return buildTikTokPublishedResult(pub, accessToken, {
-        platformPostId: firstTikTokPublicVideoId(publicIds),
+        platformPostId: publicVideoId,
+        status,
+        publicIds,
+      });
+    }
+
+    if (status === "PUBLISH_COMPLETE") {
+      sawPublishComplete = true;
+      if (publicVideoId) {
+        publishLog.info("[TikTok] Got public video id for View link:", {
+          publicVideoId,
+        });
+        return buildTikTokPublishedResult(pub, accessToken, {
+          platformPostId: publicVideoId,
+          status,
+          publicIds,
+        });
+      }
+      // Complete but id not ready yet — keep polling a bit more.
+      publicIdWaitPolls += 1;
+      publishLog.info(
+        "[TikTok] PUBLISH_COMPLETE without public id yet; waiting…",
+        { poll: publicIdWaitPolls, publishId },
+      );
+      if (publicIdWaitPolls >= TIKTOK_PUBLIC_ID_EXTRA_POLLS) {
+        break;
+      }
+      continue;
+    }
+
+    if (status && TIKTOK_ACCEPTED_STATUSES.has(status) && publicVideoId) {
+      return buildTikTokPublishedResult(pub, accessToken, {
+        platformPostId: publicVideoId,
         status,
         publicIds,
       });
     }
   }
 
-  // TikTok accepted the upload but is still processing - don't block the UI/server action.
-  publishLog.warn("[TikTok] Publish status still processing after poll cap; marking published",
-    { publishId },);
+  publishLog.warn(
+    "[TikTok] Marking published without a guaranteed public video id",
+    {
+      publishId,
+      sawPublishComplete,
+      lastPublicIds,
+    },
+  );
   return buildTikTokPublishedResult(pub, accessToken, {
-    platformPostId: null,
+    platformPostId: firstTikTokPublicVideoId(lastPublicIds),
+    status: sawPublishComplete ? "PUBLISH_COMPLETE" : undefined,
+    publicIds: lastPublicIds,
   });
 }
