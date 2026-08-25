@@ -33,8 +33,7 @@ export default function DevelopersPage() {
                 /dashboard/api-keys
               </a>
               . Keys start with <code>sk_live_</code>. There is no sales form
-              for the public API. A sandbox is the free tier plus unpublished
-              drafts; live publishes go to real networks.
+              for the public API. Publish and schedule calls go to live networks.
             </p>
           </section>
 
@@ -47,6 +46,12 @@ export default function DevelopersPage() {
                 OpenAPI 3.1:{" "}
                 <a href="https://api.social0.app/openapi.json" className={linkClass}>
                   https://api.social0.app/openapi.json
+                </a>
+              </li>
+              <li>
+                Auth docs:{" "}
+                <a href="/auth.md" className={linkClass}>
+                  /auth.md
                 </a>
               </li>
               <li>

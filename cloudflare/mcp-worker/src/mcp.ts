@@ -1,40 +1,22 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createMcpServer, runWithApiKeyAsync } from "@social0/mcp/server";
 import type { Env } from "./env.js";
+import {
+  extractMcpMethods,
+  isPublicMcpMethod,
+  tryHandlePublicJsonRpc,
+} from "./public-rpc.js";
 
-const PUBLIC_MCP_METHODS = new Set([
-  "initialize",
-  "notifications/initialized",
-  "ping",
-  "tools/list",
-  "resources/list",
-  "resources/read",
-]);
-
-export function isPublicMcpMethod(method: unknown): boolean {
-  return typeof method === "string" && PUBLIC_MCP_METHODS.has(method);
-}
+export { isPublicMcpMethod, extractMcpMethods };
 
 export async function peekMcpMethods(request: Request): Promise<string[]> {
   if (request.method !== "POST") return [];
   try {
     const body = (await request.clone().json()) as unknown;
-    if (Array.isArray(body)) {
-      return body
-        .map((item) =>
-          item && typeof item === "object" && "method" in item
-            ? String((item as { method: unknown }).method)
-            : "",
-        )
-        .filter(Boolean);
-    }
-    if (body && typeof body === "object" && "method" in body) {
-      return [String((body as { method: unknown }).method)];
-    }
+    return extractMcpMethods(body);
   } catch {
     return [];
   }
-  return [];
 }
 
 export async function handleMcpRequest(
@@ -42,6 +24,16 @@ export async function handleMcpRequest(
   _env: Env,
   apiKey: string | null,
 ): Promise<Response> {
+  if (request.method === "POST") {
+    try {
+      const body = await request.clone().json();
+      const publicResponse = tryHandlePublicJsonRpc(body);
+      if (publicResponse) return publicResponse;
+    } catch {
+      // Fall through to the SDK transport for non-JSON or authenticated calls.
+    }
+  }
+
   const run = async () => {
     const server = createMcpServer();
     const transport = new WebStandardStreamableHTTPServerTransport({

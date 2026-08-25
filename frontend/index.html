@@ -83,17 +83,9 @@
     ></script>
   </head>
   <body class="font-sans antialiased">
-    <div id="root">
-      <article
-        id="prerender"
-        style="
-          max-width: 48rem;
-          margin: 2rem auto;
-          padding: 0 1.25rem;
-          font-family: system-ui, sans-serif;
-          line-height: 1.55;
-        "
-      >
+    <div id="root"></div>
+    <noscript>
+      <article id="prerender">
         <h1>Social0 - AI agents and multi-platform social scheduling</h1>
         <p>
           Social0 is a multi-platform social media scheduler for creators,
@@ -107,36 +99,8 @@
         <p>
           Use Social0 when you need to publish or schedule one post to several
           networks, connect ChatGPT, Claude, or Cursor via MCP, or drive posting
-          from a REST API or CLI. It is a fit for Buffer, Later, and Hootsuite
-          alternatives, Threads and Bluesky scheduling, bulk image or video
-          queues, and team social workflows.
+          from a REST API or CLI.
         </p>
-        <h2>How agents should call Social0</h2>
-        <ol>
-          <li>
-            Create an API key at
-            <a href="https://social0.app/dashboard/api-keys"
-              >https://social0.app/dashboard/api-keys</a
-            >
-            or connect the hosted MCP at
-            <a href="https://mcp.social0.app">https://mcp.social0.app</a>.
-          </li>
-          <li>
-            Connect social accounts at
-            <a href="https://social0.app/dashboard/connections"
-              >https://social0.app/dashboard/connections</a
-            >.
-          </li>
-          <li>
-            Publish with MCP <code>publish_now</code> /
-            <code>schedule_content</code> or REST
-            <code>POST /v1/posts/publish</code>.
-          </li>
-          <li>
-            Poll <code>GET /v1/jobs/{tracking_id}</code> until the job is
-            completed, failed, or partial.
-          </li>
-        </ol>
         <p>
           Developer resources:
           <a href="https://social0.app/llms.txt">llms.txt</a>,
@@ -144,12 +108,10 @@
           <a href="https://docs.social0.app">docs</a>,
           <a href="https://social0.app/mcp">MCP</a>,
           <a href="https://social0.app/developers">developers</a>,
-          <a href="https://social0.app/pricing">pricing</a>,
-          <a href="https://social0.app/about">about</a>,
-          <a href="https://social0.app/contact">contact</a>.
+          <a href="https://social0.app/pricing">pricing</a>.
         </p>
       </article>
-    </div>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
     <!-- 100% privacy-first analytics -->
     <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>

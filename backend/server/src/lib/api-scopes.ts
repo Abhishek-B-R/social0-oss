@@ -22,7 +22,7 @@ export function getApiProtectedResourceMetadata(apiBaseUrl: string) {
     scopes_supported: Object.keys(API_OAUTH_SCOPES),
     bearer_methods_supported: ["header"],
     resource_name: "Social0 API",
-    resource_documentation: "https://docs.social0.app/api",
+    resource_documentation: "https://docs.social0.app/docs/api",
     resource_policy_uri: "https://social0.app/privacy",
     resource_tos_uri: "https://social0.app/terms",
   };

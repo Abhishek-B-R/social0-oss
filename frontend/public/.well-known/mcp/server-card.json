@@ -1,9 +1,9 @@
 {
   "name": "Social0 MCP",
   "description": "Publish and schedule to Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Bluesky, and Pinterest from Claude, ChatGPT, Cursor, or any MCP host.",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "serverUrl": "https://mcp.social0.app/mcp",
-  "documentationUrl": "https://docs.social0.app/mcp",
+  "documentationUrl": "https://docs.social0.app/docs/integrations/mcp",
   "tools": [
     { "name": "list_accounts", "description": "List connected social accounts." },
     { "name": "create_draft", "description": "Create an unpublished draft." },
@@ -18,5 +18,13 @@
     { "name": "schedule_content", "description": "Create and schedule in one step." },
     { "name": "get_publish_status", "description": "Poll a publish job by tracking_id." },
     { "name": "suggest_best_platforms", "description": "Recommend platforms for a caption." }
+  ],
+  "icon": "https://social0.app/logo.png",
+  "icons": [
+    {
+      "src": "https://social0.app/logo.png",
+      "mimeType": "image/png",
+      "sizes": ["any"]
+    }
   ]
 }

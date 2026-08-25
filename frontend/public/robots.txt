@@ -2,9 +2,10 @@
 
 User-agent: *
 Allow: /
+Allow: /auth.md
+Allow: /api-versioning.md
 Disallow: /dashboard
 Disallow: /dashboard/
-Disallow: /auth
 Disallow: /auth/
 Disallow: /onboarding
 Disallow: /onboarding/
@@ -12,7 +13,6 @@ Disallow: /oauth
 Disallow: /oauth/
 Disallow: /invite
 Disallow: /invite/
-Disallow: /api
 Disallow: /api/
 Disallow: /v1
 Disallow: /v1/
@@ -20,12 +20,14 @@ Disallow: /v1/
 # AI crawlers - marketing + PSEO allowed; app routes blocked above
 User-agent: GPTBot
 Allow: /
+Allow: /auth.md
+Allow: /api-versioning.md
 Disallow: /dashboard
-Disallow: /auth
+Disallow: /auth/
 Disallow: /onboarding
 Disallow: /oauth
 Disallow: /invite
-Disallow: /api
+Disallow: /api/
 Disallow: /v1
 
 User-agent: ChatGPT-User
@@ -33,32 +35,38 @@ Allow: /
 
 User-agent: ClaudeBot
 Allow: /
+Allow: /auth.md
+Allow: /api-versioning.md
 Disallow: /dashboard
-Disallow: /auth
+Disallow: /auth/
 Disallow: /onboarding
 Disallow: /oauth
 Disallow: /invite
-Disallow: /api
+Disallow: /api/
 Disallow: /v1
 
 User-agent: anthropic-ai
 Allow: /
+Allow: /auth.md
+Allow: /api-versioning.md
 Disallow: /dashboard
-Disallow: /auth
+Disallow: /auth/
 Disallow: /onboarding
 Disallow: /oauth
 Disallow: /invite
-Disallow: /api
+Disallow: /api/
 Disallow: /v1
 
 User-agent: PerplexityBot
 Allow: /
+Allow: /auth.md
+Allow: /api-versioning.md
 Disallow: /dashboard
-Disallow: /auth
+Disallow: /auth/
 Disallow: /onboarding
 Disallow: /oauth
 Disallow: /invite
-Disallow: /api
+Disallow: /api/
 Disallow: /v1
 
 User-agent: Google-Extended

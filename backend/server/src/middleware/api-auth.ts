@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { resolveApiKeyAuth, type ApiKeyAuth } from "../lib/api-keys.js";
-import { apiError } from "../lib/api-errors.js";
+import { apiError, V1_WWW_AUTHENTICATE } from "../lib/api-errors.js";
 import { getSubscriptionForUser } from "../lib/subscription.js";
 import type { SubscriptionState } from "../lib/subscription.js";
 import {
@@ -31,6 +31,7 @@ export async function requireV1ApiKey(
 
   if (!auth) {
     applyRateLimitHeaders(reply, FREE_TIER_RATE_LIMIT);
+    reply.header("WWW-Authenticate", V1_WWW_AUTHENTICATE);
     reply
       .status(401)
       .send(apiError("invalid_api_key", "API key is invalid."));

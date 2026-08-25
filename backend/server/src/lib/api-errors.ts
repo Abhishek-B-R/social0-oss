@@ -11,6 +11,9 @@ export type ApiErrorCode =
   | "not_implemented"
   | "internal_error";
 
+export const V1_WWW_AUTHENTICATE =
+  'Bearer realm="Social0 API", resource_metadata="https://api.social0.app/.well-known/oauth-protected-resource"';
+
 export function apiError(
   code: ApiErrorCode,
   message: string,

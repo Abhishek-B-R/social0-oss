@@ -63,9 +63,17 @@ export default {
         name: "Social0 MCP",
         description:
           "Publish and schedule to Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Bluesky, and Pinterest from Claude, ChatGPT, Cursor, or any MCP host.",
-        version: "0.4.0",
+        version: "0.4.2",
         serverUrl: `${baseUrl}/mcp`,
-        documentationUrl: "https://docs.social0.app/mcp",
+        documentationUrl: "https://docs.social0.app/docs/integrations/mcp",
+        icon: "https://social0.app/logo.png",
+        icons: [
+          {
+            src: "https://social0.app/logo.png",
+            mimeType: "image/png",
+            sizes: ["any"],
+          },
+        ],
         tools: [
           { name: "list_accounts", description: "List connected social accounts." },
           { name: "create_draft", description: "Create an unpublished draft." },
@@ -99,6 +107,8 @@ export default {
 
     if (pathname === "/mcp") {
       const methods = await peekMcpMethods(request);
+      // Only skip auth when every peeked method is discovery-only.
+      // Empty/unknown bodies must still require credentials.
       const publicOnly =
         methods.length > 0 && methods.every((method) => isPublicMcpMethod(method));
 

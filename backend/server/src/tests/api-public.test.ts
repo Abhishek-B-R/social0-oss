@@ -40,6 +40,16 @@ describe("api-errors", () => {
   });
 });
 
+describe("api-auth challenge", () => {
+  it("advertises RFC 9728 resource metadata on 401", async () => {
+    const { V1_WWW_AUTHENTICATE } = await import("../lib/api-errors.js");
+    expect(V1_WWW_AUTHENTICATE).toContain("Bearer realm=\"Social0 API\"");
+    expect(V1_WWW_AUTHENTICATE).toContain(
+      "resource_metadata=\"https://api.social0.app/.well-known/oauth-protected-resource\"",
+    );
+  });
+});
+
 describe("api-rate-limits", () => {
   it("assigns tier limits", async () => {
     const { apiRequestsPerHour } = await import("../lib/api-rate-limits.js");
