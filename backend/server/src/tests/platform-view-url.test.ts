@@ -65,7 +65,7 @@ describe("platform-view-url permalinks", () => {
       status: "published",
       platformPostUrl: null,
       platformPostId: "7123456789012345678",
-      platformUsername: "Display Name With Spaces",
+      platformUsername: null,
     });
     expect(url).toBe(
       "https://www.tiktok.com/@/video/7123456789012345678",
@@ -73,6 +73,18 @@ describe("platform-view-url permalinks", () => {
     expect(buildTikTokVideoUrl(null, "7123456789012345678")).toBe(
       "https://www.tiktok.com/@/video/7123456789012345678",
     );
+  });
+
+  it("prefers video id with display-name handle candidate", () => {
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: null,
+        platformPostId: "7123456789012345678",
+        platformUsername: "Display Name With Spaces",
+      }),
+    ).toBe("https://www.tiktok.com/@Display/video/7123456789012345678");
   });
 
   it("does not invent TikTok video URL from non-numeric publish ids", () => {
