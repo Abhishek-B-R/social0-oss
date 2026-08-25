@@ -12,7 +12,19 @@ const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 90;
 const SESSION_TTL_SECONDS = 900;
 const CLIENT_TTL_SECONDS = 60 * 60 * 24 * 365;
 
-export const MCP_OAUTH_SCOPES = ["social0:read", "social0:write"] as const;
+export const MCP_OAUTH_SCOPES = [
+  "social0:read",
+  "social0:write",
+  "me:read",
+  "accounts:read",
+  "accounts:write",
+  "posts:read",
+  "posts:write",
+  "media:write",
+  "jobs:read",
+  "webhooks:read",
+  "webhooks:write",
+] as const;
 
 export type McpOAuthClient = {
   client_id: string;

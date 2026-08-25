@@ -159,6 +159,11 @@ const HomeMarketingPage = lazy(() =>
 );
 const McpPage = lazy(() => import("@/features/marketing/pages/McpPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
+const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
+const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
+const DevelopersPage = lazy(
+  () => import("@/features/marketing/pages/DevelopersPage"),
+);
 const ToolsIndexPage = lazy(
   () => import("@/features/marketing/pages/ToolsIndexPage"),
 );
@@ -396,6 +401,30 @@ export function AppRouter() {
             element={
               <Lazy>
                 <PricingPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="about"
+            element={
+              <Lazy>
+                <AboutPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="contact"
+            element={
+              <Lazy>
+                <ContactPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="developers"
+            element={
+              <Lazy>
+                <DevelopersPage />
               </Lazy>
             }
           />

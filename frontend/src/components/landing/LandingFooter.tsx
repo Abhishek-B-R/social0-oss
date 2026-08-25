@@ -266,6 +266,9 @@ export function LandingFooter() {
   ];
 
   const companyLinks: FooterLink[] = [
+    { href: "/about", label: "About" },
+    { href: "/contact", label: "Contact" },
+    { href: "/developers", label: "Developers" },
     { href: "/pricing", label: "Pricing" },
     { href: "/terms", label: "Terms of service" },
     { href: "/privacy", label: "Privacy Policy" },

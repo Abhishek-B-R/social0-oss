@@ -204,8 +204,9 @@ export default function PrivacyPage() {
                 Resend) for verification, billing, and legal notices.
               </li>
               <li>
-                <strong>Analytics:</strong> product analytics (e.g. PostHog) to
-                understand usage. Session recording is disabled.
+                <strong>Analytics:</strong> product analytics (e.g. PostHog) and
+                privacy-first pageview analytics (Simple Analytics) to understand
+                usage. Session recording is disabled.
               </li>
               <li>
                 <strong>Identity / social platforms:</strong> Google and each

@@ -6,6 +6,18 @@
  */
 
 import routeMetaBundle from "./route-meta.generated.json";
+import {
+  crawlerHtmlForMeta,
+  injectCrawlerHtml,
+  jsonResponse,
+  markdownForPath,
+  markdownResponse,
+  MCP_SERVER_CARD,
+  NOT_FOUND_MARKDOWN,
+  prefersMarkdown,
+  WELL_KNOWN_MCP,
+  withVaryAccept,
+} from "./_agent";
 
 type RouteMeta = {
   title: string;
@@ -64,7 +76,7 @@ function resolveMeta(path: string): RouteMeta | null {
 
 function isKnownPublicPath(path: string): boolean {
   if (resolveMeta(path)) return true;
-  // App surfaces Google shouldn't index — still "known" so humans aren't 404'd
+  // App surfaces Google shouldn't index - still "known" so humans aren't 404'd
   if (
     path.startsWith("/auth") ||
     path.startsWith("/dashboard") ||
@@ -72,7 +84,11 @@ function isKnownPublicPath(path: string): boolean {
     path.startsWith("/oauth") ||
     path.startsWith("/invite") ||
     path.startsWith("/api") ||
-    path.startsWith("/v1")
+    path.startsWith("/v1") ||
+    path === "/about" ||
+    path === "/contact" ||
+    path === "/developers" ||
+    path.startsWith("/.well-known/")
   ) {
     return true;
   }
@@ -118,7 +134,21 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string):
         name: "Social0",
         url: SITE,
         logo: OG_IMAGE,
-        sameAs: ["https://x.com/social0_app"],
+        sameAs: [
+          "https://x.com/social0_app",
+          "https://www.linkedin.com/company/social0/",
+        ],
+        email: "support@social0.app",
+        contactPoint: {
+          "@type": "ContactPoint",
+          email: "support@social0.app",
+          contactType: "customer support",
+          url: `${SITE}/contact`,
+        },
+        address: {
+          "@type": "PostalAddress",
+          addressCountry: "IN",
+        },
       },
       {
         "@context": "https://schema.org",
@@ -179,23 +209,35 @@ function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
 export async function onRequest(context: PagesContext) {
   const url = new URL(context.request.url);
   let path = url.pathname || "/";
+  const accept = context.request.headers.get("accept");
 
-  // Leave API proxies and hashed static assets alone
-  if (
-    path.startsWith("/api") ||
-    path.startsWith("/v1") ||
-    /\.[a-z0-9]+$/i.test(path)
-  ) {
-    return context.next();
-  }
-
-  // Trailing slash → bare path (except "/")
+  // Trailing slash -> bare path (except "/")
   if (path.length > 1 && path.endsWith("/")) {
     const bare = path.slice(0, -1) + url.search;
     return Response.redirect(new URL(bare, url.origin).toString(), 301);
   }
 
   path = normalizePath(path);
+
+  if (path === "/.well-known/mcp" || path === "/.well-known/mcp/server-card") {
+    return jsonResponse(
+      path.endsWith("server-card") ? MCP_SERVER_CARD : WELL_KNOWN_MCP,
+    );
+  }
+  if (path === "/.well-known/mcp/server-card.json") {
+    return jsonResponse(MCP_SERVER_CARD);
+  }
+
+  // Leave API proxies and hashed static assets alone
+  if (
+    path.startsWith("/api") ||
+    path.startsWith("/v1") ||
+    /\.(png|jpe?g|webp|gif|svg|ico|xml|txt|md|json|js|css|map|woff2?|ttf|mp4|webm|sh)$/i.test(
+      path,
+    )
+  ) {
+    return context.next();
+  }
 
   const altSlugAliases: Record<string, string> = {
     "post-bridge": "postbridge",
@@ -251,10 +293,12 @@ export async function onRequest(context: PagesContext) {
 
   // Soft-404 killer: unknown paths must not return SPA 200
   if (!isKnownPublicPath(path)) {
-    return new Response("Not Found", {
-      status: 404,
-      headers: { "content-type": "text/plain; charset=utf-8" },
-    });
+    return markdownResponse(NOT_FOUND_MARKDOWN, 404);
+  }
+
+  if (prefersMarkdown(accept)) {
+    const markdown = markdownForPath(path);
+    if (markdown) return markdownResponse(markdown);
   }
 
   const meta = resolveMeta(path);
@@ -266,8 +310,12 @@ export async function onRequest(context: PagesContext) {
   if (!contentType.includes("text/html")) return response;
 
   const html = await response.text();
-  const patched = applyRouteMeta(html, path, meta);
-  const headers = new Headers(response.headers);
+  const withMeta = applyRouteMeta(html, path, meta);
+  const patched = injectCrawlerHtml(
+    withMeta,
+    crawlerHtmlForMeta(meta.title, meta.description, path),
+  );
+  const headers = withVaryAccept(new Headers(response.headers));
   headers.set("cache-control", "public, max-age=300");
 
   return new Response(patched, {

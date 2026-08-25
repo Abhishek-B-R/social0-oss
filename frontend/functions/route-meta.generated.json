@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-17T06:54:09.412Z",
+  "generatedAt": "2026-08-25T02:32:26.043Z",
   "static": {
     "/": {
       "title": "Social0 — AI Agents & Multi-Platform Social Scheduling",
@@ -41,6 +41,18 @@
       "title": "Data Deletion | Social0",
       "description": "How to delete your Social0 account or request deletion of your account data."
     },
+    "/about": {
+      "title": "About Social0 - multi-platform scheduler for humans and agents",
+      "description": "Social0 is an independent social media scheduler for creators, founders, and AI agents. Compose once and publish to nine networks via dashboard, MCP, API, or CLI."
+    },
+    "/contact": {
+      "title": "Contact Social0 - support, legal, and privacy",
+      "description": "Email support@social0.app for product help, legal@social0.app for legal requests, and privacy@social0.app for privacy. Include your account email and any tracking_id."
+    },
+    "/developers": {
+      "title": "Social0 developer resources - API, OpenAPI, MCP, and CLI",
+      "description": "Self-serve Social0 developer access: OpenAPI at api.social0.app/openapi.json, hosted MCP at mcp.social0.app, npm CLI, API keys, and docs.social0.app."
+    },
     "/llms.txt": {
       "title": "Social0 llms.txt",
       "description": "Machine-readable product summary for AI systems."
@@ -54,27 +66,27 @@
   "features": {
     "threads-scheduler": {
       "title": "Threads Scheduler - Schedule Meta Threads Posts | Social0",
-      "description": "Schedule Threads posts from one dashboard. Compose text, images, and videos, pick your Threads account, and publish or schedule with Social0."
+      "description": "Schedule Threads posts with per-platform captions, text, images, video, and multi-post threads. Publish now, queue, or save a Social0 draft."
     },
     "bluesky-scheduling-tool": {
       "title": "Bluesky Scheduling Tool - Schedule AT Protocol Posts | Social0",
-      "description": "Bluesky scheduling tool for creators on the AT Protocol. Connect with your handle, compose posts, and schedule or publish from Social0."
+      "description": "Schedule Bluesky posts with character limits, images, threads, and per-platform captions. Connect with your handle and app password."
     },
     "tiktok-scheduler": {
       "title": "TikTok Scheduler - Schedule TikTok Videos & Photos | Social0",
-      "description": "TikTok scheduler for videos and photo posts. Set privacy, titles, and publish or schedule TikTok content from Social0."
+      "description": "TikTok scheduler for videos and photo posts. Set title, privacy, comments, Duet, Stitch, branded disclosure, or send as a TikTok draft."
     },
     "instagram-scheduler": {
       "title": "Instagram Scheduler - Schedule Posts & Reels | Social0",
-      "description": "Instagram scheduler for images, carousels, and reels. Connect via Instagram or Facebook Page and schedule from Social0."
+      "description": "Instagram scheduler for feed posts, carousels, and Reels. Set a custom Reel cover, trial Reel, and per-platform captions in Social0."
     },
     "linkedin-scheduler": {
       "title": "LinkedIn Scheduler - Schedule Posts & Articles | Social0",
-      "description": "LinkedIn scheduler for professionals and founders. Schedule text, images, and video posts to LinkedIn from Social0."
+      "description": "LinkedIn scheduler for text, images (up to 20), and video. Post to connected profiles or pages with per-platform captions from Social0."
     },
     "twitter-scheduler": {
       "title": "X / Twitter Scheduler - Schedule Tweets & Threads | Social0",
-      "description": "X and Twitter scheduler with support for long posts on Premium accounts. Schedule tweets, threads, and media from Social0."
+      "description": "X and Twitter scheduler with Premium limits, threads, media, Made with AI and paid-partnership labels, plus per-platform captions."
     },
     "multi-platform-scheduler": {
       "title": "Multi-Platform Social Media Scheduler | Social0",
@@ -86,11 +98,11 @@
     },
     "youtube-scheduler": {
       "title": "YouTube Scheduler - Schedule Shorts & Videos | Social0",
-      "description": "YouTube scheduler for Shorts and videos. Upload, set title and visibility, and schedule YouTube content from Social0 alongside your other platforms."
+      "description": "YouTube scheduler for Shorts and videos. Set a custom title (caption becomes the description) and schedule from Social0."
     },
     "pinterest-scheduler": {
       "title": "Pinterest Scheduler - Schedule Pins & Idea Pins | Social0",
-      "description": "Pinterest scheduler to publish pins to boards you choose. Schedule images and video pins from Social0's multi-platform composer."
+      "description": "Pinterest scheduler with board picker, optional pin title and destination link, plus image and video pins from Social0."
     },
     "facebook-scheduler": {
       "title": "Facebook Page Scheduler - Schedule Page Posts | Social0",

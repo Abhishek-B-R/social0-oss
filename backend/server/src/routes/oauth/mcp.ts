@@ -17,6 +17,8 @@ import {
   verifyMcpIntrospectSecret,
 } from "../../lib/mcp-oauth.js";
 import { requireSessionUserId } from "../../middleware/auth.js";
+import { getAuthApiBaseUrl } from "../../lib/env.js";
+import { getApiProtectedResourceMetadata } from "../../lib/api-scopes.js";
 
 function mcpBaseUrl(): string {
   return (process.env.MCP_BASE_URL ?? "https://mcp.social0.app").replace(/\/$/, "");
@@ -56,6 +58,10 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
 
   app.get("/.well-known/oauth-authorization-server", async (_request, reply) => {
     return reply.send(getMcpOAuthMetadata(baseUrl));
+  });
+
+  app.get("/.well-known/oauth-protected-resource", async (_request, reply) => {
+    return reply.send(getApiProtectedResourceMetadata(getAuthApiBaseUrl()));
   });
 
   app.get("/.well-known/oauth-protected-resource/mcp", async (_request, reply) => {

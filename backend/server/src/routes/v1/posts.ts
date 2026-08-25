@@ -65,7 +65,7 @@ const scheduleSchema = z.object({
 async function withIdempotency(
   request: Parameters<typeof requireV1ApiKey>[0],
   reply: Parameters<typeof requireV1ApiKey>[1],
-  handler: () => Promise<{ status: number; body: unknown }>,
+  handler: () => Promise<{ status: number; body: unknown; location?: string }>,
 ): Promise<void> {
   const key = request.headers["idempotency-key"] as string | undefined;
   const userId = request.v1Auth?.userId;
@@ -86,6 +86,9 @@ async function withIdempotency(
   }
 
   const result = await handler();
+  if (result.location) {
+    reply.header("Location", result.location);
+  }
   if (key && userId && result.status < 500) {
     await storeIdempotencyResponse(userId, key, result.status, result.body);
   }
@@ -196,6 +199,7 @@ export async function registerPostsRoutes(app: FastifyInstance) {
       }
       return {
         status: 202,
+        location: `/v1/jobs/${result.tracking_id}`,
         body: {
           tracking_id: result.tracking_id,
           status: result.status,
@@ -246,6 +250,7 @@ export async function registerPostsRoutes(app: FastifyInstance) {
       }
       return {
         status: 202,
+        location: `/v1/jobs/${result.tracking_id}`,
         body: {
           post_id: result.post_id,
           tracking_id: result.tracking_id,

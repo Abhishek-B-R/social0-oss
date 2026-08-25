@@ -1,6 +1,18 @@
 import type { Env } from "./env.js";
 
-const MCP_OAUTH_SCOPES = ["social0:read", "social0:write"];
+const MCP_OAUTH_SCOPES = [
+  "social0:read",
+  "social0:write",
+  "me:read",
+  "accounts:read",
+  "accounts:write",
+  "posts:read",
+  "posts:write",
+  "media:write",
+  "jobs:read",
+  "webhooks:read",
+  "webhooks:write",
+];
 
 export function getMcpBaseUrl(env: Env): string {
   return (env.MCP_BASE_URL ?? "https://mcp.social0.app").replace(/\/$/, "");

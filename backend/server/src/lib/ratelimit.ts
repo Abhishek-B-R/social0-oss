@@ -14,8 +14,20 @@ export function isRateLimitingRequired(): boolean {
 }
 
 export type RateLimitResult =
-  | { allowed: true }
-  | { allowed: false; status: 429 | 503; error: string };
+  | {
+      allowed: true;
+      limit?: number;
+      remaining?: number;
+      reset?: number;
+    }
+  | {
+      allowed: false;
+      status: 429 | 503;
+      error: string;
+      limit?: number;
+      remaining?: number;
+      reset?: number;
+    };
 
 export async function enforceRateLimit(
   limiter: Ratelimit | null,
@@ -55,9 +67,17 @@ export async function enforceRateLimit(
       allowed: false,
       status: 429,
       error: "Too many requests. Try again later.",
+      limit: result.limit,
+      remaining: result.remaining,
+      reset: result.reset,
     };
   }
-  return { allowed: true };
+  return {
+    allowed: true,
+    limit: result.limit,
+    remaining: result.remaining,
+    reset: result.reset,
+  };
 }
 
 // 400 uploads/hour per user (supports bulk sessions: ~50 images × 8 sessions)

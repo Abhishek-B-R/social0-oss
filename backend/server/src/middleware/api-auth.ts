@@ -3,7 +3,12 @@ import { resolveApiKeyAuth, type ApiKeyAuth } from "../lib/api-keys.js";
 import { apiError } from "../lib/api-errors.js";
 import { getSubscriptionForUser } from "../lib/subscription.js";
 import type { SubscriptionState } from "../lib/subscription.js";
-import { enforceApiRateLimit } from "../lib/api-rate-limits.js";
+import {
+  applyRateLimitHeaders,
+  enforceApiRateLimit,
+  FREE_TIER_RATE_LIMIT,
+  type ApiRateLimitInfo,
+} from "../lib/api-rate-limits.js";
 
 export type V1AuthContext = ApiKeyAuth & {
   subscription: SubscriptionState;
@@ -12,6 +17,7 @@ export type V1AuthContext = ApiKeyAuth & {
 declare module "fastify" {
   interface FastifyRequest {
     v1Auth?: V1AuthContext;
+    v1RateLimit?: ApiRateLimitInfo;
   }
 }
 
@@ -24,6 +30,7 @@ export async function requireV1ApiKey(
   );
 
   if (!auth) {
+    applyRateLimitHeaders(reply, FREE_TIER_RATE_LIMIT);
     reply
       .status(401)
       .send(apiError("invalid_api_key", "API key is invalid."));
@@ -32,6 +39,8 @@ export async function requireV1ApiKey(
 
   const subscription = await getSubscriptionForUser(auth.userId);
   const rate = await enforceApiRateLimit(subscription.tier, auth.userId);
+  applyRateLimitHeaders(reply, rate.info);
+  request.v1RateLimit = rate.info;
   if (!rate.allowed) {
     if (rate.retryAfterSec) {
       reply.header("Retry-After", String(rate.retryAfterSec));

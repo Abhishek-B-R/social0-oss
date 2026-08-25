@@ -1,0 +1,30 @@
+{
+  "name": "Social0",
+  "description": "Multi-platform social media scheduler with MCP, REST API, and CLI. Publish and schedule to X, LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky, and Pinterest.",
+  "url": "https://mcp.social0.app/mcp",
+  "provider": {
+    "organization": "Social0",
+    "url": "https://social0.app"
+  },
+  "version": "1.0.0",
+  "documentationUrl": "https://docs.social0.app",
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "skills": [
+    {
+      "id": "publish-social-posts",
+      "name": "Publish social posts",
+      "description": "Create, schedule, and publish posts across nine social networks. Poll job status with tracking_id.",
+      "tags": ["social", "publish", "schedule", "mcp"]
+    },
+    {
+      "id": "list-accounts",
+      "name": "List connected accounts",
+      "description": "Show which social accounts are connected and ready to publish."
+    }
+  ]
+}
