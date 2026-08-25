@@ -219,17 +219,68 @@ export async function publishToFacebook(
     postId = data.post_id ?? data.id?.split("_")[1] ?? data.id;
   }
 
-  const platformPostUrl = postId
+  const rawPostId =
+    data.post_id ??
+    (typeof data.id === "string" && data.id.includes("_") ? data.id : null) ??
+    postId ??
+    data.id ??
+    null;
+  const platformPostId = rawPostId
+    ? rawPostId.includes("_")
+      ? rawPostId
+      : `${pageId}_${rawPostId}`
+    : null;
+
+  // Prefer Graph API `permalink_url`. Hand-built /posts/{id} paths often 404.
+  const handmadeFallback = postId
     ? isVideo
       ? `https://www.facebook.com/${pageId}/videos/${postId}/`
       : `https://www.facebook.com/${pageId}/posts/${postId}`
     : null;
+  const platformPostUrl = platformPostId
+    ? await fetchFacebookPermalink(
+        platformPostId,
+        pageAccessToken,
+        handmadeFallback,
+      )
+    : handmadeFallback;
 
   return {
     status: "published",
-    platformPostId: data.id ?? postId ?? null,
+    platformPostId,
     platformPostUrl,
     publishedAt: new Date(),
   };
+}
+
+/** Cosmetic only — never fail a live Facebook publish over permalink lookup. */
+async function fetchFacebookPermalink(
+  postId: string,
+  pageAccessToken: string,
+  fallback: string | null,
+): Promise<string | null> {
+  try {
+    const params = new URLSearchParams({
+      fields: "permalink_url",
+      access_token: pageAccessToken,
+    });
+    const res = await fetch(
+      `https://graph.facebook.com/v21.0/${encodeURIComponent(postId)}?${params}`,
+    );
+    if (!res.ok) return fallback;
+    const data = (await res.json().catch(() => ({}))) as {
+      permalink_url?: string;
+    };
+    const permalink = data.permalink_url?.trim();
+    if (permalink) {
+      if (/^https:\/\//i.test(permalink)) return permalink;
+      if (permalink.startsWith("/")) {
+        return `https://www.facebook.com${permalink}`;
+      }
+    }
+  } catch (err) {
+    publishLog.warn("Facebook permalink fetch failed (using fallback):", err);
+  }
+  return fallback;
 }
 

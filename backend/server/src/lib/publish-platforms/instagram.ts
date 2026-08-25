@@ -480,11 +480,17 @@ export async function publishToInstagram(
     return { status: "failed", lastError: err, error: err };
   }
 
-  const platformPostUrl =
+  const profileFallback =
     resolveInstagramProfileUrl({
       platformUsername: pub.platformUsername,
       platformUserId: pub.platformUserId,
     }) ?? null;
+
+  // Graph media ids are not URL shortcodes. Fetch `permalink` via Graph API after
+  // media_publish; never fail a live post if the cosmetic lookup fails.
+  const platformPostUrl = publishData.id
+    ? await fetchInstagramPermalink(publishData.id, accessToken, profileFallback)
+    : profileFallback;
 
   publishLog.info("✅ Instagram post published successfully:", {
     postId: publishData.id,
@@ -497,4 +503,30 @@ export async function publishToInstagram(
     platformPostUrl,
     publishedAt: new Date(),
   };
+}
+
+/**
+ * Instagram Graph returns the public /p/ or /reel/ URL as `permalink`.
+ * Cosmetic only — swallow errors so we never re-publish a live post.
+ */
+async function fetchInstagramPermalink(
+  mediaId: string,
+  accessToken: string,
+  fallback: string | null,
+): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://graph.instagram.com/v21.0/${encodeURIComponent(mediaId)}?fields=permalink`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!res.ok) return fallback;
+    const data = (await res.json().catch(() => ({}))) as {
+      permalink?: string;
+    };
+    const permalink = data.permalink?.trim();
+    if (permalink && /^https:\/\//i.test(permalink)) return permalink;
+  } catch (err) {
+    publishLog.warn("Instagram permalink fetch failed (using profile fallback):", err);
+  }
+  return fallback;
 }
