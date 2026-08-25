@@ -1,5 +1,6 @@
 /**
- * TikTok OAuth connect helpers - scopes: user.info.basic,video.upload,video.publish only.
+ * TikTok OAuth connect helpers.
+ * Scopes: user.info.basic, user.info.profile (username), video.upload, video.publish.
  */
 
 const OPEN_ID_RE = /^[a-f0-9-]{20,}$/i;
@@ -57,7 +58,10 @@ export function tiktokTokenHasBasicScope(scope: string | null): boolean {
 
 export type TikTokConnectProfile = {
   id: string;
+  /** @handle when available; otherwise display name (may not be a valid handle). */
   username: string | null;
+  /** Canonical https://www.tiktok.com/@handle when username is a real handle. */
+  profileUrl: string | null;
   profileImageUrl: string | null;
 };
 
@@ -68,6 +72,8 @@ type TikTokUserInfoBody = {
       avatar_url?: string;
       avatar_large_url?: string;
       display_name?: string;
+      username?: string;
+      profile_deep_link?: string;
     };
   };
   error?: { code?: string; message?: string; log_id?: string };
@@ -79,14 +85,21 @@ function parseAvatarUrl(raw: unknown): string | null {
   return u.startsWith("http://") || u.startsWith("https://") ? u : null;
 }
 
+function isLikelyHandle(value: string): boolean {
+  const handle = value.replace(/^@/, "").trim();
+  return handle.length > 0 && !/\s/.test(handle) && /^[a-zA-Z0-9._]+$/.test(handle);
+}
+
 /**
- * Fetch display name + avatar via user.info.basic fields only.
- * Matches the working 3187677 connect flow.
+ * Fetch profile via user.info fields. Prefer real `username` (+ profile_deep_link)
+ * when user.info.profile is granted; fall back to display_name + avatar.
  */
 export async function fetchTikTokConnectProfile(
   accessToken: string,
 ): Promise<TikTokConnectProfile | null> {
   const fieldSets = [
+    "open_id,avatar_large_url,avatar_url,display_name,username,profile_deep_link",
+    "open_id,avatar_url,display_name,username",
     "open_id,avatar_large_url,avatar_url,display_name",
     "open_id,avatar_url,display_name",
     "open_id",
@@ -124,14 +137,29 @@ export async function fetchTikTokConnectProfile(
         typeof user?.open_id === "string" ? user.open_id.trim() : "";
       if (!openId) continue;
 
+      const apiUsername =
+        typeof user?.username === "string" ? user.username.trim() : "";
       const displayName =
         typeof user?.display_name === "string"
           ? user.display_name.trim() || null
           : null;
+      const deepLink =
+        typeof user?.profile_deep_link === "string"
+          ? user.profile_deep_link.trim()
+          : "";
+
+      const handle = apiUsername && isLikelyHandle(apiUsername) ? apiUsername : null;
+      const profileUrl = handle
+        ? `https://www.tiktok.com/@${encodeURIComponent(handle)}`
+        : deepLink && /^https:\/\//i.test(deepLink)
+          ? deepLink
+          : null;
 
       return {
         id: openId,
-        username: displayName,
+        // Prefer real @handle for platformUsername so View links work.
+        username: handle ?? displayName,
+        profileUrl,
         profileImageUrl:
           parseAvatarUrl(user?.avatar_large_url) ??
           parseAvatarUrl(user?.avatar_url),
@@ -170,6 +198,7 @@ export async function resolveTikTokConnectUser(
       profile: {
         id: tokens.open_id,
         username: null,
+        profileUrl: null,
         profileImageUrl: null,
       },
     };

@@ -75,13 +75,10 @@ function resolveTikTokHandle(pub: Pub, profileUrl: string | null): string | null
   return null;
 }
 
-const TIKTOK_SITE_FALLBACK = "https://www.tiktok.com";
-
 /**
  * On PUBLISH_COMPLETE use publicaly_available_post_id →
- * https://www.tiktok.com/@{profile}/video/{id}. Profile-only if id missing.
- * Inbox draft → messages URL (no public video yet).
- * Never leave platformPostUrl null — View must not be blank.
+ * https://www.tiktok.com/@{profile}/video/{id} (handle optional — /@/video/{id} works).
+ * Inbox draft → messages URL. Prefer profile over bare homepage when no video id.
  */
 async function buildTikTokPublishedResult(
   pub: Pub,
@@ -117,10 +114,11 @@ async function buildTikTokPublishedResult(
       ? opts.platformPostId
       : null);
   const handle = resolveTikTokHandle(pub, profileUrl);
-  const platformPostUrl =
-    publicVideoId && handle
-      ? buildTikTokVideoUrl(handle, publicVideoId)
-      : (profileUrl ?? TIKTOK_SITE_FALLBACK);
+
+  // Always store a video deep link when we have a public id — handle is optional.
+  const platformPostUrl = publicVideoId
+    ? buildTikTokVideoUrl(handle, publicVideoId)
+    : (profileUrl ?? null);
 
   return {
     status: "published",

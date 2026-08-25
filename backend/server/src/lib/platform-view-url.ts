@@ -22,12 +22,18 @@ export function buildTikTokProfileUrl(handle: string): string {
 }
 
 /**
- * TikTok public video URL — requires `publicaly_available_post_id`, not `publish_id`.
- * Same pattern on PUBLISH_COMPLETE.
+ * TikTok public video URL. Prefer a real @handle; if unknown, use handle-free
+ * `/@/video/{id}` which TikTok resolves by video id (same as m.tiktok.com/v/{id}).
  */
-export function buildTikTokVideoUrl(handle: string, videoId: string): string {
-  const clean = handle.replace(/^@/, "").trim();
-  return `https://www.tiktok.com/@${encodeURIComponent(clean)}/video/${videoId}`;
+export function buildTikTokVideoUrl(
+  handle: string | null | undefined,
+  videoId: string,
+): string {
+  const clean = (handle ?? "").replace(/^@/, "").trim();
+  if (clean) {
+    return `https://www.tiktok.com/@${encodeURIComponent(clean)}/video/${videoId}`;
+  }
+  return `https://www.tiktok.com/@/video/${videoId}`;
 }
 
 /** Public TikTok video ids are long decimal integers (not `v_…` publish ids). */
@@ -41,7 +47,12 @@ export function isTikTokPostPermalink(url: string | null | undefined): boolean {
   try {
     const u = new URL(url);
     if (!/(^|\.)tiktok\.com$/i.test(u.hostname)) return false;
-    return /^\/@[^/]+\/(video|photo)\/\d+/.test(u.pathname);
+    // /@handle/video/id, /@/video/id (handle-free), /video/id, m.tiktok.com/v/id.html
+    return (
+      /^\/@[^/]*\/(video|photo)\/\d+/.test(u.pathname) ||
+      /^\/video\/\d+/.test(u.pathname) ||
+      /^\/v\/\d+/.test(u.pathname)
+    );
   } catch {
     return false;
   }
@@ -149,6 +160,7 @@ export function getPublicationViewUrl(pub: {
       return pub.platformPostUrl;
     }
 
+    // Public video id alone is enough — do not require @handle.
     if (pub.platformPostId && isTikTokVideoId(pub.platformPostId)) {
       const handle =
         (pub.platformUsername && isLikelyTikTokHandle(pub.platformUsername)
@@ -160,9 +172,10 @@ export function getPublicationViewUrl(pub: {
         (typeof pub.platformMetadata?.profileUrl === "string"
           ? parseTikTokHandleFromProfileUrl(pub.platformMetadata.profileUrl)
           : null);
-      if (handle && isLikelyTikTokHandle(handle)) {
-        return buildTikTokVideoUrl(handle, pub.platformPostId);
-      }
+      return buildTikTokVideoUrl(
+        handle && isLikelyTikTokHandle(handle) ? handle : null,
+        pub.platformPostId,
+      );
     }
 
     const profile = resolveTikTokProfileUrl({
@@ -172,12 +185,17 @@ export function getPublicationViewUrl(pub: {
     });
     if (profile) return profile;
 
-    if (pub.platformPostUrl && /^https:\/\//i.test(pub.platformPostUrl)) {
+    // Keep stored messages / profile links; never treat bare homepage as a View target.
+    if (
+      pub.platformPostUrl &&
+      /^https:\/\//i.test(pub.platformPostUrl) &&
+      pub.platformPostUrl !== "https://www.tiktok.com" &&
+      pub.platformPostUrl !== "https://www.tiktok.com/"
+    ) {
       return pub.platformPostUrl;
     }
 
-    // Published TikTok must never leave View blank (even for legacy null rows).
-    return "https://www.tiktok.com";
+    return null;
   }
 
   return pub.platformPostUrl;

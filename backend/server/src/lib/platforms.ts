@@ -75,8 +75,9 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    // Login Kit + Content Posting API only - do not add user.info.profile (separate 2-week review).
-    scope: "user.info.basic,video.upload,video.publish",
+    // Login Kit + Content Posting + profile (username / profile_deep_link for View links).
+    // user.info.profile may need TikTok app review; without it we only get display_name.
+    scope: "user.info.basic,user.info.profile,video.upload,video.publish",
   },
   facebook: {
     clientIdEnv: "FACEBOOK_CLIENT_ID",

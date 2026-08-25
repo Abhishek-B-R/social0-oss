@@ -19,10 +19,15 @@ describe("platform-view-url permalinks", () => {
     ).toBe(false);
   });
 
-  it("detects TikTok video permalinks", () => {
+  it("detects TikTok video permalinks including handle-free", () => {
     expect(
       isTikTokPostPermalink(
         "https://www.tiktok.com/@creator/video/7123456789012345678",
+      ),
+    ).toBe(true);
+    expect(
+      isTikTokPostPermalink(
+        "https://www.tiktok.com/@/video/7123456789012345678",
       ),
     ).toBe(true);
     expect(isTikTokPostPermalink("https://www.tiktok.com/@creator")).toBe(
@@ -54,6 +59,22 @@ describe("platform-view-url permalinks", () => {
     );
   });
 
+  it("builds handle-free TikTok video URL when @handle is unknown", () => {
+    const url = getPublicationViewUrl({
+      platform: "tiktok",
+      status: "published",
+      platformPostUrl: null,
+      platformPostId: "7123456789012345678",
+      platformUsername: "Display Name With Spaces",
+    });
+    expect(url).toBe(
+      "https://www.tiktok.com/@/video/7123456789012345678",
+    );
+    expect(buildTikTokVideoUrl(null, "7123456789012345678")).toBe(
+      "https://www.tiktok.com/@/video/7123456789012345678",
+    );
+  });
+
   it("does not invent TikTok video URL from non-numeric publish ids", () => {
     const url = getPublicationViewUrl({
       platform: "tiktok",
@@ -65,37 +86,27 @@ describe("platform-view-url permalinks", () => {
     expect(url).toBe("https://www.tiktok.com/@creator");
   });
 
-  it("still shows View for TikTok site/messages fallback URLs", () => {
+  it("prefers profile over bare tiktok.com homepage", () => {
     expect(
       getPublicationViewUrl({
         platform: "tiktok",
         status: "published",
-        platformPostUrl: "https://www.tiktok.com",
+        platformPostUrl: "https://www.tiktok.com/",
         platformPostId: null,
-        platformUsername: "Display Name With Spaces",
+        platformUsername: "creator",
       }),
-    ).toBe("https://www.tiktok.com");
-
-    expect(
-      getPublicationViewUrl({
-        platform: "tiktok",
-        status: "published",
-        platformPostUrl: "https://www.tiktok.com/messages?lang=en",
-        platformPostId: null,
-        platformUsername: null,
-      }),
-    ).toBe("https://www.tiktok.com/messages?lang=en");
+    ).toBe("https://www.tiktok.com/@creator");
   });
 
-  it("never leaves published TikTok View blank when URL was never stored", () => {
+  it("does not send View to bare tiktok.com when nothing else is known", () => {
     expect(
       getPublicationViewUrl({
         platform: "tiktok",
         status: "published",
-        platformPostUrl: null,
+        platformPostUrl: "https://www.tiktok.com/",
         platformPostId: null,
         platformUsername: "Display Name With Spaces",
       }),
-    ).toBe("https://www.tiktok.com");
+    ).toBeNull();
   });
 });
