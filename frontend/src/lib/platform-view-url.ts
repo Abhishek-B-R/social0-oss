@@ -178,8 +178,10 @@ export function getPublicationViewUrl(pub: {
     });
     if (profile && isSafeHttpsLink(profile)) return profile;
 
-    // Stored profile / messages / site fallback — never hide View when we have a URL.
-    return isSafeHttpsLink(pub.platformPostUrl) ? pub.platformPostUrl : null;
+    if (isSafeHttpsLink(pub.platformPostUrl)) return pub.platformPostUrl;
+
+    // Published TikTok must never leave View blank (even for legacy null rows).
+    return "https://www.tiktok.com";
   }
 
   return isSafeHttpsLink(pub.platformPostUrl) ? pub.platformPostUrl : null;

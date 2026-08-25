@@ -86,4 +86,16 @@ describe("platform-view-url permalinks", () => {
       }),
     ).toBe("https://www.tiktok.com/messages?lang=en");
   });
+
+  it("never leaves published TikTok View blank when URL was never stored", () => {
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: null,
+        platformPostId: null,
+        platformUsername: "Display Name With Spaces",
+      }),
+    ).toBe("https://www.tiktok.com");
+  });
 });

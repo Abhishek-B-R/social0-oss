@@ -172,12 +172,12 @@ export function getPublicationViewUrl(pub: {
     });
     if (profile) return profile;
 
-    // Stored profile / messages / site fallback — never hide View when we have a URL.
     if (pub.platformPostUrl && /^https:\/\//i.test(pub.platformPostUrl)) {
       return pub.platformPostUrl;
     }
 
-    return null;
+    // Published TikTok must never leave View blank (even for legacy null rows).
+    return "https://www.tiktok.com";
   }
 
   return pub.platformPostUrl;
