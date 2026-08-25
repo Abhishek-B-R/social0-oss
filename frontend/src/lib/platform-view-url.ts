@@ -3,7 +3,22 @@ import { isSafeHttpsLink } from "./safe-external-url";
 /** True when a string looks like a TikTok @handle (not a display name). */
 export function isLikelyTikTokHandle(value: string): boolean {
   const handle = value.replace(/^@/, "").trim();
-  return handle.length > 0 && !/\s/.test(handle);
+  return (
+    handle.length > 0 &&
+    !/\s/.test(handle) &&
+    /^[a-zA-Z0-9._]+$/.test(handle)
+  );
+}
+
+/** Best-effort @handle from account username / display name. */
+export function tiktokHandleCandidate(
+  username: string | null | undefined,
+): string | null {
+  if (!username) return null;
+  const trimmed = username.replace(/^@/, "").trim();
+  if (isLikelyTikTokHandle(trimmed)) return trimmed;
+  const first = trimmed.split(/\s+/)[0]?.replace(/[^a-zA-Z0-9._]/g, "") ?? "";
+  return first.length >= 2 && isLikelyTikTokHandle(first) ? first : null;
 }
 
 /** Parse @handle from a TikTok profile URL, e.g. https://www.tiktok.com/@abhishekbr1232 */
