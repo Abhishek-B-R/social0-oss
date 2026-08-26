@@ -21,12 +21,6 @@ type FooterLink = {
 };
 
 const socialLinks = [
-  // ponytail: self-host repo private - uncomment block below when re-opened
-  // {
-  //   href: "https://github.com/abhishek-b-r/social0-selfhost",
-  //   label: "GitHub",
-  //   Icon: GitHubIcon,
-  // },
   {
     href: "https://x.com/social0_app",
     label: "X",
@@ -247,13 +241,6 @@ export function LandingFooter() {
     { href: "/#stories", label: "Reviews" },
     { href: "/#faq", label: "FAQ" },
     { href: "/#developers", label: "Developers" },
-    // ponytail: self-host repo private
-    // { href: "https://github.com/abhishek-b-r/social0-selfhost", label: "GitHub", external: true },
-    {
-      href: "https://github.com/Abhishek-B-R/social0-cli",
-      label: "GitHub",
-      external: true,
-    },
   ];
 
   const companyLinks: FooterLink[] = [
