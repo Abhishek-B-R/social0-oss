@@ -22,14 +22,14 @@ type FooterLink = {
 
 const socialLinks = [
   {
-    href: "https://www.linkedin.com/company/social0/",
-    label: "LinkedIn",
-    Icon: LinkedInIcon,
-  },
-  {
     href: "https://x.com/social0_app",
     label: "X",
     Icon: XIcon,
+  },
+  {
+    href: "https://www.linkedin.com/company/social0/",
+    label: "LinkedIn",
+    Icon: LinkedInIcon,
   },
   {
     href: "https://www.instagram.com/social0_app",
@@ -305,11 +305,23 @@ export function LandingFooter() {
           </div>
 
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            <FooterColumn title="Platforms" links={platformLinks} pathname={pathname} />
+            <FooterColumn
+              title="Platforms"
+              links={platformLinks}
+              pathname={pathname}
+            />
             <FooterCompareColumn links={compareLinks} pathname={pathname} />
             <FooterColumn title="Tools" links={toolLinks} pathname={pathname} />
-            <FooterColumn title="Resources" links={resourceLinks} pathname={pathname} />
-            <FooterColumn title="Company" links={companyLinks} pathname={pathname} />
+            <FooterColumn
+              title="Resources"
+              links={resourceLinks}
+              pathname={pathname}
+            />
+            <FooterColumn
+              title="Company"
+              links={companyLinks}
+              pathname={pathname}
+            />
           </div>
         </div>
 

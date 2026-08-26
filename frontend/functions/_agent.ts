@@ -245,14 +245,19 @@ export function markdownResponse(body: string, status = 200): Response {
   return new Response(body, { status, headers });
 }
 
+/**
+ * Replace/inject the crawler prerender noscript without spanning other
+ * <noscript> blocks (e.g. font fallback in <head>). A greedy cross-block
+ * match previously wiped </head>, Vite assets, and #root -> blank white page.
+ */
+const PRERENDER_NOSCRIPT_RE =
+  /<noscript>(?:(?!<\/noscript>)[\s\S])*?\bid=["']prerender["'](?:(?!<\/noscript>)[\s\S])*?<\/noscript>/i;
+
 export function injectCrawlerHtml(html: string, article: string): string {
   const wrapped = `<noscript>${article}</noscript>`;
 
-  if (/<noscript>[\s\S]*?id="prerender"[\s\S]*?<\/noscript>/i.test(html)) {
-    return html.replace(
-      /<noscript>[\s\S]*?id="prerender"[\s\S]*?<\/noscript>/i,
-      wrapped,
-    );
+  if (PRERENDER_NOSCRIPT_RE.test(html)) {
+    return html.replace(PRERENDER_NOSCRIPT_RE, wrapped);
   }
 
   const withoutVisible = html.replace(

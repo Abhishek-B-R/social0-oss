@@ -77,65 +77,82 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
       };
 
   useEffect(() => {
+    let lastW = 0;
+    let lastH = 0;
+    let lastD = "";
+    let raf = 0;
+
     const updatePath = () => {
-      if (containerRef.current && fromRef.current && toRef.current) {
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const rectA = fromRef.current.getBoundingClientRect();
-        const rectB = toRef.current.getBoundingClientRect();
+      if (!containerRef.current || !fromRef.current || !toRef.current) return;
 
-        const svgWidth = containerRect.width;
-        const svgHeight = containerRect.height;
-        setSvgDimensions({ width: svgWidth, height: svgHeight });
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const rectA = fromRef.current.getBoundingClientRect();
+      const rectB = toRef.current.getBoundingClientRect();
 
-        const centerAX =
-          rectA.left - containerRect.left + rectA.width / 2 + startXOffset;
-        const centerAY =
-          rectA.top - containerRect.top + rectA.height / 2 + startYOffset;
-        const centerBX =
-          rectB.left - containerRect.left + rectB.width / 2 + endXOffset;
-        const centerBY =
-          rectB.top - containerRect.top + rectB.height / 2 + endYOffset;
+      const svgWidth = containerRect.width;
+      const svgHeight = containerRect.height;
 
-        let startX = centerAX;
-        let startY = centerAY;
-        let endX = centerBX;
-        let endY = centerBY;
-        let d: string;
+      const centerAX =
+        rectA.left - containerRect.left + rectA.width / 2 + startXOffset;
+      const centerAY =
+        rectA.top - containerRect.top + rectA.height / 2 + startYOffset;
+      const centerBX =
+        rectB.left - containerRect.left + rectB.width / 2 + endXOffset;
+      const centerBY =
+        rectB.top - containerRect.top + rectB.height / 2 + endYOffset;
 
-        if (edgeAttach) {
-          const dx = centerBX - centerAX;
-          const dy = centerBY - centerAY;
-          const dist = Math.hypot(dx, dy) || 1;
-          const ux = dx / dist;
-          const uy = dy / dist;
-          const rA = Math.min(rectA.width, rectA.height) / 2 - 1;
-          const rB = Math.min(rectB.width, rectB.height) / 2 - 1;
-          startX = centerAX + ux * rA;
-          startY = centerAY + uy * rA;
-          endX = centerBX - ux * rB;
-          endY = centerBY - uy * rB;
+      let startX = centerAX;
+      let startY = centerAY;
+      let endX = centerBX;
+      let endY = centerBY;
+      let d: string;
 
-          if (curvature === 0) {
-            d = `M ${startX},${startY} L ${endX},${endY}`;
-          } else {
-            const midX = (startX + endX) / 2;
-            const midY = (startY + endY) / 2;
-            const cx = midX - uy * curvature;
-            const cy = midY + ux * curvature;
-            d = `M ${startX},${startY} Q ${cx},${cy} ${endX},${endY}`;
-          }
+      if (edgeAttach) {
+        const dx = centerBX - centerAX;
+        const dy = centerBY - centerAY;
+        const dist = Math.hypot(dx, dy) || 1;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        const rA = Math.min(rectA.width, rectA.height) / 2 - 1;
+        const rB = Math.min(rectB.width, rectB.height) / 2 - 1;
+        startX = centerAX + ux * rA;
+        startY = centerAY + uy * rA;
+        endX = centerBX - ux * rB;
+        endY = centerBY - uy * rB;
+
+        if (curvature === 0) {
+          d = `M ${startX},${startY} L ${endX},${endY}`;
         } else {
-          const controlY = startY - curvature;
-          d = `M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`;
+          const midX = (startX + endX) / 2;
+          const midY = (startY + endY) / 2;
+          const cx = midX - uy * curvature;
+          const cy = midY + ux * curvature;
+          d = `M ${startX},${startY} Q ${cx},${cy} ${endX},${endY}`;
         }
+      } else {
+        const controlY = startY - curvature;
+        d = `M ${startX},${startY} Q ${(startX + endX) / 2},${controlY} ${endX},${endY}`;
+      }
 
+      // Skip setState when geometry is unchanged — ResizeObserver can fire
+      // repeatedly (subpixel / transform thrash) and burn a render per fire.
+      if (svgWidth !== lastW || svgHeight !== lastH) {
+        lastW = svgWidth;
+        lastH = svgHeight;
+        setSvgDimensions({ width: svgWidth, height: svgHeight });
+      }
+      if (d !== lastD) {
+        lastD = d;
         setPathD(d);
       }
     };
 
-    const resizeObserver = new ResizeObserver(() => {
-      updatePath();
-    });
+    const scheduleUpdate = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(updatePath);
+    };
+
+    const resizeObserver = new ResizeObserver(scheduleUpdate);
 
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
@@ -144,6 +161,7 @@ export const AnimatedBeam: React.FC<AnimatedBeamProps> = ({
     updatePath();
 
     return () => {
+      cancelAnimationFrame(raf);
       resizeObserver.disconnect();
     };
   }, [
