@@ -1,5 +1,6 @@
 /**
- * TikTok video ids are 64-bit integers. JSON.parse turns them into unsafe JS numbers.
+ * TikTok video ids are 64-bit integers. JSON.parse turns them into unsafe JS
+ * numbers (precision loss / scientific notation), so View never gets a usable id.
  * Status fetch also often returns only `publish_id` until the post is public.
  */
 
@@ -31,8 +32,18 @@ export function tiktokPublishIdFromStored(
 
 export function firstTikTokPublicVideoId(raw: unknown): string | null {
   if (raw == null) return null;
-  if (typeof raw === "string" || typeof raw === "number" || typeof raw === "bigint") {
-    const s = String(raw);
+  if (
+    typeof raw === "string" ||
+    typeof raw === "number" ||
+    typeof raw === "bigint"
+  ) {
+    // Numbers may already be corrupted — only accept clean digit strings.
+    if (typeof raw === "number") {
+      if (!Number.isFinite(raw) || !Number.isSafeInteger(raw)) return null;
+      const s = String(Math.trunc(raw));
+      return isTikTokVideoId(s) ? s : null;
+    }
+    const s = String(raw).trim();
     return isTikTokVideoId(s) ? s : null;
   }
   if (!Array.isArray(raw) || raw.length === 0) return null;

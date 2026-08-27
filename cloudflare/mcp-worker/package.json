@@ -8,6 +8,7 @@
     "deploy": "npm run prebuild:mcp && wrangler deploy",
     "cf-typegen": "wrangler types",
     "typecheck": "npm run prebuild:mcp && tsc --noEmit",
+    "test": "npm run prebuild:mcp && ../../social0-mcp/node_modules/.bin/tsx --test src/public-rpc.test.ts src/mcp.test.ts",
     "check": "npm run typecheck && wrangler deploy --dry-run"
   },
   "dependencies": {

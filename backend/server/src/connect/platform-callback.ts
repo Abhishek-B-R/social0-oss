@@ -921,7 +921,14 @@ export async function platformCallback(
           "/dashboard/connections",
         );
       }
-      userInfo = resolved.profile;
+      userInfo = {
+        id: resolved.profile.id,
+        username: resolved.profile.username,
+        profileImageUrl: resolved.profile.profileImageUrl,
+        ...(resolved.profile.profileUrl
+          ? { platformMetadata: { profileUrl: resolved.profile.profileUrl } }
+          : {}),
+      };
     } else if (
       (platform === "instagram" || platform === "threads") &&
       tokens.user_id
@@ -1180,6 +1187,14 @@ export async function platformCallback(
         };
       }
 
+      // Persist TikTok @profile URL when Login Kit returns username / deep link.
+      if (platform === "tiktok" && userInfo.platformMetadata) {
+        updateData.platformMetadata = {
+          ...((existing.platformMetadata as Record<string, unknown>) || {}),
+          ...userInfo.platformMetadata,
+        };
+      }
+
       await db
         .update(connectedAccounts)
         .set(updateData)
@@ -1196,9 +1211,13 @@ export async function platformCallback(
     // Generate UUID for account ID (needed for encryption)
     const accountId = crypto.randomUUID();
 
-    // Prepare metadata for Instagram direct OAuth
+    // Prepare metadata for Instagram direct OAuth / TikTok profile URL
     const platformMetadata: Record<string, unknown> | undefined =
-      platform === "instagram" ? { connectionMethod: "direct" } : undefined;
+      platform === "instagram"
+        ? { connectionMethod: "direct" }
+        : platform === "tiktok" && userInfo.platformMetadata
+          ? userInfo.platformMetadata
+          : undefined;
 
     if (platform === "threads") {
       console.log("Saving Threads account:", {

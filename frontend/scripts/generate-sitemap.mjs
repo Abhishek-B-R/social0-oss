@@ -246,18 +246,26 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - About: ${base}/about
 - Contact: ${base}/contact
 - Developers (API, MCP, CLI, OpenAPI): ${base}/developers
+- Developers (markdown): ${base}/developers.md
+- Auth docs: ${base}/auth.md
 - Pricing (Free, Starter, Growth, Pro, Max): ${base}/pricing
 - Pricing (markdown): ${base}/pricing.md
 - MCP server for AI assistants: ${base}/mcp
 - Agent instructions: ${base}/agent.txt
-- Sign up: ${base}/auth
+- Sign up (free, no credit card): ${base}/auth
 - Documentation: https://docs.social0.app
-- MCP docs: https://docs.social0.app/mcp
-- API reference: https://docs.social0.app/api
+- MCP docs: https://docs.social0.app/docs/integrations/mcp
+- API reference: https://docs.social0.app/docs/api
 - OpenAPI spec: https://api.social0.app/openapi.json
+- OpenAPI spec (this domain): ${base}/openapi.json
 - Hosted MCP: https://mcp.social0.app
+- Hosted MCP endpoint: https://mcp.social0.app/mcp
 - CLI: ${base}/tools/cli
+- Webhooks: ${base}/tools/webhooks
 - API versioning: ${base}/api-versioning.md
+- AI catalog: ${base}/.well-known/ai-catalog.json
+- API catalog: ${base}/.well-known/api-catalog
+- MCP server card: ${base}/.well-known/mcp/server-card.json
 
 ## Why Social0 vs legacy schedulers
 
@@ -310,6 +318,9 @@ const entries = [
   { loc: `${base}/about`, changefreq: "monthly", priority: "0.6" },
   { loc: `${base}/contact`, changefreq: "monthly", priority: "0.6" },
   { loc: `${base}/developers`, changefreq: "weekly", priority: "0.8" },
+  { loc: `${base}/developers.md`, changefreq: "weekly", priority: "0.7" },
+  { loc: `${base}/auth.md`, changefreq: "monthly", priority: "0.6" },
+  { loc: `${base}/openapi.json`, changefreq: "weekly", priority: "0.7" },
   { loc: `${base}/privacy`, changefreq: "monthly", priority: "0.3" },
   { loc: `${base}/terms`, changefreq: "monthly", priority: "0.3" },
   { loc: `${base}/refund`, changefreq: "monthly", priority: "0.3" },
@@ -365,10 +376,14 @@ fs.mkdirSync(outDir, { recursive: true });
 fs.mkdirSync(functionsDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, "sitemap.xml"), xml);
 fs.writeFileSync(path.join(outDir, "llms.txt"), generateLlmsTxt());
+const openapiSrc = path.resolve(root, "../backend/server/openapi/openapi.json");
+if (fs.existsSync(openapiSrc)) {
+  fs.copyFileSync(openapiSrc, path.join(outDir, "openapi.json"));
+}
 fs.writeFileSync(
   path.join(functionsDir, "route-meta.generated.json"),
   `${JSON.stringify(generateRouteMetaJson(), null, 2)}\n`,
 );
 console.log(
-  `Wrote sitemap.xml (${entries.length} URLs), llms.txt, and route-meta.generated.json`,
+  `Wrote sitemap.xml (${entries.length} URLs), llms.txt, openapi.json copy, and route-meta.generated.json`,
 );

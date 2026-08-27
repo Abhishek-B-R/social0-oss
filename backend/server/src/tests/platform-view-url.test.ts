@@ -19,10 +19,15 @@ describe("platform-view-url permalinks", () => {
     ).toBe(false);
   });
 
-  it("detects TikTok video permalinks", () => {
+  it("detects TikTok video permalinks including handle-free", () => {
     expect(
       isTikTokPostPermalink(
         "https://www.tiktok.com/@creator/video/7123456789012345678",
+      ),
+    ).toBe(true);
+    expect(
+      isTikTokPostPermalink(
+        "https://www.tiktok.com/@/video/7123456789012345678",
       ),
     ).toBe(true);
     expect(isTikTokPostPermalink("https://www.tiktok.com/@creator")).toBe(
@@ -54,7 +59,35 @@ describe("platform-view-url permalinks", () => {
     );
   });
 
-  it("does not invent TikTok video URL from publish_id prefix", () => {
+  it("builds handle-free TikTok video URL when @handle is unknown", () => {
+    const url = getPublicationViewUrl({
+      platform: "tiktok",
+      status: "published",
+      platformPostUrl: null,
+      platformPostId: "7123456789012345678",
+      platformUsername: null,
+    });
+    expect(url).toBe(
+      "https://www.tiktok.com/@/video/7123456789012345678",
+    );
+    expect(buildTikTokVideoUrl(null, "7123456789012345678")).toBe(
+      "https://www.tiktok.com/@/video/7123456789012345678",
+    );
+  });
+
+  it("prefers video id with display-name handle candidate", () => {
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: null,
+        platformPostId: "7123456789012345678",
+        platformUsername: "Display Name With Spaces",
+      }),
+    ).toBe("https://www.tiktok.com/@Display/video/7123456789012345678");
+  });
+
+  it("does not invent TikTok video URL from non-numeric publish ids", () => {
     const url = getPublicationViewUrl({
       platform: "tiktok",
       status: "published",
@@ -63,5 +96,41 @@ describe("platform-view-url permalinks", () => {
       platformUsername: "creator",
     });
     expect(url).toBe("https://www.tiktok.com/@creator");
+  });
+
+  it("prefers profile over bare tiktok.com homepage", () => {
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: "https://www.tiktok.com/",
+        platformPostId: null,
+        platformUsername: "creator",
+      }),
+    ).toBe("https://www.tiktok.com/@creator");
+  });
+
+  it("uses first token of display name for TikTok profile View", () => {
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: "https://www.tiktok.com/",
+        platformPostId: null,
+        platformUsername: "Display Name With Spaces",
+      }),
+    ).toBe("https://www.tiktok.com/@Display");
+  });
+
+  it("returns null only when there is no username and no video id", () => {
+    expect(
+      getPublicationViewUrl({
+        platform: "tiktok",
+        status: "published",
+        platformPostUrl: null,
+        platformPostId: null,
+        platformUsername: null,
+      }),
+    ).toBeNull();
   });
 });

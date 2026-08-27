@@ -5,16 +5,12 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import Image from "@/components/AppImage";
-import { useLandingModeOrDefault } from "./landing-mode";
 
 type NavLink = { href: string; label: string };
 
-function landingNavLinks(mode: "normal" | "agent"): NavLink[] {
+function landingNavLinks(): NavLink[] {
   return [
     { href: "/#features", label: "Features" },
-    ...(mode === "agent"
-      ? [{ href: "/#agent-demos", label: "Agents" }]
-      : []),
     { href: "/#platforms", label: "Platforms" },
     { href: "/#developers", label: "Developers" },
     { href: "/#stories", label: "Reviews" },
@@ -33,8 +29,7 @@ function landingNavHref(href: string, pathname: string | null) {
 
 export function LandingHeader() {
   const pathname = useLocation().pathname;
-  const { mode } = useLandingModeOrDefault();
-  const navLinks = landingNavLinks(mode);
+  const navLinks = landingNavLinks();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session } = useSession();
   const user = session?.user;

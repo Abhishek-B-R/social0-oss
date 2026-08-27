@@ -1,6 +1,6 @@
 /**
  * Cloudflare Pages middleware for crawlers and SEO:
- * - 301 trailing slash → bare path
+ * - 301 trailing slash -> bare path
  * - inject title / description / canonical / OG / WebPage JSON-LD on known routes
  * - hard 404 for unknown public paths (stops soft-200 SPA duplicates)
  */
@@ -12,6 +12,9 @@ import {
   jsonResponse,
   markdownForPath,
   markdownResponse,
+  AI_CATALOG,
+  API_CATALOG,
+  discoveryLinkHeader,
   MCP_SERVER_CARD,
   NOT_FOUND_MARKDOWN,
   prefersMarkdown,
@@ -174,7 +177,7 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string):
 }
 
 function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
-  // Canonical always strips query (e.g. ?mode=agentic → /)
+  // Canonical always strips query (e.g. ?mode=agentic -> /)
   const canonicalPath = path === "/home" ? "/" : path;
   const url = `${SITE}${canonicalPath === "/" ? "/" : canonicalPath}`;
 
@@ -226,6 +229,16 @@ export async function onRequest(context: PagesContext) {
   }
   if (path === "/.well-known/mcp/server-card.json") {
     return jsonResponse(MCP_SERVER_CARD);
+  }
+  if (path === "/.well-known/ai-catalog.json") {
+    return jsonResponse(AI_CATALOG);
+  }
+  if (path === "/.well-known/api-catalog") {
+    return jsonResponse(
+      API_CATALOG,
+      200,
+      'application/linkset+json; profile="https://www.rfc-editor.org/info/rfc9727"',
+    );
   }
 
   // Leave API proxies and hashed static assets alone
@@ -317,6 +330,7 @@ export async function onRequest(context: PagesContext) {
   );
   const headers = withVaryAccept(new Headers(response.headers));
   headers.set("cache-control", "public, max-age=300");
+  headers.set("Link", discoveryLinkHeader());
 
   return new Response(patched, {
     status: response.status,

@@ -31,7 +31,13 @@ export async function registerDocsRoutes(app: FastifyInstance) {
 
   app.get("/openapi.json", async (_request, reply) => {
     const spec = readFileSync(specPath, "utf8");
-    return reply.type("application/json").send(spec);
+    return reply
+      .header(
+        "Link",
+        '</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"',
+      )
+      .type("application/json")
+      .send(spec);
   });
 
   app.get("/docs", async (_request, reply) => {

@@ -1,0 +1,45 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Social0",
+    "identifier": "did:web:social0.app"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:social0.app:mcp:social0",
+      "displayName": "Social0 MCP server",
+      "type": "application/mcp-server-card+json",
+      "url": "https://social0.app/.well-known/mcp/server-card.json"
+    },
+    {
+      "identifier": "urn:air:social0.app:api:openapi",
+      "displayName": "Social0 REST API OpenAPI spec",
+      "type": "application/openapi+json",
+      "url": "https://api.social0.app/openapi.json"
+    },
+    {
+      "identifier": "urn:air:social0.app:docs:developers",
+      "displayName": "Social0 developer resources",
+      "type": "text/html",
+      "url": "https://social0.app/developers"
+    },
+    {
+      "identifier": "urn:air:social0.app:docs:auth",
+      "displayName": "Social0 API authentication",
+      "type": "text/markdown",
+      "url": "https://social0.app/auth.md"
+    },
+    {
+      "identifier": "urn:air:social0.app:docs:webhooks",
+      "displayName": "Social0 webhooks",
+      "type": "text/html",
+      "url": "https://social0.app/tools/webhooks"
+    },
+    {
+      "identifier": "urn:air:social0.app:skill:social0",
+      "displayName": "Social0 agent skill",
+      "type": "text/markdown",
+      "url": "https://social0.app/.well-known/agent-skills/index.json"
+    }
+  ]
+}

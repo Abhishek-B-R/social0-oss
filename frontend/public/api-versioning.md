@@ -26,4 +26,4 @@ Agents should treat `Deprecation: true` as a signal to migrate, and must stop ca
 ## Support
 
 Questions: support@social0.app
-Docs: https://docs.social0.app/api
+Docs: https://docs.social0.app/docs/api

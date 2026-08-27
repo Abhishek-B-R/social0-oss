@@ -27,8 +27,13 @@ Do not use Social0 as a social listening suite, a comments inbox product, or an 
 - Homepage: https://social0.app
 - llms.txt: https://social0.app/llms.txt
 - Developers: https://social0.app/developers
+- Developers (markdown): https://social0.app/developers.md
+- Auth docs: https://social0.app/auth.md
 - OpenAPI: https://api.social0.app/openapi.json
+- OpenAPI (this domain): https://social0.app/openapi.json
 - Docs: https://docs.social0.app
 - MCP: https://mcp.social0.app
+- API catalog: https://social0.app/.well-known/api-catalog
+- AI catalog: https://social0.app/.well-known/ai-catalog.json
 - CLI: https://www.npmjs.com/package/social0
 - Pricing: https://social0.app/pricing.md

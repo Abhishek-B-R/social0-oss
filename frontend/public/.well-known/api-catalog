@@ -1,0 +1,56 @@
+{
+  "linkset": [
+    {
+      "anchor": "https://api.social0.app/",
+      "service-desc": [
+        {
+          "href": "https://api.social0.app/openapi.json",
+          "type": "application/json"
+        },
+        {
+          "href": "https://social0.app/openapi.json",
+          "type": "application/json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://docs.social0.app/docs/api",
+          "type": "text/html"
+        },
+        {
+          "href": "https://social0.app/developers",
+          "type": "text/html"
+        },
+        {
+          "href": "https://social0.app/auth.md",
+          "type": "text/markdown"
+        }
+      ],
+      "status": [
+        {
+          "href": "https://api.social0.app/health",
+          "type": "application/json"
+        }
+      ]
+    },
+    {
+      "anchor": "https://mcp.social0.app/mcp",
+      "service-desc": [
+        {
+          "href": "https://social0.app/.well-known/mcp/server-card.json",
+          "type": "application/json"
+        }
+      ],
+      "service-doc": [
+        {
+          "href": "https://social0.app/mcp",
+          "type": "text/html"
+        },
+        {
+          "href": "https://docs.social0.app/docs/integrations/mcp",
+          "type": "text/html"
+        }
+      ]
+    }
+  ]
+}

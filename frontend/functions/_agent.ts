@@ -29,7 +29,7 @@ Do not use Social0 for social listening, inbox management as a primary product, 
 
 - Agent index: ${SITE}/llms.txt
 - OpenAPI: https://api.social0.app/openapi.json
-- REST docs: https://docs.social0.app/api
+- REST docs: https://docs.social0.app/docs/api
 - MCP docs: ${SITE}/mcp
 - CLI: ${SITE}/tools/cli
 - Pricing: ${SITE}/pricing
@@ -68,7 +68,7 @@ Connect Claude, ChatGPT, Cursor, or any MCP host to Social0. Hosted endpoint: ht
 
 Tools cover listing accounts, drafts, publishing, scheduling, media upload, and job status.
 
-Docs: https://docs.social0.app/mcp · Product page: ${SITE}/mcp
+Docs: https://docs.social0.app/docs/integrations/mcp · Product page: ${SITE}/mcp
 
 ${PRODUCT_BLURB}
 `,
@@ -93,12 +93,15 @@ ${PRODUCT_BLURB}
 Programmatic publishing for agents and apps:
 
 - OpenAPI spec: https://api.social0.app/openapi.json
-- REST docs: https://docs.social0.app/api
+- REST docs: https://docs.social0.app/docs/api
 - Hosted MCP: https://mcp.social0.app
 - npm MCP: @social0/mcp
 - CLI: npm i -g social0
 - API keys: ${SITE}/dashboard/api-keys
+- Auth docs: ${SITE}/auth.md
 - Versioning policy: ${SITE}/api-versioning.md
+- AI catalog: ${SITE}/.well-known/ai-catalog.json
+- API catalog: ${SITE}/.well-known/api-catalog
 
 ${PRODUCT_BLURB}
 `,
@@ -159,25 +162,18 @@ export function markdownForPath(path: string): string | null {
 }
 
 export function homepageCrawlerHtml(): string {
-  return `<article id="prerender" style="max-width:48rem;margin:2rem auto;padding:0 1.25rem;font-family:system-ui,sans-serif;line-height:1.55;color:#111">
+  return `<article id="prerender">
   <h1>Social0 - AI agents and multi-platform social scheduling</h1>
   <p>${escapeHtml(PRODUCT_BLURB)}</p>
   <h2>When to use Social0</h2>
   <p>Use Social0 when you need to publish or schedule one post to several networks, connect ChatGPT, Claude, or Cursor via MCP, or drive posting from a REST API or CLI. It is a fit for Buffer, Later, and Hootsuite alternatives, Threads and Bluesky scheduling, bulk image or video queues, and team social workflows.</p>
-  <h2>How agents should call Social0</h2>
-  <ol>
-    <li>Create an API key at <a href="${SITE}/dashboard/api-keys">${SITE}/dashboard/api-keys</a> or connect the hosted MCP at <a href="https://mcp.social0.app">https://mcp.social0.app</a>.</li>
-    <li>Connect social accounts at <a href="${SITE}/dashboard/connections">${SITE}/dashboard/connections</a>.</li>
-    <li>Publish with MCP <code>publish_now</code> / <code>schedule_content</code> or REST <code>POST /v1/posts/publish</code>.</li>
-    <li>Poll <code>GET /v1/jobs/{tracking_id}</code> until the job is completed, failed, or partial.</li>
-  </ol>
   <p>Developer resources: <a href="${SITE}/llms.txt">llms.txt</a>, <a href="https://api.social0.app/openapi.json">OpenAPI</a>, <a href="https://docs.social0.app">docs</a>, <a href="${SITE}/mcp">MCP</a>, <a href="${SITE}/developers">developers</a>, <a href="${SITE}/pricing">pricing</a>, <a href="${SITE}/about">about</a>, <a href="${SITE}/contact">contact</a>.</p>
 </article>`;
 }
 
 export function crawlerHtmlForMeta(title: string, description: string, path: string): string {
   if (path === "/" || path === "/home") return homepageCrawlerHtml();
-  return `<article id="prerender" style="max-width:48rem;margin:2rem auto;padding:0 1.25rem;font-family:system-ui,sans-serif;line-height:1.55;color:#111">
+  return `<article id="prerender">
   <h1>${escapeHtml(title)}</h1>
   <p>${escapeHtml(description)}</p>
   <p>${escapeHtml(PRODUCT_BLURB)}</p>
@@ -249,39 +245,62 @@ export function markdownResponse(body: string, status = 200): Response {
   return new Response(body, { status, headers });
 }
 
+/**
+ * Replace/inject the crawler prerender noscript without spanning other
+ * <noscript> blocks (e.g. font fallback in <head>). A greedy cross-block
+ * match previously wiped </head>, Vite assets, and #root -> blank white page.
+ */
+const PRERENDER_NOSCRIPT_RE =
+  /<noscript>(?:(?!<\/noscript>)[\s\S])*?\bid=["']prerender["'](?:(?!<\/noscript>)[\s\S])*?<\/noscript>/i;
+
 export function injectCrawlerHtml(html: string, article: string): string {
-  if (html.includes('id="prerender"')) {
-    return html.replace(
-      /<article id="prerender"[\s\S]*?<\/article>/i,
-      article,
+  const wrapped = `<noscript>${article}</noscript>`;
+
+  if (PRERENDER_NOSCRIPT_RE.test(html)) {
+    return html.replace(PRERENDER_NOSCRIPT_RE, wrapped);
+  }
+
+  const withoutVisible = html.replace(
+    /<div id="root">\s*<article\s[^>]*id="prerender"[\s\S]*?<\/article>\s*<\/div>/i,
+    `<div id="root"></div>`,
+  );
+
+  if (/<div id="root">\s*<\/div>/i.test(withoutVisible)) {
+    return withoutVisible.replace(
+      /<div id="root">\s*<\/div>/i,
+      `<div id="root"></div>\n    ${wrapped}`,
     );
   }
-  if (/<div id="root">/i.test(html)) {
-    return html.replace(
-      /<div id="root">[\s\S]*?<\/div>/i,
-      `<div id="root">${article}</div>`,
-    );
-  }
-  return html.replace(/<body([^>]*)>/i, `<body$1>\n${article}\n`);
+
+  return withoutVisible.replace(/<\/body>/i, `    ${wrapped}\n  </body>`);
 }
 
 export const WELL_KNOWN_MCP = {
   name: "Social0 MCP",
   description:
     "Publish and schedule to Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Bluesky, and Pinterest from Claude, ChatGPT, Cursor, or any MCP host.",
-  version: "0.4.0",
+  version: "0.4.2",
   serverUrl: "https://mcp.social0.app/mcp",
   documentation: "https://social0.app/mcp",
   transport: "streamable-http",
+  icon: "https://social0.app/logo.png",
 };
 
 export const MCP_SERVER_CARD = {
   name: "Social0 MCP",
   description:
     "Publish and schedule to Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Bluesky, and Pinterest from Claude, ChatGPT, Cursor, or any MCP host.",
-  version: "0.4.0",
+  version: "0.4.2",
   serverUrl: "https://mcp.social0.app/mcp",
-  documentationUrl: "https://docs.social0.app/mcp",
+  documentationUrl: "https://docs.social0.app/docs/integrations/mcp",
+  icon: "https://social0.app/logo.png",
+  icons: [
+    {
+      src: "https://social0.app/logo.png",
+      mimeType: "image/png",
+      sizes: ["any"],
+    },
+  ],
   tools: [
     { name: "list_accounts", description: "List connected social accounts." },
     { name: "create_draft", description: "Create an unpublished draft." },
@@ -299,11 +318,103 @@ export const MCP_SERVER_CARD = {
   ],
 };
 
-export function jsonResponse(body: unknown, status = 200): Response {
+export const AI_CATALOG = {
+  specVersion: "1.0",
+  host: {
+    displayName: "Social0",
+    identifier: "did:web:social0.app",
+  },
+  entries: [
+    {
+      identifier: "urn:air:social0.app:mcp:social0",
+      displayName: "Social0 MCP server",
+      type: "application/mcp-server-card+json",
+      url: "https://social0.app/.well-known/mcp/server-card.json",
+    },
+    {
+      identifier: "urn:air:social0.app:api:openapi",
+      displayName: "Social0 REST API OpenAPI spec",
+      type: "application/openapi+json",
+      url: "https://api.social0.app/openapi.json",
+    },
+    {
+      identifier: "urn:air:social0.app:docs:developers",
+      displayName: "Social0 developer resources",
+      type: "text/html",
+      url: "https://social0.app/developers",
+    },
+    {
+      identifier: "urn:air:social0.app:docs:auth",
+      displayName: "Social0 API authentication",
+      type: "text/markdown",
+      url: "https://social0.app/auth.md",
+    },
+    {
+      identifier: "urn:air:social0.app:docs:webhooks",
+      displayName: "Social0 webhooks",
+      type: "text/html",
+      url: "https://social0.app/tools/webhooks",
+    },
+    {
+      identifier: "urn:air:social0.app:skill:social0",
+      displayName: "Social0 agent skill",
+      type: "text/markdown",
+      url: "https://social0.app/.well-known/agent-skills/index.json",
+    },
+  ],
+};
+
+export const API_CATALOG = {
+  linkset: [
+    {
+      anchor: "https://api.social0.app/",
+      "service-desc": [
+        { href: "https://api.social0.app/openapi.json", type: "application/json" },
+        { href: "https://social0.app/openapi.json", type: "application/json" },
+      ],
+      "service-doc": [
+        { href: "https://docs.social0.app/docs/api", type: "text/html" },
+        { href: "https://social0.app/developers", type: "text/html" },
+        { href: "https://social0.app/auth.md", type: "text/markdown" },
+      ],
+      status: [{ href: "https://api.social0.app/health", type: "application/json" }],
+    },
+    {
+      anchor: "https://mcp.social0.app/mcp",
+      "service-desc": [
+        {
+          href: "https://social0.app/.well-known/mcp/server-card.json",
+          type: "application/json",
+        },
+      ],
+      "service-doc": [
+        { href: "https://social0.app/mcp", type: "text/html" },
+        { href: "https://docs.social0.app/docs/integrations/mcp", type: "text/html" },
+      ],
+    },
+  ],
+};
+
+export function discoveryLinkHeader(): string {
+  return [
+    `</.well-known/api-catalog>; rel="api-catalog"; type="application/linkset+json"; profile="https://www.rfc-editor.org/info/rfc9727"`,
+    `</.well-known/ai-catalog.json>; rel="describedby"; type="application/json"`,
+    `</llms.txt>; rel="describedby"; type="text/plain"`,
+    `<https://api.social0.app/openapi.json>; rel="service-desc"; type="application/json"`,
+    `</auth.md>; rel="describedby"; type="text/markdown"`,
+    `</developers>; rel="service-doc"; type="text/html"`,
+  ].join(", ");
+}
+
+export function jsonResponse(
+  body: unknown,
+  status = 200,
+  contentType = "application/json; charset=utf-8",
+): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      "content-type": "application/json; charset=utf-8",
+      "content-type": contentType,
       "cache-control": "public, max-age=300",
     },
   });

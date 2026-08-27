@@ -17,6 +17,7 @@ import { registerV1Routes } from "./routes/v1/index.js";
 import { registerApiRoutes } from "./routes/api/index.js";
 import { registerAdminRoutes } from "./routes/admin/index.js";
 import { registerDocsRoutes } from "./routes/docs.js";
+import { registerPublicAgentRoutes } from "./routes/public-agent.js";
 import { registerMcpOAuthPublicRoutes } from "./routes/oauth/mcp.js";
 import { getCorsOrigins } from "./lib/app-url.js";
 import {
@@ -130,6 +131,7 @@ export async function buildApp() {
   await app.register(registerAdminRoutes, { prefix: "/admin" });
   await app.register(registerMcpOAuthPublicRoutes);
   await app.register(registerDocsRoutes);
+  await app.register(registerPublicAgentRoutes);
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error(error);

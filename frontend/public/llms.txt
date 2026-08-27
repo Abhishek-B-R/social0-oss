@@ -14,18 +14,26 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - About: https://social0.app/about
 - Contact: https://social0.app/contact
 - Developers (API, MCP, CLI, OpenAPI): https://social0.app/developers
+- Developers (markdown): https://social0.app/developers.md
+- Auth docs: https://social0.app/auth.md
 - Pricing (Free, Starter, Growth, Pro, Max): https://social0.app/pricing
 - Pricing (markdown): https://social0.app/pricing.md
 - MCP server for AI assistants: https://social0.app/mcp
 - Agent instructions: https://social0.app/agent.txt
-- Sign up: https://social0.app/auth
+- Sign up (free, no credit card): https://social0.app/auth
 - Documentation: https://docs.social0.app
-- MCP docs: https://docs.social0.app/mcp
-- API reference: https://docs.social0.app/api
+- MCP docs: https://docs.social0.app/docs/integrations/mcp
+- API reference: https://docs.social0.app/docs/api
 - OpenAPI spec: https://api.social0.app/openapi.json
+- OpenAPI spec (this domain): https://social0.app/openapi.json
 - Hosted MCP: https://mcp.social0.app
+- Hosted MCP endpoint: https://mcp.social0.app/mcp
 - CLI: https://social0.app/tools/cli
+- Webhooks: https://social0.app/tools/webhooks
 - API versioning: https://social0.app/api-versioning.md
+- AI catalog: https://social0.app/.well-known/ai-catalog.json
+- API catalog: https://social0.app/.well-known/api-catalog
+- MCP server card: https://social0.app/.well-known/mcp/server-card.json
 
 ## Why Social0 vs legacy schedulers
 
