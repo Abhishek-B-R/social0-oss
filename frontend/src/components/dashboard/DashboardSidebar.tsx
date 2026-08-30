@@ -37,11 +37,6 @@ import {
 } from "@/lib/dashboard-base-path";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
 import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
-import {
-  SidebarCreateSectionBones,
-  SidebarExtraPostBones,
-  SidebarNavPendingBones,
-} from "@/components/dashboard/DashboardShellSkeleton";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -233,6 +228,10 @@ export function DashboardSidebar({
   const logoSrc =
     mounted && resolvedTheme === "dark" ? "/logo-dark.png" : "/logo.png";
 
+  const showCreate = layoutPending || canCreatePosts;
+  const showAnalytics = layoutPending || canViewAnalytics;
+  const showInbox = layoutPending || canViewInbox;
+
   return (
     <aside
       className={cn(
@@ -330,9 +329,7 @@ export function DashboardSidebar({
         </div>
 
         {!isGuest && !sessionPending ? (
-          layoutPending ? (
-            <SidebarNavPendingBones collapsed={collapsed} />
-          ) : collapsed ? (
+          collapsed ? (
             <SidebarHoverTip label="Workspaces" enabled>
               <Link
                 href="/dashboard/workspaces"
@@ -353,7 +350,7 @@ export function DashboardSidebar({
           )
         ) : null}
 
-        {layoutPending ? null : canCreatePosts ? (
+        {showCreate ? (
         <SidebarHoverTip label="Create post" enabled={collapsed}>
           <Link
             href={dash("composer")}
@@ -383,9 +380,7 @@ export function DashboardSidebar({
             collapsed ? "gap-3 px-2 pb-3" : "gap-6 p-4 pt-0",
           )}
         >
-          {layoutPending ? (
-            <SidebarCreateSectionBones collapsed={collapsed} />
-          ) : canCreatePosts ? (
+          {showCreate ? (
           <Section title="Create" collapsed={collapsed}>
             <NavLink
               href={dash("composer")}
@@ -447,32 +442,26 @@ export function DashboardSidebar({
               collapsed={collapsed}
               isActive={relativeMatches(relative, "calendar")}
             />
-            {layoutPending ? (
-              <SidebarExtraPostBones collapsed={collapsed} />
-            ) : (
-              <>
-                {canViewAnalytics ? (
-                  <NavLink
-                    href={dash("analytics")}
-                    label="Analytics"
-                    icon={ChartLine}
-                    collapsed={collapsed}
-                    isActive={relativeMatches(relative, "analytics")}
-                    experimental
-                  />
-                ) : null}
-                {canViewInbox ? (
-                  <NavLink
-                    href={dash("inbox")}
-                    label="Inbox"
-                    icon={ChatCircle}
-                    collapsed={collapsed}
-                    isActive={relativeMatches(relative, "inbox")}
-                    experimental
-                  />
-                ) : null}
-              </>
-            )}
+            {showAnalytics ? (
+              <NavLink
+                href={dash("analytics")}
+                label="Analytics"
+                icon={ChartLine}
+                collapsed={collapsed}
+                isActive={relativeMatches(relative, "analytics")}
+                experimental
+              />
+            ) : null}
+            {showInbox ? (
+              <NavLink
+                href={dash("inbox")}
+                label="Inbox"
+                icon={ChatCircle}
+                collapsed={collapsed}
+                isActive={relativeMatches(relative, "inbox")}
+                experimental
+              />
+            ) : null}
           </Section>
 
           <Section title="Workspace" collapsed={collapsed}>
@@ -548,6 +537,7 @@ export function DashboardSidebar({
           <SidebarAccountMenu
             user={user}
             planLabel={planLabel}
+            planPending={layoutPending}
             railCollapsed={collapsed}
           />
         )}

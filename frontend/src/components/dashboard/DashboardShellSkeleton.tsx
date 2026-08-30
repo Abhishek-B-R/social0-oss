@@ -1,48 +1,83 @@
+import Image from "@/components/AppImage";
 import { SkeletonBone } from "@/components/ui/skeleton-bone";
+import {
+  CalendarDots,
+  ChartLine,
+  ChatCircle,
+  CheckCircle,
+  Clock,
+  List,
+  NoteBlank,
+  Pencil,
+  PlugsConnected,
+  SidebarSimple,
+  Sliders,
+  Stack,
+  Users,
+} from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
 
-function NavBone({ collapsed }: { collapsed?: boolean }) {
+type StaticNavItem = {
+  label: string;
+  icon: React.ComponentType<{ className?: string; size?: number }>;
+  experimental?: boolean;
+};
+
+function StaticNavRow({ label, icon: Icon, experimental }: StaticNavItem) {
   return (
-    <div
-      className={cn(
-        "flex items-center rounded-lg",
-        collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
-      )}
-    >
-      <SkeletonBone className="h-4 w-4 shrink-0 rounded bg-sidebar-active" />
-      {!collapsed ? (
-        <SkeletonBone className="h-3 w-24 rounded bg-sidebar-active" />
+    <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-text">
+      <Icon className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {experimental ? (
+        <span className="shrink-0 rounded bg-sidebar-active px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-muted">
+          Beta
+        </span>
       ) : null}
     </div>
   );
 }
 
-function SectionBones({
+function StaticSection({
   title,
-  count,
-  collapsed,
+  items,
 }: {
   title: string;
-  count: number;
-  collapsed?: boolean;
+  items: StaticNavItem[];
 }) {
   return (
     <div className="flex flex-col gap-0.5">
-      {collapsed ? (
-        <div className="mx-auto my-1 h-px w-6 bg-sidebar-border" aria-hidden />
-      ) : (
-        <p className="mb-1 px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
-          {title}
-        </p>
-      )}
-      {Array.from({ length: count }, (_, i) => (
-        <NavBone key={i} collapsed={collapsed} />
+      <p className="mb-1 px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
+        {title}
+      </p>
+      {items.map((item) => (
+        <StaticNavRow key={item.label} {...item} />
       ))}
     </div>
   );
 }
 
-/** Full dashboard chrome while session resolves - mirrors live sidebar sections. */
+const CREATE_ITEMS: StaticNavItem[] = [
+  { label: "Composer", icon: Pencil },
+  { label: "Manual setup", icon: Sliders },
+  { label: "Bulk tools", icon: Stack },
+];
+
+const POST_ITEMS: StaticNavItem[] = [
+  { label: "All", icon: List },
+  { label: "Posted", icon: CheckCircle },
+  { label: "Scheduled", icon: Clock },
+  { label: "Drafts", icon: NoteBlank },
+  { label: "Calendar", icon: CalendarDots },
+  { label: "Analytics", icon: ChartLine, experimental: true },
+  { label: "Inbox", icon: ChatCircle, experimental: true },
+];
+
+const WORKSPACE_ITEMS: StaticNavItem[] = [
+  { label: "Connections", icon: PlugsConnected },
+  { label: "Teams", icon: Users },
+];
+
+/** Full dashboard chrome while session resolves - static sidebar, skeleton only for dynamic bits. */
 export function DashboardShellSkeleton() {
   return (
     <div
@@ -57,10 +92,23 @@ export function DashboardShellSkeleton() {
         <div className="flex shrink-0 flex-col gap-4 p-4">
           <div className="flex w-full items-center justify-between gap-2">
             <div className="flex items-center gap-3 px-2 py-1.5">
-              <SkeletonBone className="h-10 w-10 shrink-0 rounded-full bg-sidebar-active" />
-              <SkeletonBone className="h-5 w-20 rounded bg-sidebar-active" />
+              <Image
+                src="/logo.png"
+                alt="Social0"
+                width={40}
+                height={40}
+                className="h-10 w-10 shrink-0 rounded-full border border-white object-contain"
+              />
+              <span className="font-logo text-[22px] font-normal tracking-tight text-foreground landing">
+                Social0
+              </span>
             </div>
-            <SkeletonBone className="h-9 w-9 shrink-0 rounded-lg bg-sidebar-active" />
+            <span
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sidebar-muted"
+              aria-hidden
+            >
+              <SidebarSimple size={18} weight="regular" />
+            </span>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -70,14 +118,20 @@ export function DashboardShellSkeleton() {
             <SkeletonBone className="h-10 w-full rounded-lg bg-sidebar-active" />
           </div>
 
-          <SkeletonBone className="h-11 w-full rounded-xl bg-sidebar-active" />
+          <div
+            className={cn(
+              "sidebar-create-post-cta flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm",
+            )}
+          >
+            Create post
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           <nav className="flex flex-col gap-6 p-4 pt-0">
-            <SectionBones title="Create" count={3} />
-            <SectionBones title="Posts" count={7} />
-            <SectionBones title="Workspace" count={2} />
+            <StaticSection title="Create" items={CREATE_ITEMS} />
+            <StaticSection title="Posts" items={POST_ITEMS} />
+            <StaticSection title="Workspace" items={WORKSPACE_ITEMS} />
           </nav>
         </div>
 
@@ -109,54 +163,5 @@ export function DashboardShellSkeleton() {
         ))}
       </nav>
     </div>
-  );
-}
-
-/** Inline sidebar placeholders for Create / Analytics / Inbox / Workspaces while layout loads. */
-export function SidebarNavPendingBones({ collapsed }: { collapsed: boolean }) {
-  return (
-    <>
-      <div
-        className={cn(
-          "flex shrink-0 flex-col",
-          collapsed ? "items-center gap-2 px-2" : "gap-1.5 px-0",
-        )}
-      >
-        {!collapsed ? (
-          <p className="px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
-            Workspaces
-          </p>
-        ) : null}
-        <SkeletonBone
-          className={cn(
-            "rounded-lg bg-sidebar-active",
-            collapsed ? "h-9 w-9" : "h-10 w-full",
-          )}
-        />
-      </div>
-      <SkeletonBone
-        className={cn(
-          "rounded-xl bg-sidebar-active",
-          collapsed ? "h-9 w-9" : "h-11 w-full",
-        )}
-      />
-    </>
-  );
-}
-
-export function SidebarCreateSectionBones({
-  collapsed,
-}: {
-  collapsed: boolean;
-}) {
-  return <SectionBones title="Create" count={3} collapsed={collapsed} />;
-}
-
-export function SidebarExtraPostBones({ collapsed }: { collapsed: boolean }) {
-  return (
-    <>
-      <NavBone collapsed={collapsed} />
-      <NavBone collapsed={collapsed} />
-    </>
   );
 }

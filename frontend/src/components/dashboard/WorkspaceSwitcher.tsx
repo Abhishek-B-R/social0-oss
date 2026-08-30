@@ -29,6 +29,7 @@ import {
   WORKSPACES_QUERY_KEY,
 } from "@/lib/team-query-keys";
 import { clearTeamBootstrap } from "@/layouts/team-bootstrap";
+import { SkeletonBone } from "@/components/ui/skeleton-bone";
 import { cn } from "@/lib/utils";
 
 const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
@@ -303,6 +304,15 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   };
 
   if (!enabled) return null;
+
+  if (isLoading) {
+    return (
+      <SkeletonBone
+        className="h-10 w-full rounded-lg bg-sidebar-active"
+        aria-label="Loading workspace"
+      />
+    );
+  }
 
   const activeLabel = active.name;
 
