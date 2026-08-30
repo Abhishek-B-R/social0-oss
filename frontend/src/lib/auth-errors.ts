@@ -164,14 +164,6 @@ export function friendlyAuthError(err: unknown): string {
     return "Verification failed. Please refresh and try again.";
   }
 
-  if (
-    code === "state_mismatch" ||
-    code === "state_not_found" ||
-    code === "state_invalid"
-  ) {
-    return "Google sign-in was interrupted. Allow cookies for social0.app, disable strict blockers, and try again.";
-  }
-
   if (extracted) return extracted;
   return GENERIC_AUTH_ERROR;
 }

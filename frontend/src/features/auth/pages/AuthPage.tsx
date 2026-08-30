@@ -59,7 +59,6 @@ function AuthPageContent() {
   const posthog = usePostHog();
   const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
   const authCallbackUrl = absoluteCallbackUrl(callbackUrl);
-  const authErrorUrl = absoluteCallbackUrl("/auth");
   const [mode, setMode] = useState<"signin" | "signup">(() =>
     searchParams.get("mode") === "signup" ? "signup" : "signin",
   );
@@ -80,16 +79,6 @@ function AuthPageContent() {
       toast.error("Your session expired. Please sign in again.");
     }
   }, [sessionExpired]);
-  useEffect(() => {
-    const oauthError = searchParams.get("error");
-    if (!oauthError) return;
-    toast.error(friendlyAuthError({ code: oauthError }));
-    const next = new URLSearchParams(searchParams);
-    next.delete("error");
-    next.delete("error_description");
-    const qs = next.toString();
-    navigate({ pathname: "/auth", search: qs ? `?${qs}` : "" }, { replace: true });
-  }, [searchParams, navigate]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -110,7 +99,6 @@ function AuthPageContent() {
       const { error } = await signIn.social({
         provider: "google",
         callbackURL: authCallbackUrl,
-        errorCallbackURL: authErrorUrl,
       });
       // If we actually got an error payload (no redirect happened), show it.
       if (error) {
