@@ -32,12 +32,20 @@ export const auth = betterAuth({
   baseURL: authBaseUrl,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: getCorsOrigins(),
+  // SPA (dev.social0.app) starts OAuth via cross-origin POST to api.social0.app.
+  // Browsers may drop the auxiliary state cookie; DB verification still binds the flow.
+  account: {
+    skipStateCookieCheck: true,
+  },
   advanced: {
     useSecureCookies: authBaseUrl.startsWith("https://"),
     crossSubDomainCookies: {
       enabled: authBaseUrl.includes("social0.app"),
       domain: "social0.app",
     },
+    ...(authBaseUrl.startsWith("https://")
+      ? { defaultCookieAttributes: { sameSite: "none" as const } }
+      : {}),
   },
   plugins: [
     emailOTP({
