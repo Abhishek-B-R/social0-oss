@@ -41,6 +41,7 @@ import {
 import { fetchAccountDms, fetchDmMessages } from "../lib/inbox/fetch-dms.js";
 import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
 import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
+import { verifyCommentOnPublication } from "../lib/inbox/verify-comment.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { parseDateWindow, inDateWindow } from "../lib/date-window.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
@@ -283,6 +284,95 @@ function firstPostMediaUrl(
 
 function snippet(content: string | null): string {
   return content?.replace(/\s+/g, " ").trim().slice(0, 80) || "(No caption)";
+}
+
+type CommentMutationPub = {
+  publicationId: string;
+  platformPostId: string | null;
+  platformPostUrl: string | null;
+  postId: string;
+  content: string | null;
+  publishedAt: Date | null;
+  accountId: string;
+  platform: string;
+  platformUserId: string | null;
+  platformUsername: string | null;
+  encryptedAccessToken: string;
+  encryptedRefreshToken: string | null;
+};
+
+async function loadCommentMutationPublication(
+  ctx: { resourceUserId: string; workspaceId: string | null },
+  publicationId: string,
+): Promise<CommentMutationPub | null> {
+  const postFilter = postScopeCondition({
+    resourceUserId: ctx.resourceUserId,
+    workspaceId: ctx.workspaceId,
+  });
+  const rows = await db
+    .select({
+      publicationId: postPublications.id,
+      platformPostId: postPublications.platformPostId,
+      platformPostUrl: postPublications.platformPostUrl,
+      postId: posts.id,
+      content: posts.finalContent,
+      publishedAt: postPublications.publishedAt,
+      accountId: connectedAccounts.id,
+      platform: connectedAccounts.platform,
+      platformUserId: connectedAccounts.platformUserId,
+      platformUsername: connectedAccounts.platformUsername,
+      encryptedAccessToken: connectedAccounts.encryptedAccessToken,
+      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+    })
+    .from(postPublications)
+    .innerJoin(posts, eq(postPublications.postId, posts.id))
+    .leftJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .where(and(postFilter, eq(postPublications.id, publicationId)))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row?.accountId || !row.platform) return null;
+  return row as CommentMutationPub;
+}
+
+function commentFetchInputForMutation(
+  row: CommentMutationPub,
+  accessToken: string,
+  accessSecret: string | null | undefined,
+): CommentFetchInput {
+  return {
+    platform: row.platform,
+    platformPostId: row.platformPostId!,
+    platformPostUrl: row.platformPostUrl,
+    platformUserId: row.platformUserId ?? "",
+    accessToken,
+    accessSecret,
+    accountId: row.accountId,
+    accountLabel: row.platformUsername,
+    postId: row.postId,
+    publicationId: row.publicationId,
+    postSnippet: snippet(row.content),
+    postContent: row.content?.trim() || snippet(row.content),
+    postPublishedAt: row.publishedAt?.toISOString() ?? null,
+  };
+}
+
+async function assertCommentOnPublication(
+  row: CommentMutationPub,
+  commentId: string,
+  accessToken: string,
+  accessSecret: string | null | undefined,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!row.platformPostId?.trim()) {
+    return { ok: false, error: "Publication has no platform post id." };
+  }
+  return verifyCommentOnPublication(
+    commentFetchInputForMutation(row, accessToken, accessSecret),
+    commentId,
+  );
 }
 
 export async function listInboxComments(input: {
@@ -602,32 +692,8 @@ export async function replyToInboxComment(input: {
     return { ok: false, error: "text or mediaId required" };
   }
 
-  const postFilter = postScopeCondition({
-    resourceUserId: ctx.resourceUserId,
-    workspaceId: ctx.workspaceId,
-  });
-  const rows = await db
-    .select({
-      publicationId: postPublications.id,
-      platformPostId: postPublications.platformPostId,
-      accountId: connectedAccounts.id,
-      platform: connectedAccounts.platform,
-      platformUserId: connectedAccounts.platformUserId,
-      platformUsername: connectedAccounts.platformUsername,
-      encryptedAccessToken: connectedAccounts.encryptedAccessToken,
-      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
-    })
-    .from(postPublications)
-    .innerJoin(posts, eq(postPublications.postId, posts.id))
-    .leftJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .where(and(postFilter, eq(postPublications.id, input.publicationId)))
-    .limit(1);
-
-  const row = rows[0];
-  if (!row?.accountId || !row.platform) {
+  const row = await loadCommentMutationPublication(ctx, input.publicationId);
+  if (!row) {
     return { ok: false, error: "Publication not found." };
   }
   if (INBOX_UNSUPPORTED.has(row.platform) || row.platform === "linkedin") {
@@ -640,12 +706,19 @@ export async function replyToInboxComment(input: {
     platformUserId: row.platformUserId ?? "",
     platformUsername: row.platformUsername,
     scopes: null,
-    encryptedAccessToken: row.encryptedAccessToken!,
+    encryptedAccessToken: row.encryptedAccessToken,
     encryptedRefreshToken: row.encryptedRefreshToken,
   };
 
   try {
     const { accessToken, accessSecret } = await resolveAccountAccess(account);
+    const bound = await assertCommentOnPublication(
+      row,
+      input.commentId,
+      accessToken,
+      accessSecret,
+    );
+    if (!bound.ok) return bound;
     let mediaUrl: string | null = null;
     let mediaMimeType: string | null = null;
     if (mediaId) {
@@ -689,32 +762,8 @@ export async function likeInboxComment(input: {
   }
   const unlike = input.unlike === true;
 
-  const postFilter = postScopeCondition({
-    resourceUserId: ctx.resourceUserId,
-    workspaceId: ctx.workspaceId,
-  });
-  const rows = await db
-    .select({
-      publicationId: postPublications.id,
-      platformPostId: postPublications.platformPostId,
-      accountId: connectedAccounts.id,
-      platform: connectedAccounts.platform,
-      platformUserId: connectedAccounts.platformUserId,
-      platformUsername: connectedAccounts.platformUsername,
-      encryptedAccessToken: connectedAccounts.encryptedAccessToken,
-      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
-    })
-    .from(postPublications)
-    .innerJoin(posts, eq(postPublications.postId, posts.id))
-    .leftJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .where(and(postFilter, eq(postPublications.id, input.publicationId)))
-    .limit(1);
-
-  const row = rows[0];
-  if (!row?.accountId || !row.platform) {
+  const row = await loadCommentMutationPublication(ctx, input.publicationId);
+  if (!row) {
     return { ok: false, error: "Publication not found." };
   }
   if (!inboxCommentLikeSupported(row.platform)) {
@@ -730,12 +779,19 @@ export async function likeInboxComment(input: {
     platformUserId: row.platformUserId ?? "",
     platformUsername: row.platformUsername,
     scopes: null,
-    encryptedAccessToken: row.encryptedAccessToken!,
+    encryptedAccessToken: row.encryptedAccessToken,
     encryptedRefreshToken: row.encryptedRefreshToken,
   };
 
   try {
     const { accessToken, accessSecret } = await resolveAccountAccess(account);
+    const bound = await assertCommentOnPublication(
+      row,
+      input.commentId,
+      accessToken,
+      accessSecret,
+    );
+    if (!bound.ok) return bound;
     return await likeCommentOnPlatform({
       platform: row.platform,
       commentId: input.commentId,
@@ -766,31 +822,8 @@ export async function hideInboxComment(input: {
     return { ok: false, error: "commentId required" };
   }
 
-  const postFilter = postScopeCondition({
-    resourceUserId: ctx.resourceUserId,
-    workspaceId: ctx.workspaceId,
-  });
-  const rows = await db
-    .select({
-      publicationId: postPublications.id,
-      accountId: connectedAccounts.id,
-      platform: connectedAccounts.platform,
-      platformUserId: connectedAccounts.platformUserId,
-      platformUsername: connectedAccounts.platformUsername,
-      encryptedAccessToken: connectedAccounts.encryptedAccessToken,
-      encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
-    })
-    .from(postPublications)
-    .innerJoin(posts, eq(postPublications.postId, posts.id))
-    .leftJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .where(and(postFilter, eq(postPublications.id, input.publicationId)))
-    .limit(1);
-
-  const row = rows[0];
-  if (!row?.accountId || !row.platform) {
+  const row = await loadCommentMutationPublication(ctx, input.publicationId);
+  if (!row) {
     return { ok: false, error: "Publication not found." };
   }
   if (!inboxCommentHideSupported(row.platform)) {
@@ -806,12 +839,19 @@ export async function hideInboxComment(input: {
     platformUserId: row.platformUserId ?? "",
     platformUsername: row.platformUsername,
     scopes: null,
-    encryptedAccessToken: row.encryptedAccessToken!,
+    encryptedAccessToken: row.encryptedAccessToken,
     encryptedRefreshToken: row.encryptedRefreshToken,
   };
 
   try {
-    const { accessToken } = await resolveAccountAccess(account);
+    const { accessToken, accessSecret } = await resolveAccountAccess(account);
+    const bound = await assertCommentOnPublication(
+      row,
+      input.commentId,
+      accessToken,
+      accessSecret,
+    );
+    if (!bound.ok) return bound;
     return await hideCommentOnPlatform({
       platform: row.platform,
       commentId: input.commentId,
@@ -924,15 +964,6 @@ export async function listInboxDms(input: {
       return;
     }
     const missing = missingDmScopes(row.platform, row.scopes);
-    if (missing.length) {
-      reconnect.set(row.id, {
-        accountId: row.id,
-        platform: row.platform,
-        username: row.platformUsername,
-        missingScopes: missing,
-      });
-      return;
-    }
     try {
       const { accessToken, accessSecret } = await resolveAccountAccess(row);
       let result;
