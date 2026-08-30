@@ -43,7 +43,13 @@ export type CommentFetchInput = {
   postAccountImageUrl?: string | null;
   /** ISO time - stop paging comments older than this (newest-first). */
   since?: string | null;
+  /** Graph paging depth (default 3). Verify passes INBOX_MAX_PAGES. */
+  maxGraphPages?: number;
 };
+
+function graphPagesCap(input: CommentFetchInput): number {
+  return input.maxGraphPages ?? 3;
+}
 
 export type CommentFetchResult = {
   comments: InboxComment[];
@@ -139,7 +145,13 @@ async function fetchFacebook(
     return err(msg);
   }
 
-  const rows = await restOfGraphPages(data as GraphPage, sinceMs, "created_time");
+  const pageCap = graphPagesCap(input);
+  const rows = await restOfGraphPages(
+    data as GraphPage,
+    sinceMs,
+    "created_time",
+    pageCap,
+  );
   const comments: InboxComment[] = [];
   const common = base(input);
 
@@ -175,7 +187,14 @@ async function fetchFacebook(
     if (nestedObj?.paging?.next || nested.length >= 25) {
       const nestedUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/comments?fields=id,from,message,created_time,like_count,user_likes,attachment&limit=50&order=reverse_chronological&access_token=${token}`;
       const nestedRes = await jsonGet(nestedUrl);
-      if (nestedRes.ok) nested = await restOfGraphPages(nestedRes.data as GraphPage, sinceMs, "created_time");
+      if (nestedRes.ok) {
+        nested = await restOfGraphPages(
+          nestedRes.data as GraphPage,
+          sinceMs,
+          "created_time",
+          pageCap,
+        );
+      }
     }
     for (const child of nested) {
       comments.push(mapRow(child, String(row.id ?? "")));
@@ -201,7 +220,13 @@ async function fetchInstagram(
     }
     return err(msg);
   }
-  const rows = await restOfGraphPages(data as GraphPage, sinceMs, "timestamp");
+  const pageCap = graphPagesCap(input);
+  const rows = await restOfGraphPages(
+    data as GraphPage,
+    sinceMs,
+    "timestamp",
+    pageCap,
+  );
   const comments: InboxComment[] = [];
   const common = base(input);
 
@@ -233,7 +258,12 @@ async function fetchInstagram(
       const nestedUrl = `https://graph.instagram.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/replies?fields=id,text,username,timestamp,like_count,user_likes&limit=50&access_token=${token}`;
       const nestedRes = await jsonGet(nestedUrl);
       if (nestedRes.ok) {
-        nested = await restOfGraphPages(nestedRes.data as GraphPage, sinceMs, "timestamp");
+        nested = await restOfGraphPages(
+          nestedRes.data as GraphPage,
+          sinceMs,
+          "timestamp",
+          pageCap,
+        );
       }
     }
     for (const child of nested) {
@@ -266,7 +296,12 @@ async function fetchThreads(
     return err(msg);
   }
   const sinceMs = input.since ? Date.parse(input.since) : null;
-  const rows = await restOfGraphPages(data as GraphPage, sinceMs, "timestamp");
+  const rows = await restOfGraphPages(
+    data as GraphPage,
+    sinceMs,
+    "timestamp",
+    graphPagesCap(input),
+  );
   const common = base(input);
   const comments: InboxComment[] = rows.map((row) => {
     const handle = typeof row.username === "string" ? row.username : null;

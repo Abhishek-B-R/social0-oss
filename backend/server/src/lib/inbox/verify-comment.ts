@@ -9,6 +9,7 @@ import {
   type CommentFetchInput,
   type CommentFetchResult,
 } from "./fetch-comments.js";
+import { INBOX_MAX_PAGES } from "./page-param.js";
 import type { InboxComment } from "./types.js";
 
 export function commentIdsInFetch(comments: InboxComment[]): Set<string> {
@@ -37,7 +38,11 @@ async function fetchCommentsForVerify(
     kind: "inbox_comments",
     suffix: inboxCommentThreadCacheSuffix(input.publicationId),
     fresh,
-    fetch: () => fetchPublicationComments(input),
+    fetch: () =>
+      fetchPublicationComments({
+        ...input,
+        maxGraphPages: INBOX_MAX_PAGES,
+      }),
   });
   return cached.data;
 }

@@ -16,7 +16,17 @@ export function dmConversationInList(
   threads: Array<{ conversationId: string }>,
   conversationId: string,
 ): boolean {
-  return threads.some((t) => t.conversationId === conversationId);
+  return findDmConversationInList(threads, conversationId) != null;
+}
+
+/** Resolve the inbox thread (and peer) for a conversation id. */
+export function findDmConversationInList(
+  threads: Array<{ conversationId: string; peerId?: string }>,
+  conversationId: string,
+): { peerId: string } | null {
+  const thread = threads.find((t) => t.conversationId === conversationId);
+  if (!thread) return null;
+  return { peerId: thread.peerId ?? "" };
 }
 
 async function fetchDmsForVerify(
@@ -39,15 +49,22 @@ async function fetchDmsForVerify(
 export async function verifyDmConversationOnAccount(
   account: DmAccount,
   conversationId: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+): Promise<{ ok: true; peerId: string } | { ok: false; error: string }> {
   if (!conversationId.trim()) {
     return { ok: false, error: "Invalid conversation id." };
   }
 
   for (const fresh of [false, true] as const) {
     const result = await fetchDmsForVerify(account, fresh);
-    if (dmConversationInList(result.threads, conversationId)) {
-      return { ok: true };
+    const thread = findDmConversationInList(result.threads, conversationId);
+    if (thread) {
+      if (account.platform === "instagram" && !thread.peerId) {
+        return {
+          ok: false,
+          error: "Could not resolve recipient for this conversation.",
+        };
+      }
+      return { ok: true, peerId: thread.peerId };
     }
     const scopes = reconnectScopesFromFetch(result);
     if (scopes.length) {

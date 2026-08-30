@@ -1243,6 +1243,17 @@ export async function replyToInboxDm(input: {
       input.conversationId,
     );
     if (!bound.ok) return bound;
+    // Instagram Graph send uses recipient id - bind to the verified inbox peer.
+    let sendPeerId = peerId || bound.peerId;
+    if (row.platform === "instagram") {
+      if (peerId && peerId !== bound.peerId) {
+        return {
+          ok: false,
+          error: "Recipient does not match this conversation.",
+        };
+      }
+      sendPeerId = bound.peerId;
+    }
     let mediaUrl: string | null = null;
     let mediaMimeType: string | null = null;
     if (mediaId) {
@@ -1254,7 +1265,7 @@ export async function replyToInboxDm(input: {
     return await replyToDmOnPlatform({
       platform: row.platform,
       conversationId: input.conversationId,
-      peerId,
+      peerId: sendPeerId,
       text,
       mediaUrl,
       mediaMimeType,
