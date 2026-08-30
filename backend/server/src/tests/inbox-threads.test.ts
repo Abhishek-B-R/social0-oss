@@ -38,11 +38,17 @@ function comment(partial: Partial<InboxComment> & Pick<InboxComment, "id">): Inb
 }
 
 describe("missingInboxScopes", () => {
-  it("treats empty stored scopes as missing for Instagram/Facebook", () => {
-    expect(missingInboxScopes("instagram", null)).toEqual([
+  it("does not nag when stored scopes are unknown (empty/null)", () => {
+    expect(missingInboxScopes("instagram", null)).toEqual([]);
+    expect(missingInboxScopes("facebook", "")).toEqual([]);
+    expect(missingInboxScopes("youtube", "")).toEqual([]);
+  });
+
+  it("flags scopes explicitly missing from a non-empty grant string", () => {
+    expect(missingInboxScopes("instagram", "instagram_business_basic")).toEqual([
       "instagram_business_manage_comments",
     ]);
-    expect(missingInboxScopes("facebook", "")).toEqual([
+    expect(missingInboxScopes("facebook", "pages_read_engagement")).toEqual([
       "pages_manage_engagement",
     ]);
   });
@@ -51,10 +57,13 @@ describe("missingInboxScopes", () => {
     expect(missingInboxScopes("twitter_x", null)).toEqual([]);
   });
 
-  it("requires youtube.force-ssl so replies can reconnect", () => {
-    expect(missingInboxScopes("youtube", "")).toEqual([
-      "https://www.googleapis.com/auth/youtube.force-ssl",
-    ]);
+  it("requires youtube.force-ssl when grant is present but incomplete", () => {
+    expect(
+      missingInboxScopes(
+        "youtube",
+        "https://www.googleapis.com/auth/youtube.readonly",
+      ),
+    ).toEqual(["https://www.googleapis.com/auth/youtube.force-ssl"]);
     expect(
       missingInboxScopes(
         "youtube",
@@ -83,11 +92,15 @@ describe("reconnectScopesFromFetch", () => {
 });
 
 describe("missingDmScopes", () => {
-  it("treats empty stored scopes as missing for Instagram messaging", () => {
-    expect(missingDmScopes("instagram", null)).toEqual([
+  it("does not nag when stored scopes are unknown", () => {
+    expect(missingDmScopes("instagram", null)).toEqual([]);
+    expect(missingDmScopes("facebook", "")).toEqual([]);
+  });
+
+  it("flags Instagram messaging when grant is present but incomplete", () => {
+    expect(missingDmScopes("instagram", "instagram_business_basic")).toEqual([
       "instagram_business_manage_messages",
     ]);
-    expect(missingDmScopes("facebook", "")).toEqual([]);
   });
 
   it("does not nag X, Bluesky, or TikTok for extra OAuth strings", () => {

@@ -22,15 +22,16 @@ describe("analytics types", () => {
     ).toBe(false);
   });
 
-  it("flags missing insights scopes", () => {
+  it("flags missing insights scopes when grant is present but incomplete", () => {
     expect(
       missingAnalyticsScopes("instagram", "instagram_business_basic"),
     ).toContain("instagram_business_manage_insights");
     expect(missingAnalyticsScopes("twitter_x", "whatever")).toEqual([]);
-    expect(missingAnalyticsScopes("instagram", null)).toContain(
-      "instagram_business_manage_insights",
+    expect(missingAnalyticsScopes("instagram", null)).toEqual([]);
+    expect(missingAnalyticsScopes("tiktok", "")).toEqual([]);
+    expect(missingAnalyticsScopes("tiktok", "user.info.basic,video.publish")).toContain(
+      "video.list",
     );
-    expect(missingAnalyticsScopes("tiktok", "")).toContain("video.list");
     expect(
       missingAnalyticsScopes("tiktok", "user.info.basic,video.publish,video.list"),
     ).toEqual([]);

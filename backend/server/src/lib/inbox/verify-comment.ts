@@ -22,6 +22,11 @@ export function commentInFetchResult(
   return commentIdsInFetch(result.comments).has(commentId);
 }
 
+/** Cache suffix for full-thread verify fetches (no date window in the key). */
+function inboxCommentThreadCacheSuffix(publicationId: string): string {
+  return `thread:${publicationId}`;
+}
+
 async function fetchCommentsForVerify(
   input: CommentFetchInput,
   fresh: boolean,
@@ -30,7 +35,7 @@ async function fetchCommentsForVerify(
     platform: input.platform,
     accountId: input.accountId,
     kind: "inbox_comments",
-    suffix: `verify:${input.publicationId}`,
+    suffix: inboxCommentThreadCacheSuffix(input.publicationId),
     fresh,
     fetch: () => fetchPublicationComments(input),
   });

@@ -6,3 +6,12 @@ paths-ignore:
   - "frontend/bun.lock"
   - "backend/package-lock.json"
   - "**/node_modules/**"
+  - "backend/server/openapi/openapi.json"
+  - "frontend/public/openapi.json"
+  - "**/*.test.ts"
+
+matches-ignore:
+  - name: OAuth accessSecret parameter alias
+    match: accessSecret
+  - name: Bluesky app password field name
+    match: appPassword

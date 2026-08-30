@@ -42,6 +42,7 @@ import { fetchAccountDms, fetchDmMessages } from "../lib/inbox/fetch-dms.js";
 import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
 import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
 import { verifyCommentOnPublication } from "../lib/inbox/verify-comment.js";
+import { verifyDmConversationOnAccount } from "../lib/inbox/verify-dm.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { parseDateWindow, inDateWindow } from "../lib/date-window.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
@@ -1228,6 +1229,20 @@ export async function replyToInboxDm(input: {
 
   try {
     const { accessToken, accessSecret } = await resolveAccountAccess(row);
+    const bound = await verifyDmConversationOnAccount(
+      {
+        id: row.id,
+        platform: row.platform,
+        platformUserId: row.platformUserId,
+        platformUsername: row.platformUsername,
+        ownerUserId: ctx.resourceUserId,
+        profileImageUrl: row.profileImageUrl,
+        accessToken,
+        accessSecret,
+      },
+      input.conversationId,
+    );
+    if (!bound.ok) return bound;
     let mediaUrl: string | null = null;
     let mediaMimeType: string | null = null;
     if (mediaId) {

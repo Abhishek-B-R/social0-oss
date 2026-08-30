@@ -255,7 +255,8 @@ export function missingDmScopes(
 ): string[] {
   const needed = INBOX_DM_REQUIRED_SCOPES[platform] ?? [];
   if (needed.length === 0) return [];
-  if (!granted?.trim()) return [...needed];
+  // Unknown stored scopes — live fetch decides reconnect (avoid stale nag).
+  if (!granted?.trim()) return [];
   return needed.filter((s) => !inboxScopeGranted(granted, s));
 }
 
@@ -324,7 +325,8 @@ export function missingInboxScopes(
 ): string[] {
   const needed = INBOX_REQUIRED_SCOPES[platform] ?? [];
   if (needed.length === 0) return [];
-  if (!granted?.trim()) return [...needed];
+  // Unknown stored scopes — live fetch decides reconnect (avoid stale nag).
+  if (!granted?.trim()) return [];
   return needed.filter((s) => !inboxScopeGranted(granted, s));
 }
 

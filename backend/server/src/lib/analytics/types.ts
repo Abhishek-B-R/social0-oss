@@ -156,7 +156,7 @@ export function missingAnalyticsScopes(
 ): string[] {
   const needed = ANALYTICS_REQUIRED_SCOPES[platform] ?? [];
   if (needed.length === 0) return [];
-  // Empty/unknown stored scopes = connected before we asked for insights.
-  if (!granted?.trim()) return [...needed];
+  // Unknown stored scopes — live fetch decides reconnect (avoid stale nag).
+  if (!granted?.trim()) return [];
   return needed.filter((s) => !scopeGranted(granted, s));
 }
