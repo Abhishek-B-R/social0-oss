@@ -9,6 +9,11 @@ import {
   getAllowedMediaOrigins,
   isAllowedMediaUrl,
 } from "@/lib/publish-validation";
+import {
+  getR2KeyFromUrl,
+  getR2ObjectBytes,
+  isR2Configured,
+} from "@/lib/r2";
 
 // Lazy: sharp has native bindings and cannot load on Cloudflare Workers.
 // Video/TikTok paths never need it; only image compress/process does.
@@ -29,7 +34,7 @@ export async function getMediaWithUrls(
     .where(inArray(mediaUploads.id, mediaIds));
   return media.filter((m): m is { url: string; mimeType: string } => {
     if (!m.url || !m.mimeType) return false;
-    return isAllowedMediaUrl(m.url, allowed);
+    return isPublishableMediaUrl(m.url, allowed);
   });
 }
 
@@ -52,11 +57,11 @@ export async function getMediaWithUrlsAndThumbnail(
       m,
     ): m is { url: string; mimeType: string; thumbnailUrl: string | null } => {
       if (!m.url || !m.mimeType) return false;
-      if (!isAllowedMediaUrl(m.url, allowed)) return false;
+      if (!isPublishableMediaUrl(m.url, allowed)) return false;
       if (
         m.thumbnailUrl != null &&
         m.thumbnailUrl !== "" &&
-        !isAllowedMediaUrl(m.thumbnailUrl, allowed)
+        !isPublishableMediaUrl(m.thumbnailUrl, allowed)
       )
         return false;
       return true;
@@ -81,7 +86,7 @@ export async function getOrderedMediaWithUrls(
   const filtered = media.filter(
     (m): m is { id: string; url: string; mimeType: string } => {
       if (!m.url || !m.mimeType) return false;
-      return isAllowedMediaUrl(m.url, allowed);
+      return isPublishableMediaUrl(m.url, allowed);
     },
   );
   const order = new Map(mediaIds.map((id, i) => [id, i]));
@@ -101,12 +106,35 @@ const PLATFORM_IMAGE_LIMITS: Record<string, number> = {
   linkedin: 8 * 1024 * 1024,
   tiktok: 8 * 1024 * 1024,
   pinterest: 20 * 1024 * 1024,
-  bluesky: 976 * 1024, // API blob limit ~976.56KB
+  bluesky: 1_000_000, // Bluesky API limit per image
   threads: 8 * 1024 * 1024,
   youtube: 2 * 1024 * 1024,
 };
 
 const DEFAULT_IMAGE_LIMIT = 8 * 1024 * 1024;
+
+/** Resolve Social0 upload key from a stored media URL (R2 public base or /uploads/ path). */
+function getOwnedUploadKey(url: string): string | null {
+  const fromBase = getR2KeyFromUrl(url);
+  if (fromBase) return fromBase;
+  try {
+    const path = new URL(url).pathname.replace(/^\//, "");
+    if (/^uploads\/[^/]+\/.+/.test(path)) return path;
+  } catch {
+    // ignore invalid URL
+  }
+  return null;
+}
+
+function isPublishableMediaUrl(
+  url: string,
+  allowed: ReturnType<typeof getAllowedMediaOrigins>,
+): boolean {
+  if (isAllowedMediaUrl(url, allowed)) return true;
+  // ponytail: publish worker may lack R2_PUBLIC_URL allowlist match but still has R2 creds
+  if (isR2Configured() && getOwnedUploadKey(url)) return true;
+  return false;
+}
 
 /**
  * Prepare image for platform API upload: return as-is if under platform limit,
@@ -151,6 +179,21 @@ export async function fetchMediaBytes(
   url: string,
   options: { timeoutMs?: number; retries?: number } = {},
 ): Promise<ArrayBuffer> {
+  if (isR2Configured()) {
+    const key = getOwnedUploadKey(url);
+    if (key) {
+      try {
+        const bytes = await getR2ObjectBytes(key);
+        return bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength,
+        ) as ArrayBuffer;
+      } catch {
+        // fall through to HTTP fetch
+      }
+    }
+  }
+
   const timeoutMs = options.timeoutMs ?? MEDIA_FETCH_TIMEOUT_MS;
   const retries = options.retries ?? MEDIA_FETCH_RETRIES;
   let lastError: unknown;

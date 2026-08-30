@@ -57,6 +57,11 @@ export async function loadDashboardLayoutData(): Promise<{
   freePostsBanner: { remaining: number; limit: number } | null;
   profileName: string | null;
   profileImage: string | null;
+  canCreatePosts: boolean;
+  canViewAnalytics: boolean;
+  canViewInbox: boolean;
+  canReplyComments: boolean;
+  canReplyDms: boolean;
 }> {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
@@ -100,6 +105,11 @@ export async function loadDashboardLayoutData(): Promise<{
         : null,
     profileName: profileRow?.name ?? null,
     profileImage: profileRow?.image ?? null,
+    canCreatePosts: ctx.permissions.has("create_posts"),
+    canViewAnalytics: ctx.permissions.has("view_analytics"),
+    canViewInbox: ctx.permissions.has("view_inbox"),
+    canReplyComments: ctx.permissions.has("reply_comments"),
+    canReplyDms: ctx.permissions.has("reply_dms"),
   };
 }
 

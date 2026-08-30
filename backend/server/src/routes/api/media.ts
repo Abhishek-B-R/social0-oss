@@ -27,18 +27,32 @@ import { sanitizeFilename } from "../../lib/validation.js";
 
 const SIZE_TOLERANCE_BYTES = 1024;
 
+async function requireMediaUploadSession(actorUserId: string) {
+  const { requireWorkspacePermissionForUser } = await import(
+    "../../lib/workspace/session.js"
+  );
+  const ws = await requireWorkspacePermissionForUser(
+    actorUserId,
+    "view_connections",
+  );
+  if (!ws.ok) return ws;
+  const p = ws.ctx.permissions;
+  if (
+    !p.has("create_posts") &&
+    !p.has("reply_comments") &&
+    !p.has("reply_dms")
+  ) {
+    return { ok: false as const, error: "Forbidden", statusCode: 403 };
+  }
+  return ws;
+}
+
 export async function registerMediaApiRoutes(app: FastifyInstance) {
   app.post("/media/presign", async (request, reply) => {
     const actorUserId = await requireUserId(request);
     if (!actorUserId) return reply.status(401).send(unauthorized());
 
-    const { requireWorkspacePermissionForUser } = await import(
-      "../../lib/workspace/session.js"
-    );
-    const ws = await requireWorkspacePermissionForUser(
-      actorUserId,
-      "create_posts",
-    );
+    const ws = await requireMediaUploadSession(actorUserId);
     if (!ws.ok) {
       return reply.status(ws.statusCode).send({ error: ws.error });
     }
@@ -108,13 +122,7 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
     const actorUserId = await requireUserId(request);
     if (!actorUserId) return reply.status(401).send(unauthorized());
 
-    const { requireWorkspacePermissionForUser } = await import(
-      "../../lib/workspace/session.js"
-    );
-    const ws = await requireWorkspacePermissionForUser(
-      actorUserId,
-      "create_posts",
-    );
+    const ws = await requireMediaUploadSession(actorUserId);
     if (!ws.ok) {
       return reply.status(ws.statusCode).send({ error: ws.error });
     }

@@ -6,6 +6,8 @@ import Link from "@/components/AppLink";
 import { useTheme } from "next-themes";
 import {
   CalendarDots,
+  ChartLine,
+  ChatCircle,
   CheckCircle,
   Clock,
   List,
@@ -34,6 +36,7 @@ import {
   writePersonalWorkspaceId,
 } from "@/lib/dashboard-base-path";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
+import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -50,6 +53,7 @@ type NavItem = {
     size?: number;
     weight?: IconWeight;
   }>;
+  experimental?: boolean;
 };
 
 function NavLink({
@@ -58,6 +62,7 @@ function NavLink({
   icon: Icon,
   isActive,
   collapsed,
+  experimental,
 }: NavItem & { isActive: boolean; collapsed: boolean }) {
   const pathname = useLocation().pathname;
   const [navPending, setNavPending] = useState(false);
@@ -79,6 +84,7 @@ function NavLink({
         isActive && "bg-sidebar-active",
         navPending && "opacity-60",
         collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
+        experimental && collapsed && "relative",
       )}
     >
       <Icon
@@ -86,12 +92,21 @@ function NavLink({
         size={16}
         weight={isActive ? "fill" : "regular"}
       />
-      {!collapsed ? <span className="truncate">{label}</span> : null}
+      {!collapsed ? <span className="min-w-0 flex-1 truncate">{label}</span> : null}
+      {experimental ? (
+        <ExperimentalBadge
+          compact
+          className={cn(
+            "shrink-0",
+            collapsed ? "absolute -right-0.5 -top-0.5" : "ml-auto",
+          )}
+        />
+      ) : null}
     </Link>
   );
 
   return (
-    <SidebarHoverTip label={label} enabled={collapsed}>
+    <SidebarHoverTip label={experimental ? `${label} (experimental)` : label} enabled={collapsed}>
       {link}
     </SidebarHoverTip>
   );
@@ -129,6 +144,11 @@ type DashboardSidebarProps = {
   planLabel: string;
   isGuest?: boolean;
   sessionPending?: boolean;
+  /** True until dashboard-layout RPC resolves role gates. */
+  layoutPending?: boolean;
+  canCreatePosts?: boolean;
+  canViewAnalytics?: boolean;
+  canViewInbox?: boolean;
 };
 
 function relativeMatches(
@@ -153,6 +173,10 @@ export function DashboardSidebar({
   planLabel,
   isGuest = false,
   sessionPending = false,
+  layoutPending = false,
+  canCreatePosts = true,
+  canViewAnalytics = true,
+  canViewInbox = true,
 }: DashboardSidebarProps) {
   const pathname = useLocation().pathname;
   const dash = useDashboardPath();
@@ -203,6 +227,10 @@ export function DashboardSidebar({
 
   const logoSrc =
     mounted && resolvedTheme === "dark" ? "/logo-dark.png" : "/logo.png";
+
+  const showCreate = layoutPending || canCreatePosts;
+  const showAnalytics = layoutPending || canViewAnalytics;
+  const showInbox = layoutPending || canViewInbox;
 
   return (
     <aside
@@ -322,6 +350,7 @@ export function DashboardSidebar({
           )
         ) : null}
 
+        {showCreate ? (
         <SidebarHoverTip label="Create post" enabled={collapsed}>
           <Link
             href={dash("composer")}
@@ -341,6 +370,7 @@ export function DashboardSidebar({
             {!collapsed ? <span>Create post</span> : null}
           </Link>
         </SidebarHoverTip>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-visible">
@@ -350,6 +380,7 @@ export function DashboardSidebar({
             collapsed ? "gap-3 px-2 pb-3" : "gap-6 p-4 pt-0",
           )}
         >
+          {showCreate ? (
           <Section title="Create" collapsed={collapsed}>
             <NavLink
               href={dash("composer")}
@@ -373,6 +404,7 @@ export function DashboardSidebar({
               isActive={relativeMatches(relative, "bulk-tools")}
             />
           </Section>
+          ) : null}
 
           <Section title="Posts" collapsed={collapsed}>
             <NavLink
@@ -410,6 +442,26 @@ export function DashboardSidebar({
               collapsed={collapsed}
               isActive={relativeMatches(relative, "calendar")}
             />
+            {showAnalytics ? (
+              <NavLink
+                href={dash("analytics")}
+                label="Analytics"
+                icon={ChartLine}
+                collapsed={collapsed}
+                isActive={relativeMatches(relative, "analytics")}
+                experimental
+              />
+            ) : null}
+            {showInbox ? (
+              <NavLink
+                href={dash("inbox")}
+                label="Inbox"
+                icon={ChatCircle}
+                collapsed={collapsed}
+                isActive={relativeMatches(relative, "inbox")}
+                experimental
+              />
+            ) : null}
           </Section>
 
           <Section title="Workspace" collapsed={collapsed}>
@@ -485,6 +537,7 @@ export function DashboardSidebar({
           <SidebarAccountMenu
             user={user}
             planLabel={planLabel}
+            planPending={layoutPending}
             railCollapsed={collapsed}
           />
         )}

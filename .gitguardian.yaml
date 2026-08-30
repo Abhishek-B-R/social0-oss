@@ -1,0 +1,20 @@
+# Ignore historical false positives on OAuth token field names (accessSecret /
+# app password parameter aliases). Live secrets are not committed in this tree.
+version: 2
+
+paths-ignore:
+  - "frontend/bun.lock"
+  - "backend/package-lock.json"
+  - "**/node_modules/**"
+  - "backend/server/openapi/openapi.json"
+  - "frontend/public/openapi.json"
+  - "frontend/.env.example"
+  - "**/*.test.ts"
+
+matches-ignore:
+  - name: OAuth accessSecret parameter alias
+    match: accessSecret
+  - name: Bluesky app password field name
+    match: appPassword
+  - name: Vemetric public env var name
+    match: VITE_VEMETRIC_TOKEN

@@ -5,6 +5,7 @@ import { dashboardSeo } from "@/lib/page-metadata";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { DashboardShellSkeleton } from "@/components/dashboard/DashboardShellSkeleton";
 import { DashboardBottomNav } from "@/components/dashboard/DashboardBottomNav";
 import { SubscriptionSync } from "@/components/dashboard/SubscriptionSync";
 import { FreePostsBanner } from "@/components/dashboard/FreePostsBanner";
@@ -14,7 +15,7 @@ import { PersonalWorkspaceBoot } from "@/components/dashboard/PersonalWorkspaceB
 import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useSessionResolved } from "@/lib/use-is-guest";
 import { signInUrl } from "@/lib/sign-in-url";
-import { rpc } from "@/lib/rpc";
+import { loadDashboardLayoutData } from "@/api/dashboard-data";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 
 function getPlanLabel(tier: string): string {
@@ -52,14 +53,7 @@ export function DashboardLayout() {
 
   const { data: layoutData } = useQuery({
     queryKey: ["dashboard-layout"],
-    queryFn: () =>
-      rpc<{
-        planLabel: string;
-        subscriptionTier: string;
-        freePostsBanner: { remaining: number; limit: number } | null;
-        profileName: string | null;
-        profileImage: string | null;
-      }>("dashboard-data.loadDashboardLayoutData"),
+    queryFn: loadDashboardLayoutData,
     enabled: !!session,
     retry: false,
   });
@@ -100,7 +94,7 @@ export function DashboardLayout() {
     !onConnectionsPage;
 
   if (isPending || !session) {
-    return null;
+    return <DashboardShellSkeleton />;
   }
 
   const sidebarUser = layoutData
@@ -110,6 +104,7 @@ export function DashboardLayout() {
         image: layoutData.profileImage ?? session.user.image,
       }
     : session.user;
+  const layoutPending = !layoutData;
 
   return (
     <div className="dashboard-shell flex h-screen overflow-hidden bg-bg">
@@ -123,9 +118,13 @@ export function DashboardLayout() {
       <DashboardSidebar
         user={sidebarUser}
         planLabel={
-          layoutData ? getPlanLabel(layoutData.subscriptionTier) : "…"
+          layoutData ? getPlanLabel(layoutData.subscriptionTier) : "..."
         }
         sessionPending={isPending}
+        layoutPending={layoutPending}
+        canCreatePosts={layoutData?.canCreatePosts ?? false}
+        canViewAnalytics={layoutData?.canViewAnalytics ?? false}
+        canViewInbox={layoutData?.canViewInbox ?? false}
       />
       <PersonalWorkspaceBoot enabled />
       <main
@@ -144,7 +143,9 @@ export function DashboardLayout() {
           <Outlet />
         </div>
       </main>
-      <DashboardBottomNav />
+      <DashboardBottomNav
+        canCreatePosts={layoutData?.canCreatePosts ?? true}
+      />
       <LegalConsentGate />
     </div>
   );

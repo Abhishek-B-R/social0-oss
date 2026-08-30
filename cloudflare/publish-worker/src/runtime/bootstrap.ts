@@ -58,6 +58,11 @@ export function bootstrapWorkerRuntime(env: Env): void {
     env.UPSTASH_REDIS_REST_TOKEN ?? "worker-unused-redis-token";
 
   if (env.R2_PUBLIC_URL) process.env.R2_PUBLIC_URL = env.R2_PUBLIC_URL;
+  else {
+    console.error(
+      "[publish-worker] R2_PUBLIC_URL missing — image publish may fail until you set the secret",
+    );
+  }
   if (env.R2_ACCOUNT_ID) process.env.R2_ACCOUNT_ID = env.R2_ACCOUNT_ID;
   if (env.R2_ACCESS_KEY_ID) process.env.R2_ACCESS_KEY_ID = env.R2_ACCESS_KEY_ID;
   if (env.R2_SECRET_ACCESS_KEY) {

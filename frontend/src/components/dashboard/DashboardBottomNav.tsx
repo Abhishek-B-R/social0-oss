@@ -19,7 +19,11 @@ type NavItemIcon = React.ComponentType<{
   weight?: "thin" | "light" | "regular" | "bold" | "fill" | "duotone";
 }>;
 
-export function DashboardBottomNav() {
+export function DashboardBottomNav({
+  canCreatePosts = true,
+}: {
+  canCreatePosts?: boolean;
+}) {
   const pathname = useLocation().pathname;
   const dash = useDashboardPath();
   const relative = getDashboardRelativePath(pathname);
@@ -45,7 +49,9 @@ export function DashboardBottomNav() {
       label: "Calendar",
       icon: CalendarDots,
     },
-    { key: "create", href: createHref, label: "Create" },
+    ...(canCreatePosts
+      ? [{ key: "create", href: createHref, label: "Create" }]
+      : []),
     {
       key: "connections",
       href: dash("connections"),
@@ -79,7 +85,7 @@ export function DashboardBottomNav() {
         pathname.startsWith("/dashboard/api-keys") ||
         pathname.startsWith("/dashboard/feedback") ||
         (pathname.startsWith("/dashboard/teams") &&
-          !pathname.match(/\/teams\/[^/]+\/(composer|create|posts|calendar|connections)/)) ||
+          !pathname.match(/\/teams\/[^/]+\/(composer|create|posts|calendar|connections|inbox|analytics)/)) ||
         pathname.startsWith("/dashboard/workspaces") ||
         (relative === "settings" && pathname.includes("/dashboard/settings"))
       );

@@ -7,6 +7,7 @@ import { DOCS_DASHBOARD_URL } from "@/lib/docs-url";
 import { LEGAL_ENTITY } from "@/lib/legal-entity";
 import { cn } from "@/lib/utils";
 import { resetVemetricUser } from "@/lib/vemetric";
+import { SkeletonBone } from "@/components/ui/skeleton-bone";
 import {
   ArrowSquareOut,
   BookOpen,
@@ -37,6 +38,8 @@ type SidebarAccountMenuProps = {
     image?: string | null;
   };
   planLabel: string;
+  /** True while dashboard layout (plan tier) is still loading. */
+  planPending?: boolean;
   /** sidebar: opens upward in the nav. page: opens downward on More. */
   variant?: AccountMenuVariant;
   /** Icon-only trigger when the desktop sidebar is collapsed. */
@@ -326,6 +329,7 @@ function AccountMenuPanel({
 export function SidebarAccountMenu({
   user,
   planLabel,
+  planPending = false,
   variant = "sidebar",
   railCollapsed = false,
   className,
@@ -336,6 +340,7 @@ export function SidebarAccountMenu({
   const menuId = useId();
   const displayName = user.name || user.email || "User";
   const badge = planBadgeLabel(planLabel);
+  const showPlanSkeleton = planPending || planLabel === "...";
   const close = () => setOpen(false);
   const opensUp = variant === "sidebar" && !railCollapsed;
   const opensRail = variant === "sidebar" && railCollapsed;
@@ -518,7 +523,14 @@ export function SidebarAccountMenu({
                     : "text-text-muted",
                 )}
               >
-                {planLabel}
+                {showPlanSkeleton ? (
+                  <SkeletonBone
+                    className="inline-block h-3 w-16 rounded bg-sidebar-active/80"
+                    aria-hidden
+                  />
+                ) : (
+                  planLabel
+                )}
               </p>
             </div>
             <CaretDown

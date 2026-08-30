@@ -14,6 +14,7 @@ import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
 import { AppRequest } from "../lib/http/http.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
+import { FACEBOOK_INSTAGRAM_PAGE_SCOPES } from "../lib/facebook-oauth.js";
 
 export async function igFbCallback(
   req: AppRequest,
@@ -283,6 +284,7 @@ export async function igFbCallback(
               connectionMethod: "facebook-page",
             },
             isActive: true,
+            scopes: FACEBOOK_INSTAGRAM_PAGE_SCOPES,
             updatedAt: new Date(),
           })
           .where(eq(connectedAccounts.id, existing.id));
@@ -320,6 +322,7 @@ export async function igFbCallback(
         tokenExpiresAt: null,
         tokenStatus: "active",
         isActive: true,
+        scopes: FACEBOOK_INSTAGRAM_PAGE_SCOPES,
         platformMetadata: {
           facebookPageId: pageData.pageId,
           instagramBusinessAccountId: pageData.instagramAccountId,

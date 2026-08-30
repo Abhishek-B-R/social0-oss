@@ -92,7 +92,7 @@ describe("platform-view-url permalinks", () => {
       platform: "tiktok",
       status: "published",
       platformPostUrl: "https://www.tiktok.com/@creator",
-      platformPostId: "v_pub_file~v2.1.123",
+      platformPostId: "ttpub:v_pub_file~v2.1",
       platformUsername: "creator",
     });
     expect(url).toBe("https://www.tiktok.com/@creator");

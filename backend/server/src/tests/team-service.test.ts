@@ -133,7 +133,7 @@ function mockTeamAdminAccess(
     teamId: string;
     teamName: string;
     ownerUserId: string;
-    role: "admin" | "member";
+    role: "admin" | "member" | "community" | "analyst";
   } | null,
 ) {
   mockDb.select.mockImplementation(() => {

@@ -39,16 +39,18 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "INSTAGRAM_CLIENT_SECRET",
     authUrl: "https://www.instagram.com/oauth/authorize", // ✅ This is correct
     tokenUrl: "https://api.instagram.com/oauth/access_token", // ✅ This too
-    scope: "instagram_business_basic,instagram_business_content_publish", // ✅ Correct scopes
+    // manage_insights + manage_comments + manage_messages: additive — existing tokens keep publishing.
+    scope:
+      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments,instagram_business_manage_messages",
   },
   youtube: {
     clientIdEnv: "YOUTUBE_CLIENT_ID",
     clientSecretEnv: "YOUTUBE_CLIENT_SECRET",
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     tokenUrl: "https://oauth2.googleapis.com/token",
-    // YouTube + userinfo.profile for channel/name and avatar
+    // youtube.readonly covers video statistics; yt-analytics.readonly for Reports API (future).
     scope:
-      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/youtube.force-ssl https://www.googleapis.com/auth/userinfo.profile",
   },
   twitter_x: null, // OAuth 1.0a - handled separately in route handler
   threads: {
@@ -56,10 +58,9 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "THREADS_CLIENT_SECRET",
     authUrl: "https://threads.net/oauth/authorize",
     tokenUrl: "https://graph.threads.net/oauth/access_token",
-    // Threads API scopes (Meta Graph API)
-    // threads_basic: required for all Threads endpoints
-    // threads_content_publish: required for publishing posts
-    scope: "threads_basic,threads_content_publish,threads_manage_replies",
+    // threads_manage_insights: post/user insights (Meta App Review)
+    scope:
+      "threads_basic,threads_content_publish,threads_read_replies,threads_manage_replies,threads_manage_insights",
   },
   bluesky: null, // Bluesky uses BYOK (Bring Your Own Keys) - handle + app password
   pinterest: {
@@ -67,7 +68,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "PINTEREST_CLIENT_SECRET",
     authUrl: "https://www.pinterest.com/oauth/",
     tokenUrl: "https://api.pinterest.com/v5/oauth/token",
-    // Pinterest OAuth scopes (user_accounts:read required for profile fetch in callback)
+    // pins:read already covers pin analytics endpoints
     scope: "boards:read boards:write pins:read pins:write user_accounts:read",
   },
   tiktok: {
@@ -75,16 +76,16 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    // Login Kit + Content Posting + profile (username / profile_deep_link for View links).
-    // user.info.profile may need TikTok app review; without it we only get display_name.
-    scope: "user.info.basic,user.info.profile,video.upload,video.publish",
+    // Login Kit + Content Posting + profile (View links) + video.list/user.info.stats (analytics).
+    scope:
+      "user.info.basic,user.info.profile,video.upload,video.publish,video.list,user.info.stats",
   },
   facebook: {
     clientIdEnv: "FACEBOOK_CLIENT_ID",
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authUrl: "https://www.facebook.com/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    // pages_show_list: me/accounts; pages_manage_posts: feed/photos publish; pages_read_engagement if we read insights
+    // Extra insights/comment scopes are requested here. Page DMs are not supported.
     scope: FACEBOOK_PAGE_SCOPES,
   },
 };

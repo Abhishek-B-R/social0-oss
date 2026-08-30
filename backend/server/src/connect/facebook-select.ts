@@ -9,6 +9,7 @@ import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
+import { FACEBOOK_PAGE_SCOPES } from "../lib/facebook-oauth.js";
 
 export async function fbSelectGet(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -199,6 +200,7 @@ export async function fbSelectPost(req: AppRequest) {
         platformUsername: page.name,
         profileImageUrl,
         isActive: true,
+        scopes: FACEBOOK_PAGE_SCOPES,
         updatedAt: new Date(),
       })
       .where(eq(connectedAccounts.id, existing.id));
@@ -215,6 +217,7 @@ export async function fbSelectPost(req: AppRequest) {
       encryptedRefreshToken: null,
       tokenExpiresAt: null,
       isActive: true,
+      scopes: FACEBOOK_PAGE_SCOPES,
     });
   }
 

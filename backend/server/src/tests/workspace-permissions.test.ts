@@ -3,6 +3,7 @@ import {
   hasPermission,
   permissionsForRole,
   toPermissionsDto,
+  workspaceRoleLabel,
 } from "../lib/workspace/permissions.js";
 
 describe("workspace permissions", () => {
@@ -81,6 +82,52 @@ describe("workspace permissions", () => {
     expect(dto.canDeletePosts).toBe(true);
     expect(dto.canPublishPosts).toBe(true);
     expect(dto.canViewConnections).toBe(true);
+    expect(dto.canViewAnalytics).toBe(true);
+    expect(dto.canViewInbox).toBe(true);
+    expect(dto.canReplyComments).toBe(true);
+    expect(dto.canReplyDms).toBe(true);
+  });
+
+  it("lets community reply in inbox without publishing or analytics", () => {
+    const perms = permissionsForRole("community", {
+      isOwner: false,
+      teamsEnabled: true,
+      inWorkspace: true,
+    });
+    const dto = toPermissionsDto(perms);
+    expect(dto.canViewInbox).toBe(true);
+    expect(dto.canReplyComments).toBe(true);
+    expect(dto.canReplyDms).toBe(true);
+    expect(dto.canViewAnalytics).toBe(false);
+    expect(dto.canCreatePosts).toBe(false);
+    expect(dto.canPublishPosts).toBe(false);
+    expect(dto.canInvite).toBe(false);
+    expect(dto.canManageConnections).toBe(false);
+  });
+
+  it("lets analysts view analytics without inbox or publishing", () => {
+    const perms = permissionsForRole("analyst", {
+      isOwner: false,
+      teamsEnabled: true,
+      inWorkspace: true,
+    });
+    const dto = toPermissionsDto(perms);
+    expect(dto.canViewAnalytics).toBe(true);
+    expect(hasPermission(perms, "view_posts")).toBe(true);
+    expect(dto.canViewInbox).toBe(false);
+    expect(dto.canReplyComments).toBe(false);
+    expect(dto.canReplyDms).toBe(false);
+    expect(dto.canCreatePosts).toBe(false);
+    expect(dto.canPublishPosts).toBe(false);
+  });
+});
+
+describe("workspaceRoleLabel", () => {
+  it("maps stored roles to display names", () => {
+    expect(workspaceRoleLabel("admin")).toBe("Admin");
+    expect(workspaceRoleLabel("member")).toBe("Member");
+    expect(workspaceRoleLabel("community")).toBe("Community");
+    expect(workspaceRoleLabel("analyst")).toBe("Analyst");
   });
 });
 

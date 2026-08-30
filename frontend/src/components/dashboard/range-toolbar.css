@@ -1,0 +1,81 @@
+/* Scoped DayPicker v9 overrides. Keep rdp-* classes so nav/range layout works. */
+.range-toolbar-cal.rdp-root {
+  --rdp-accent-color: var(--text);
+  --rdp-accent-background-color: color-mix(in srgb, var(--text) 14%, transparent);
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 32px;
+  --rdp-day_button-width: 32px;
+  --rdp-day_button-border-radius: 6px;
+  --rdp-day_button-border: none;
+  --rdp-selected-border: none;
+  --rdp-today-color: var(--text);
+  --rdp-outside-opacity: 0.32;
+  --rdp-disabled-opacity: 0.32;
+  --rdp-months-gap: 1.75rem;
+  --rdp-nav_button-height: 1.75rem;
+  --rdp-nav_button-width: 1.75rem;
+  --rdp-nav-height: 2rem;
+  --rdp-range_middle-background-color: color-mix(in srgb, var(--text) 14%, transparent);
+  --rdp-range_middle-color: var(--text);
+  --rdp-range_start-color: var(--bg);
+  --rdp-range_end-color: var(--bg);
+  --rdp-range_start-date-background-color: var(--text);
+  --rdp-range_end-date-background-color: var(--text);
+  color: var(--text);
+}
+
+.range-toolbar-cal .rdp-selected {
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.range-toolbar-cal .rdp-month_caption {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.range-toolbar-cal .rdp-caption_label {
+  color: var(--text);
+}
+
+.range-toolbar-cal .rdp-weekday {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  opacity: 1;
+  padding: 0.35rem 0;
+}
+
+.range-toolbar-cal .rdp-button_previous,
+.range-toolbar-cal .rdp-button_next {
+  color: var(--text-muted);
+  border-radius: 0.5rem;
+}
+
+.range-toolbar-cal .rdp-button_previous:hover:not(:disabled),
+.range-toolbar-cal .rdp-button_next:hover:not(:disabled) {
+  background: var(--bg-muted);
+  color: var(--text);
+}
+
+.range-toolbar-cal .rdp-day_button:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--bg-muted);
+}
+
+.range-toolbar-cal .rdp-range_middle .rdp-day_button:hover {
+  background: transparent;
+}
+
+.range-toolbar-cal .rdp-range_start .rdp-day_button,
+.range-toolbar-cal .rdp-range_end .rdp-day_button {
+  background-color: var(--text);
+  color: var(--bg);
+}
+
+.range-toolbar-cal .rdp-range_start .rdp-day_button:hover,
+.range-toolbar-cal .rdp-range_end .rdp-day_button:hover {
+  background-color: var(--text);
+  color: var(--bg);
+}

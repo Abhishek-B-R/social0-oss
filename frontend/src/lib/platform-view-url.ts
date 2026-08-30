@@ -185,6 +185,7 @@ export function getPublicationViewUrl(pub: {
         (pub.platformUsername && isLikelyTikTokHandle(pub.platformUsername)
           ? pub.platformUsername.replace(/^@/, "")
           : null) ??
+        tiktokHandleCandidate(pub.platformUsername) ??
         (pub.platformPostUrl
           ? parseTikTokHandleFromProfileUrl(pub.platformPostUrl)
           : null) ??

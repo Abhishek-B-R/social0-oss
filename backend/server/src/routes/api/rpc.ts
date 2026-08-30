@@ -5,6 +5,7 @@ import { requireSessionUserId, unauthorized } from "../../middleware/auth.js";
 import {
   enforceRateLimit,
   rpcLimiter,
+  rpcLiveReadLimiter,
   rpcMutationLimiter,
 } from "../../lib/ratelimit.js";
 import * as dashboardData from "../../services/dashboard-data.js";
@@ -13,6 +14,8 @@ import * as posts from "../../services/posts.js";
 import * as publish from "../../services/publish.js";
 import * as resurface from "../../services/resurface.js";
 import * as settings from "../../services/settings.js";
+import * as analytics from "../../services/analytics.js";
+import * as inbox from "../../services/inbox.js";
 
 type RpcHandler = (...args: never[]) => Promise<unknown>;
 
@@ -42,6 +45,19 @@ const RPC_MUTATION_HANDLERS = new Set([
   "settings.deleteAccount",
   "onboarding.setOnboardingGoal",
   "onboarding.setOnboardingCompleted",
+  "inbox.replyToComment",
+  "inbox.likeComment",
+  "inbox.hideComment",
+  "inbox.replyToDm",
+]);
+
+/** Live platform fan-outs — stricter per-user budget than general RPC. */
+const RPC_LIVE_READ_HANDLERS = new Set([
+  "inbox.listComments",
+  "inbox.listDms",
+  "inbox.getDmThread",
+  "analytics.getOverview",
+  "analytics.getPostAnalytics",
 ]);
 
 const RPC_HANDLERS: Record<string, RpcHandler> = {
@@ -79,6 +95,17 @@ const RPC_HANDLERS: Record<string, RpcHandler> = {
   "resurface.updateAutoPlug": resurface.updateAutoPlug,
   "resurface.cancelAutoPlug": resurface.cancelAutoPlug,
   "resurface.updateResurfaceSchedule": resurface.updateResurfaceSchedule,
+  "analytics.getOverview": analytics.getAnalyticsOverview,
+  "analytics.getPostAnalytics": analytics.getPostAnalytics,
+  "analytics.listAccounts": analytics.listAnalyticsAccounts,
+  "inbox.listComments": inbox.listInboxComments,
+  "inbox.replyToComment": inbox.replyToInboxComment,
+  "inbox.likeComment": inbox.likeInboxComment,
+  "inbox.hideComment": inbox.hideInboxComment,
+  "inbox.listDms": inbox.listInboxDms,
+  "inbox.listAccounts": inbox.listInboxAccounts,
+  "inbox.getDmThread": inbox.getInboxDmThread,
+  "inbox.replyToDm": inbox.replyToInboxDm,
   "settings.loadSettingsPageData": settings.loadSettingsPageData,
   "settings.getUserSettingsSnapshot": settings.getUserSettingsSnapshot,
   "settings.updateDisplayName": settings.updateDisplayName,
@@ -142,8 +169,13 @@ export async function registerRpcRoutes(app: FastifyInstance) {
 
     const limiter = RPC_MUTATION_HANDLERS.has(fn)
       ? rpcMutationLimiter
-      : rpcLimiter;
-    const rate = await enforceRateLimit(limiter, `rpc:${userId}`);
+      : RPC_LIVE_READ_HANDLERS.has(fn)
+        ? rpcLiveReadLimiter
+        : rpcLimiter;
+    const rate = await enforceRateLimit(
+      limiter,
+      RPC_LIVE_READ_HANDLERS.has(fn) ? `rpc:live:${userId}` : `rpc:${userId}`,
+    );
     if (!rate.allowed) {
       return reply.status(rate.status).send({ error: rate.error });
     }
@@ -161,7 +193,15 @@ export async function registerRpcRoutes(app: FastifyInstance) {
       }
     } catch (err) {
       rethrowRouteRedirect(err);
-      if (!reply.sent) throw err;
+      if (!reply.sent) {
+        const statusCode = (err as { statusCode?: number }).statusCode;
+        const message =
+          err instanceof Error ? err.message : "Internal server error";
+        if (statusCode && statusCode >= 400 && statusCode < 500) {
+          return reply.status(statusCode).send({ error: message });
+        }
+        throw err;
+      }
     }
   });
 }

@@ -9,6 +9,7 @@ import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
+import { FACEBOOK_INSTAGRAM_PAGE_SCOPES } from "../lib/facebook-oauth.js";
 
 export async function igFbSelectGet(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -183,28 +184,29 @@ export async function igFbSelectPost(req: AppRequest) {
       }),
       existing.profileImageUrl,
     );
-        await db
-          .update(connectedAccounts)
-          .set({
-            encryptedAccessToken: encryptToken(
-              pageData.pageAccessToken,
-              existing.id,
-            ),
-            encryptedRefreshToken: null,
-            tokenExpiresAt: null,
-            tokenStatus: "active",
-            platformUsername:
-              pageData.instagramUsername ?? existing.platformUsername,
-            profileImageUrl,
-            platformMetadata: {
-              facebookPageId: pageData.pageId,
-              instagramBusinessAccountId: pageData.instagramAccountId,
-              connectionMethod: "facebook-page",
-            },
-            isActive: true,
-            updatedAt: new Date(),
-          })
-          .where(eq(connectedAccounts.id, existing.id));
+    await db
+      .update(connectedAccounts)
+      .set({
+        encryptedAccessToken: encryptToken(
+          pageData.pageAccessToken,
+          existing.id,
+        ),
+        encryptedRefreshToken: null,
+        tokenExpiresAt: null,
+        tokenStatus: "active",
+        platformUsername:
+          pageData.instagramUsername ?? existing.platformUsername,
+        profileImageUrl,
+        platformMetadata: {
+          facebookPageId: pageData.pageId,
+          instagramBusinessAccountId: pageData.instagramAccountId,
+          connectionMethod: "facebook-page",
+        },
+        isActive: true,
+        scopes: FACEBOOK_INSTAGRAM_PAGE_SCOPES,
+        updatedAt: new Date(),
+      })
+      .where(eq(connectedAccounts.id, existing.id));
   } else {
     const remaining = await getRemainingSlots(resourceUserId);
     if (remaining <= 0) {
@@ -239,6 +241,7 @@ export async function igFbSelectPost(req: AppRequest) {
       tokenExpiresAt: null,
       tokenStatus: "active",
       isActive: true,
+      scopes: FACEBOOK_INSTAGRAM_PAGE_SCOPES,
       platformMetadata: {
         facebookPageId: pageData.pageId,
         instagramBusinessAccountId: pageData.instagramAccountId,

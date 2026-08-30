@@ -12,6 +12,7 @@ import {
 } from "@/api/team";
 import { Button } from "@/components/ui/button";
 import { writeTeamWorkspaceId } from "@/lib/dashboard-base-path";
+import { workspaceRoleLabel } from "@/lib/workspace-roles";
 
 const MY_INVITES_QUERY_KEY = ["team", "my-invitations"] as const;
 
@@ -92,7 +93,7 @@ export function TeamInviteBanners() {
         const busy = busyId === inv.id;
         const accepting = busy && busyAction === "accept";
         const declining = busy && busyAction === "decline";
-        const roleLabel = inv.role === "admin" ? "Admin" : "Member";
+        const roleLabel = workspaceRoleLabel(inv.role);
         const inviter = inv.inviterName?.trim() || "Someone";
         return (
           <div

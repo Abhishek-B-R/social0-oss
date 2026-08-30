@@ -158,3 +158,16 @@ export async function getR2ObjectByteRange(
   const bytes = await response.Body.transformToByteArray();
   return bytes;
 }
+
+/** Read a full R2 object (publish worker fallback when public URL fetch fails). */
+export async function getR2ObjectBytes(key: string): Promise<Uint8Array> {
+  const client = getR2Client();
+  const bucket = getR2BucketName();
+  const response = await client.send(
+    new GetObjectCommand({ Bucket: bucket, Key: key }),
+  );
+  if (!response.Body) {
+    throw new Error("Empty object body");
+  }
+  return response.Body.transformToByteArray();
+}

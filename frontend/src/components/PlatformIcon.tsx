@@ -36,3 +36,34 @@ export function PlatformIcon({
     />
   );
 }
+
+/** Corner mark on account PFPs, same as composer AccountBubbleSelector. */
+export function AccountPlatformMark({
+  platform,
+  compact = false,
+  className,
+}: {
+  platform: string;
+  compact?: boolean;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "absolute bottom-0 right-0 flex items-center justify-center rounded-full border-2 border-card bg-card",
+        compact ? "h-4 w-4" : "h-[18px] w-[18px]",
+        className,
+      )}
+      aria-hidden
+    >
+      <span
+        className={cn(
+          "flex items-center justify-center [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-auto [&_svg]:max-w-full [&_svg]:shrink-0",
+          compact ? "h-2.5 w-2.5" : "h-3 w-3",
+        )}
+      >
+        <PlatformIcon platform={platform} size={compact ? 10 : 12} />
+      </span>
+    </span>
+  );
+}

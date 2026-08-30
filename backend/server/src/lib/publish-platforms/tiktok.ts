@@ -16,12 +16,13 @@ import {
   parseTikTokHandleFromProfileUrl,
   resolveTikTokProfileUrl,
 } from "@/lib/platform-view-url";
+import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import {
   firstTikTokPublicVideoId,
   isTikTokVideoId,
   parseTikTokJson,
+  storedTikTokPostId,
 } from "@/lib/tiktok-post-id";
-import { fetchWithTimeout } from "@/lib/fetch-with-timeout";
 import type {
   Post,
   Pub,
@@ -87,9 +88,9 @@ function resolveTikTokHandle(pub: Pub, profileUrl: string | null): string | null
 }
 
 /**
- * On PUBLISH_COMPLETE use publicaly_available_post_id →
- * https://www.tiktok.com/@{profile}/video/{id} (handle optional — /@/video/{id} works).
- * Inbox draft → messages URL. Prefer profile over bare homepage when no video id.
+ * On PUBLISH_COMPLETE use publicaly_available_post_id ->
+ * https://www.tiktok.com/@{profile}/video/{id} (handle optional - /@/video/{id} works).
+ * Inbox draft -> messages URL. Prefer profile over bare homepage when no video id.
  */
 async function buildTikTokPublishedResult(
   pub: Pub,
@@ -126,7 +127,7 @@ async function buildTikTokPublishedResult(
       : null);
   const handle = resolveTikTokHandle(pub, profileUrl);
 
-  // Always store a video deep link when we have a public id — handle is optional.
+  // Always store a video deep link when we have a public id - handle is optional.
   const platformPostUrl = publicVideoId
     ? buildTikTokVideoUrl(handle, publicVideoId)
     : (profileUrl ?? null);
@@ -561,7 +562,7 @@ export async function publishToTikTok(
       data?: {
         status?: string;
         fail_reason?: string;
-        publicaly_available_post_id?: (string | number)[];
+        publicaly_available_post_id?: unknown;
       };
       error?: { code?: string; message?: string };
     };
@@ -630,10 +631,10 @@ export async function publishToTikTok(
           publicIds,
         });
       }
-      // Complete but id not ready yet — keep polling a bit more.
+      // Complete but id not ready yet - keep polling a bit more.
       publicIdWaitPolls += 1;
       publishLog.info(
-        "[TikTok] PUBLISH_COMPLETE without public id yet; waiting…",
+        "[TikTok] PUBLISH_COMPLETE without public id yet; waiting...",
         { poll: publicIdWaitPolls, publishId },
       );
       if (publicIdWaitPolls >= TIKTOK_PUBLIC_ID_EXTRA_POLLS) {
@@ -660,7 +661,10 @@ export async function publishToTikTok(
     },
   );
   return buildTikTokPublishedResult(pub, accessToken, {
-    platformPostId: firstTikTokPublicVideoId(lastPublicIds),
+    platformPostId: storedTikTokPostId({
+      publishId,
+      publicIds: lastPublicIds,
+    }),
     status: sawPublishComplete ? "PUBLISH_COMPLETE" : undefined,
     publicIds: lastPublicIds,
   });

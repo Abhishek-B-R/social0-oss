@@ -5,6 +5,7 @@ import {
   UsersThree,
 } from "@/icons/phosphor";
 import { listWorkspaces, type TeamListItem } from "@/api/team";
+import { workspaceRoleLabel } from "@/lib/workspace-roles";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { TeamsPageSkeleton } from "@/components/ui/page-skeletons";
 import { cn } from "@/lib/utils";
@@ -132,9 +133,7 @@ function TeamRow({ team }: { team: TeamListItem }) {
             {team.workspaces.length === 1 ? "workspace" : "workspaces"}
             {" · "}
             {team.kind === "joined"
-              ? team.role === "admin"
-                ? "Admin"
-                : "Member"
+              ? workspaceRoleLabel(team.role)
               : "Owner"}
           </p>
         </div>

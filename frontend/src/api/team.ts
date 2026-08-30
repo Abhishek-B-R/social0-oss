@@ -1,6 +1,7 @@
 import { fetchApi } from "@/lib/fetch-api";
+import type { WorkspaceRole } from "@/lib/workspace-roles";
 
-export type WorkspaceRole = "admin" | "member";
+export type { WorkspaceRole };
 
 export type TeamMember = {
   id: string;
@@ -34,6 +35,10 @@ export type TeamPermissions = {
   canDeletePosts: boolean;
   canPublishPosts: boolean;
   canViewConnections: boolean;
+  canViewAnalytics: boolean;
+  canViewInbox: boolean;
+  canReplyComments: boolean;
+  canReplyDms: boolean;
 };
 
 export type TeamWorkspace = {

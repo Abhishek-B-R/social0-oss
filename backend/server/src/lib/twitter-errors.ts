@@ -67,7 +67,7 @@ function parseHttpStatusFromMessage(message: string): number | undefined {
   return undefined;
 }
 
-function extractHttpStatus(e: unknown): number | undefined {
+export function extractHttpStatus(e: unknown): number | undefined {
   if (!e || typeof e !== "object") {
     return undefined;
   }

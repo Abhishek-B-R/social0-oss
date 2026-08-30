@@ -4,19 +4,15 @@ import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "@/components/AppLink";
 import AppImage from "@/components/AppImage";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, FileText, Image as ImageIcon, Layers, LayoutGrid, Video } from "lucide-react";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { PublishButton } from "./PublishButton";
 import { PostAgainButton } from "./PostAgainButton";
 import { PostCardDeleteButton } from "./PostCardDeleteButton";
-import {
-  Image as ImageIcon,
-  Video,
-  FileText,
-  Layers,
-  LayoutGrid,
-} from "lucide-react";
 import { PostDetailAutoFeaturesSection } from "./PostDetailAutoFeaturesSection";
+import { PostAnalyticsPanel } from "@/features/dashboard/analytics/PostAnalyticsPanel";
+import { PLATFORM_LABEL } from "@/lib/platforms";
+import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
 import { formatDateTime } from "@/lib/date-format";
 import { sortBySlowPlatformsLast } from "@/lib/publish-order";
 import { getPublicationViewUrl } from "@/lib/platform-view-url";
@@ -164,6 +160,7 @@ const DISPLAY_TYPE_TO_SLUG: Record<string, string> = {
 export function PostDetailView({ postId }: { postId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { canViewAnalytics } = useWorkspaceNavPermissions();
   const back = resolvePostDetailBack(
     (location.state as PostDetailLocationState | null)?.from,
   );
@@ -353,6 +350,48 @@ export function PostDetailView({ postId }: { postId: string }) {
       }
     : null;
 
+  const showAnalytics =
+    canViewAnalytics &&
+    (post.status === "published" || post.status === "partial");
+  const showAuto =
+    (hasXPublished &&
+      (post.status === "published" || post.status === "partial")) ||
+    (post.status === "scheduled" && hasXSelected);
+
+  const autoFeatures = showAuto ? (
+    <PostDetailAutoFeaturesSection
+      postId={post.id}
+      publishedAt={
+        post.status === "scheduled" ? null : publishedAtForXAutoFeatures
+      }
+      variant={post.status === "scheduled" ? "scheduled" : "published"}
+      pendingAutoPlugFromServer={
+        post.status === "scheduled" ? pendingAutoPlugFromBulk : null
+      }
+      pendingResurfaceFromServer={
+        post.status === "scheduled" ? pendingResurfaceFromBulk : null
+      }
+      use24HourTimeFormat={core.use24HourTimeFormat}
+      allowAutoPlug={core.allowAutoPlug}
+      allowResurface={core.allowResurface}
+      autoPlugDetail={core.autoPlug}
+      resurfaceDetail={core.resurface}
+      selectedAccountIds={
+        post.status === "scheduled"
+          ? xSelectedAccountIds
+          : xPublishedAccountIds
+      }
+      onUpdated={reloadCore}
+    />
+  ) : null;
+
+  const analyticsPanel = showAnalytics ? (
+    <PostAnalyticsPanel
+      postId={post.id}
+      enabled={publications.some((p) => p.status === "published")}
+    />
+  ) : null;
+
   return (
     <div className="space-y-6">
       {core.showPaymentFailedBanner && (
@@ -384,7 +423,7 @@ export function PostDetailView({ postId }: { postId: string }) {
           // Preserve calendar → post → back without a hardcoded posts list.
           navigate(-1);
         }}
-        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text"
+        className="inline-flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text"
       >
         <ArrowLeft className="h-4 w-4" />
         {back.label}
@@ -497,6 +536,8 @@ export function PostDetailView({ postId }: { postId: string }) {
               </div>
             </div>
           )}
+
+          {analyticsPanel}
         </div>
 
         <div className="space-y-6">
@@ -666,8 +707,8 @@ export function PostDetailView({ postId }: { postId: string }) {
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="text-sm font-medium text-text capitalize">
-                                {pub.platform.replace("_", " ")}
+                              <span className="text-sm font-medium text-text">
+                                {PLATFORM_LABEL[pub.platform] ?? pub.platform}
                               </span>
                               <span
                                 className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${badge.className}`}
@@ -675,20 +716,24 @@ export function PostDetailView({ postId }: { postId: string }) {
                                 {badge.label}
                               </span>
                             </div>
+                            {pub.platformUsername ? (
+                              <p className="truncate text-xs text-text-muted">
+                                @{pub.platformUsername.replace(/^@/, "")}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 pt-0.5">
-                          {viewUrl && pub.status === "published" && (
+                          {viewUrl && pub.status === "published" ? (
                             <a
                               href={viewUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs font-medium text-accent hover:text-accent-hover transition-colors"
+                              className="text-xs font-medium text-accent hover:text-accent-hover"
                             >
                               View
                             </a>
-                          )}
-                          {pub.status === "failed" && (
+                          ) : pub.status === "failed" ? (
                             <PublishButton
                               postId={post.id}
                               publicationId={pub.publicationId}
@@ -696,51 +741,23 @@ export function PostDetailView({ postId }: { postId: string }) {
                               onStarted={markPublishing}
                               onFinished={() => void reloadCore()}
                             />
-                          )}
+                          ) : null}
                         </div>
                       </div>
-                      {pub.lastError && pub.status === "failed" && (
+                      {pub.lastError && pub.status === "failed" ? (
                         <p className="mt-2 text-xs leading-relaxed text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
                           {isTwitterPlatformId(pub.platform)
                             ? enrichTwitterErrorForDisplay(pub.lastError)
                             : pub.lastError}
                         </p>
-                      )}
+                      ) : null}
                     </li>
                   );
                 })}
               </ul>
             )}
           </div>
-
-          {((hasXPublished &&
-            (post.status === "published" || post.status === "partial")) ||
-            (post.status === "scheduled" && hasXSelected)) && (
-            <PostDetailAutoFeaturesSection
-              postId={post.id}
-              publishedAt={
-                post.status === "scheduled" ? null : publishedAtForXAutoFeatures
-              }
-              variant={post.status === "scheduled" ? "scheduled" : "published"}
-              pendingAutoPlugFromServer={
-                post.status === "scheduled" ? pendingAutoPlugFromBulk : null
-              }
-              pendingResurfaceFromServer={
-                post.status === "scheduled" ? pendingResurfaceFromBulk : null
-              }
-              use24HourTimeFormat={core.use24HourTimeFormat}
-              allowAutoPlug={core.allowAutoPlug}
-              allowResurface={core.allowResurface}
-              autoPlugDetail={core.autoPlug}
-              resurfaceDetail={core.resurface}
-              selectedAccountIds={
-                post.status === "scheduled"
-                  ? xSelectedAccountIds
-                  : xPublishedAccountIds
-              }
-              onUpdated={reloadCore}
-            />
-          )}
+          {autoFeatures}
         </div>
       </div>
     </div>

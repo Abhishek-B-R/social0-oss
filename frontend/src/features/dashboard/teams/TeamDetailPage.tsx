@@ -5,7 +5,6 @@ import Link from "@/components/AppLink";
 import {
   ArrowLeft,
   CalendarBlank,
-  CaretDown,
   CaretRight,
   PencilSimple,
   Plus,
@@ -46,6 +45,8 @@ import {
   teamInvitationsQueryKey,
   teamQueryKey,
 } from "@/lib/team-query-keys";
+import { WorkspaceRoleSelect } from "@/components/dashboard/WorkspaceRoleSelect";
+import { workspaceRoleLabel } from "@/lib/workspace-roles";
 
 export function TeamDetailPage() {
   const { teamId: teamIdParam } = useParams<{ teamId: string }>();
@@ -479,20 +480,12 @@ export function TeamDetailPage() {
                     }
                   }}
                 />
-                <div className="relative shrink-0 sm:w-[7.5rem]">
-                  <select
+                <div className="relative shrink-0 sm:w-[9.5rem]">
+                  <WorkspaceRoleSelect
                     value={inviteRole}
-                    onChange={(e) =>
-                      setInviteRole(e.target.value as WorkspaceRole)
-                    }
+                    onChange={setInviteRole}
                     disabled={inviting}
-                    className="h-9 w-full appearance-none rounded-xl border border-input bg-bg px-3 pr-8 text-sm leading-none text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60"
-                  >
-                    <option value="member">Member</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <CaretDown
-                    className="pointer-events-none absolute top-1/2 right-2.5 h-3.5 w-3.5 -translate-y-1/2 text-text-muted"
+                    aria-label="Invite role"
                   />
                 </div>
                 <Button
@@ -500,9 +493,13 @@ export function TeamDetailPage() {
                   disabled={inviting || !inviteEmail.trim()}
                   onClick={() => void handleInvite()}
                 >
-                  {inviting ? "Sending…" : "Send invite"}
+                  {inviting ? "Sending..." : "Send invite"}
                 </Button>
               </div>
+              <p className="mt-2 text-xs text-text-muted">
+                Community replies in Inbox. Analysts can view Analytics. Members
+                can post, plus both.
+              </p>
             </div>
           ) : null}
 
@@ -511,7 +508,7 @@ export function TeamDetailPage() {
               <thead>
                 <tr className="border-b border-border bg-bg-subtle text-text-muted">
                   <th className="px-3 py-2.5 font-medium">Email</th>
-                  <th className="w-[7.5rem] px-3 py-2.5 font-medium">Role</th>
+                  <th className="w-[9.5rem] px-3 py-2.5 font-medium">Role</th>
                   <th className="w-[5.5rem] px-3 py-2.5 font-medium">Status</th>
                   <th className="w-[6.5rem] px-3 py-2.5 font-medium">Joined</th>
                   <th className="w-14 px-3 py-2.5 text-center font-medium">
@@ -876,26 +873,16 @@ function MemberTableRow({
         </td>
         <td className="px-3 py-2.5 align-middle">
           {canChangeRole ? (
-            <div className="relative flex h-7 max-w-[6.5rem] items-center">
-              <select
-                value={member.role}
-                disabled={roleBusy || removeBusy}
-                onChange={(e) =>
-                  void handleRole(e.target.value as WorkspaceRole)
-                }
-                aria-label={`Change role for ${displayName}`}
-                className="h-7 w-full appearance-none rounded-md border border-border bg-transparent px-2 pr-6 text-sm leading-none capitalize text-text focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-60"
-              >
-                <option value="admin">Admin</option>
-                <option value="member">Member</option>
-              </select>
-              <CaretDown
-                className="pointer-events-none absolute top-1/2 right-1.5 h-3 w-3 -translate-y-1/2 text-text-muted"
-              />
-            </div>
+            <WorkspaceRoleSelect
+              value={member.role}
+              disabled={roleBusy || removeBusy}
+              onChange={(role) => void handleRole(role)}
+              aria-label={`Change role for ${displayName}`}
+              className="max-w-[9.5rem] [&_select]:h-7 [&_select]:rounded-md [&_select]:border-border [&_select]:bg-transparent [&_select]:px-2 [&_select]:pr-6 [&_select]:text-sm"
+            />
           ) : (
-            <span className="block h-7 text-sm leading-7 capitalize text-text-muted">
-              {member.isOwner ? "Owner" : member.role}
+            <span className="block h-7 text-sm leading-7 text-text-muted">
+              {member.isOwner ? "Owner" : workspaceRoleLabel(member.role)}
             </span>
           )}
         </td>
@@ -998,8 +985,8 @@ function InvitationTableRow({
         {invitation.email}
       </td>
       <td className="px-3 py-2.5 align-middle">
-        <span className="block h-7 text-sm leading-7 capitalize text-text-muted">
-          {invitation.role}
+        <span className="block h-7 text-sm leading-7 text-text-muted">
+          {workspaceRoleLabel(invitation.role)}
         </span>
       </td>
       <td className="px-3 py-2.5 align-middle text-sm text-text-muted">

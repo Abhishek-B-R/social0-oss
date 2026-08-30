@@ -24,6 +24,8 @@ import {
   isWorkspaceRole,
   permissionsForRole,
   toPermissionsDto,
+  workspaceRoleLabel,
+  workspaceRoleRank,
   type TeamPermissionsDto,
   type WorkspaceRole,
 } from "./permissions.js";
@@ -268,7 +270,7 @@ async function loadTeamMembers(teamId: string, ownerUserId: string) {
 
   members.sort((a, b) => {
     if (a.isOwner !== b.isOwner) return a.isOwner ? -1 : 1;
-    if (a.role !== b.role) return a.role === "admin" ? -1 : 1;
+    if (a.role !== b.role) return workspaceRoleRank(a.role) - workspaceRoleRank(b.role);
     return a.email.localeCompare(b.email);
   });
 
@@ -655,7 +657,10 @@ export async function inviteMember(
   teamIdRaw?: string,
 ): Promise<{ invitationId: string }> {
   if (!isWorkspaceRole(roleRaw)) {
-    throw new TeamServiceError(400, "Invalid role. Use 'admin' or 'member'.");
+    throw new TeamServiceError(
+      400,
+      "Invalid role. Use admin, member, community, or analyst.",
+    );
   }
   const email = normalizeEmail(emailRaw);
   if (!email || !email.includes("@")) {
@@ -786,7 +791,7 @@ export async function inviteMember(
       to: email,
       workspaceName: teamName,
       inviterName: actor?.name?.trim() || actor?.email || "A teammate",
-      role: roleRaw,
+      role: workspaceRoleLabel(roleRaw),
     });
   } catch (err) {
     await db.delete(teamInvitations).where(eq(teamInvitations.id, invite.id));
@@ -1082,7 +1087,10 @@ export async function updateMemberRole(
   roleRaw: unknown,
 ): Promise<void> {
   if (!isWorkspaceRole(roleRaw)) {
-    throw new TeamServiceError(400, "Invalid role. Use 'admin' or 'member'.");
+    throw new TeamServiceError(
+      400,
+      "Invalid role. Use admin, member, community, or analyst.",
+    );
   }
 
   const member = await db.query.teamMembers.findFirst({
@@ -1117,7 +1125,7 @@ export async function updateMemberRole(
       await sendWorkspaceRoleChangedEmail({
         to: memberUser.email,
         workspaceName: team.teamName,
-        role: roleRaw,
+        role: workspaceRoleLabel(roleRaw),
       });
     } catch {
       // non-blocking

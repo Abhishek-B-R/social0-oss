@@ -1,6 +1,6 @@
 
 import Link from "@/components/AppLink";
-import { PlatformIcon } from "@/components/PlatformIcon";
+import { AccountPlatformMark } from "@/components/PlatformIcon";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { cn } from "@/lib/utils";
 import { AlertTriangle } from "lucide-react";
@@ -107,8 +107,6 @@ export function AccountBubbleSelector({
     selectableAccounts.length > 0 &&
     selectableAccounts.every((a) => selectedIds.has(a.id));
   const avatarSize = compact ? "h-12 w-12" : "h-12 w-12";
-  const badgeSize = compact ? "h-4 w-4" : "h-4 w-4";
-  const badgeInner = compact ? "h-2.5 w-2.5" : "h-2.5 w-2.5";
   const bubbleGap = compact ? "gap-4" : "gap-4";
   const usernameMaxChars = compact ? 10 : 12;
   const usernameClass = compact
@@ -187,24 +185,7 @@ export function AccountBubbleSelector({
                     fill
                   />
                 </div>
-                <span
-                  className={cn(
-                    "absolute bottom-0 right-0 flex items-center justify-center rounded-full border-2 border-card bg-card",
-                    badgeSize,
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "flex items-center justify-center [&_svg]:max-h-full [&_svg]:max-w-full [&_svg]:h-auto [&_svg]:w-auto [&_svg]:shrink-0",
-                      badgeInner,
-                    )}
-                  >
-                    <PlatformIcon
-                      platform={acc.platform}
-                      size={compact ? 10 : 12}
-                    />
-                  </span>
-                </span>
+                <AccountPlatformMark platform={acc.platform} compact />
                 {selected && !disabled && (
                   <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white">
                     <svg

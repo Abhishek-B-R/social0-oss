@@ -60,10 +60,102 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 
 - **Schedule for later** — date/time in user’s timezone
 - **Content calendar** — month/week view of scheduled and published posts (`/dashboard/calendar`)
+- **Analytics** — live metrics for posts you published through Social0 (`/dashboard/analytics`). Flask in the sidebar = early access, not a separate product. See [Analytics](#analytics)
+- **Inbox** — comments on Social0-published posts, plus DMs where the platform allows it (`/dashboard/inbox`). Same flask. See [Inbox](#inbox)
 - **Posts list** — all posts with filters (platform, account, time, sort); views for drafts, scheduled, posted
 - **Posting queue** — recurring weekly time slots (Settings → Queue); assign posts to “next queue slot”
 - **Timezone** — user timezone drives schedule display and queue slots (Settings)
 - **Bulk scheduling** — upload many images or videos and schedule across days (Growth+; `/dashboard/bulk-tools`)
+
+---
+
+## Analytics
+
+Route: `/dashboard/analytics` (also under `/dashboard/teams/:teamId/analytics`). Not plan-gated. Flask icon in the sidebar (no “Experimental” label there). The page title shows a flask + **Experimental** — early access, not a separate product.
+
+Live metrics come from **connected, active accounts** that are rolled out. Metrics are for **posts you published through Social0**, not the rest of the account.
+
+| Control | Behavior |
+| ------- | -------- |
+| Date range | X-style: `7D` / `2W` / `4W` / `3M` / `1Y` + custom calendar |
+| Account chips | Active, usable connections on **live** platforms only. **All** = every live account |
+| Reconnect nag | Only for live platforms that still need analytics permission. Open **Connections** |
+| Refresh | Reloads the current range |
+
+What you see: Views, Likes, Comments, Engagement; Views & engagement trend; **By platform** (all accounts) or **Engagement mix** (one account); Top posts (opens `/dashboard/posts/:id`).
+
+### Live vs not yet (today)
+
+Rolling out as App Review lands. `LIVE_PLATFORMS.analytics` — keep frontend and backend maps in sync. **False = hide chip, skip live fetch, skip reconnect nag.**
+
+| Platform | Analytics today |
+| -------- | --------------- |
+| Instagram, Facebook, Threads, YouTube, X, Bluesky, LinkedIn, TikTok, Pinterest | Live (`LIVE_PLATFORMS.analytics`) |
+
+Team roles: **Analyst**, **Member**, and **Admin** can open Analytics. **Community** cannot.
+
+---
+
+## Inbox
+
+Route: `/dashboard/inbox` (also `/dashboard/teams/:teamId/inbox`). Not plan-gated. Same flask as Analytics.
+
+- **Comments** (default) — comments on posts **published through Social0**
+- **DMs** — conversations on platforms that allow it
+
+Same date ranges as Analytics (`7D` / `2W` / `4W` / `3M` / `1Y` + custom). Account chips: active connections on **live** platforms for that tab. Inline images/videos in threads; reply in-app. Scroll the comments or DMs list to load older threads.
+
+| URL | Meaning |
+| --- | ------- |
+| (none) | Comments tab |
+| `?tab=dms` | DMs tab |
+| `?account=` | Filter to one connected account |
+| `?thread=` | Open a comment thread |
+| `?convo=` | Open a DM conversation |
+
+- Inbox nav entry (experimental). Unread badge is not shipped yet.
+
+### Live vs not yet (today)
+
+Same gate as Analytics: `LIVE_PLATFORMS.inboxComments` / `inboxDms`.
+
+| Platform | Comments | DMs |
+| -------- | -------- | --- |
+| Instagram | Live | Live |
+| **X (Twitter)** | Live | Live |
+| **Bluesky** | Live | Live |
+| Facebook | Live | Not supported |
+| Threads, YouTube, LinkedIn | Live | Not in the DMs map |
+| TikTok | Hidden (Login Kit has no comments inbox) | Live (Business Messaging; Login Kit token will fail until a BM app is connected) |
+| Pinterest | Hidden | Not in the DMs map |
+
+Inbox chips use `inbox.listAccounts` with the matching live flag (not the analytics list).
+
+Team roles: **Community**, **Member**, and **Admin** can open Inbox and reply. **Analyst** cannot. **Community** cannot publish.
+
+---
+
+## Post details
+
+Route: `/dashboard/posts/:id`. Two columns.
+
+**Left**
+
+1. **Post content**
+2. **Media** (if any)
+3. Under Media:
+   - If **X is not** on the post: full-width **Post analytics** card (published / partial only)
+   - If **X is** on the post: that row splits — **Post analytics** \| **Auto-Plug & Auto-Repost** (Growth+; X-only). Scheduled X posts can show Auto-Plug / Auto-Repost without the analytics card
+
+**Post analytics** starts **collapsed**. Clicking **Show analytics** is what fetches metrics. They do not load on page open. **Hide analytics** / **Refresh** after open. Live-platform filter still applies: platforms with `LIVE_PLATFORMS.analytics` false are skipped.
+
+FIXME: the analytics card still renders for any published/partial post; non-live platforms on that post are skipped when metrics load.
+
+**Right**
+
+1. **Status card** — type badge (Text / Image / Video / Thread / Collection), Posted / Scheduled / Queued / Publishing / Partial / Failed / Draft, then **Post again** / **Edit and post** (and publish/retry/delete when relevant), then Created / Scheduled or Queued / Posted timestamps
+2. **Publish status** — per-platform publish log
+3. **Platforms** — account rows + **View** on the network when published (Retry if that account failed)
 
 ---
 
@@ -72,6 +164,7 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 - **Auto-repost / resurface** — automatically repost evergreen content on an interval with optional max resurfaces and plug comment
 - **Auto-plug** — add a call-to-action reply when a post hits a performance threshold (e.g. retweets/likes on X)
 - Configurable per post at schedule time or on post detail for eligible posts
+- **X-only** today. On post detail they share a row with Post analytics when X is on the post (see [Post details](#post-details))
 
 ---
 
@@ -125,6 +218,8 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 | Bulk tools (image/video) | — | — | ✓ | ✓ |
 | Auto-plug | — | — | ✓ | ✓ |
 | Auto-repost / resurface | — | — | ✓ | ✓ |
+| Analytics (experimental, live platforms) | ✓ | ✓ | ✓ | ✓ |
+| Inbox comments & DMs (experimental, live platforms) | ✓ | ✓ | ✓ | ✓ |
 | Human support | — | ✓ | ✓ | Priority (Pro) |
 
 *Pricing shown on the website; early adopters lock in launch pricing.*
@@ -151,7 +246,7 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 | API keys UI (`/dashboard/api-keys`) | Coming soon (backend supports keys) |
 | User outbound webhooks | ✓ Backend |
 | REST `/v1/*` CRUD API | Stubs / not implemented |
-| Teams (`/dashboard/teams`) | ✓ Invite teammates, roles, Pro-gated workspace |
+| Teams (`/dashboard/teams`) | ✓ Invite teammates as Admin, Member, Community, or Analyst (Pro-gated) |
 
 ---
 
@@ -169,4 +264,4 @@ Not user-facing, but powers the product:
 
 ---
 
-*Last updated from codebase on `main`. For how-to guides, see [docs.social0.app](https://docs.social0.app).*
+*Last updated from codebase on `main` (Analytics + Inbox launch). For how-to guides, see [docs.social0.app](https://docs.social0.app).*
