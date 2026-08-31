@@ -1,12 +1,33 @@
-# Local Redis is no longer used - BullMQ + caches use Upstash (see backend/.env.example).
-# Kept for optional offline experiments only.
+# Local Redis for API + background-worker (BullMQ, rate limits, caches, job progress).
+# redis-rest is an Upstash-compatible HTTP sidecar so @upstash/redis keeps working.
+# Bind 127.0.0.1 only - never publish these ports on a public interface.
 services:
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  redis-rest:
+    image: hiett/serverless-redis-http:latest
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8079:80"
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:?set UPSTASH_REDIS_REST_TOKEN in backend/.env}
+      SRH_CONNECTION_STRING: redis://redis:6379
 
 volumes:
   redis-data:

@@ -14,11 +14,11 @@ backend/
 
 ## Architecture (production)
 
-| Component | Responsibility |
-| --------- | -------------- |
-| **server** | User HTTP — fast responses; cron routes return `202` immediately |
-| **background-worker** | Heavy cron jobs in a separate process (no user traffic) |
-| **CF publish worker** | Platform posting (`PUBLISH_DISPATCH=cloudflare`) |
+| Component             | Responsibility                                                   |
+| --------------------- | ---------------------------------------------------------------- |
+| **server**            | User HTTP — fast responses; cron routes return `202` immediately |
+| **background-worker** | Heavy cron jobs in a separate process (no user traffic)          |
+| **CF publish worker** | Platform posting (`PUBLISH_DISPATCH=cloudflare`)                 |
 
 ```
 Cron HTTP → server (202) → Redis → background-worker runs job
@@ -44,10 +44,10 @@ bun run dev:background-worker     # scheduler + token-health consumers
 
 Server enqueues `202`; **background-worker** executes:
 
-| Route | Job |
-| ----- | --- |
-| `POST /api/cron/publish-scheduled` | Due scheduled posts → CF |
-| `POST /api/cron/repost` | Auto-repost / resurface |
-| `POST /api/cron/autoplug` | Auto-plug |
-| `POST /api/cron/token-health` | Token validation sweep |
+| Route                                   | Job                           |
+| --------------------------------------- | ----------------------------- |
+| `POST /api/cron/publish-scheduled`      | Due scheduled posts → CF      |
+| `POST /api/cron/repost`                 | Auto-repost / resurface       |
+| `POST /api/cron/autoplug`               | Auto-plug                     |
+| `POST /api/cron/token-health`           | Token validation sweep        |
 | `POST /api/cron/billing-zombie-cleanup` | Cancel stale unpaid Dodo subs |
