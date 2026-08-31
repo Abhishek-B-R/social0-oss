@@ -302,8 +302,8 @@ function AccountMenuPanel({
         />
         <MenuRow
           icon={Code}
-          label="Developer"
-          href="/dashboard/api-keys"
+          label="MCP"
+          href="/mcp"
           onClick={onClose}
         />
       </div>
@@ -453,7 +453,7 @@ export function SidebarAccountMenu({
               )
             : variant === "sidebar"
               ? cn(
-                  "sidebar-user-block w-full gap-3 px-3 py-2",
+                  "sidebar-user-block w-full gap-2 px-2 py-1.5",
                   "hover:bg-sidebar-active",
                   open && "bg-sidebar-active",
                 )
@@ -476,9 +476,9 @@ export function SidebarAccountMenu({
               className={cn(
                 "rounded-full object-cover",
                 railCollapsed
-                  ? "h-9 w-9"
+                  ? "h-8 w-8"
                   : variant === "sidebar"
-                    ? "h-9 w-9"
+                    ? "h-8 w-8"
                     : "h-10 w-10",
               )}
             />
@@ -487,9 +487,9 @@ export function SidebarAccountMenu({
               className={cn(
                 "flex items-center justify-center rounded-full bg-accent/20 text-sm font-semibold text-accent",
                 railCollapsed
-                  ? "h-9 w-9"
+                  ? "h-8 w-8"
                   : variant === "sidebar"
-                    ? "h-9 w-9"
+                    ? "h-8 w-8"
                     : "h-10 w-10",
               )}
             >
