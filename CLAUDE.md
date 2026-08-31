@@ -14,10 +14,11 @@ Production stack in one line:
 
 1. **Separate packages** — Pages builds `frontend/` alone. Do **not** import `@social0/shared` (or anything under `backend/`) into the SPA.
 2. **No DB migrations / schema edits** unless the user **explicitly** asks. Schema source of truth: `backend/server/src/db/schema.ts`. Keep `background-worker` schema copy in sync when schema *is* changed.
-3. **Never await platform APIs inside HTTP handlers** — enqueue / CF dispatch; return fast (`202` / `200`).
+3. **Never await platform *publish* APIs inside HTTP handlers** — enqueue / CF dispatch; return fast (`202` / `200`). Analytics/inbox RPC reads *do* hit platform APIs in-request (timeouts + `RPC_LIVE_READ_HANDLERS` budget).
 4. **No Next.js patterns** in the SPA (`"use server"`, App Router, `middleware.ts`). Vite + React Router only.
 5. Prefer **deletion / smallest change**. New networks → `backend/server/src/lib/publish-platforms/` (+ `index.ts`). New RPC → `services/` + `routes/api/rpc.ts` + `frontend/src/api/` wrapper.
 6. Do not invent env values; copy names from `backend/.env.example` / `frontend/.env.example` / worker READMEs.
+7. **`LIVE_PLATFORMS` is backend-only** — `backend/server/src/lib/live-platforms.ts`. SPA account chips come from `analytics.listAccounts` / `inbox.listAccounts`. Do **not** duplicate this map in `frontend/`.
 
 ---
 
@@ -48,8 +49,8 @@ social0/
 
 | Layer | Owns |
 | ----- | ---- |
-| **frontend** | Marketing, auth, onboarding, dashboard UI; `rpc()` + REST |
-| **server** | Auth, validation, RPC BFF, enqueue, billing, OAuth connect, `/v1` |
+| **frontend** | Marketing, auth, onboarding, dashboard UI (composer, analytics, inbox); `rpc()` + REST |
+| **server** | Auth, validation, RPC BFF, enqueue, billing, OAuth connect, live analytics/inbox, `/v1` |
 | **publish-worker** | Long platform uploads (TikTok/YouTube/Meta/…); Postgres + R2 |
 | **background-worker** | Cron: scheduled publish dispatch, repost, autoplug, token health, billing zombie |
 | **cron-worker** | Triggers those cron HTTP endpoints on a schedule |
@@ -73,6 +74,7 @@ social0/
 
 - Browser → API: session cookies; `POST /api/rpc`, REST `/api/*`. Dev: Vite proxies `/api` + `/v1` to `VITE_API_PROXY_TARGET` (default `:3001`). Leave `VITE_API_URL` empty in local proxy mode.
 - Publish (default `PUBLISH_DISPATCH=cloudflare`): API writes `publish_jobs` / `post_publications` → HMAC enqueue to CF → Queues `social0-publish-now` / `social0-publish-scheduled` (DLQ `social0-publish-dlq`) → worker (Hyperdrive + R2) → platform APIs → finalize + job events. Publish-now progress: SSE `GET /api/jobs/:id/stream`.
+- **X and TikTok stay on the API by default** (`SERVER_SIDE_PUBLISH_PLATFORMS` in `backend/shared/src/constants/server-side-publish.ts`) — chunked X video + TikTok 64-bit permalinks. Opt into CF with `TWITTER_PUBLISH_ON_CF=1` / `TIKTOK_PUBLISH_ON_CF=1` after the worker is current.
 - Fallback: `PUBLISH_DISPATCH=bullmq` runs platform work on the droplet via shared queues.
 - Cron: CF cron-worker → `POST /api/cron/{job}` + `CRON_SECRET` → enqueue → background-worker.
 - Redis (Upstash): BullMQ, rate limits, auth secondary storage, job progress. Optional local Redis via `backend/docker-compose.yml`.
@@ -103,7 +105,9 @@ social0/
 
 **Guest dashboard:** `/dashboard/*` browsable without session (`useIsGuest`, `GuestBanner`, `GuestTestModeDialog`). Cannot publish.
 
-Auth methods: email+password, email OTP verify (Resend), Google OAuth. Prod cookies cross-subdomain on `social0.app`. Dev-only `x-user-id` when `ALLOW_DEV_USER_HEADER` + localhost.
+**Legal consent:** signed-in users must accept current terms/privacy (`legal_acceptances`). SPA `LegalConsentGate` in `DashboardLayout` → `GET/POST /api/legal/status` + `/api/legal/accept`. Cron can notify on legal updates (`POST /api/cron/notify-legal-update`).
+
+Auth methods: email+password, email OTP verify (Resend), Google OAuth, forgot/reset password (`/auth/forgot-password`, `/auth/reset-password`). Prod cookies cross-subdomain on `social0.app`. Dev-only `x-user-id` when `ALLOW_DEV_USER_HEADER` + localhost.
 
 ---
 
@@ -134,7 +138,7 @@ UI / RPC publish.* / POST /api/publish
 | `backend/shared/src/lib/cf-publish-client.ts` | HMAC enqueue to CF |
 | `cloudflare/publish-worker/src/process-platform.ts` | Edge job runner (imports server publish modules) |
 
-**Platforms (9):** LinkedIn, Instagram, YouTube, Pinterest, TikTok, X (`twitter_x`), Threads, Bluesky, Facebook Pages. LinkedIn + X still partly inline in `execute-publish.ts` — new networks go in `publish-platforms/`.
+**Platforms (9):** LinkedIn, Instagram, YouTube, Pinterest, TikTok, X (`twitter_x`), Threads, Bluesky, Facebook Pages. LinkedIn + X still partly inline in `execute-publish.ts` — new networks go in `publish-platforms/`. X + TikTok default to the API process, not the CF worker (see §2).
 
 **Content types:** text, image, video, threads, collection — composer + `/dashboard/create/:type`.
 
@@ -146,7 +150,7 @@ UI / RPC publish.* / POST /api/publish
 
 ### Stack
 
-Vite 8, React 19, React Router 7, TanStack Query, Tailwind 4 / shadcn, better-auth client, PostHog.
+Vite 8, React 19, React Router 7, TanStack Query, Tailwind 4 / shadcn, better-auth client, PostHog, Vemetric, Simple Analytics.
 
 ### Layout
 
@@ -157,13 +161,15 @@ frontend/src/
 ├── pages/            thin route entries
 ├── features/
 │   ├── auth/         AuthPage, AuthContinuePage, verify, reset
-│   ├── dashboard/    composer, posts, calendar, billing, settings, bulk-tools,
-│   │                 connections, api-keys, teams, workspaces, feedback, create
-│   ├── marketing/    terms, privacy, features, alternatives, mcp, pricing helpers
+│   ├── dashboard/    composer, posts, calendar, analytics, inbox, billing,
+│   │                 settings, bulk-tools, connections, api-keys, teams,
+│   │                 workspaces, feedback, create
+│   ├── marketing/    terms, privacy, features, alternatives, mcp, tools,
+│   │                 pricing, about, contact, developers
 │   ├── onboarding/
 │   └── oauth/        MCP OAuth connect page
 ├── api/              typed RPC wrappers (dashboard-data, posts, publish, settings,
-│                     onboarding, resurface, team, …)
+│                     onboarding, resurface, team, analytics, inbox, …)
 ├── lib/              rpc, fetch-api, auth-client, env, plans, sign-in-url, …
 ├── components/       landing/*, dashboard chrome, auth, billing, bulk-tools
 └── index.css         dashboard tokens + scoped `.landing` / `.landing-page`
@@ -175,20 +181,27 @@ frontend/src/
 | ---- | ------- |
 | `/` | Landing; signed-in → `/auth/continue` |
 | `/auth`, `/auth/continue`, `/auth/verify-email` | Auth + post-auth gate |
+| `/auth/forgot-password`, `/auth/reset-password` | Password reset |
 | `/onboarding` (+ step2–4) | Goal → connect → plan → ready |
 | `/dashboard` → composer | Default app home |
 | `/dashboard/composer` | Quick compose |
-| `/dashboard/create/:type` | Manual typed forms |
-| `/dashboard/posts`, `/drafts`, `/scheduled`, `/posted` | Lists |
+| `/dashboard/create`, `/dashboard/create/:type` | Create hub + typed forms |
+| `/dashboard/posts` | All posts |
+| `/dashboard/posts/drafts`, `/scheduled`, `/posted` | Status lists |
+| `/dashboard/posts/:id`, `/posts/:id/edit` | Detail + edit |
 | `/dashboard/calendar` | Calendar |
-| `/dashboard/connections` | OAuth accounts |
+| `/dashboard/analytics` | Live post metrics (experimental; not plan-gated) |
+| `/dashboard/inbox` | Comments + DMs (experimental; not plan-gated) |
+| `/dashboard/connections` | OAuth accounts (+ platform select subroutes) |
 | `/dashboard/billing` | Dodo plans |
 | `/dashboard/settings` | Prefs, emails, queue, account |
 | `/dashboard/bulk-tools/*` | Bulk image/video (Growth+) |
 | `/dashboard/api-keys` | Developer / keys / webhooks / CLI / MCP links |
+| `/dashboard/more` | Mobile overflow nav |
 | `/dashboard/teams`, `/workspaces` | Collaboration |
+| `/dashboard/teams/:teamId/*` | Team-scoped app (`TeamAppLayout`; same pages) |
 | `/invite/:token` | Team invite |
-| `/features`, `/alternatives`, `/pricing`, `/mcp`, … | Marketing / PSEO |
+| `/features`, `/alternatives`, `/pricing`, `/mcp`, `/tools`, `/about`, `/contact`, `/developers`, … | Marketing / PSEO |
 | `/oauth/mcp/connect` | MCP OAuth |
 
 ### Theming
@@ -200,8 +213,9 @@ frontend/src/
 ### Data access
 
 - `rpc("service.fn", …)` → `POST /api/rpc`
-- `fetchApi()` for REST (SSE, OAuth redirects, uploads)
+- `fetchApi()` for REST (SSE, OAuth redirects, uploads, legal)
 - Plans/limits: `frontend/src/lib/plans.ts` (`free` \| `starter` \| `growth` \| `pro` \| `max`)
+- Analytics/inbox account lists: RPC only — never a frontend `LIVE_PLATFORMS` copy
 
 ---
 
@@ -217,14 +231,15 @@ backend/
 │   ├── index.ts, app.ts, instrument.ts
 │   ├── db/schema.ts          # Drizzle source of truth
 │   ├── routes/api/           # auth, rpc, publish, billing, connect, media, cron,
-│   │                         # team, webhooks, api-keys, …
+│   │                         # team, webhooks, api-keys, legal, queue, …
 │   ├── routes/v1/            # me, accounts, posts, media, jobs, webhooks (API key)
-│   ├── routes/admin/, oauth/, docs
-│   ├── services/             # RPC handlers + publish-dispatch/enqueue
+│   ├── routes/admin/, oauth/, docs, public-agent
+│   ├── services/             # RPC handlers + publish-dispatch/enqueue + analytics + inbox
 │   ├── publish/              # execute-publish, finalize-post, process-platform-server
 │   ├── connect/              # OAuth start/callback/select
 │   ├── handlers/             # billing, webhooks, queue helpers
-│   └── lib/                  # auth, workspace, publish-platforms, mail, …
+│   └── lib/                  # auth, workspace, publish-platforms, live-platforms,
+│                             # analytics/, inbox/, mail, …
 └── background-worker/src/
     ├── main.ts
     ├── workers/scheduler.ts, token-refresh.ts
@@ -240,13 +255,15 @@ Registered in `backend/server/src/routes/api/rpc.ts`. Groups include:
 - `posts.*` — create/update/delete/draft/schedule/edit/publish helpers
 - `publish.*` — publishPost, publication list
 - `resurface.*` — auto-plug / auto-repost schedules
+- `analytics.*` — overview, per-post metrics, account list (live platform APIs)
+- `inbox.*` — comments, DMs, reply / like / hide (live platform APIs)
 - `settings.*` — profile, prefs, automation emails, timezone, delete account, …
 
-Mutation RPCs are rate-limited (`RPC_MUTATION_HANDLERS`).
+Mutations: `RPC_MUTATION_HANDLERS`. Live analytics/inbox reads: `RPC_LIVE_READ_HANDLERS` (stricter per-user limiter).
 
 ### REST groups
 
-`/api/auth/*`, `/api/publish`, `/api/jobs/:id/stream`, `/api/billing/*`, `/api/connect/:platform`, `/api/media/*`, `/api/team*`, `/api/webhooks/dodo`, `/api/cron/*`, `/api/api-keys`, `/admin/*`, `/v1/*`, `GET /health`, `GET /metrics`, `GET /api/routes`.
+`/api/auth/*`, `/api/publish`, `/api/jobs/:id/stream`, `/api/billing/*`, `/api/connect/:platform`, `/api/media/*`, `/api/team*`, `/api/webhooks/dodo`, `/api/cron/*`, `/api/api-keys`, `/api/legal/*`, `/api/queue/*`, `/admin/*`, `/v1/*`, `GET /health`, `GET /metrics`, `GET /api/routes`, `GET /openapi.json`, `GET /.well-known/api-catalog`.
 
 ### Background cron jobs
 
@@ -255,9 +272,11 @@ Mutation RPCs are rate-limited (`RPC_MUTATION_HANDLERS`).
 | scheduler | `cron.publish-scheduled`, `cron.repost`, `cron.autoplug`, `cron.billing-zombie-cleanup` |
 | token | `token.health-sweep`, `token.refresh` |
 
+Also HTTP (not BullMQ): `POST /api/cron/publish-platform` (X/TikTok in-process), `POST /api/cron/notify-legal-update`.
+
 ### Shared (`@social0/shared`)
 
-`queues.ts`, `constants/cf-publish-queues.ts`, `constants/platforms.ts`, `lib/cf-publish-client.ts`, `lib/job-progress.ts`, `types/jobs.ts`, …
+`queues.ts`, `constants/cf-publish-queues.ts`, `constants/platforms.ts`, `constants/server-side-publish.ts`, `lib/cf-publish-client.ts`, `lib/job-progress.ts`, `types/jobs.ts`, …
 
 ---
 
@@ -279,17 +298,29 @@ Mutation RPCs are rate-limited (`RPC_MUTATION_HANDLERS`).
 
 ---
 
-## 8. Teams, workspaces, billing, media
+## 8. Teams, workspaces, billing, media, analytics, inbox
 
 | Area | Backend | Frontend |
 | ---- | ------- | -------- |
 | Teams / workspaces | `lib/workspace/*`, `routes/api/team.ts`, schema `teams` / `teamMembers` / `workspaces` | `features/dashboard/teams`, `workspaces`, `api/team.ts`, `TeamAppLayout` |
+| Team roles | `lib/workspace/permissions.ts` — admin, member, community, analyst | Analyst: analytics only. Community: inbox + reply, cannot publish. Member/Admin: both |
 | Billing | `handlers/billing/*`, `/api/billing/*`, Dodo webhook | `features/dashboard/billing`, plans in `lib/plans.ts` |
 | Media | R2 presign/confirm `/api/media/*` | upload helpers in create/composer |
 | API keys / webhooks | `/api/api-keys`, `/v1/webhooks` | `/dashboard/api-keys` |
 | Feedback | Canny SSO | `/dashboard/feedback` |
+| Analytics | `services/analytics.ts`, `lib/analytics/*`, `lib/live-platforms.ts` | `features/dashboard/analytics`, `api/analytics.ts` |
+| Inbox | `services/inbox.ts`, `lib/inbox/*` (live fetch; no inbox tables) | `features/dashboard/inbox`, `api/inbox.ts` |
 
 Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
+
+**Analytics / inbox (do not regress):**
+
+- Not plan-gated. Flask in sidebar = early access.
+- Metrics and threads are for **posts published through Social0**, fetched live from platform APIs (gated by `LIVE_PLATFORMS`).
+- Flip a platform in `live-platforms.ts` when App Review lands. `false` = hide chip, skip fetch, skip reconnect nag.
+- Inbox DMs today: Instagram, X, Bluesky, TikTok (TikTok needs Business Messaging; Login Kit tokens fail until a BM app is connected).
+- Post-detail analytics stay **collapsed** until the user clicks Show analytics (`analytics.getPostAnalytics`).
+- Team-scoped under `/dashboard/teams/:teamId/analytics` and `/inbox`.
 
 ---
 
@@ -311,7 +342,7 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 - Hosting: Neon Postgres
 - **AI: never migrate / alter schema without an explicit user command.**
 
-Notable domains: users/sessions (Better Auth), `user_settings` (onboarding flags, email prefs, plan tier), `connected_accounts`, `posts` / `post_publications` / media, `publish_jobs` / events, teams/workspaces, queue slots, resurface/autoplug, API keys, webhooks.
+Notable domains: users/sessions (Better Auth), `user_settings` (onboarding flags, email prefs, plan tier), `legal_acceptances`, `connected_accounts`, `posts` / `post_publications` / media, `publish_jobs` / events, teams/workspaces, queue slots, resurface/autoplug, API keys, webhooks. Analytics and inbox are live platform fetches — no dedicated tables (analytics may persist a resolved TikTok public video id onto `post_publications`).
 
 ---
 
@@ -319,8 +350,8 @@ Notable domains: users/sessions (Better Auth), `user_settings` (onboarding flags
 
 | Surface | Examples |
 | ------- | -------- |
-| API | `DATABASE_URL`, Upstash Redis, `BETTER_AUTH_*`, `AUTH_API_URL`, `APP_URL` / `NEXT_PUBLIC_APP_URL`, `ENCRYPTION_KEY`, `PUBLISH_DISPATCH`, `CF_PUBLISH_*`, `CRON_SECRET`, `ADMIN_API_KEY`, `RESEND_*`, Turnstile, `R2_*`, platform `*_CLIENT_*`, `DODO_PAYMENTS_*`, `MCP_*` |
-| SPA | `VITE_API_URL`, `VITE_API_PROXY_TARGET`, `VITE_APP_URL`, Turnstile, PostHog, optional Dodo product IDs |
+| API | `DATABASE_URL`, Upstash Redis, `BETTER_AUTH_*`, `AUTH_API_URL`, `APP_URL` / `NEXT_PUBLIC_APP_URL`, `ENCRYPTION_KEY`, `PUBLISH_DISPATCH`, `CF_PUBLISH_*`, `TWITTER_PUBLISH_ON_CF`, `TIKTOK_PUBLISH_ON_CF`, `CRON_SECRET`, `ADMIN_API_KEY`, `RESEND_*`, Turnstile, `R2_*`, platform `*_CLIENT_*`, `DODO_PAYMENTS_*`, `MCP_*` |
+| SPA | `VITE_API_URL`, `VITE_API_PROXY_TARGET`, `VITE_APP_URL`, Turnstile, PostHog, Vemetric (`VITE_VEMETRIC_TOKEN`), optional Dodo product IDs |
 | Publish worker | HMAC, encryption, Resend, R2, OAuth, Hyperdrive |
 | Cron worker | `CRON_SECRET`, `API_BASE_URL` |
 | CLI/MCP | `SOCIAL0_API_KEY`, `SOCIAL0_API_URL` |
@@ -369,6 +400,7 @@ Publish worker: see `cloudflare/publish-worker/README.md`.
 - New page: `features/…` UI + thin `pages/…` + `router.tsx`.
 - Dashboard accents = design tokens; landing = `.landing` scope only.
 - Auth deep links: `signInUrl(path)` always goes through `/auth/continue?returnTo=…`.
+- Analytics/inbox chips: call `listAccounts` RPC; never hardcode `LIVE_PLATFORMS` in the SPA.
 
 **Cross-cutting**
 
@@ -380,9 +412,11 @@ Publish worker: see `cloudflare/publish-worker/README.md`.
 ## 14. Known caveats
 
 - LinkedIn + X publish logic not fully extracted into `publish-platforms/`.
+- X + TikTok publish on the API by default (not CF). See `server-side-publish.ts`.
 - `background-worker` schema is duplicated — update both when schema changes (only with explicit permission).
 - Older docs may still say `react-frontend/` — treat **`frontend/`** as the live SPA.
 - Failure-email claim (`posts.metadata._failureEmailSentAt`) is one-shot; stuck claims from old bugs won’t re-send until cleared.
+- `LIVE_PLATFORMS` false ≠ “platform unsupported forever”; it means skip live fetch until App Review. Do not copy it into the SPA.
 
 ---
 
@@ -392,6 +426,7 @@ Publish worker: see `cloudflare/publish-worker/README.md`.
 | ---- | ---------- |
 | UI / dashboard | `frontend/claude.md`, `frontend/src/routes/router.tsx` |
 | API / RPC / publish | `backend/claude.md`, `backend/server/src/routes/api/rpc.ts` |
+| Analytics / inbox | `backend/server/src/lib/live-platforms.ts`, `services/analytics.ts`, `services/inbox.ts`, `frontend/src/features/dashboard/{analytics,inbox}` |
 | Edge publish | `cloudflare/publish-worker/README.md` |
 | Product behavior / plans | `FEATURES.md`, `frontend/src/lib/plans.ts` |
 | CLI | `social0-cli/README.md` |

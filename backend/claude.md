@@ -28,12 +28,12 @@ cloudflare/
 | Layer | Responsibility |
 | ----- | -------------- |
 | **frontend/** | UI — calls `/api/*` and `POST /api/rpc` |
-| **server** | Auth, validation, RPC, enqueue, fast `202`/`200` |
+| **server** | Auth, validation, RPC, enqueue, live analytics/inbox, fast `202`/`200` |
 | **CF publish worker** | Per-platform publish (1–2.5 min) — Hyperdrive + R2 → platforms |
 | **background-worker** | Cron: scheduled dispatch, repost, autoplug, token health, billing zombie |
 | **shared** | Queue names, job types, CF publish client, job progress |
 
-Publishing to TikTok/YouTube/Meta **never** blocks an HTTP request.
+Publishing to TikTok/YouTube/Meta **never** blocks an HTTP request. Analytics/inbox RPC reads *do* hit platform APIs in-request (timeouts + live-read limiter).
 
 ---
 
@@ -64,6 +64,8 @@ frontend → POST /api/publish or RPC publish.*
 
 `PUBLISH_DISPATCH=bullmq` = droplet-side platform queues (legacy / local fallback).
 
+**X + TikTok stay on the API by default** (`shared/src/constants/server-side-publish.ts`) — not the CF worker. Kill switches: `TWITTER_PUBLISH_ON_CF=1`, `TIKTOK_PUBLISH_ON_CF=1` after the worker is current. Cron helper: `POST /api/cron/publish-platform`.
+
 **Failure emails:** only from awaited `maybeFinalizePostPublish`. Never `void` sendEmail on the CF path (isolate kills in-flight work).
 
 ---
@@ -77,6 +79,8 @@ frontend → POST /api/publish or RPC publish.*
 
 Triggered by `cloudflare/cron-worker` → `POST /api/cron/*` + `CRON_SECRET`.
 
+Also HTTP (not BullMQ): `POST /api/cron/publish-platform` (X/TikTok in-process), `POST /api/cron/notify-legal-update`.
+
 ---
 
 ## 3. RPC BFF
@@ -87,9 +91,11 @@ POST /api/rpc
 ```
 
 Handlers: `server/src/services/*.ts`, wired in `server/src/routes/api/rpc.ts`.  
-Client: `frontend/src/lib/rpc.ts`. Mutations listed in `RPC_MUTATION_HANDLERS`.
+Client: `frontend/src/lib/rpc.ts`. Mutations: `RPC_MUTATION_HANDLERS`. Live analytics/inbox reads: `RPC_LIVE_READ_HANDLERS` (stricter limiter).
 
-Also: Better Auth `/api/auth/*`, billing `/api/billing/*`, connect, media, team, admin, **`/v1/*` (implemented)** for CLI/MCP API keys.
+Groups: `dashboard-data.*`, `onboarding.*`, `posts.*`, `publish.*`, `resurface.*`, `analytics.*`, `inbox.*`, `settings.*`.
+
+Also: Better Auth `/api/auth/*`, billing `/api/billing/*`, connect, media, team, legal (`/api/legal/*`), admin, **`/v1/*` (implemented)** for CLI/MCP API keys. `GET /openapi.json`, `GET /.well-known/api-catalog`.
 
 ---
 
@@ -104,6 +110,7 @@ Also: Better Auth `/api/auth/*`, billing `/api/billing/*`, connect, media, team,
 | Publish now + SSE | ✅ |
 | Schedule + cron dispatch | ✅ |
 | Better Auth + 9 platforms | ✅ |
+| Analytics + inbox (live platform APIs) | ✅ (`LIVE_PLATFORMS` in `lib/live-platforms.ts`) |
 | Billing (Dodo) + webhook | ✅ |
 | Teams / workspaces | ✅ |
 | `/v1/*` REST for API keys | ✅ |
@@ -141,6 +148,7 @@ Do not run `npm run build` inside `server/` without installing at `backend/` fir
 | `ENCRYPTION_KEY` | 64 hex — match API + publish-worker |
 | `PUBLISH_DISPATCH` | `cloudflare` (default) or `bullmq` |
 | `CF_PUBLISH_WORKER_URL`, `CF_PUBLISH_HMAC_SECRET` | CF publish |
+| `TWITTER_PUBLISH_ON_CF`, `TIKTOK_PUBLISH_ON_CF` | `1` sends X / TikTok to CF; unset = API |
 | `CRON_SECRET`, `ADMIN_API_KEY` | Cron + admin |
 | `RESEND_*` | Auth OTP + post-failure email |
 | `R2_*`, `DODO_*`, platform `*_CLIENT_*` | Media, billing, connect |
@@ -161,8 +169,9 @@ Migrations: `backend/migrations/`. Schema: `server/src/db/schema.ts`.
 ## 8. Conventions
 
 - Imports: `@social0/shared`, `.js` extensions where server tsconfig requires.
-- Heavy work: enqueue or CF — never await platform APIs in HTTP handlers.
+- Heavy work: enqueue or CF — never await platform *publish* APIs in HTTP handlers. Analytics/inbox live reads are the exception (budgeted).
 - New RPC: `services/` + `rpc.ts` + `frontend/src/api/` wrapper.
+- New live analytics/inbox platform: implement fetch in `lib/analytics/` or `lib/inbox/`, then flip `lib/live-platforms.ts`. Never copy that map into `frontend/`.
 - New REST from old patterns: `handlers/` + `routes/api/`.
 - Publish-now: `trackingId` + `jobProgress.initJob()` before enqueue.
 - Prefer `publishLog` on publish paths.
@@ -172,6 +181,9 @@ Migrations: `backend/migrations/`. Schema: `server/src/db/schema.ts`.
 ## 9. Caveats
 
 - LinkedIn + X still partly inline in `execute-publish.ts` (not fully in `publish-platforms/`).
+- X + TikTok publish on the API by default (not CF). See `server-side-publish.ts`.
 - Schema duplication server ↔ background-worker.
 - CF scheduled posts: cron + scheduled queue (not BullMQ `delay` on the API for the wake-up).
 - `PUBLISH_DISPATCH=bullmq` is higher ops cost on the droplet.
+- `LIVE_PLATFORMS` is the only live-feature gate — SPA lists come from `analytics.listAccounts` / `inbox.listAccounts`. Do not duplicate in `frontend/`.
+- Inbox is live fetch (no inbox tables). Analytics may persist a resolved TikTok public video id onto `post_publications`.
