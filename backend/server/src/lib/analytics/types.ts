@@ -160,3 +160,16 @@ export function missingAnalyticsScopes(
   if (!granted?.trim()) return [];
   return needed.filter((s) => !scopeGranted(granted, s));
 }
+
+/**
+ * Reconnect hints from a live fetch — only when the platform reported a scope
+ * problem. Do not fall back to DB scope strings after a successful read (stale
+ * `connected_accounts.scopes` would nag forever even when metrics work).
+ */
+export function reconnectScopesFromFetch(result: {
+  status?: string;
+  missingScopes?: string[];
+}): string[] {
+  if (result.missingScopes?.length) return [...result.missingScopes];
+  return [];
+}

@@ -96,6 +96,7 @@ export type InboxDmMessage = {
   text: string;
   createdAt: string | null;
   isOwn: boolean;
+  authorId?: string | null;
   authorName: string;
   authorHandle: string | null;
   authorAvatarUrl?: string | null;

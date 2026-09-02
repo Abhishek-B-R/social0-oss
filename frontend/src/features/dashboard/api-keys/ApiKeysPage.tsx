@@ -19,6 +19,7 @@ import {
   DOCS_API_WEBHOOKS_URL,
   DOCS_CLI_QUICKSTART_URL,
   DOCS_CLI_URL,
+  DOCS_MCP_QUICKSTART_URL,
   DOCS_MCP_URL,
 } from "@/lib/docs-url";
 import type { SubscriptionTier } from "@/lib/plans";
@@ -71,6 +72,9 @@ const CLI_REMOTE_COMMANDS = [
   "export SOCIAL0_API_KEY=sk_live_...",
   "social0 whoami",
 ] as const;
+
+const MCP_CLI_COMMAND =
+  "claude mcp add --transport stdio social0 --env SOCIAL0_API_KEY=sk_live_... -- npx -y @social0/mcp";
 
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
@@ -248,6 +252,7 @@ export default function ApiKeysPage() {
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"keys" | "webhooks">("keys");
   const [cliMode, setCliMode] = useState<"local" | "remote">("local");
+  const [mcpMode, setMcpMode] = useState<"cli" | "remote">("cli");
 
   const keysQuery = useQuery({ queryKey: ["api-keys"], queryFn: fetchApiKeys });
   const webhooksQuery = useQuery({
@@ -685,23 +690,50 @@ export default function ApiKeysPage() {
 
         <div className="space-y-4 rounded-xl border border-border bg-white p-4 shadow-sm dark:bg-bg-elevated sm:p-5">
           <p className="text-sm text-text-muted">
-            Add Social0 as a remote MCP server in ChatGPT, Claude, or other
-            hosted agents. OAuth creates a dedicated connector key in the list
-            above.
+            Connect Claude Code, Cursor, ChatGPT, and other MCP clients
+            directly to your Social0 workspace.
           </p>
 
-          <div className="space-y-3">
-            <p className="text-sm text-text-muted">
-              Paste this URL as a custom connector in ChatGPT or a remote MCP
-              server in Claude. Approve OAuth when prompted.
-            </p>
-            <CopyCommandRow command={HOSTED_MCP_URL} />
-            <p className="text-xs text-text-muted">
-              Revoke the{" "}
-              <span className="font-medium text-foreground">MCP Connector</span>{" "}
-              key above anytime to cut off remote access.
-            </p>
-          </div>
+          <SegmentedControl
+            value={mcpMode}
+            onChange={setMcpMode}
+            options={[
+              { id: "cli", label: "CLI (Claude Code / Cursor)" },
+              { id: "remote", label: "Remote servers (ChatGPT, Claude)" },
+            ]}
+          />
+
+          {mcpMode === "cli" ? (
+            <div className="space-y-3">
+              <ol className="list-decimal space-y-1.5 pl-5 text-sm text-text-muted">
+                <li>Create an API key above.</li>
+                <li>Run the command below (replace the placeholder key).</li>
+                <li>Ask your agent about accounts, drafts, or publishing.</li>
+              </ol>
+              <CopyCommandRow command={MCP_CLI_COMMAND} />
+              <p className="text-xs text-text-muted">
+                Replace <code className="text-[11px]">sk_live_...</code> with a
+                key created above. More hosts in the{" "}
+                <DocsLink href={DOCS_MCP_QUICKSTART_URL}>MCP quickstart</DocsLink>
+                .
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-text-muted">
+                Add this URL as a custom connector (ChatGPT) or remote MCP
+                server (claude.ai). Use OAuth when prompted — do not put API
+                keys in the URL.
+              </p>
+              <CopyCommandRow command={HOSTED_MCP_URL} />
+              <p className="text-xs text-text-muted">
+                OAuth creates a dedicated{" "}
+                <span className="font-medium text-foreground">MCP Connector</span>{" "}
+                API key in this list — revoke it here anytime to cut off remote
+                access.
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
@@ -782,9 +814,9 @@ export default function ApiKeysPage() {
                 onCopy={() => copyText(HOSTED_MCP_URL, "MCP URL")}
               />
               <p className="text-xs text-text-muted">
-                OAuth creates an{" "}
+                Uses Social0 OAuth — approving creates an{" "}
                 <span className="font-medium text-foreground">MCP Connector</span>{" "}
-                key in this list. Revoke it anytime to cut off access.
+                key here (not in the URL). Revoke that key to cut off access.
               </p>
             </div>
           </div>

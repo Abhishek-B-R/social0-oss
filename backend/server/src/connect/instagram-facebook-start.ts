@@ -7,7 +7,6 @@ import { AppRequest } from "../lib/http/http.js";
 import {
   buildFacebookOAuthUrl,
   FACEBOOK_INSTAGRAM_PAGE_SCOPES,
-  getFacebookInstagramLoginConfigId,
 } from "../lib/facebook-oauth.js";
 import { enforceRateLimit, oauthLimiter } from "../lib/ratelimit.js";
 import { sanitizeReturnToPath } from "@social0/shared";
@@ -63,7 +62,6 @@ export async function igFbStart(req: AppRequest) {
     clientId,
     redirectUri,
     state,
-    configId: getFacebookInstagramLoginConfigId(),
     scope: FACEBOOK_INSTAGRAM_PAGE_SCOPES,
   });
 

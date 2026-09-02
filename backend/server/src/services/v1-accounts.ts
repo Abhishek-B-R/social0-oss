@@ -5,10 +5,7 @@ import { connectedAccounts, verification } from "../db/schema.js";
 import { encrypt, encryptToken } from "@social0/shared";
 import { env } from "../lib/env.js";
 import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
-import {
-  buildFacebookOAuthUrl,
-  getFacebookLoginConfigId,
-} from "../lib/facebook-oauth.js";
+import { buildFacebookOAuthUrl } from "../lib/facebook-oauth.js";
 import { PLATFORM_OAUTH_CONFIG, type Platform } from "../lib/platforms.js";
 import { revokeTokenOnPlatform } from "../lib/revoke-token.js";
 import { decryptToken } from "@social0/shared";
@@ -160,7 +157,6 @@ export async function v1BuildConnectUrl(
       clientId,
       redirectUri,
       state,
-      configId: getFacebookLoginConfigId(),
       scope: config.scope,
     });
     return { ok: true, authorization_url: fbUrl };

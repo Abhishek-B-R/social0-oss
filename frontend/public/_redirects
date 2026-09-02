@@ -1,3 +1,0 @@
-# Cloudflare Pages: proxy API to backend (OAuth callback, /api/rpc, etc.)
-/api/* https://api.social0.app/api/:splat 200
-/v1/* https://api.social0.app/v1/:splat 200

@@ -106,25 +106,17 @@ export function AnalyticsPage() {
         accounts.length > 0 &&
         !accounts.some((a) => a.id === accountFilter)
       ) {
-        setAccountFilter(accounts[0]!.id);
+        setAccountFilter(null);
       }
       return;
     }
-    setAccountFilter(accounts[0]?.id ?? null);
+    setAccountFilter(null);
   }, [accountFilter, accounts, accountsQuery.isSuccess, accountsQuery.isError]);
 
-  const reconnect = useMemo(() => {
-    const fromOverview = overviewQuery.data?.accountsNeedingReconnect;
-    if (fromOverview != null) return fromOverview;
-    return accounts
-      .filter((a) => a.missingScopes.length > 0)
-      .map((a) => ({
-        accountId: a.id,
-        platform: a.platform,
-        username: a.username,
-        missingScopes: a.missingScopes,
-      }));
-  }, [overviewQuery.data, accounts]);
+  const reconnect = useMemo(
+    () => overviewQuery.data?.accountsNeedingReconnect ?? [],
+    [overviewQuery.data],
+  );
 
   const platformChart = useMemo(
     () =>

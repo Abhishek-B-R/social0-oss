@@ -91,13 +91,7 @@ function mediaTypeLabel(type: "image" | "video" | "mixed"): string {
   return "Media";
 }
 
-function PlatformStatusLabel({
-  status,
-  error,
-}: {
-  status: PlatformStatus;
-  error?: string;
-}) {
+function PlatformStatusLabel({ status }: { status: PlatformStatus }) {
   if (status === "waiting") {
     return (
       <span className="flex items-center gap-1.5 text-text-muted text-sm">
@@ -123,12 +117,9 @@ function PlatformStatusLabel({
     );
   }
   return (
-    <span
-      className="flex items-center gap-1.5 text-red-600 dark:text-red-400 text-sm"
-      title={error}
-    >
+    <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 text-sm font-medium">
       <X className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate max-w-[180px]">{error ?? "Failed"}</span>
+      Failed
     </span>
   );
 }
@@ -180,6 +171,10 @@ export function UploadPublishOverlay({
     () => sortBySlowPlatformsLast(platformStatuses),
     [platformStatuses],
   );
+  const allFailed =
+    displayPlatformStatuses.length > 0 &&
+    displayPlatformStatuses.every((p) => p.status === "failed");
+  const someFailed = displayPlatformStatuses.some((p) => p.status === "failed");
 
   useEffect(() => {
     if (phase !== "publishing" || allDone) {
@@ -399,47 +394,70 @@ export function UploadPublishOverlay({
               {allDone ? (
                 <>
                   <div className="flex flex-col items-center text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
-                      <Send className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                    <div
+                      className={`flex h-14 w-14 items-center justify-center rounded-full ${
+                        allFailed
+                          ? "bg-red-100/90 dark:bg-red-500/20"
+                          : someFailed
+                            ? "bg-amber-100/90 dark:bg-amber-500/20"
+                            : "bg-emerald-100/90 dark:bg-emerald-500/20"
+                      }`}
+                    >
+                      {allFailed ? (
+                        <X className="h-7 w-7 text-red-600 dark:text-red-400" />
+                      ) : (
+                        <Send
+                          className={`h-7 w-7 ${
+                            someFailed
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }`}
+                        />
+                      )}
                     </div>
                     <h2 className="mt-4 text-xl font-semibold text-text">
-                      Post published!
+                      {allFailed
+                        ? "Couldn't publish"
+                        : someFailed
+                          ? "Partially published"
+                          : "Post published!"}
                     </h2>
                   </div>
                   <ul className="mt-6 space-y-4">
                     {displayPlatformStatuses.map((p) => (
-                      <li
-                        key={p.accountId}
-                        className="flex items-center justify-between gap-3"
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <PlatformIcon
-                            platform={p.platform}
-                            className="h-5 w-5 shrink-0 text-text-muted"
-                            size={20}
-                          />
-                          <span className="truncate text-sm font-medium text-text">
-                            {p.accountName}
-                          </span>
+                      <li key={p.accountId} className="space-y-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <PlatformIcon
+                              platform={p.platform}
+                              className="h-5 w-5 shrink-0 text-text-muted"
+                              size={20}
+                            />
+                            <span className="truncate text-sm font-medium text-text">
+                              {p.accountName}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            {p.status === "published" &&
+                              p.postUrl &&
+                              isSafeHttpsLink(p.postUrl) && (
+                              <a
+                                href={p.postUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
+                              >
+                                View
+                              </a>
+                            )}
+                            <PlatformStatusLabel status={p.status} />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {p.status === "published" &&
-                            p.postUrl &&
-                            isSafeHttpsLink(p.postUrl) && (
-                            <a
-                              href={p.postUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text hover:bg-bg-muted transition-colors"
-                            >
-                              View
-                            </a>
-                          )}
-                          <PlatformStatusLabel
-                            status={p.status}
-                            error={p.error}
-                          />
-                        </div>
+                        {p.status === "failed" && p.error ? (
+                          <p className="pl-7 text-left text-xs leading-snug text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
+                            {p.error}
+                          </p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
@@ -469,24 +487,25 @@ export function UploadPublishOverlay({
                   </h2>
                   <ul className="mt-6 space-y-4">
                     {displayPlatformStatuses.map((p) => (
-                      <li
-                        key={p.accountId}
-                        className="flex items-center justify-between gap-3"
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <PlatformIcon
-                            platform={p.platform}
-                            className="h-5 w-5 shrink-0 text-text-muted"
-                            size={20}
-                          />
-                          <span className="truncate text-sm font-medium text-text">
-                            {p.accountName}
-                          </span>
+                      <li key={p.accountId} className="space-y-1">
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <PlatformIcon
+                              platform={p.platform}
+                              className="h-5 w-5 shrink-0 text-text-muted"
+                              size={20}
+                            />
+                            <span className="truncate text-sm font-medium text-text">
+                              {p.accountName}
+                            </span>
+                          </div>
+                          <PlatformStatusLabel status={p.status} />
                         </div>
-                        <PlatformStatusLabel
-                          status={p.status}
-                          error={p.error}
-                        />
+                        {p.status === "failed" && p.error ? (
+                          <p className="pl-7 text-left text-xs leading-snug text-red-600 dark:text-red-400 break-words whitespace-pre-wrap">
+                            {p.error}
+                          </p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>

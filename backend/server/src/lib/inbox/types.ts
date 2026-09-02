@@ -104,6 +104,8 @@ export type InboxDmMessage = {
   text: string;
   createdAt: string | null;
   isOwn: boolean;
+  /** Platform sender id (Instagram IGSID). Used as Graph send recipient. */
+  authorId?: string | null;
   authorName: string;
   authorHandle: string | null;
   authorAvatarUrl?: string | null;
@@ -115,10 +117,73 @@ export function isInboxSelfActor(
   actor: { id?: string | null; username?: string | null } | null | undefined,
   selfId: string,
   selfUsername?: string | null,
+  selfIgsid?: string | null,
 ): boolean {
   if (!actor) return false;
+  if (selfIgsid && actor.id != null && String(actor.id) === String(selfIgsid)) {
+    return true;
+  }
   if (actor.id != null && String(actor.id) === String(selfId)) return true;
   return sameInboxHandle(actor.username, selfUsername);
+}
+
+export type InstagramProfileHint = {
+  name?: string | null;
+  username?: string | null;
+};
+
+type InstagramActor = {
+  id?: string | null;
+  name?: string | null;
+  username?: string | null;
+};
+
+/**
+ * Instagram Messaging IGSID for the connected account. /me id is a different
+ * identifier, so we match username on participants, fetched profiles, or
+ * message `from` objects.
+ */
+export function instagramSelfIgsid(
+  participants: InstagramActor[],
+  selfId: string,
+  selfUsername?: string | null,
+  profiles?: Map<string, InstagramProfileHint> | null,
+  messageFrom?: InstagramActor[] | null,
+): string | null {
+  if (selfId) {
+    const byMe = participants.find((p) => p.id && String(p.id) === String(selfId));
+    if (byMe?.id) return String(byMe.id);
+  }
+  const handleOf = (person: InstagramActor | undefined): string | null => {
+    if (!person?.id) return null;
+    if (sameInboxHandle(person.username, selfUsername)) return String(person.id);
+    const profile = profiles?.get(String(person.id));
+    if (sameInboxHandle(profile?.username, selfUsername)) return String(person.id);
+    return null;
+  };
+  for (const person of participants) {
+    const id = handleOf(person);
+    if (id) return id;
+  }
+  for (const person of messageFrom ?? []) {
+    const id = handleOf(person);
+    if (id) return id;
+  }
+  return null;
+}
+
+function personToPeer(person: {
+  id?: string;
+  name?: string;
+  username?: string;
+  picture?: unknown;
+}): { id: string; name: string; handle: string | null; avatarUrl: string | null } {
+  return {
+    id: person.id ?? "",
+    name: person.name ?? person.username ?? "Unknown",
+    handle: person.username ?? null,
+    avatarUrl: graphPictureUrl(person.picture),
+  };
 }
 
 export function peerFromParticipants(
@@ -131,17 +196,141 @@ export function peerFromParticipants(
   selfId: string,
   selfUsername?: string | null,
 ): { id: string; name: string; handle: string | null; avatarUrl: string | null } {
-  // Instagram Messaging participant ids often differ from /me id; also match username.
-  const others = participants.filter(
-    (p) => p.id && !isInboxSelfActor(p, selfId, selfUsername),
+  return instagramDmPeer(participants, selfId, selfUsername);
+}
+
+/**
+ * Instagram participant ids often differ from /me. Pick the other person in
+ * the 1:1 thread. Never use last `from` as the customer if that id is us
+ * (Graph often omits username on our own messages).
+ */
+export function instagramDmPeer(
+  participants: Array<{
+    id?: string;
+    name?: string;
+    username?: string;
+    picture?: unknown;
+  }>,
+  selfId: string,
+  selfUsername?: string | null,
+  lastFrom?: {
+    id?: string | null;
+    name?: string | null;
+    username?: string | null;
+  } | null,
+  profiles?: Map<string, InstagramProfileHint> | null,
+): { id: string; name: string; handle: string | null; avatarUrl: string | null } {
+  const selfIgsid = instagramSelfIgsid(
+    participants,
+    selfId,
+    selfUsername,
+    profiles,
+    lastFrom ? [lastFrom] : null,
   );
-  const peer = others[0] ?? {};
-  return {
-    id: peer.id ?? "",
-    name: peer.name ?? peer.username ?? "Unknown",
-    handle: peer.username ?? null,
-    avatarUrl: graphPictureUrl(peer.picture),
+  const isSelf = (
+    person: { id?: string | null; username?: string | null } | null | undefined,
+  ) => isInboxSelfActor(person, selfId, selfUsername, selfIgsid);
+
+  const enrich = (person: {
+    id?: string;
+    name?: string;
+    username?: string;
+    picture?: unknown;
+  }) => {
+    const profile = person.id ? profiles?.get(String(person.id)) : undefined;
+    return personToPeer({
+      ...person,
+      name: person.name ?? profile?.name ?? undefined,
+      username: person.username ?? profile?.username ?? undefined,
+    });
   };
+
+  if (selfIgsid) {
+    const other = participants.find(
+      (p) => p.id && String(p.id) !== String(selfIgsid),
+    );
+    if (other?.id) return enrich(other);
+  }
+
+  const fromId = lastFrom?.id != null ? String(lastFrom.id) : "";
+  const fromActor = fromId
+    ? { id: fromId, username: lastFrom?.username }
+    : null;
+  const fromLooksIdentified = Boolean(
+    lastFrom?.username || (fromId && profiles?.get(fromId)?.username),
+  );
+  if (fromId && !isSelf(fromActor) && (fromLooksIdentified || selfIgsid)) {
+    const listed = participants.find((p) => p.id && String(p.id) === fromId);
+    return enrich({
+      id: fromId,
+      name: listed?.name ?? lastFrom?.name ?? undefined,
+      username: listed?.username ?? lastFrom?.username ?? undefined,
+      picture: listed?.picture,
+    });
+  }
+
+  if (fromId && isSelf(fromActor)) {
+    const other = participants.find((p) => p.id && String(p.id) !== fromId);
+    if (other?.id) return enrich(other);
+  }
+
+  const namedOthers = participants.filter(
+    (p) =>
+      p.id &&
+      !isSelf(p) &&
+      (p.username || profiles?.get(String(p.id))?.username),
+  );
+  if (namedOthers.length === 1 && namedOthers[0]) return enrich(namedOthers[0]);
+
+  const others = participants.filter((p) => p.id && !isSelf(p));
+  if (others.length === 1 && others[0]) return enrich(others[0]);
+
+  return personToPeer({});
+}
+
+/** Instagram Messaging API reply window (Human Agent extends to 7 days — not enabled). */
+export const INSTAGRAM_DM_REPLY_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+/** True when the customer messaged within Meta's standard DM reply window. */
+export function instagramDmWithinReplyWindow(
+  messages: Array<{ isOwn: boolean; createdAt?: string | null }>,
+): boolean {
+  const inbound = [...messages].reverse().find((m) => !m.isOwn);
+  if (!inbound?.createdAt) return false;
+  const t = Date.parse(inbound.createdAt);
+  if (!Number.isFinite(t)) return false;
+  return Date.now() - t < INSTAGRAM_DM_REPLY_WINDOW_MS;
+}
+
+/**
+ * Resolve the Instagram-scoped id Graph expects on send. Prefer the latest
+ * inbound message author — that is always the customer IGSID inside the
+ * 24-hour window. Fall back to thread/list peer resolution.
+ */
+export function instagramDmSendRecipient(
+  messages: Array<{ isOwn: boolean; authorId?: string | null }>,
+  opts: {
+    threadPeerId?: string | null;
+    fallbackPeerId?: string | null;
+    selfId: string;
+    selfUsername?: string | null;
+    selfIgsid?: string | null;
+  },
+): string | null {
+  const inbound = [...messages].reverse().find((m) => !m.isOwn && m.authorId);
+  const candidates = [
+    inbound?.authorId,
+    opts.threadPeerId,
+    opts.fallbackPeerId,
+  ].filter((id): id is string => Boolean(id?.trim()));
+  for (const id of candidates) {
+    if (
+      !isInboxSelfActor({ id }, opts.selfId, opts.selfUsername, opts.selfIgsid)
+    ) {
+      return id;
+    }
+  }
+  return null;
 }
 
 /** Placeholder peer labels that should lose to richer list/thread data. */

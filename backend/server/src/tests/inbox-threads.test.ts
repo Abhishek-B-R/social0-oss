@@ -7,6 +7,10 @@ import {
   missingDmScopes,
   missingInboxScopes,
   peerFromParticipants,
+  instagramDmPeer,
+  instagramDmSendRecipient,
+  instagramDmWithinReplyWindow,
+  instagramSelfIgsid,
   reconnectScopesFromFetch,
   toInboxThreads,
   youtubeAuthorChannelId,
@@ -135,6 +139,17 @@ describe("isInboxSelfActor", () => {
       isInboxSelfActor({ id: "peer", username: "tester" }, "ig-me", "henry"),
     ).toBe(false);
   });
+
+  it("matches the messaging IGSID even when /me and username are missing", () => {
+    expect(
+      isInboxSelfActor(
+        { id: "msg-self", username: undefined },
+        "graph-me-id",
+        "henry__polymath",
+        "msg-self",
+      ),
+    ).toBe(true);
+  });
 });
 
 describe("peerFromParticipants", () => {
@@ -177,6 +192,118 @@ describe("peerFromParticipants", () => {
       "page",
     );
     expect(peer.id).toBe("");
+  });
+});
+
+describe("instagramDmPeer", () => {
+  it("uses the inbound sender IGSID even when /me id differs", () => {
+    const peer = instagramDmPeer(
+      [
+        { id: "msg-self", username: undefined, name: "Henry" },
+        { id: "igsid-tester", username: "testersocial8", name: "tester" },
+      ],
+      "graph-me-id",
+      "henry__polymath",
+      { id: "igsid-tester", username: "testersocial8", name: "tester" },
+    );
+    expect(peer.id).toBe("igsid-tester");
+    expect(peer.handle).toBe("testersocial8");
+  });
+
+  it("picks the other participant when the last message is from us", () => {
+    const peer = instagramDmPeer(
+      [
+        { id: "msg-self", username: "henry__polymath", name: "Henry" },
+        { id: "igsid-tester", username: "testersocial8", name: "tester" },
+      ],
+      "graph-me-id",
+      "henry__polymath",
+      { id: "msg-self", username: "henry__polymath", name: "Henry" },
+    );
+    expect(peer.id).toBe("igsid-tester");
+  });
+
+  it("does not treat our last message as the customer when from has no username", () => {
+    const profiles = new Map([
+      ["msg-self", { username: "henry__polymath", name: "Henry" }],
+      ["igsid-tester", { username: "testersocial8", name: "tester" }],
+    ]);
+    const self = instagramSelfIgsid(
+      [
+        { id: "msg-self" },
+        { id: "igsid-tester" },
+      ],
+      "graph-me-id",
+      "henry__polymath",
+      profiles,
+    );
+    expect(self).toBe("msg-self");
+    const peer = instagramDmPeer(
+      [
+        { id: "msg-self" },
+        { id: "igsid-tester" },
+      ],
+      "graph-me-id",
+      "henry__polymath",
+      { id: "msg-self" },
+      profiles,
+    );
+    expect(peer.id).toBe("igsid-tester");
+    expect(peer.handle).toBe("testersocial8");
+  });
+});
+
+describe("instagramDmSendRecipient", () => {
+  it("prefers the latest inbound author id over thread peer id", () => {
+    expect(
+      instagramDmSendRecipient(
+        [
+          { isOwn: false, authorId: "customer-igsid" },
+          { isOwn: true, authorId: "msg-self" },
+        ],
+        {
+          threadPeerId: "wrong-peer",
+          fallbackPeerId: "also-wrong",
+          selfId: "graph-me-id",
+          selfUsername: "henry__polymath",
+          selfIgsid: "msg-self",
+        },
+      ),
+    ).toBe("customer-igsid");
+  });
+
+  it("rejects candidates that resolve to our messaging id", () => {
+    expect(
+      instagramDmSendRecipient(
+        [{ isOwn: true, authorId: "msg-self" }],
+        {
+          threadPeerId: "msg-self",
+          fallbackPeerId: "msg-self",
+          selfId: "graph-me-id",
+          selfUsername: "henry__polymath",
+          selfIgsid: "msg-self",
+        },
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("instagramDmWithinReplyWindow", () => {
+  it("is true when the customer messaged within 24 hours", () => {
+    const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    expect(
+      instagramDmWithinReplyWindow([
+        { isOwn: false, createdAt: recent },
+        { isOwn: true, createdAt: new Date().toISOString() },
+      ]),
+    ).toBe(true);
+  });
+
+  it("is false when the last inbound message is older than 24 hours", () => {
+    const old = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    expect(
+      instagramDmWithinReplyWindow([{ isOwn: false, createdAt: old }]),
+    ).toBe(false);
   });
 });
 

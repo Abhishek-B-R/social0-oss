@@ -38,9 +38,12 @@ function fail(message: string): DmReplyResult {
 }
 
 function graphError(data: unknown, fallback: string): string {
-  return (
-    (data as { error?: { message?: string } })?.error?.message ?? fallback
-  );
+  const raw =
+    (data as { error?: { message?: string } })?.error?.message ?? fallback;
+  if (/outside of allowed window/i.test(raw)) {
+    return "Instagram only allows API replies within 24 hours of their last message. Ask them to send a new message, then retry.";
+  }
+  return raw;
 }
 
 function graphAttachment(
@@ -148,6 +151,7 @@ async function replyGraphMessenger(
 }
 
 async function replyInstagram(input: DmReplyInput): Promise<DmReplyResult> {
+  // Instagram Login send docs do not use messaging_type; RESPONSE is Messenger.
   return replyGraphMessenger("graph.instagram.com", input);
 }
 

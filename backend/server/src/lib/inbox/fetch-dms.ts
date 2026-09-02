@@ -9,9 +9,11 @@ import { jsonGet } from "../http-json.js";
 import { inDateWindow } from "../date-window.js";
 import {
   graphPictureUrl,
+  instagramDmPeer,
   instagramProfilePicUrl,
+  instagramDmWithinReplyWindow,
+  instagramSelfIgsid,
   isInboxSelfActor,
-  peerFromParticipants,
   type InboxAttachment,
   type InboxDmMessage,
   type InboxDmThread,
@@ -312,52 +314,76 @@ async function fetchInstagramList(
   }
   const rows = await restOfGraphPages(data as GraphPage, since, "updated_time");
   const threads: InboxDmThread[] = [];
+  const profiles = new Map<string, IgUserProfile>();
+  const pendingPeople: GraphPerson[][] = [];
+  const pendingLast: Array<GraphPerson | undefined> = [];
+  const pendingMeta: Array<{
+    conversationId: string;
+    updated: string | null;
+    snippet: string;
+  }> = [];
   for (const row of rows) {
     const updated =
       typeof row.updated_time === "string" ? row.updated_time : null;
     if (!inDateWindow(updated, since, until, { keepUndated: false })) continue;
-    const peer = peerFromParticipants(
-      graphPeople(row.participants),
-      account.platformUserId,
-      account.platformUsername,
-    );
-    const last =
-      (row.messages as { data?: Array<{ message?: string }> } | undefined)
-        ?.data?.[0];
-    threads.push(
-      threadMeta(account, {
-        conversationId: String(row.id ?? ""),
-        peerId: peer.id,
-        peerName: peer.name,
-        peerHandle: peer.handle,
-        peerAvatarUrl: peer.avatarUrl,
-        lastMessageAt: updated,
-        snippet: snippetOf(last?.message),
-        canReply: Boolean(peer.id),
-      }),
-    );
+    const last = (
+      row.messages as
+        | { data?: Array<{ message?: string; from?: GraphPerson }> }
+        | undefined
+    )?.data?.[0];
+    const people = graphPeople(row.participants);
+    pendingPeople.push(people);
+    pendingLast.push(last?.from);
+    pendingMeta.push({
+      conversationId: String(row.id ?? ""),
+      updated,
+      snippet: snippetOf(last?.message),
+    });
   }
-  let enriched = threads;
   try {
-    const profiles = new Map<string, IgUserProfile>();
     await fillInstagramProfiles(
-      threads.map((t) => t.peerId).filter(Boolean),
+      pendingPeople.flatMap((people) => people.flatMap((p) => (p.id ? [p.id] : []))),
       account,
       profiles,
     );
-    enriched = threads.map((thread) =>
-      applyIgProfile(thread, thread.peerId ? profiles.get(thread.peerId) ?? null : null),
-    );
   } catch {
-    enriched = threads;
+    // Profile lookup is used to identify our IGSID; continue without it.
   }
-  return { threads: enriched, status: "ok" };
+  for (let i = 0; i < pendingPeople.length; i++) {
+    const people = pendingPeople[i] ?? [];
+    const meta = pendingMeta[i];
+    if (!meta) continue;
+    const peer = instagramDmPeer(
+      people,
+      account.platformUserId,
+      account.platformUsername,
+      pendingLast[i],
+      profiles,
+    );
+    threads.push(
+      applyIgProfile(
+        threadMeta(account, {
+          conversationId: meta.conversationId,
+          peerId: peer.id,
+          peerName: peer.name,
+          peerHandle: peer.handle,
+          peerAvatarUrl: peer.avatarUrl,
+          lastMessageAt: meta.updated,
+          snippet: meta.snippet,
+          canReply: Boolean(peer.id),
+        }),
+        peer.id ? profiles.get(peer.id) ?? null : null,
+      ),
+    );
+  }
+  return { threads, status: "ok" };
 }
 
 function graphMessagesToInbox(
   rows: Array<Record<string, unknown>>,
   account: DmAccount,
   profilesById: Map<string, IgUserProfile>,
+  selfIgsid?: string | null,
 ): InboxDmMessage[] {
   const out: InboxDmMessage[] = [];
   for (const row of rows) {
@@ -367,7 +393,9 @@ function graphMessagesToInbox(
       from,
       account.platformUserId,
       account.platformUsername,
+      selfIgsid,
     );
+    const authorId = from?.id ? String(from.id) : null;
     const media = withMediaFallback(
       String(row.message ?? ""),
       parseGraphAttachments(row.attachments),
@@ -379,6 +407,7 @@ function graphMessagesToInbox(
       createdAt:
         typeof row.created_time === "string" ? row.created_time : null,
       isOwn,
+      authorId,
       authorName: isOwn
         ? "You"
         : (profile?.name ?? from?.name ?? from?.username ?? profile?.username ?? "Unknown"),
@@ -429,11 +458,6 @@ async function fetchInstagramThread(
   }
   const row = data as Record<string, unknown>;
   const participants = graphPeople(row.participants);
-  const peer = peerFromParticipants(
-    participants,
-    account.platformUserId,
-    account.platformUsername,
-  );
   const profiles = participantProfiles(participants);
   try {
     await fillInstagramProfiles(
@@ -444,7 +468,6 @@ async function fetchInstagramThread(
   } catch {
     // Profile enrichment is cosmetic.
   }
-  const peerProfile = peer.id ? profiles.get(peer.id) : undefined;
   const msgUrl = `https://graph.instagram.com/v21.0/${id}/messages?fields=id,created_time,from{id,username,name},message,${GRAPH_MSG_ATTACHMENT_FIELDS}&limit=50&access_token=${token}`;
   const msgRes = await jsonGet(msgUrl);
   if (!msgRes.ok) {
@@ -464,8 +487,40 @@ async function fetchInstagramThread(
     "created_time",
     3,
   );
-  const messages = graphMessagesToInbox(msgs, account, profiles);
+  const messageFrom = msgs.map((row) => row.from as GraphPerson | undefined);
+  const selfIgsid = instagramSelfIgsid(
+    participants,
+    account.platformUserId,
+    account.platformUsername,
+    profiles,
+    messageFrom.filter((p): p is GraphPerson => Boolean(p?.id)),
+  );
+  const messages = graphMessagesToInbox(msgs, account, profiles, selfIgsid);
+  const inbound = [...messages].reverse().find((m) => !m.isOwn);
   const last = messages[messages.length - 1];
+  const lastFrom = inbound
+    ? {
+        id: inbound.authorId,
+        name: inbound.authorName,
+        username: inbound.authorHandle,
+      }
+    : last
+      ? {
+          id: last.authorId,
+          name: last.authorName,
+          username: last.isOwn
+            ? account.platformUsername
+            : last.authorHandle,
+        }
+      : null;
+  const peer = instagramDmPeer(
+    participants,
+    account.platformUserId,
+    account.platformUsername,
+    lastFrom,
+    profiles,
+  );
+  const peerProfile = peer.id ? profiles.get(peer.id) : undefined;
   const baseThread = threadMeta(account, {
     conversationId,
     peerId: peer.id,
@@ -478,7 +533,7 @@ async function fetchInstagramThread(
     snippet: snippetOf(
       last?.text || (last?.attachment ? `[${last.attachment.type}]` : ""),
     ),
-    canReply: Boolean(peer.id),
+    canReply: Boolean(peer.id) && instagramDmWithinReplyWindow(messages),
   });
   return {
     messages,

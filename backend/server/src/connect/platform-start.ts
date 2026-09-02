@@ -11,10 +11,7 @@ import { and, eq } from "drizzle-orm";
 import { AppRequest, RouteResponse } from "../lib/http/http.js";
 import { TwitterApi } from "twitter-api-v2";
 import { oauthLimiter, enforceRateLimit } from "../lib/ratelimit.js";
-import {
-  buildFacebookOAuthUrl,
-  getFacebookLoginConfigId,
-} from "../lib/facebook-oauth.js";
+import { buildFacebookOAuthUrl } from "../lib/facebook-oauth.js";
 import { sanitizeReturnToPath } from "@social0/shared";
 import { redirectWithOAuthConnectBinding } from "../lib/oauth-connect-binding.js";
 
@@ -227,7 +224,6 @@ export async function platformStart(
         clientId,
         redirectUri,
         state,
-        configId: getFacebookLoginConfigId(),
         scope: config.scope,
       }),
       session.user.id,

@@ -4,7 +4,7 @@ Complete checklist of OAuth scopes, app permissions, and setup steps so **publis
 
 **How Social0 applies scopes:** new permissions are **additive**. Existing connected accounts keep publishing until the user **Reconnects** on `/dashboard/connections`. The inbox shows a reconnect banner naming missing scopes.
 
-**Meta Login for Business:** if `FACEBOOK_LOGIN_CONFIG_ID` is set, scopes must be added **inside that Meta Login configuration** (config overrides query `scope`).
+**Meta Login for Business:** connect sends explicit `FACEBOOK_PAGE_SCOPES` from code. Do **not** put `pages_messaging` in a Login configuration — that permission is invalid for our Page-publish use case and Meta shows "Invalid Scopes" to app developers.
 
 Source of truth in code: `backend/server/src/lib/platforms.ts`, `backend/shared/src/constants/facebook-scopes.ts`, `backend/server/src/lib/inbox/types.ts`.
 
@@ -15,7 +15,7 @@ Source of truth in code: `backend/server/src/lib/platforms.ts`, `backend/shared/
 | Platform | Publish | Analytics | Inbox comments | Inbox DMs | Comment media | DM media |
 | -------- | ------- | --------- | -------------- | --------- | ------------- | -------- |
 | Instagram | Yes | Yes | Yes | Yes | — | image, video |
-| Facebook Pages | Yes | Yes | Yes | Yes | — | image, video |
+| Facebook Pages | Yes | Yes | Yes | — | — | — |
 | Threads | Yes | Yes | Yes | — | — | — |
 | YouTube | Yes | Yes | Yes | — | — | — |
 | X (Twitter) | Yes | Yes | Yes* | Yes | image, video | image, video |

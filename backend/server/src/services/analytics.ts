@@ -27,6 +27,7 @@ import {
 import {
   engagementTotal,
   missingAnalyticsScopes,
+  reconnectScopesFromFetch,
   sumMetrics,
   type AnalyticsOverview,
   type AnalyticsSeriesPoint,
@@ -266,17 +267,19 @@ function collectReconnectHints(
 ): AccountReconnectHint[] {
   const byId = new Map<string, AccountReconnectHint>();
   for (const p of pubs) {
-    if (!p.accountId || !p.missingScopes?.length) continue;
+    if (!p.accountId) continue;
+    const scopes = reconnectScopesFromFetch(p);
+    if (!scopes.length) continue;
     const existing = byId.get(p.accountId);
     if (existing) {
-      const set = new Set([...existing.missingScopes, ...p.missingScopes]);
+      const set = new Set([...existing.missingScopes, ...scopes]);
       existing.missingScopes = [...set];
     } else {
       byId.set(p.accountId, {
         accountId: p.accountId,
         platform: p.platform,
         username: p.accountLabel,
-        missingScopes: [...p.missingScopes],
+        missingScopes: [...scopes],
       });
     }
   }
@@ -479,6 +482,11 @@ export async function getAnalyticsOverview(input: {
     pubs.map((p) => [p.postId, p.content] as const),
   );
   const okResults = results.filter((r) => r.status === "ok");
+  const fetchOkAccounts = new Set(
+    results
+      .filter((r) => r.status === "ok" && r.accountId)
+      .map((r) => r.accountId as string),
+  );
 
   const accountRows = await listActiveConnectedAccounts(ctx);
   const scopedAccounts = accountId
@@ -486,6 +494,7 @@ export async function getAnalyticsOverview(input: {
     : accountRows;
   const fromAccounts: AccountReconnectHint[] = scopedAccounts
     .filter((r) => isPlatformLive("analytics", r.platform))
+    .filter((r) => !fetchOkAccounts.has(r.id))
     .map((r) => ({
       accountId: r.id,
       platform: r.platform,
@@ -580,6 +589,11 @@ export async function getPostAnalytics(input: {
     },
   );
   const okResults = results.filter((r) => r.status === "ok");
+  const fetchOkAccounts = new Set(
+    results
+      .filter((r) => r.status === "ok" && r.accountId)
+      .map((r) => r.accountId as string),
+  );
   const accountRows = await listActiveConnectedAccounts(ctx);
   const pubAccountIds = new Set(
     pubs
@@ -590,6 +604,7 @@ export async function getPostAnalytics(input: {
     .filter(
       (r) => pubAccountIds.has(r.id) && isPlatformLive("analytics", r.platform),
     )
+    .filter((r) => !fetchOkAccounts.has(r.id))
     .map((r) => ({
       accountId: r.id,
       platform: r.platform,

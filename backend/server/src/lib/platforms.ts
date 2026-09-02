@@ -85,7 +85,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authUrl: "https://www.facebook.com/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    // Extra insights/comment scopes are requested here. Page DMs are not supported.
+    // Publish + insights. Do not request pages_manage_engagement (pulls pages_read_user_content).
     scope: FACEBOOK_PAGE_SCOPES,
   },
 };

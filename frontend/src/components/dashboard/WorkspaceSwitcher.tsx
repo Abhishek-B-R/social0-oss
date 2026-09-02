@@ -308,7 +308,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
   if (isLoading) {
     return (
       <SkeletonBone
-        className="h-9 w-full rounded-lg bg-sidebar-active"
+        className="h-10 w-full rounded-lg bg-sidebar-active"
         aria-label="Loading workspace"
       />
     );
@@ -323,7 +323,7 @@ export function WorkspaceSwitcher({ enabled }: { enabled: boolean }) {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-bg px-2.5 py-1.5 text-left text-sm font-medium text-sidebar-text",
+          "flex w-full items-center gap-2 rounded-lg border border-sidebar-border bg-sidebar-bg px-3 py-2 text-left text-sm font-medium text-sidebar-text",
           "transition-[background-color,transform] duration-150",
           "hover:bg-sidebar-active active:scale-[0.98]",
           open && "bg-sidebar-active",

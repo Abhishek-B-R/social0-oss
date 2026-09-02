@@ -20,7 +20,6 @@ import {
   SquaresFour,
   Stack,
   Users,
-  Key,
 } from "@/icons/phosphor";
 import { signInUrl } from "@/lib/sign-in-url";
 import { SidebarAccountMenu } from "@/components/dashboard/SidebarAccountMenu";
@@ -84,7 +83,7 @@ function NavLink({
         "hover:bg-sidebar-active active:scale-[0.98]",
         isActive && "bg-sidebar-active",
         navPending && "opacity-60",
-        collapsed ? "justify-center px-1.5 py-2" : "gap-2 px-2 py-1.5",
+        collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2",
         experimental && collapsed && "relative",
       )}
     >
@@ -123,13 +122,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("space-y-0.5", collapsed && "space-y-0")}>
+    <div className={cn("space-y-1", collapsed && "space-y-0.5")}>
       {!collapsed ? (
-        <p className="px-2 pb-1 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">
+        <p className="px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
           {title}
         </p>
       ) : (
-        <div className="mx-auto my-0.5 h-px w-5 bg-sidebar-border" aria-hidden />
+        <div className="mx-auto my-1 h-px w-6 bg-sidebar-border" aria-hidden />
       )}
       {children}
     </div>
@@ -245,14 +244,14 @@ export function DashboardSidebar({
     >
       <div
         className={cn(
-          "flex shrink-0 flex-col",
-          collapsed ? "items-center gap-2 p-1.5 pt-2" : "gap-2.5 p-3",
+          "flex shrink-0 flex-col gap-3",
+          collapsed ? "items-center p-2 pt-3" : "gap-4 p-4",
         )}
       >
         <div
           className={cn(
             "flex w-full items-center",
-            collapsed ? "flex-col gap-1.5" : "justify-between gap-1.5",
+            collapsed ? "flex-col gap-2" : "justify-between gap-2",
           )}
         >
           <SidebarHoverTip label="Social0" enabled={collapsed}>
@@ -287,7 +286,7 @@ export function DashboardSidebar({
               className={cn(
                 "flex items-center rounded-lg font-semibold text-sidebar-text",
                 logoPending && "opacity-60",
-                collapsed ? "justify-center p-1" : "gap-2 px-1 py-1",
+                collapsed ? "justify-center p-1.5" : "gap-3 px-2 py-1.5",
               )}
               aria-label="Social0"
             >
@@ -298,11 +297,11 @@ export function DashboardSidebar({
                 height={40}
                 className={cn(
                   "shrink-0 rounded-full border border-white object-contain",
-                  collapsed ? "h-8 w-8" : "h-9 w-9",
+                  collapsed ? "h-9 w-9" : "h-10 w-10",
                 )}
               />
               {!collapsed ? (
-                <span className="font-logo text-[19px] font-normal tracking-tight text-foreground landing">
+                <span className="font-logo text-[22px] font-normal tracking-tight text-foreground landing">
                   Social0
                 </span>
               ) : null}
@@ -319,7 +318,7 @@ export function DashboardSidebar({
               className={cn(
                 "inline-flex items-center justify-center rounded-lg text-sidebar-muted transition-[background-color,color,transform] duration-150",
                 "hover:bg-sidebar-active hover:text-sidebar-text active:scale-[0.97]",
-                collapsed ? "h-8 w-8" : "h-8 w-8 shrink-0",
+                collapsed ? "h-9 w-9" : "h-9 w-9 shrink-0",
               )}
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-pressed={collapsed}
@@ -336,14 +335,14 @@ export function DashboardSidebar({
                 href="/dashboard/workspaces"
                 prefetch
                 aria-label="Workspaces"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-sidebar-text transition-[background-color,transform] duration-150 hover:bg-sidebar-active active:scale-[0.98]"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-sidebar-text transition-[background-color,transform] duration-150 hover:bg-sidebar-active active:scale-[0.98]"
               >
                 <SquaresFour className="h-4 w-4" size={16} />
               </Link>
             </SidebarHoverTip>
           ) : (
-            <div className="flex flex-col gap-1">
-              <p className="px-2 text-xs font-semibold uppercase tracking-wide text-sidebar-muted">
+            <div className="flex flex-col gap-1.5">
+              <p className="px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
                 Workspaces
               </p>
               <WorkspaceSwitcher enabled={!!user} />
@@ -364,7 +363,7 @@ export function DashboardSidebar({
             className={cn(
               "sidebar-create-post-cta flex items-center justify-center rounded-xl bg-accent font-semibold text-accent-foreground shadow-sm transition-[background-color,opacity,transform] duration-150 hover:bg-accent-hover active:scale-[0.98]",
               composerCtaPending && "opacity-80",
-              collapsed ? "h-8 w-8" : "w-full gap-1.5 px-3 py-2 text-sm",
+              collapsed ? "h-9 w-9" : "w-full gap-2 px-4 py-2.5 text-sm",
             )}
           >
             <WritingIcon className="text-accent-foreground" size={16} />
@@ -378,7 +377,7 @@ export function DashboardSidebar({
         <nav
           className={cn(
             "flex flex-col",
-            collapsed ? "gap-2 px-1.5 pb-2" : "gap-3 p-3 pt-0",
+            collapsed ? "gap-3 px-2 pb-3" : "gap-6 p-4 pt-0",
           )}
         >
           {showCreate ? (
@@ -494,23 +493,13 @@ export function DashboardSidebar({
               />
             )}
           </Section>
-
-          <Section title="Developer" collapsed={collapsed}>
-            <NavLink
-              href={dash("api-keys")}
-              label="Developer"
-              icon={Key}
-              collapsed={collapsed}
-              isActive={relativeMatches(relative, "api-keys")}
-            />
-          </Section>
         </nav>
       </div>
 
       <div
         className={cn(
           "relative z-20 shrink-0 border-t border-sidebar-border bg-sidebar-bg",
-          collapsed ? "p-1.5" : "p-2.5",
+          collapsed ? "p-2" : "p-4",
         )}
       >
         {isGuest ? (
@@ -520,7 +509,7 @@ export function DashboardSidebar({
               aria-label="Sign in"
               className={cn(
                 "flex items-center justify-center rounded-lg bg-accent font-semibold text-accent-foreground transition-colors hover:bg-accent-hover",
-                collapsed ? "h-8 w-8" : "w-full gap-1.5 px-2.5 py-2 text-sm",
+                collapsed ? "h-9 w-9" : "w-full gap-2 px-3 py-2.5 text-sm",
               )}
             >
               {collapsed ? <SignIn size={16} /> : "Sign in"}
@@ -532,11 +521,11 @@ export function DashboardSidebar({
               "sidebar-user-block flex items-center",
               collapsed
                 ? "justify-center p-1"
-                : "w-full gap-2 rounded-lg px-2 py-1.5",
+                : "w-full gap-3 rounded-lg px-3 py-2",
             )}
             aria-hidden
           >
-            <div className="h-8 w-8 shrink-0 animate-pulse rounded-full bg-sidebar-active" />
+            <div className="h-9 w-9 shrink-0 animate-pulse rounded-full bg-sidebar-active" />
             {!collapsed ? (
               <div className="min-w-0 flex-1 space-y-1.5">
                 <div className="h-3 w-24 animate-pulse rounded bg-sidebar-active" />

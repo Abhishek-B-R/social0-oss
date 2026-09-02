@@ -105,15 +105,16 @@ export function InboxPage() {
 
   const accounts = accountsQuery.data ?? [];
 
-  // Prefer a single account so "All" is an explicit choice, not the default
-  // storm that fans out across every connected platform.
+  // Pin `account=all` when the param is missing or stale so All is the
+  // default, and we never omit the param (that used to fan-out-fetch every
+  // platform before the filter resolved).
   useEffect(() => {
     if (accountsQuery.isError) return;
     if (!accountsQuery.isSuccess) return;
     if (!accounts.length) return;
     if (accountParam === "all") return;
     if (accountParam && accounts.some((a) => a.id === accountParam)) return;
-    setAccountId(accounts[0]!.id);
+    setAccountId(null);
   }, [accountParam, accounts, accountsQuery.isSuccess, accountsQuery.isError]);
 
   /** Live list fetches wait until account is pinned or user chose All. */

@@ -77,6 +77,21 @@ const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 /** Allow a few minutes of client/server clock skew and network delay (was causing false failures). */
 const SCHEDULE_FUTURE_GRACE_MS = 120_000;
 
+/** Surface actionable Error messages; hide SQL/stack/internals. */
+function toSafeClientError(e: unknown, fallback: string): string {
+  const message = e instanceof Error ? e.message.trim() : "";
+  if (!message) return fallback;
+  if (message.length > 280) return fallback;
+  if (
+    /stack|at\s+\S+\s+\(|sqlstate|drizzle|postgres|neon\.tech|ECONNREFUSED|ENOENT|internal server/i.test(
+      message,
+    )
+  ) {
+    return fallback;
+  }
+  return message;
+}
+
 /** RPC/JSON may pass ISO strings instead of Date instances. */
 function coerceDate(value: unknown): Date | null {
   if (value == null) return null;
@@ -290,19 +305,12 @@ export async function createPost(
     return { success: true, postId: postRow.id };
   } catch (e) {
     console.error("createPost error:", e);
-    // Surface actionable enqueue/config errors; keep internals generic.
-    const message = e instanceof Error ? e.message : "";
-    if (
-      message &&
-      /CF publish|Cloudflare|No publication targets|not configured|BullMQ|redis/i.test(
-        message,
-      )
-    ) {
-      return { success: false, error: message };
-    }
     return {
       success: false,
-      error: "Something went wrong. Please try again.",
+      error: toSafeClientError(
+        e,
+        "Couldn't create this post. Please try again.",
+      ),
     };
   }
 }
@@ -472,7 +480,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
     console.error("postAgain error:", e);
     return {
       success: false,
-      error: "Failed to post again. Please try again.",
+      error: toSafeClientError(e, "Couldn't post again. Please try again."),
     };
   }
 }
@@ -673,7 +681,7 @@ export async function updatePost(
     console.error("updatePost error:", e);
     return {
       success: false,
-      error: "Failed to update post. Please try again.",
+      error: toSafeClientError(e, "Couldn't update this post. Please try again."),
     };
   }
 }

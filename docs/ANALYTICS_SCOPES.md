@@ -19,7 +19,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | ---- | ------ |
 | New permission | `read_insights` (we already had `pages_read_engagement`) |
 | Code | `FACEBOOK_PAGE_SCOPES` in `backend/shared` + frontend mirror |
-| If using Login config | Set `FACEBOOK_LOGIN_CONFIG_ID` — **add `read_insights` inside that Meta Login for Business configuration** (config_id overrides query `scope`) |
+| If using Login config | `FACEBOOK_LOGIN_CONFIG_ID` is fallback only. Connect sends `FACEBOOK_PAGE_SCOPES` (includes `read_insights`). Do not add `pages_messaging` to the Login config. |
 | App Review | Meta App Dashboard → App Review → Permissions → `read_insights` |
 | Use case copy | “Show Page post impressions, reach, and engagement in Social0 Analytics so creators can see how published posts perform.” |
 | Endpoints | `GET /{post-id}?fields=likes.summary,comments.summary,shares` + `GET /{post-id}/insights` |
@@ -107,7 +107,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | LinkedIn | best-effort read | No | MDP often required |
 | TikTok / Pinterest | — | — | no usable comments API |
 
-If `FACEBOOK_LOGIN_CONFIG_ID` is set, add `pages_manage_engagement` in that Login config too.
+Connect sends only Advanced Access Page publish scopes (`pages_show_list`, `pages_read_engagement`, `pages_manage_posts`). Do not send `pages_manage_engagement` (Meta would also request `pages_read_user_content`, which this app does not have). Do not send `read_insights` or `business_management` on connect (rejected). Do not add `pages_messaging` on connect.
 
 ## Inbox DMs
 

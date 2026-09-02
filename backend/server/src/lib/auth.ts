@@ -2,14 +2,10 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP } from "better-auth/plugins";
 import { db } from "../db/index.js";
-import { createAuthSecondaryStorage } from "./auth-secondary-storage.js";
 import { getCorsOrigins } from "./app-url.js";
 import { env, getAuthApiBaseUrl } from "./env.js";
 import { sendEmail } from "./mail.js";
-import { redis } from "./redis.js";
 import { user, session, account, verification } from "../db/schema.js";
-
-const secondaryStorage = redis ? createAuthSecondaryStorage(redis) : undefined;
 
 const subjects: Record<string, string> = {
   "sign-in": "Your Social0 sign-in code",
@@ -32,12 +28,20 @@ export const auth = betterAuth({
   baseURL: authBaseUrl,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: getCorsOrigins(),
+  // SPA (dev.social0.app) starts OAuth via cross-origin POST to api.social0.app.
+  // Browsers may drop the auxiliary state cookie; DB verification still binds the flow.
+  account: {
+    skipStateCookieCheck: true,
+  },
   advanced: {
     useSecureCookies: authBaseUrl.startsWith("https://"),
     crossSubDomainCookies: {
       enabled: authBaseUrl.includes("social0.app"),
       domain: "social0.app",
     },
+    ...(authBaseUrl.startsWith("https://")
+      ? { defaultCookieAttributes: { sameSite: "none" as const } }
+      : {}),
   },
   plugins: [
     emailOTP({
@@ -66,6 +70,11 @@ export const auth = betterAuth({
   emailVerification: {
     autoSignInAfterVerification: true,
   },
+  // OAuth state + OTP verifications live in Postgres only (never Upstash).
+  // secondaryStorage sent verifications to Redis; timeouts/eviction caused state_mismatch.
+  verification: {
+    storeInDatabase: true,
+  },
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,
@@ -73,7 +82,6 @@ export const auth = betterAuth({
       redirectURI: `${authBaseUrl}/api/auth/callback/google`,
     },
   },
-  secondaryStorage,
   session: {
     storeSessionInDatabase: true,
     cookieCache: {
@@ -83,6 +91,6 @@ export const auth = betterAuth({
     },
   },
   rateLimit: {
-    storage: "secondary-storage" as const,
+    storage: "memory",
   },
 });

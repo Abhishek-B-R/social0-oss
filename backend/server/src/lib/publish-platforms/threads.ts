@@ -1,5 +1,5 @@
 /**
- * Threads (Meta) publish — single posts and reply threads.
+ * Threads (Meta) publish - single posts and reply threads.
  */
 
 import { publishLog } from "@/lib/publish-log";
@@ -20,6 +20,54 @@ function threadsFormBody(
     p.set(k, typeof v === "boolean" ? (v ? "true" : "false") : v);
   }
   return p.toString();
+}
+
+type ThreadsGraphError = {
+  message?: string;
+  error_user_msg?: string;
+  error_user_title?: string;
+  error_message?: string;
+};
+
+/** Prefer Meta's user-facing copy over opaque Graph codes. */
+function threadsErrorMessage(data: unknown, fallback: string): string {
+  if (data == null || typeof data !== "object") return fallback;
+  const o = data as Record<string, unknown>;
+  const nested =
+    o.error != null && typeof o.error === "object"
+      ? (o.error as ThreadsGraphError)
+      : (o as ThreadsGraphError);
+  const userMsg = nested.error_user_msg?.trim();
+  if (userMsg) return userMsg;
+  const title = nested.error_user_title?.trim();
+  const msg =
+    nested.error_message?.trim() ||
+    nested.message?.trim() ||
+    (typeof o.error_message === "string" ? o.error_message.trim() : "");
+  if (title && msg) return `${title}: ${msg}`;
+  if (msg) return msg;
+  if (title) return title;
+  return fallback;
+}
+
+function threadsFail(
+  lastError: string,
+  error = lastError,
+): PublishPlatformResult {
+  return { status: "failed", lastError, error };
+}
+
+async function postThreadsForm(
+  url: string,
+  body: Record<string, string | boolean | undefined>,
+): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: threadsFormBody(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  return { ok: res.ok, status: res.status, data };
 }
 
 /**
@@ -44,7 +92,69 @@ function parseThreadsPublishId(data: unknown): string | null {
 }
 
 /**
- * Fetch permalink via GET /{threadId}?fields=id,permalink — never invent shortcodes.
+ * Threads will reject threads_publish until the container is FINISHED.
+ * Videos often take well over 30s - never publish on a blind sleep.
+ */
+async function pollThreadsContainer(opts: {
+  containerId: string;
+  accessToken: string;
+  label: string;
+  maxAttempts?: number;
+  delayMs?: number;
+}): Promise<{ ok: true } | { ok: false; lastError: string; error: string }> {
+  const {
+    containerId,
+    accessToken,
+    label,
+    maxAttempts = 60,
+    delayMs = 3000,
+  } = opts;
+  const params = new URLSearchParams({ access_token: accessToken });
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await sleep(delayMs);
+    const statusRes = await fetch(
+      `https://graph.threads.net/v1.0/${encodeURIComponent(containerId)}?fields=status,error_message&${params}`,
+    );
+    if (!statusRes.ok) {
+      publishLog.warn(
+        `[Threads] ${label} status check failed (attempt ${attempt + 1}/${maxAttempts}): HTTP ${statusRes.status}`,
+      );
+      continue;
+    }
+    const statusData = (await statusRes.json().catch(() => ({}))) as {
+      status?: string;
+      error_message?: string;
+      error?: { message?: string };
+    };
+    const status = statusData.status;
+    if (status === "FINISHED" || status === "PUBLISHED") return { ok: true };
+    if (status === "ERROR" || status === "EXPIRED") {
+      const errMsg = threadsErrorMessage(
+        statusData,
+        status === "EXPIRED"
+          ? "Threads media container expired. Try again."
+          : "Threads media processing failed. Check the video format (MP4) and try again.",
+      );
+      publishLog.error("[Threads] Container not publishable:", {
+        label,
+        status,
+        error_message: statusData.error_message,
+      });
+      return { ok: false, lastError: errMsg, error: "Container error" };
+    }
+    publishLog.info(
+      `[Threads] ${label} status: ${status ?? "unknown"} (attempt ${attempt + 1}/${maxAttempts})`,
+    );
+  }
+  return {
+    ok: false,
+    lastError: `Threads media did not become ready in time (${label}). Try a shorter video, or try again.`,
+    error: "Timeout",
+  };
+}
+
+/**
+ * Fetch permalink via GET /{threadId}?fields=id,permalink - never invent shortcodes.
  * Cosmetic only; never fail a live Threads publish over permalink lookup.
  */
 async function fetchThreadsPermalink(
@@ -80,9 +190,9 @@ function threadsProfileFallback(pub: Pub): string | null {
 
 /**
  * Publish a Threads (Meta) reply-chain thread.
- * Strict sequential flow: create first post → publish → get id →
- * for each next part: create container with reply_to_id = previous published id →
- * publish → get id → wait for publish to complete → repeat.
+ * Strict sequential flow: create first post -> publish -> get id ->
+ * for each next part: create container with reply_to_id = previous published id ->
+ * publish -> get id -> wait for publish to complete -> repeat.
  * Do NOT create all containers upfront; each step waits for the previous publish.
  */
 async function publishThreadsThread(
@@ -119,31 +229,25 @@ async function publishThreadsThread(
       // Carousel: create item containers for this part only (not replies; they're children)
       const containerIds: string[] = [];
       for (const img of images.slice(0, 20)) {
-        const res = await fetch(
+        const item = await postThreadsForm(
           `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
           {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: threadsFormBody({
-              media_type: "IMAGE",
-              image_url: img.url,
-              is_carousel_item: true,
-            }),
+            media_type: "IMAGE",
+            image_url: img.url,
+            is_carousel_item: true,
           },
         );
-        const data = (await res.json().catch(() => ({}))) as {
-          id?: string;
-          error?: { message?: string };
-        };
-        if (!res.ok || !data.id) {
-          return {
-            status: "failed",
-            lastError:
-              data.error?.message ?? `Threads thread part ${i + 1} failed`,
-            error: "Upload failed",
-          };
+        const itemId = parseThreadsPublishId(item.data);
+        if (!item.ok || !itemId) {
+          return threadsFail(
+            threadsErrorMessage(
+              item.data,
+              `Threads thread part ${i + 1} failed`,
+            ),
+            "Upload failed",
+          );
         }
-        containerIds.push(data.id);
+        containerIds.push(itemId);
       }
       await new Promise((r) => setTimeout(r, 2000));
       body.media_type = "CAROUSEL";
@@ -165,129 +269,55 @@ async function publishThreadsThread(
     if (i > 0) {
       if (!previousPublishedId) {
         const err = `Threads thread chain broken: missing previous published post id before part ${i + 1}`;
-        return {
-          status: "failed",
-          lastError: err,
-          error: "Chain broken",
-        };
+        return threadsFail(err, "Chain broken");
       }
       body.reply_to_id = previousPublishedId;
     }
 
     // Step 1: Create container for this part (reply_to_id set above when i > 0).
     // Use /me/threads so reply_to_id is resolved in the token user's context (per Meta docs).
-    const createRes = await fetch(
+    const create = await postThreadsForm(
       `https://graph.threads.net/v1.0/me/threads?${threadParams}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: threadsFormBody(body),
-      },
+      body,
     );
-    const createData = (await createRes.json().catch(() => ({}))) as {
-      id?: string;
-      error?: { message?: string };
-    };
-    if (!createRes.ok || !createData.id) {
-      const errMsg =
-        (createData as { error?: { message?: string } }).error?.message ??
-        `Threads thread part ${i + 1} failed`;
+    const containerId = parseThreadsPublishId(create.data);
+    if (!create.ok || !containerId) {
+      const errMsg = threadsErrorMessage(
+        create.data,
+        `Threads thread part ${i + 1} failed`,
+      );
       publishLog.error("[Threads] Create container failed:", {
         part: i + 1,
-        status: createRes.status,
-        body: createData,
+        status: create.status,
+        body: create.data,
       });
-      return {
-        status: "failed",
-        lastError: errMsg,
-        error: "Create failed",
-      };
+      return threadsFail(errMsg, "Create failed");
     }
-
-    // Container ID from step 1 - do NOT use as reply_to_id; only the threads_publish response id is valid.
-    const containerId = createData.id;
 
     // Step 2: Poll container status until FINISHED (Threads API requires container to be ready before publish)
-    const maxPollAttempts = 40;
-    const pollDelayMs = 3000;
-    let pollAttempt = 0;
-    for (; pollAttempt < maxPollAttempts; pollAttempt++) {
-      await sleep(pollDelayMs);
-      const statusRes = await fetch(
-        `https://graph.threads.net/v1.0/${containerId}?fields=status,error_message&${threadParams.toString()}`,
-      );
-      if (!statusRes.ok) continue;
-      const statusData = (await statusRes.json().catch(() => ({}))) as {
-        status?: string;
-        error_message?: string;
-        error?: { message?: string };
-      };
-      const status = statusData.status;
-      if (status === "FINISHED") break;
-      if (status === "ERROR" || status === "EXPIRED") {
-        const errMsg =
-          statusData.error_message ??
-          statusData.error?.message ??
-          (status === "EXPIRED"
-            ? "Threads media container expired. Try again."
-            : "Threads media processing failed.");
-        publishLog.error("[Threads] Container not publishable:", {
-          part: i + 1,
-          status,
-          error_message: statusData.error_message,
-        });
-        return {
-          status: "failed",
-          lastError: errMsg,
-          error: "Container error",
-        };
-      }
-      if (pollAttempt < maxPollAttempts - 1) {
-        publishLog.info(`[Threads] Part ${i + 1} container status: ${status ?? "unknown"} (attempt ${pollAttempt + 1}/${maxPollAttempts})`,);
-      }
-    }
-    if (pollAttempt >= maxPollAttempts) {
-      const err =
-        "Threads media container did not become ready in time. Try again.";
-      publishLog.error("[Threads]", err);
-      return { status: "failed", lastError: err, error: "Timeout" };
+    const polled = await pollThreadsContainer({
+      containerId,
+      accessToken,
+      label: `part ${i + 1}`,
+      maxAttempts: 40,
+    });
+    if (!polled.ok) {
+      return threadsFail(polled.lastError, polled.error);
     }
 
-    const publishRes = await fetch(
+    const publish = await postThreadsForm(
       `https://graph.threads.net/v1.0/${threadsUserId}/threads_publish?${threadParams}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: threadsFormBody({ creation_id: containerId }),
-      },
+      { creation_id: containerId },
     );
-    const publishData = (await publishRes.json().catch(() => ({}))) as {
-      id?: string;
-      error?: {
-        message?: string;
-        error_user_msg?: string;
-        error_user_title?: string;
-      };
-    };
-    const publishedId = parseThreadsPublishId(publishData);
-    if (!publishRes.ok || !publishedId) {
-      const err = publishData.error;
-      const errMsg =
-        err?.error_user_msg ??
-        (err?.error_user_title && err?.message
-          ? `${err.error_user_title}: ${err.message}`
-          : err?.message) ??
-        "Threads publish failed";
+    const publishedId = parseThreadsPublishId(publish.data);
+    if (!publish.ok || !publishedId) {
+      const errMsg = threadsErrorMessage(publish.data, "Threads publish failed");
       publishLog.error("[Threads] Publish failed:", {
         part: i + 1,
-        status: publishRes.status,
-        body: publishData,
+        status: publish.status,
+        body: publish.data,
       });
-      return {
-        status: "failed",
-        lastError: errMsg,
-        error: "Publish failed",
-      };
+      return threadsFail(errMsg, "Publish failed");
     }
 
     // Step 3: next part's reply_to_id must be this published media id, not the container id.
@@ -333,99 +363,71 @@ export async function publishToThreads(
   const videoUrl = videos[0]?.url;
 
   const safeText = truncate(text, 500);
+  if (post.mediaIds && post.mediaIds.length > 0 && orderedMedia.length === 0) {
+    return threadsFail(
+      "Threads couldn't fetch your video or image. Re-upload the file and try again.",
+      "No media",
+    );
+  }
   if (orderedMedia.length === 0 && !safeText) {
-    return {
-      status: "failed",
-      lastError: "Threads post must have text, an image, or a video.",
-      error: "Content required",
-    };
+    return threadsFail(
+      "Threads post must have text, an image, or a video.",
+      "Content required",
+    );
   }
 
   const threadParams = new URLSearchParams({ access_token: accessToken });
+  const createUrl = `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`;
   let creationId: string;
-  let isCarousel = false;
+  let containerReady = false;
 
   // Handle carousel (multiple items: images and/or videos, up to 10)
   if (orderedMedia.length > 1) {
-    publishLog.info(`📸 Creating Threads carousel with ${orderedMedia.length} items (images + videos)...`,);
+    publishLog.info(
+      `Creating Threads carousel with ${orderedMedia.length} items (images + videos)...`,
+    );
 
     const containerIds: string[] = [];
 
     for (const item of orderedMedia) {
       const isVideo = item.mimeType.startsWith("video/");
-      const body: Record<string, string | boolean> = {
+      const itemRes = await postThreadsForm(createUrl, {
         media_type: isVideo ? "VIDEO" : "IMAGE",
         is_carousel_item: true,
         ...(isVideo ? { video_url: item.url } : { image_url: item.url }),
-      };
+      });
+      const itemId = parseThreadsPublishId(itemRes.data);
 
-      const itemRes = await fetch(
-        `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-      );
+      if (itemRes.ok && itemId) {
+        containerIds.push(itemId);
+        publishLog.info(
+          `Threads carousel item ${containerIds.length} created: ${itemId}`,
+        );
 
-      const itemData = (await itemRes.json().catch(() => ({}))) as {
-        id?: string;
-        error?: { message?: string; code?: number; error_subcode?: number };
-      };
-
-      if (itemRes.ok && itemData.id) {
-        containerIds.push(itemData.id);
-        publishLog.info(`✅ Threads carousel item ${containerIds.length} created: ${itemData.id}`,);
-
-        // If this item is a video, poll until FINISHED before creating next item
         if (isVideo) {
-          const maxAttempts = 60;
-          const delayMs = 3000;
-          let attempts = 0;
-          publishLog.info(`⏳ Polling Threads video item ${itemData.id} until FINISHED...`,);
-          while (attempts < maxAttempts) {
-            const statusRes = await fetch(
-              `https://graph.threads.net/v1.0/${itemData.id}?fields=status&${threadParams.toString()}`,
-            );
-            if (statusRes.ok) {
-              const statusData = (await statusRes.json().catch(() => ({}))) as {
-                status?: string;
-                error?: { message?: string };
-              };
-              const status = statusData.status;
-              publishLog.info(`Threads video item status: ${status ?? "unknown"} (attempt ${attempts + 1}/${maxAttempts})`,);
-              if (status === "FINISHED") break;
-              if (status === "ERROR") {
-                const errMsg =
-                  statusData.error?.message ??
-                  "Threads video item processing failed";
-                return {
-                  status: "failed",
-                  lastError: errMsg,
-                  error: "Threads video processing error",
-                };
-              }
-            }
-            await sleep(delayMs);
-            attempts++;
+          publishLog.info(`Polling Threads video item ${itemId} until FINISHED...`);
+          const polled = await pollThreadsContainer({
+            containerId: itemId,
+            accessToken,
+            label: `carousel video ${containerIds.length}`,
+          });
+          if (!polled.ok) {
+            return threadsFail(polled.lastError, polled.error);
           }
-          if (attempts >= maxAttempts) {
-            const err = `Threads video item did not finish processing within ${maxAttempts * (delayMs / 1000)}s.`;
-            publishLog.error("❌", err);
-            return { status: "failed", lastError: err, error: "Timeout" };
-          }
-          publishLog.info("✅ Threads video item finished processing.");
+          publishLog.info("Threads video item finished processing.");
         }
       } else {
-        publishLog.error("❌ Failed to create Threads carousel item:",
-          itemData.error,);
-        return {
-          status: "failed",
-          lastError:
-            itemData.error?.message ??
+        publishLog.error(
+          "Failed to create Threads carousel item:",
+          itemRes.data,
+        );
+        return threadsFail(
+          threadsErrorMessage(
+            itemRes.data,
             "Failed to create Threads carousel item. Please try again.",
-          error: "Threads carousel item failed",
-        };
+          ),
+          "Threads carousel item failed",
+        );
       }
 
       // space out carousel item creation so item IDs stay valid
@@ -433,203 +435,119 @@ export async function publishToThreads(
     }
 
     if (containerIds.length === 0) {
-      return {
-        status: "failed",
-        lastError: "Failed to upload carousel items",
-        error: "Upload failed",
-      };
+      return threadsFail("Failed to upload carousel items", "Upload failed");
     }
 
     // Wait before creating carousel container so items don't expire
     await sleep(8000);
 
-    // Create carousel container
-    const carouselRes = await fetch(
-      `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          media_type: "CAROUSEL",
-          children: containerIds.join(","),
-          text: safeText,
-        }),
-      },
-    );
+    const carouselRes = await postThreadsForm(createUrl, {
+      media_type: "CAROUSEL",
+      children: containerIds.join(","),
+      text: safeText,
+    });
+    const carouselId = parseThreadsPublishId(carouselRes.data);
 
-    const carouselData = (await carouselRes.json().catch(() => ({}))) as {
-      id?: string;
-      error?: { message?: string };
-    };
-
-    if (!carouselRes.ok || !carouselData.id) {
-      const err = carouselData.error?.message ?? `HTTP ${carouselRes.status}`;
+    if (!carouselRes.ok || !carouselId) {
+      const err = threadsErrorMessage(
+        carouselRes.data,
+        `HTTP ${carouselRes.status}`,
+      );
       publishLog.error("Threads carousel creation failed:", {
         status: carouselRes.status,
-        error: carouselData.error,
+        body: carouselRes.data,
       });
-      return { status: "failed", lastError: err, error: err };
+      return threadsFail(err);
     }
 
-    publishLog.info("✅ Threads carousel container created:", {
-      containerId: carouselData.id,
+    publishLog.info("Threads carousel container created:", {
+      containerId: carouselId,
       itemCount: containerIds.length,
     });
 
-    creationId = carouselData.id;
-    isCarousel = true;
+    creationId = carouselId;
   } else if (orderedMedia.length === 1 && videoUrl) {
-    // Single video
-    const createRes = await fetch(
-      `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          media_type: "VIDEO",
-          video_url: videoUrl,
-          text: safeText,
-        }),
-      },
-    );
-    const createData = (await createRes.json().catch(() => ({}))) as {
-      id?: string;
-      error?: { message?: string };
-    };
-    if (!createRes.ok || !createData.id) {
-      const err = createData.error?.message ?? `HTTP ${createRes.status}`;
-      return { status: "failed", lastError: err, error: err };
+    const createRes = await postThreadsForm(createUrl, {
+      media_type: "VIDEO",
+      video_url: videoUrl,
+      text: safeText,
+    });
+    const createdId = parseThreadsPublishId(createRes.data);
+    if (!createRes.ok || !createdId) {
+      return threadsFail(
+        threadsErrorMessage(createRes.data, `HTTP ${createRes.status}`),
+      );
     }
-    creationId = createData.id;
-    // Threads recommends waiting for video processing before publishing (at least 30s)
-    await new Promise((r) => setTimeout(r, 30000));
+    creationId = createdId;
+    publishLog.info(`Polling Threads video ${creationId} until FINISHED...`);
+    const polled = await pollThreadsContainer({
+      containerId: creationId,
+      accessToken,
+      label: "video",
+    });
+    if (!polled.ok) {
+      return threadsFail(polled.lastError, polled.error);
+    }
+    containerReady = true;
   } else if (orderedMedia.length === 1 && imageUrl) {
-    // Single image
-    const createRes = await fetch(
-      `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          media_type: "IMAGE",
-          image_url: imageUrl,
-          text: safeText,
-        }),
-      },
-    );
-    const createData = (await createRes.json().catch(() => ({}))) as {
-      id?: string;
-      error?: { message?: string };
-    };
-    if (!createRes.ok || !createData.id) {
-      const err = createData.error?.message ?? `HTTP ${createRes.status}`;
-      return { status: "failed", lastError: err, error: err };
+    const createRes = await postThreadsForm(createUrl, {
+      media_type: "IMAGE",
+      image_url: imageUrl,
+      text: safeText,
+    });
+    const createdId = parseThreadsPublishId(createRes.data);
+    if (!createRes.ok || !createdId) {
+      return threadsFail(
+        threadsErrorMessage(createRes.data, `HTTP ${createRes.status}`),
+      );
     }
-    creationId = createData.id;
+    creationId = createdId;
   } else {
-    // Text-only post
-    const createRes = await fetch(
-      `https://graph.threads.net/v1.0/${threadsUserId}/threads?${threadParams}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ media_type: "TEXT", text: safeText }),
-      },
-    );
-    const createData = (await createRes.json().catch(() => ({}))) as {
-      id?: string;
-      error?: { message?: string };
-    };
-    if (!createRes.ok || !createData.id) {
-      const err = createData.error?.message ?? `HTTP ${createRes.status}`;
-      return { status: "failed", lastError: err, error: err };
+    const createRes = await postThreadsForm(createUrl, {
+      media_type: "TEXT",
+      text: safeText,
+    });
+    const createdId = parseThreadsPublishId(createRes.data);
+    if (!createRes.ok || !createdId) {
+      return threadsFail(
+        threadsErrorMessage(createRes.data, `HTTP ${createRes.status}`),
+      );
     }
-    creationId = createData.id;
+    creationId = createdId;
   }
 
-  // For carousel containers, poll status until ready before publishing.
-  if (isCarousel) {
-    let attempts = 0;
-    const maxAttempts = 30;
-    const delayMs = 3000;
-
-    publishLog.info(`⏳ Polling Threads carousel status for container ${creationId}...`,);
-
-    while (attempts < maxAttempts) {
-      const statusRes = await fetch(
-        `https://graph.threads.net/v1.0/${creationId}?fields=status&${threadParams.toString()}`,
-      );
-
-      if (!statusRes.ok) {
-        const errorText = await statusRes.text().catch(() => "Unknown error");
-        publishLog.warn(`⚠️ Threads carousel status check failed (attempt ${attempts + 1}/${maxAttempts}): HTTP ${statusRes.status}`,
-          errorText,);
-      } else {
-        const statusData = (await statusRes.json().catch(() => ({}))) as {
-          status?: string;
-          error?: { message?: string };
-        };
-        const status = statusData.status;
-
-        publishLog.info(`Threads carousel status: ${status ?? "unknown"} (attempt ${
-            attempts + 1
-          }/${maxAttempts})`,);
-
-        if (status === "FINISHED" || status === "PUBLISHED") {
-          publishLog.info("✅ Threads carousel is ready to publish");
-          break;
-        }
-
-        if (status === "ERROR") {
-          const errMessage =
-            statusData.error?.message ??
-            "Threads carousel container failed to process.";
-          publishLog.error("❌ Threads carousel processing error:", errMessage);
-          return {
-            status: "failed",
-            lastError: errMessage,
-            error: "Threads carousel not ready",
-          };
-        }
-      }
-
-      attempts += 1;
-      await sleep(delayMs);
+  if (orderedMedia.length > 1) {
+    const polled = await pollThreadsContainer({
+      containerId: creationId,
+      accessToken,
+      label: "carousel",
+      maxAttempts: 30,
+    });
+    if (!polled.ok) {
+      return threadsFail(polled.lastError, polled.error);
     }
+    containerReady = true;
+  }
 
-    if (attempts >= maxAttempts) {
-      const err =
-        "Threads carousel container was never ready to publish (timed out after 90s).";
-      publishLog.error("❌", err);
-      return { status: "failed", lastError: err, error: err };
-    }
-  } else {
-    // Non-carousel posts: small grace delay before publish.
+  if (!containerReady) {
     await sleep(2000);
   }
-  const publishRes = await fetch(
+
+  const publishRes = await postThreadsForm(
     `https://graph.threads.net/v1.0/${threadsUserId}/threads_publish?${threadParams}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ creation_id: creationId }),
-    },
+    { creation_id: creationId },
   );
-  const publishData = (await publishRes.json().catch(() => ({}))) as {
-    id?: string;
-    error?: { message?: string };
-  };
   if (!publishRes.ok) {
-    const err = publishData.error?.message ?? `HTTP ${publishRes.status}`;
-    return { status: "failed", lastError: err, error: err };
+    return threadsFail(
+      threadsErrorMessage(publishRes.data, `HTTP ${publishRes.status}`),
+    );
   }
-  const publishedSingleId = parseThreadsPublishId(publishData);
+  const publishedSingleId = parseThreadsPublishId(publishRes.data);
   if (!publishedSingleId) {
-    return {
-      status: "failed",
-      lastError: "Threads publish returned no media id",
-      error: "Publish failed",
-    };
+    return threadsFail(
+      "Threads publish returned no media id",
+      "Publish failed",
+    );
   }
   const profileFallback = threadsProfileFallback(pub);
   const platformPostUrl = await fetchThreadsPermalink(

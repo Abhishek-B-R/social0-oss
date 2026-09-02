@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   engagementTotal,
   missingAnalyticsScopes,
+  reconnectScopesFromFetch,
   scopeGranted,
   sumMetrics,
 } from "../lib/analytics/types.js";
@@ -36,6 +37,16 @@ describe("analytics types", () => {
       missingAnalyticsScopes("tiktok", "user.info.basic,video.publish,video.list"),
     ).toEqual([]);
     expect(missingAnalyticsScopes("youtube", null)).toEqual([]);
+  });
+
+  it("reconnect hints only from live fetch scope errors", () => {
+    expect(reconnectScopesFromFetch({ status: "ok" })).toEqual([]);
+    expect(
+      reconnectScopesFromFetch({
+        status: "scope_missing",
+        missingScopes: ["read_insights"],
+      }),
+    ).toEqual(["read_insights"]);
   });
 
   it("sums metrics and engagement", () => {

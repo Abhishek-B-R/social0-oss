@@ -319,7 +319,8 @@ function getStatusBadge(status: string | null): {
 
 function getFriendlyFailureReason(raw: string | null): string | null {
   if (!raw || !raw.trim()) return null;
-  const lower = raw.toLowerCase();
+  const text = raw.trim();
+  const lower = text.toLowerCase();
   if (
     lower.includes("token") ||
     lower.includes("oauth") ||
@@ -335,7 +336,7 @@ function getFriendlyFailureReason(raw: string | null): string | null {
   ) {
     return "Publishing failed due to temporary rate limits. Please try again shortly.";
   }
-  return "Publishing failed. Please review your post settings and try again.";
+  return text;
 }
 
 function QuickActionsMenu({
@@ -703,12 +704,14 @@ export function PostListCards({
                 )}
                 {uiStatus === "failed" &&
                   getFriendlyFailureReason(post.failureReason) && (
-                    <p className="mt-auto flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400">
+                    <p className="mt-auto flex items-start gap-1.5 text-xs text-red-600 dark:text-red-400">
                       <AlertCircle
-                        className="h-3.5 w-3.5 shrink-0"
+                        className="mt-0.5 h-3.5 w-3.5 shrink-0"
                         strokeWidth={1.5}
                       />
-                      {getFriendlyFailureReason(post.failureReason)}
+                      <span className="line-clamp-3 break-words">
+                        {getFriendlyFailureReason(post.failureReason)}
+                      </span>
                     </p>
                   )}
               </div>

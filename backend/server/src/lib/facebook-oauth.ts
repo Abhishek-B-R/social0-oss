@@ -1,4 +1,3 @@
-import { env } from "./env.js";
 import {
   FACEBOOK_INSTAGRAM_PAGE_SCOPES,
   FACEBOOK_PAGE_SCOPES,
@@ -12,23 +11,23 @@ export type BuildFacebookOAuthUrlParams = {
   clientId: string;
   redirectUri: string;
   state: string;
-  /** Facebook Login for Business configuration ID (preferred over scope). */
+  /**
+   * Ignored. Login-for-Business config_id is never sent - a dashboard config
+   * can still list pages_messaging, which this app does not have.
+   */
   configId?: string | null;
-  /** Fallback when configId is absent. */
+  /** Page scopes. Blocked permissions are stripped before the URL is built. */
   scope?: string;
 };
 
 /**
- * Build Meta OAuth dialog URL.
- * @see https://developers.facebook.com/docs/facebook-login/facebook-login-for-business/
- * When config_id is set, scope should not be sent (Meta recommendation).
+ * Build Meta OAuth dialog URL with an explicit scope list only.
+ * Never send config_id; never request Messenger or pages_read_user_content.
  */
 export function buildFacebookOAuthUrl({
   clientId,
   redirectUri,
   state,
-  configId,
-  scope,
 }: BuildFacebookOAuthUrlParams): string {
   const url = new URL(FACEBOOK_AUTH_URL);
   url.searchParams.set("client_id", clientId);
@@ -36,23 +35,8 @@ export function buildFacebookOAuthUrl({
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", state);
 
-  const trimmedConfigId = configId?.trim();
-  if (trimmedConfigId) {
-    url.searchParams.set("config_id", trimmedConfigId);
-  } else if (scope) {
-    url.searchParams.set("scope", scope);
-  }
+  // Always the allowlisted Page scopes — ignore caller scope/config extras.
+  url.searchParams.set("scope", FACEBOOK_PAGE_SCOPES);
 
   return url.toString();
-}
-
-export function getFacebookLoginConfigId(): string | undefined {
-  const id = env.FACEBOOK_LOGIN_CONFIG_ID?.trim();
-  return id || undefined;
-}
-
-export function getFacebookInstagramLoginConfigId(): string | undefined {
-  const instagramId = env.FACEBOOK_INSTAGRAM_LOGIN_CONFIG_ID?.trim();
-  if (instagramId) return instagramId;
-  return getFacebookLoginConfigId();
 }

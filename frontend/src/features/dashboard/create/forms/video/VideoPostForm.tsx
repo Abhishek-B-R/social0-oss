@@ -1398,13 +1398,25 @@ export function VideoPostForm({
         return;
       }
       if (effectiveMode === "now") {
-        const result = await updateAndPublish(
-          initialDraftId,
-          text,
-          accountIds,
-          mediaIds,
-          meta,
-        );
+        let result: Awaited<ReturnType<typeof updateAndPublish>>;
+        try {
+          result = await updateAndPublish(
+            initialDraftId,
+            text,
+            accountIds,
+            mediaIds,
+            meta,
+          );
+        } catch (err) {
+          setLoading(false);
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : "Couldn't publish this video. Please try again.",
+          );
+          setOverlayPhase("idle");
+          return;
+        }
         setLoading(false);
         if (!result.success) {
           toast.error(result.error);
@@ -1473,17 +1485,30 @@ export function VideoPostForm({
       }
     }
 
-    const result = await createPost(
-      text,
-      accountIds,
-      effectiveMode,
-      scheduledAt,
-      mediaIds,
-      meta,
-      effectiveMode === "scheduled"
-        ? (intendedQueueSlotIdRef.current ?? undefined)
-        : undefined,
-    );
+    let result: Awaited<ReturnType<typeof createPost>>;
+    try {
+      result = await createPost(
+        text,
+        accountIds,
+        effectiveMode,
+        scheduledAt,
+        mediaIds,
+        meta,
+        effectiveMode === "scheduled"
+          ? (intendedQueueSlotIdRef.current ?? undefined)
+          : undefined,
+      );
+    } catch (err) {
+      if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
+      setLoading(false);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Couldn't publish this video. Please try again.",
+      );
+      setOverlayPhase("idle");
+      return;
+    }
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {

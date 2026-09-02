@@ -1676,17 +1676,30 @@ export function ThreadsPostForm({
       }
     }
 
-    const result = await createPost(
-      content,
-      accountIds,
-      effectiveMode,
-      scheduledAt,
-      mediaIds,
-      metadata,
-      effectiveMode === "scheduled"
-        ? (intendedQueueSlotIdRef.current ?? undefined)
-        : undefined,
-    );
+    let result: Awaited<ReturnType<typeof createPost>>;
+    try {
+      result = await createPost(
+        content,
+        accountIds,
+        effectiveMode,
+        scheduledAt,
+        mediaIds,
+        metadata,
+        effectiveMode === "scheduled"
+          ? (intendedQueueSlotIdRef.current ?? undefined)
+          : undefined,
+      );
+    } catch (err) {
+      if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
+      setLoading(false);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Couldn't publish this thread. Please try again.",
+      );
+      setOverlayPhase("idle");
+      return;
+    }
     if (effectiveMode === "scheduled") intendedQueueSlotIdRef.current = null;
     setLoading(false);
     if (!result.success) {
