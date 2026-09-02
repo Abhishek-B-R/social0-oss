@@ -75,7 +75,8 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | ---- | ------ |
 | Extra scopes | None for MVP (`pins:read` already requested) |
 | Endpoint | `GET /v5/pins/{pin_id}/analytics` |
-| Notes | Some metrics need a business account / API product enablement in Pinterest |
+| Metrics | `IMPRESSION`, `SAVE`, clicks in range; `TOTAL_REACTIONS` / `TOTAL_COMMENTS` in `lifetime_metrics` |
+| Notes | Impressions can lag hours after publish. Reactions/comments use lifetime totals from the same endpoint. |
 
 ### Bluesky
 
@@ -105,7 +106,6 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | X | conversation search | Yes | existing OAuth 1.0a. Recent Search only covers ~7 days |
 | Bluesky | public thread | Yes | app password |
 | LinkedIn | best-effort read | No | MDP often required |
-| TikTok / Pinterest | — | — | no usable comments API |
 
 Connect sends only Advanced Access Page publish scopes (`pages_show_list`, `pages_read_engagement`, `pages_manage_posts`). Do not send `pages_manage_engagement` (Meta would also request `pages_read_user_content`, which this app does not have). Do not send `read_insights` or `business_management` on connect (rejected). Do not add `pages_messaging` on connect.
 
@@ -120,7 +120,7 @@ Comments | DMs toggle on the same page. DMs are **account-level** (not limited t
 | Bluesky | `chat.bsky.convo.*` via `api.bsky.chat` + `Atproto-Proxy` | App password with **chat** enabled |
 | TikTok | Business Messaging `/business/message/*` | Separate TikTok for Business product (not Login Kit). Unavailable in US/EEA/UK. |
 
-**Not shipped** (no public messaging API we can call, or skipped): Facebook Pages, Threads, YouTube, Pinterest, LinkedIn (partner-only).
+**Not shipped** (no public comments API): TikTok, Pinterest. **Not shipped** for DMs/messaging: Facebook Pages, Threads, YouTube, LinkedIn (partner-only). Pinterest has no comments API — publish and analytics only.
 
 ## What users see before App Review
 

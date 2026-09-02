@@ -17,8 +17,6 @@ const COMMENT_MEDIA: Record<string, InboxMediaKind[]> = {
   threads: [],
   youtube: [],
   linkedin: [],
-  tiktok: [],
-  pinterest: [],
 };
 
 export function inboxDmMediaKinds(

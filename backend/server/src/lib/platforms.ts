@@ -76,9 +76,9 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "TIKTOK_CLIENT_SECRET",
     authUrl: "https://www.tiktok.com/v2/auth/authorize/",
     tokenUrl: "https://open.tiktokapis.com/v2/oauth/token/",
-    // Login Kit + Content Posting + profile (View links) + video.list/user.info.stats (analytics).
+    // Login Kit + Content Posting + video.list/user.info.stats (analytics).
     scope:
-      "user.info.basic,user.info.profile,video.upload,video.publish,video.list,user.info.stats",
+      "user.info.basic,video.upload,video.publish,video.list,user.info.stats",
   },
   facebook: {
     clientIdEnv: "FACEBOOK_CLIENT_ID",

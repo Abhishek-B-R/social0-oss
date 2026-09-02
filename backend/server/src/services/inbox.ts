@@ -57,7 +57,6 @@ import {
   type PlatformReadResult,
 } from "../lib/platform-api-cache.js";
 import {
-  INBOX_UNSUPPORTED,
   isInboxDmPlatform,
   isWeakDmPeerName,
   mergeDmThreadIdentity,
@@ -507,10 +506,6 @@ export async function listInboxComments(input: {
       fetchConcurrency,
       async (row) => {
       if (!row.platformPostId || !row.account) return;
-      if (INBOX_UNSUPPORTED.has(row.account.platform)) {
-        unsupported.add(row.account.platform);
-        return;
-      }
       const missing = missingInboxScopes(row.account.platform, row.account.scopes);
       try {
         let result: CommentFetchResult;
@@ -696,7 +691,7 @@ export async function replyToInboxComment(input: {
   if (!row) {
     return { ok: false, error: "Publication not found." };
   }
-  if (INBOX_UNSUPPORTED.has(row.platform) || row.platform === "linkedin") {
+  if (row.platform === "linkedin") {
     return { ok: false, error: `Replies are not supported for ${row.platform} yet.` };
   }
 

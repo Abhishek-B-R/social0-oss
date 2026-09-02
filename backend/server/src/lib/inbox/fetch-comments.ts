@@ -9,7 +9,6 @@ import { jsonGet } from "../http-json.js";
 import type { InboxComment } from "./types.js";
 import {
   INBOX_REQUIRED_SCOPES,
-  INBOX_UNSUPPORTED,
   sameInboxHandle,
   sameLinkedInActor,
   youtubeAuthorChannelId,
@@ -862,13 +861,6 @@ async function fetchLinkedIn(
 export async function fetchPublicationComments(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
-  if (INBOX_UNSUPPORTED.has(input.platform)) {
-    return {
-      comments: [],
-      status: "unsupported",
-      error: `Comments inbox is not available for ${input.platform} yet.`,
-    };
-  }
   let result: CommentFetchResult;
   switch (input.platform) {
     case "facebook":

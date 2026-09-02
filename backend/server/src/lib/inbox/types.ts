@@ -421,11 +421,7 @@ export const INBOX_REQUIRED_SCOPES: Record<string, string[]> = {
   twitter_x: [],
   bluesky: [],
   linkedin: [],
-  tiktok: [],
-  pinterest: [],
 };
-
-export const INBOX_UNSUPPORTED = new Set(["tiktok", "pinterest"]);
 
 /** Extra scopes for DMs. Empty = current token is enough (app-level X / Bluesky app password). */
 export const INBOX_DM_REQUIRED_SCOPES: Record<string, string[]> = {

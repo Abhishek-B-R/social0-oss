@@ -1,6 +1,6 @@
 /**
  * TikTok OAuth connect helpers.
- * Scopes: user.info.basic, user.info.profile (username), video.upload, video.publish.
+ * Scopes: user.info.basic, video.upload, video.publish, video.list, user.info.stats.
  */
 
 const OPEN_ID_RE = /^[a-f0-9-]{20,}$/i;

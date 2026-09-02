@@ -66,7 +66,7 @@ export function OAuthErrorHandler({
           break;
         case "tiktok_scope_required":
           setMessage(
-            "TikTok did not grant profile access (user.info.basic / user.info.profile). In the TikTok app go to Settings -> Security -> Manage app permissions, remove Social0, then click Connect here again and approve all permissions.",
+            "TikTok did not grant required access (user.info.basic). In the TikTok app go to Settings -> Security -> Manage app permissions, remove Social0, then click Connect here again and approve all permissions.",
           );
           break;
         case "tiktok_profile_failed":
