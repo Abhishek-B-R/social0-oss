@@ -34,7 +34,6 @@ export const LIVE_PLATFORMS: Record<
     pinterest: false,
   },
   inboxDms: {
-    instagram: false,
     twitter_x: true,
     bluesky: true,
     tiktok: false,

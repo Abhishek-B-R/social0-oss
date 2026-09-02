@@ -39,9 +39,9 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "INSTAGRAM_CLIENT_SECRET",
     authUrl: "https://www.instagram.com/oauth/authorize", // ✅ This is correct
     tokenUrl: "https://api.instagram.com/oauth/access_token", // ✅ This too
-    // manage_insights + manage_comments + manage_messages: additive — existing tokens keep publishing.
+    // manage_insights + manage_comments for analytics/inbox comments. No manage_messages — Meta 24h reply window only.
     scope:
-      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments,instagram_business_manage_messages",
+      "instagram_business_basic,instagram_business_content_publish,instagram_business_manage_insights,instagram_business_manage_comments",
   },
   youtube: {
     clientIdEnv: "YOUTUBE_CLIENT_ID",

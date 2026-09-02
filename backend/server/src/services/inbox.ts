@@ -58,7 +58,6 @@ import {
 } from "../lib/platform-api-cache.js";
 import {
   INBOX_UNSUPPORTED,
-  instagramDmsNeedInstagramLogin,
   isInboxDmPlatform,
   isWeakDmPeerName,
   mergeDmThreadIdentity,
@@ -953,17 +952,6 @@ export async function listInboxDms(input: {
       unsupported.add(row.platform);
       return;
     }
-    if (
-      row.platform === "instagram" &&
-      instagramDmsNeedInstagramLogin(row.platformMetadata, row.scopes)
-    ) {
-      noteFetchError(fetchErrors, {
-        accountId: row.id,
-        platform: row.platform,
-        error: "Instagram DMs need Instagram Login",
-      });
-      return;
-    }
     const missing = missingDmScopes(row.platform, row.scopes);
     try {
       const { accessToken, accessSecret } = await resolveAccountAccess(row);
@@ -1243,17 +1231,7 @@ export async function replyToInboxDm(input: {
       input.conversationId,
     );
     if (!bound.ok) return bound;
-    // Instagram Graph send uses recipient id - bind to the verified inbox peer.
-    let sendPeerId = peerId || bound.peerId;
-    if (row.platform === "instagram") {
-      if (peerId && peerId !== bound.peerId) {
-        return {
-          ok: false,
-          error: "Recipient does not match this conversation.",
-        };
-      }
-      sendPeerId = bound.peerId;
-    }
+    const sendPeerId = peerId || bound.peerId;
     let mediaUrl: string | null = null;
     let mediaMimeType: string | null = null;
     if (mediaId) {
@@ -1311,9 +1289,7 @@ export async function listInboxAccounts(input: {
       profileImageUrl: r.profileImageUrl,
       missingScopes:
         feature === "inboxDms"
-          ? instagramDmsNeedInstagramLogin(r.platformMetadata, r.scopes)
-            ? []
-            : missingDmScopes(r.platform, r.scopes)
+          ? missingDmScopes(r.platform, r.scopes)
           : missingInboxScopes(r.platform, r.scopes),
     }));
 }

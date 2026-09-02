@@ -267,7 +267,7 @@ export function InboxPage() {
           mode === "comments"
             ? "Connect an account to see comments."
             : commentAccountsQuery.data?.length
-              ? "DMs here need Instagram Login, X, Bluesky, or TikTok. Your other connected platforms don't support inbox DMs."
+              ? "DMs here need X, Bluesky, or TikTok. Your other connected platforms don't support inbox DMs."
               : "Connect an account to manage DMs."
         }
       />

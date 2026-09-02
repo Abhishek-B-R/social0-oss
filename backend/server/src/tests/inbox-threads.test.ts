@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  instagramDmsNeedInstagramLogin,
   instagramProfilePicUrl,
   isInboxSelfActor,
   isWeakDmPeerName,
@@ -97,42 +96,14 @@ describe("missingDmScopes", () => {
     expect(missingDmScopes("facebook", "")).toEqual([]);
   });
 
-  it("flags Instagram messaging when grant is present but incomplete", () => {
-    expect(missingDmScopes("instagram", "instagram_business_basic")).toEqual([
-      "instagram_business_manage_messages",
-    ]);
+  it("does not nag Instagram for DM scopes (DMs disabled)", () => {
+    expect(missingDmScopes("instagram", "instagram_business_basic")).toEqual([]);
   });
 
   it("does not nag X, Bluesky, or TikTok for extra OAuth strings", () => {
     expect(missingDmScopes("twitter_x", null)).toEqual([]);
     expect(missingDmScopes("bluesky", "")).toEqual([]);
     expect(missingDmScopes("tiktok", null)).toEqual([]);
-  });
-});
-
-describe("instagramDmsNeedInstagramLogin", () => {
-  it("treats facebook-page metadata as unsupported DMs", () => {
-    expect(
-      instagramDmsNeedInstagramLogin({ connectionMethod: "facebook-page" }, null),
-    ).toBe(true);
-  });
-
-  it("lets Instagram Login through", () => {
-    expect(
-      instagramDmsNeedInstagramLogin(
-        { connectionMethod: "direct" },
-        "instagram_business_manage_messages",
-      ),
-    ).toBe(false);
-  });
-
-  it("detects Page scopes without IG messaging", () => {
-    expect(
-      instagramDmsNeedInstagramLogin(
-        {},
-        "pages_show_list,pages_manage_posts,pages_read_engagement",
-      ),
-    ).toBe(true);
   });
 });
 

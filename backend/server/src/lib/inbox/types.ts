@@ -76,7 +76,6 @@ export type InboxListResult = {
 };
 
 export const INBOX_DM_PLATFORMS = [
-  "instagram",
   "twitter_x",
   "bluesky",
   "tiktok",
@@ -241,7 +240,6 @@ export const INBOX_UNSUPPORTED = new Set(["tiktok", "pinterest"]);
 
 /** Extra scopes for DMs. Empty = current token is enough (app-level X / Bluesky app password). */
 export const INBOX_DM_REQUIRED_SCOPES: Record<string, string[]> = {
-  instagram: ["instagram_business_manage_messages"],
   twitter_x: [],
   bluesky: [],
   // Login Kit has no extra DM scope. Business Messaging is a separate product;
@@ -258,23 +256,6 @@ export function missingDmScopes(
   // Unknown stored scopes — live fetch decides reconnect (avoid stale nag).
   if (!granted?.trim()) return [];
   return needed.filter((s) => !inboxScopeGranted(granted, s));
-}
-
-/** Page-connected IG cannot grant messaging. Do not nag reconnect for that scope. */
-export function instagramDmsNeedInstagramLogin(
-  metadata: Record<string, unknown> | null | undefined,
-  granted: string | null | undefined,
-): boolean {
-  const method = metadata?.connectionMethod;
-  if (method === "facebook-page") return true;
-  if (method === "direct") return false;
-  const pageLike =
-    inboxScopeGranted(granted, "pages_show_list") ||
-    inboxScopeGranted(granted, "pages_manage_posts") ||
-    inboxScopeGranted(granted, "pages_read_engagement");
-  return (
-    pageLike && !inboxScopeGranted(granted, "instagram_business_manage_messages")
-  );
 }
 
 export function isInboxDmPlatform(platform: string): platform is InboxDmPlatform {
