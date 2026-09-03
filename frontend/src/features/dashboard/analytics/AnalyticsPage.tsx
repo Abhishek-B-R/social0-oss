@@ -195,11 +195,10 @@ export function AnalyticsPage() {
         <div>
           <h1 className="flex flex-wrap items-center gap-2.5 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
             Analytics
-            <ExperimentalBadge />
+            <ExperimentalBadge withTip />
           </h1>
           <p className="mt-1 text-sm text-text-muted">
-            Live metrics for posts you published through Social0 — not the rest
-            of the account.
+            Live metrics for posts you published through Social0.
           </p>
         </div>
         <button
@@ -334,12 +333,6 @@ export function AnalyticsPage() {
         <p className="text-sm text-text-muted">
           No posts published through Social0 in this range. Try 4W, or
           publish something and refresh.
-        </p>
-      ) : data ? (
-        <p className="text-xs text-text-muted">
-          {data.publications.length} Social0 publication
-          {data.publications.length === 1 ? "" : "s"} in this range
-          {data.sampled ? ` (latest ${data.sampleLimit})` : ""}.
         </p>
       ) : null}
       </div>
