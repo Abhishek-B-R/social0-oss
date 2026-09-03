@@ -202,7 +202,8 @@ async function fetchFacebook(
     setMetric(metrics, "comments", num(d.comments?.summary?.total_count));
   }
 
-  const insightsUrl = `${base}/insights?metric=post_impressions,post_impressions_unique,post_engaged_users,post_clicks&access_token=${encodeURIComponent(input.accessToken)}`;
+  // post_impressions* deprecated Nov 2025; use post_media_view (+ clicks when available).
+  const insightsUrl = `${base}/insights?metric=post_media_view,post_clicks&access_token=${encodeURIComponent(input.accessToken)}`;
   const insights = await jsonGet(insightsUrl);
   if (insights.ok) {
     const rows = (insights.data as { data?: Array<{ name?: string; values?: Array<{ value?: number }> }> })
@@ -210,11 +211,9 @@ async function fetchFacebook(
     for (const row of rows ?? []) {
       const v = num(row.values?.[0]?.value);
       if (v == null) continue;
-      if (row.name === "post_impressions") {
+      if (row.name === "post_media_view") {
         metrics.impressions = v;
         metrics.views = pick(metrics.views, v);
-      } else if (row.name === "post_impressions_unique") {
-        metrics.reach = v;
       } else if (row.name === "post_clicks") {
         metrics.clicks = v;
       }
@@ -223,13 +222,16 @@ async function fetchFacebook(
     const msg =
       (insights.data as { error?: { message?: string; code?: number } })?.error
         ?.message ?? "";
-    if (/insight|permission|(#10)|(#200)|read_insights/i.test(msg)) {
+    // Invalid/deprecated metric names are not a missing-scope problem.
+    if (/valid insights metric/i.test(msg)) {
+      // keep likes/comments/shares from the fields call
+    } else if (/insight|permission|(#10)|(#200)|read_insights/i.test(msg)) {
       // Still return engagement if we got likes/comments
       if (Object.keys(metrics).length > 0 && hasDefinedMetrics(metrics)) {
         return {
           status: "ok",
           metrics,
-          error: "Insights limited — reconnect with read_insights for full Page insights.",
+          error: "Insights limited - reconnect with read_insights for full Page insights.",
           missingScopes: ["read_insights"],
         };
       }
@@ -468,7 +470,10 @@ async function fetchPinterest(
   );
   url.searchParams.set("start_date", fmt(start));
   url.searchParams.set("end_date", fmt(end));
-  url.searchParams.set("metric_types", "IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE");
+  url.searchParams.set(
+    "metric_types",
+    "IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE,TOTAL_COMMENTS,TOTAL_REACTIONS",
+  );
   const { ok, data, status } = await jsonGet(url.toString(), {
     Authorization: `Bearer ${input.accessToken}`,
   });
@@ -479,12 +484,14 @@ async function fetchPinterest(
       `Pinterest analytics failed (${status})`;
     return errResult(msg);
   }
-  // Response shape: { all: { summary_metrics: { IMPRESSION: n, ... } } } or daily series
-  const summary =
-    (data as { all?: { summary_metrics?: Record<string, number> } })?.all
-      ?.summary_metrics ??
-    (data as { summary_metrics?: Record<string, number> })?.summary_metrics ??
-    {};
+  type PinterestAnalyticsBlock = {
+    summary_metrics?: Record<string, number>;
+    lifetime_metrics?: Record<string, number>;
+  };
+  const root = data as Record<string, PinterestAnalyticsBlock | undefined>;
+  const block = root.all ?? (data as PinterestAnalyticsBlock);
+  const summary = block?.summary_metrics ?? {};
+  const lifetime = block?.lifetime_metrics ?? {};
   return {
     status: "ok",
     metrics: {
@@ -492,6 +499,8 @@ async function fetchPinterest(
       views: num(summary.IMPRESSION),
       clicks: pick(num(summary.PIN_CLICK), num(summary.OUTBOUND_CLICK)),
       saves: num(summary.SAVE),
+      likes: num(lifetime.TOTAL_REACTIONS),
+      comments: num(lifetime.TOTAL_COMMENTS),
     },
   };
 }

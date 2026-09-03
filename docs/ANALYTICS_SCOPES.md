@@ -21,8 +21,8 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | Code | `FACEBOOK_PAGE_SCOPES` in `backend/shared` + frontend mirror |
 | If using Login config | `FACEBOOK_LOGIN_CONFIG_ID` is fallback only. Connect sends `FACEBOOK_PAGE_SCOPES` (includes `read_insights`). Do not add `pages_messaging` to the Login config. |
 | App Review | Meta App Dashboard → App Review → Permissions → `read_insights` |
-| Use case copy | “Show Page post impressions, reach, and engagement in Social0 Analytics so creators can see how published posts perform.” |
-| Endpoints | `GET /{post-id}?fields=likes.summary,comments.summary,shares` + `GET /{post-id}/insights` |
+| Use case copy | “Show Page post views and engagement in Social0 Analytics so creators can see how published posts perform.” |
+| Endpoints | `GET /{post-id}?fields=likes.summary,comments.summary,shares` + `GET /{post-id}/insights?metric=post_media_view,post_clicks` (`post_impressions*` deprecated Nov 2025) |
 
 ### Meta — Instagram (Instagram Login)
 

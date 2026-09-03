@@ -2,6 +2,9 @@
  * Flip a platform to `true` when App Review / API access is live.
  * False = skip live fetch, no reconnect nag.
  * SPA lists come from analytics.listAccounts / inbox.listAccounts - do not duplicate this map in frontend/.
+ *
+ * inboxComments: omit TikTok / Pinterest (no public comments API).
+ * inboxDms: TikTok needs Business Messaging (separate from Login Kit); may fail for many accounts.
  */
 import type { Platform } from "./platforms.js";
 
@@ -12,29 +15,29 @@ export const LIVE_PLATFORMS: Record<
   Partial<Record<Platform, boolean>>
 > = {
   analytics: {
-    instagram: false,
-    facebook: false,
-    threads: false,
-    youtube: false,
+    instagram: true,
+    facebook: true,
+    threads: true,
+    youtube: true,
     twitter_x: true,
     bluesky: true,
-    linkedin: false,
-    tiktok: false,
-    pinterest: false,
+    linkedin: true,
+    tiktok: true,
+    pinterest: true,
   },
   inboxComments: {
-    instagram: false,
-    facebook: false,
-    threads: false,
-    youtube: false,
+    instagram: true,
+    facebook: true,
+    threads: true,
+    youtube: true,
     twitter_x: true,
     bluesky: true,
-    linkedin: false,
+    linkedin: true,
   },
   inboxDms: {
     twitter_x: true,
     bluesky: true,
-    tiktok: false,
+    tiktok: true,
   },
 };
 
