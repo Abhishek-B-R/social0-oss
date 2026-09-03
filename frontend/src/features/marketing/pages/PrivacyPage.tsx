@@ -45,7 +45,7 @@ export default function PrivacyPage() {
           Privacy Policy
         </h1>
         <p className="text-sm text-muted-foreground mb-10">
-          Last updated: July 2026 · Version 2.0
+          Last updated: September 2026 · Version 2.1
         </p>
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
@@ -102,8 +102,9 @@ export default function PrivacyPage() {
                 </strong>
                 — those are collected and stored by{" "}
                 {LEGAL_ENTITY.paymentProcessor.name} under its own terms and
-                privacy policy. Tax amounts (including GST where applicable) are
-                calculated and shown at checkout / on processor invoices.
+                privacy policy. Plan prices shown on Social0 include applicable
+                taxes (including GST where it applies); tax is not added as an
+                extra line at checkout beyond the displayed price.
               </li>
               <li>
                 <strong>Technical data:</strong> IP address, browser/device

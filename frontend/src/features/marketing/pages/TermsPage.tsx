@@ -45,7 +45,7 @@ export default function TermsPage() {
           Terms of Service
         </h1>
         <p className="text-sm text-muted-foreground mb-10">
-          Last updated: July 2026 · Version 2.0
+          Last updated: September 2026 · Version 2.1
         </p>
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
@@ -190,11 +190,11 @@ export default function TermsPage() {
             </p>
             <p className="mb-3">
               <strong>Taxes (GST).</strong> Plan prices displayed on Social0
-              are tax-exclusive unless we expressly state otherwise. Where GST
-              or other applicable taxes apply, they are calculated and charged
-              in addition to the plan price at checkout and/or on invoices from{" "}
-              {LEGAL_ENTITY.paymentProcessor.name}. The final amount payable,
-              including tax, is shown before you confirm payment.
+              include applicable taxes (including GST where it applies), unless
+              we expressly state otherwise. The amount shown at checkout and on
+              invoices from {LEGAL_ENTITY.paymentProcessor.name} is the total
+              you pay for that plan - we do not add a separate tax line on top
+              of the displayed price at checkout.
             </p>
             <p className="mb-3">
               <strong>Payment processing.</strong> Card and subscription charges

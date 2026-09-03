@@ -23,7 +23,7 @@ export default function RefundPage() {
           Refund &amp; Cancellation Policy
         </h1>
         <p className="text-sm text-muted-foreground mb-10">
-          Last updated: July 2026
+          Last updated: September 2026
         </p>
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
@@ -72,11 +72,12 @@ export default function RefundPage() {
               3. Taxes
             </h2>
             <p>
-              Plan prices are generally shown tax-exclusive. Applicable GST or
-              other taxes are added at checkout and/or on invoices from{" "}
-              {LEGAL_ENTITY.paymentProcessor.name}. Tax amounts charged are
-              treated the same as the underlying fee for refund purposes, except
-              where tax law requires a different outcome.
+              Plan prices are tax-inclusive: displayed amounts include applicable
+              GST or other taxes where they apply. Invoices from{" "}
+              {LEGAL_ENTITY.paymentProcessor.name} may still itemize tax for
+              accounting, but the total matches the plan price you were shown.
+              Tax amounts charged are treated the same as the underlying fee for
+              refund purposes, except where tax law requires a different outcome.
             </p>
           </section>
 
