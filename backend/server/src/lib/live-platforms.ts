@@ -4,7 +4,7 @@
  * SPA lists come from analytics.listAccounts / inbox.listAccounts - do not duplicate this map in frontend/.
  *
  * inboxComments: omit TikTok / Pinterest (no public comments API).
- * inboxDms: TikTok needs Business Messaging (separate from Login Kit); may fail for many accounts.
+ * inboxDms: TikTok Business Messaging is not production-ready - keep off until BM works.
  */
 import type { Platform } from "./platforms.js";
 
@@ -15,29 +15,37 @@ export const LIVE_PLATFORMS: Record<
   Partial<Record<Platform, boolean>>
 > = {
   analytics: {
-    instagram: true,
-    facebook: true,
-    threads: true,
+    // Meta App Review still pending
+    instagram: false,
+    facebook: false,
+    threads: false,
+    // Google OAuth verified
     youtube: true,
     twitter_x: true,
     bluesky: true,
-    linkedin: true,
+    // LinkedIn MDP / organic analytics not ready
+    linkedin: false,
+    // Login Kit scopes approved (video.list etc.)
     tiktok: true,
+    // No extra App Review needed for pin analytics
     pinterest: true,
   },
   inboxComments: {
-    instagram: true,
-    facebook: true,
-    threads: true,
+    // Meta App Review still pending
+    instagram: false,
+    facebook: false,
+    threads: false,
+    // youtube.force-ssl verified
     youtube: true,
     twitter_x: true,
     bluesky: true,
-    linkedin: true,
+    linkedin: false,
   },
   inboxDms: {
     twitter_x: true,
     bluesky: true,
-    tiktok: true,
+    // Needs Business Messaging product - not Login Kit
+    tiktok: false,
   },
 };
 
