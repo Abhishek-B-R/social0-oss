@@ -2,6 +2,19 @@
 
 All notable changes to `social0` will be documented in this file.
 
+## [0.2.0] - 2026-09-04
+
+### Added
+
+- `social0 analytics` — live metrics for posts published through Social0: `overview` (default, with `--range`, `--since`/`--until`, `--account`, `--fresh`), `accounts`, and `post <id>`
+- `social0 inbox` — comment threads and DMs from connected accounts: `comments` (default, with `--unanswered`, `--platform`, `--before` paging), `reply`, `like`, `unlike`, `hide`, `dms`, `dm <id>`, `dm-reply <id>`, and `accounts [--dms]`
+- Shell completions for the new `analytics` and `inbox` commands
+- `--account` accepts a numeric alias from `social0 accounts`, a platform name, or a UUID
+
+### Changed
+
+- Sampled or partial analytics responses print a warning so capped totals are not quoted as lifetime numbers
+
 ## [0.1.2] - 2026-07-14
 
 ### Changed

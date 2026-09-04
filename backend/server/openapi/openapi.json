@@ -3829,6 +3829,16 @@
               }
             }
           },
+          "400": {
+            "description": "Unsupported network, invalid input, or the platform read failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
@@ -3842,7 +3852,7 @@
             "$ref": "#/components/responses/Error"
           },
           "404": {
-            "description": "Conversation not found for this account",
+            "description": "Account not found in the personal pool",
             "content": {
               "application/json": {
                 "schema": {

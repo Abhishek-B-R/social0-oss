@@ -354,6 +354,10 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 - Scope: API keys read the **personal (main) pool** (`workspaceId: null`), same
   rule as `/v1/accounts`. Workspace-scoped accounts stay dashboard-only.
 - Same `LIVE_PLATFORMS` gate, cache, and outbound platform limits as the SPA.
+  Live reads and inbox mutations also sit behind the per-minute
+  `rpcLiveReadLimiter` / `rpcMutationLimiter` budgets (route-level
+  `middleware/v1-live-limits.ts`, keys namespaced `v1:`), on top of the
+  hourly tier limit from `requireV1ApiKey`.
 - Keep `backend/server/openapi/openapi.json` in step — `src/tests/v1-analytics-inbox-contract.test.ts` fails if a route or scope drifts.
 - CLI: `social0 analytics …`, `social0 inbox …`.
   MCP: `get_analytics`, `get_post_analytics`, `list_inbox_comments`,

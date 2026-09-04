@@ -2,6 +2,10 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { apiError } from "../../lib/api-errors.js";
 import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
+import {
+  requireV1LiveReadBudget,
+  requireV1MutationBudget,
+} from "../../middleware/v1-live-limits.js";
 import { WINDOW_PRESETS } from "../../lib/date-window.js";
 import { PLATFORMS } from "../../lib/platforms.js";
 import {
@@ -100,6 +104,11 @@ function mutationReply(
 export async function registerInboxRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireV1ApiKey);
 
+  // Live reads fan out to platform APIs and mutations verify against a live
+  // read before sending; gate both like the dashboard RPC does.
+  const live = { preHandler: requireV1LiveReadBudget };
+  const mutation = { preHandler: requireV1MutationBudget };
+
   app.get("/inbox/accounts", async (request, reply) => {
     const userId = v1UserId(request);
     const query = accountsQuerySchema.safeParse(request.query ?? {});
@@ -107,14 +116,14 @@ export async function registerInboxRoutes(app: FastifyInstance) {
     return { data: await v1ListInboxAccounts(userId, query.data.mode) };
   });
 
-  app.get("/inbox/comments", async (request, reply) => {
+  app.get("/inbox/comments", live, async (request, reply) => {
     const userId = v1UserId(request);
     const query = listQuerySchema.safeParse(request.query ?? {});
     if (!query.success) return invalid(reply, query.error);
     return v1ListInboxComments(userId, query.data);
   });
 
-  app.post("/inbox/comments/:commentId/reply", async (request, reply) => {
+  app.post("/inbox/comments/:commentId/reply", mutation, async (request, reply) => {
     const userId = v1UserId(request);
     const { commentId } = request.params as { commentId: string };
     const body = replyCommentSchema.safeParse(request.body ?? {});
@@ -128,7 +137,7 @@ export async function registerInboxRoutes(app: FastifyInstance) {
     return mutationReply(reply, result);
   });
 
-  app.post("/inbox/comments/:commentId/like", async (request, reply) => {
+  app.post("/inbox/comments/:commentId/like", mutation, async (request, reply) => {
     const userId = v1UserId(request);
     const { commentId } = request.params as { commentId: string };
     const body = likeCommentSchema.safeParse(request.body ?? {});
@@ -141,7 +150,7 @@ export async function registerInboxRoutes(app: FastifyInstance) {
     return mutationReply(reply, result);
   });
 
-  app.post("/inbox/comments/:commentId/hide", async (request, reply) => {
+  app.post("/inbox/comments/:commentId/hide", mutation, async (request, reply) => {
     const userId = v1UserId(request);
     const { commentId } = request.params as { commentId: string };
     const body = hideCommentSchema.safeParse(request.body ?? {});
@@ -153,14 +162,14 @@ export async function registerInboxRoutes(app: FastifyInstance) {
     return mutationReply(reply, result);
   });
 
-  app.get("/inbox/dms", async (request, reply) => {
+  app.get("/inbox/dms", live, async (request, reply) => {
     const userId = v1UserId(request);
     const query = listQuerySchema.safeParse(request.query ?? {});
     if (!query.success) return invalid(reply, query.error);
     return v1ListInboxDms(userId, query.data);
   });
 
-  app.get("/inbox/dms/:conversationId", async (request, reply) => {
+  app.get("/inbox/dms/:conversationId", live, async (request, reply) => {
     const userId = v1UserId(request);
     const { conversationId } = request.params as { conversationId: string };
     const query = dmThreadQuerySchema.safeParse(request.query ?? {});
@@ -172,12 +181,19 @@ export async function registerInboxRoutes(app: FastifyInstance) {
       fresh: query.data.fresh,
     });
     if (!result.ok) {
-      return reply.status(404).send(apiError("not_found", result.error));
+      if (result.code === "not_found") {
+        return reply.status(404).send(apiError("not_found", result.error));
+      }
+      // Unsupported network, bad input, or the platform read failed - the
+      // conversation may well exist, so do not report it as missing.
+      return reply
+        .status(400)
+        .send(apiError("validation_error", result.error));
     }
     return result.data;
   });
 
-  app.post("/inbox/dms/:conversationId/reply", async (request, reply) => {
+  app.post("/inbox/dms/:conversationId/reply", mutation, async (request, reply) => {
     const userId = v1UserId(request);
     const { conversationId } = request.params as { conversationId: string };
     const body = replyDmSchema.safeParse(request.body ?? {});

@@ -1175,29 +1175,47 @@ export type InboxDmThreadInput = {
   fresh?: unknown;
 };
 
+/**
+ * Why a DM thread read failed. `/v1` maps `not_found` to 404 and everything
+ * else to 400 - a platform hiccup must not be reported as a missing thread.
+ */
+export type InboxDmThreadErrorCode =
+  | "invalid"
+  | "not_found"
+  | "unsupported"
+  | "fetch_failed";
+
+export type InboxDmThreadError = {
+  error: string;
+  code: InboxDmThreadErrorCode;
+};
+
 export async function getInboxDmThread(
   input: InboxDmThreadInput,
-): Promise<InboxDmThreadResult | { error: string }> {
+): Promise<InboxDmThreadResult | InboxDmThreadError> {
   return getInboxDmThreadForScope(await requireUser(), input);
 }
 
 export async function getInboxDmThreadForScope(
   ctx: InboxScope,
   input: InboxDmThreadInput,
-): Promise<InboxDmThreadResult | { error: string }> {
+): Promise<InboxDmThreadResult | InboxDmThreadError> {
   if (typeof input.accountId !== "string" || !input.accountId) {
-    return { error: "accountId required" };
+    return { error: "accountId required", code: "invalid" };
   }
   if (typeof input.conversationId !== "string" || !input.conversationId) {
-    return { error: "conversationId required" };
+    return { error: "conversationId required", code: "invalid" };
   }
   const peerId = typeof input.peerId === "string" ? input.peerId : "";
   const fresh = input.fresh === true;
 
   const row = await loadDmAccount(ctx, input.accountId);
-  if (!row) return { error: "Account not found" };
+  if (!row) return { error: "Account not found", code: "not_found" };
   if (!isInboxDmPlatform(row.platform)) {
-    return { error: `DMs are not supported for ${row.platform}.` };
+    return {
+      error: `DMs are not supported for ${row.platform}.`,
+      code: "unsupported",
+    };
   }
 
   try {
@@ -1230,7 +1248,10 @@ export async function getInboxDmThreadForScope(
     );
     const result = cached.data;
     if (result.status !== "ok") {
-      return { error: result.error ?? "Failed to load conversation" };
+      return {
+        error: result.error ?? "Failed to load conversation",
+        code: "fetch_failed",
+      };
     }
     const fallback: InboxDmThread = {
       conversationId: input.conversationId,
@@ -1268,6 +1289,7 @@ export async function getInboxDmThreadForScope(
   } catch (e) {
     return {
       error: e instanceof Error ? e.message : "Failed to load conversation",
+      code: "fetch_failed",
     };
   }
 }

@@ -15,6 +15,7 @@ import {
   listInboxDmsForScope,
   replyToInboxCommentForScope,
   replyToInboxDmForScope,
+  type InboxDmThreadErrorCode,
   type InboxScope,
 } from "./inbox.js";
 import type {
@@ -223,7 +224,7 @@ export async function v1GetInboxDmThread(
         fetched_at: string;
       };
     }
-  | { ok: false; error: string }
+  | { ok: false; error: string; code: InboxDmThreadErrorCode }
 > {
   const result = await getInboxDmThreadForScope(scopeFor(userId), {
     accountId: input.account_id,
@@ -231,7 +232,9 @@ export async function v1GetInboxDmThread(
     peerId: input.peer_id,
     fresh: input.fresh,
   });
-  if ("error" in result) return { ok: false, error: result.error };
+  if ("error" in result) {
+    return { ok: false, error: result.error, code: result.code };
+  }
   return {
     ok: true,
     data: {
