@@ -214,6 +214,9 @@ export function AnalyticsPage() {
                   accountId: accountId || undefined,
                   fresh: force,
                 }),
+              // Without this, fetchQuery honours the client's default staleTime
+              // and Refresh silently returns cache instead of calling the API.
+              staleTime: 0,
             });
           }}
           disabled={loading || refetching}

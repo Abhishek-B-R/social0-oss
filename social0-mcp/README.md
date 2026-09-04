@@ -75,6 +75,9 @@ Needs [Node.js 20+](https://nodejs.org/) and a `sk_live_` key from [API keys](ht
 - “Post this to LinkedIn and X”
 - “Schedule this for tomorrow at 9am UTC on Instagram and TikTok”
 - “Upload this image from a URL and publish it everywhere”
+- “How did my posts do over the last month?”
+- “Any comments I haven’t answered yet?”
+- “Reply to that Bluesky comment with a thank you”
 
 ---
 
@@ -95,6 +98,16 @@ Needs [Node.js 20+](https://nodejs.org/) and a `sk_live_` key from [API keys](ht
 - Draft, edit, and delete before going live
 - Check per-platform publish status
 - Get suggestions for which platforms fit a caption
+- Read live metrics for a window or a single post (`get_analytics`, `get_post_analytics`)
+- Triage comments on posts you published, and reply, like, or hide them
+  (`list_inbox_comments`, `reply_to_comment`, `moderate_comment`)
+- Read and answer DMs on networks that support them — X and Bluesky today
+  (`list_inbox_dms`, `get_inbox_dm_thread`, `reply_to_dm`)
+
+Analytics and inbox read from each network at request time and cover posts
+published through Social0 (plus DMs on the connected account) — they are not a
+full social-listening feed. Replies and DMs go out publicly, so confirm the
+wording with the user before sending.
 
 ## Help
 

@@ -81,12 +81,12 @@ function initializeResult(params: unknown): Record<string, unknown> {
     },
     serverInfo: {
       name: "social0-mcp",
-      version: "0.4.2",
+      version: "0.5.0",
       title: "Social0",
       websiteUrl: "https://social0.app",
     },
     instructions:
-      "List accounts first. Prefer publish_now or schedule_content. Poll get_publish_status with tracking_id. Read social0://docs/when-to-use and social0://docs/onboarding.",
+      "List accounts first. Prefer publish_now or schedule_content. Poll get_publish_status with tracking_id. Use get_analytics for performance and list_inbox_comments / list_inbox_dms for replies. Read social0://docs/when-to-use and social0://docs/onboarding.",
   };
 }
 

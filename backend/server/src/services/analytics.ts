@@ -19,7 +19,12 @@ import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
 import { mapPool } from "../lib/map-pool.js";
 import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
-import { calendarDayKey, parseDateWindow, startOfZonedDay } from "../lib/date-window.js";
+import {
+  addZonedCalendarDays,
+  calendarDayKey,
+  parseDateWindow,
+  startOfZonedDay,
+} from "../lib/date-window.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
 import {
   createLiveRequestBudget,
@@ -46,7 +51,39 @@ import {
 
 /** Cap live fan-out so overview RPCs stay within the request budget. */
 const SAMPLE_LIMIT = 24;
+/** All-accounts overview fans out across platforms - keep the page tighter. */
+const ALL_ACCOUNTS_SAMPLE_LIMIT = 12;
 const CONCURRENCY = 2;
+/** Max days a series can span (mirrors the 365d preset ceiling). */
+const MAX_SERIES_DAYS = 400;
+
+/**
+ * Platforms whose metrics depend on the requested window. Their cache key must
+ * carry the window or a 7D read would be served for a 1Y request (and the
+ * post-detail lifetime read would collide with the overview read).
+ */
+const WINDOWED_ANALYTICS_PLATFORMS = new Set(["pinterest"]);
+
+function analyticsCacheSuffix(
+  platform: string,
+  platformPostId: string,
+  window?: { since: Date; until: Date; timeZone?: string },
+): string {
+  if (!window || !WINDOWED_ANALYTICS_PLATFORMS.has(platform)) {
+    return platformPostId;
+  }
+  const tz = window.timeZone ?? "UTC";
+  return `${platformPostId}:${calendarDayKey(window.since, tz)}:${calendarDayKey(window.until, tz)}`;
+}
+
+/**
+ * Everything the analytics core needs from a caller. The dashboard RPC passes
+ * the session's active workspace; `/v1` passes the personal (main) pool.
+ */
+export type AnalyticsScope = {
+  resourceUserId: string;
+  workspaceId: string | null;
+};
 
 type PubRow = {
   publicationId: string;
@@ -193,7 +230,11 @@ async function metricsForPub(
         platform: row.account.platform,
         accountId: row.account.id,
         kind: "analytics",
-        suffix: row.platformPostId,
+        suffix: analyticsCacheSuffix(
+          row.account.platform,
+          row.platformPostId,
+          window,
+        ),
         fresh,
         fetch: () =>
           fetchPlatformPublicationMetrics({
@@ -316,11 +357,16 @@ function buildSeries(
     byDay.set(day, cur);
   }
   // Zero-fill every day in the range so the chart draws a continuous line.
-  const cursor = startOfZonedDay(since, timeZone);
+  // Advance by *calendar* days in the user's zone - `Date#setDate` would step
+  // in server-local time and duplicate/skip a day across a DST boundary.
+  let cursor = startOfZonedDay(since, timeZone);
   const endMs = until.getTime();
   const out: AnalyticsSeriesPoint[] = [];
-  while (cursor.getTime() <= endMs) {
+  const seen = new Set<string>();
+  while (cursor.getTime() <= endMs && out.length < MAX_SERIES_DAYS) {
     const key = calendarDayKey(cursor, timeZone);
+    if (seen.has(key)) break;
+    seen.add(key);
     out.push(
       byDay.get(key) ?? {
         date: key,
@@ -331,7 +377,9 @@ function buildSeries(
         engagement: 0,
       },
     );
-    cursor.setDate(cursor.getDate() + 1);
+    const next = addZonedCalendarDays(cursor, 1, timeZone);
+    if (next.getTime() <= cursor.getTime()) break;
+    cursor = next;
   }
   return out;
 }
@@ -407,23 +455,37 @@ function buildTopPosts(
     .slice(0, 10);
 }
 
-export async function getAnalyticsOverview(input: {
+export type AnalyticsOverviewInput = {
   range?: unknown;
   since?: unknown;
   until?: unknown;
   accountId?: unknown;
   fresh?: unknown;
-}): Promise<AnalyticsOverview> {
+};
+
+/** Dashboard RPC entry point - resolves the session's active workspace. */
+export async function getAnalyticsOverview(
+  input: AnalyticsOverviewInput,
+): Promise<AnalyticsOverview> {
   const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
+  return analyticsOverviewForScope(ws.ctx, input);
+}
 
+/**
+ * Core overview. Callers own authorization and pass the resolved scope, so
+ * `/v1` (API keys - personal pool) and the dashboard RPC share one code path.
+ */
+export async function analyticsOverviewForScope(
+  ctx: AnalyticsScope,
+  input: AnalyticsOverviewInput,
+): Promise<AnalyticsOverview> {
   const fresh = input.fresh === true;
 
-  const timeZone = await getUserTimezone(ws.ctx.resourceUserId);
+  const timeZone = await getUserTimezone(ctx.resourceUserId);
   const window = parseDateWindow(input, timeZone);
   const { range, since, until } = window;
 
-  const ctx = ws.ctx;
   const accountId =
     typeof input.accountId === "string" && input.accountId
       ? input.accountId
@@ -434,13 +496,18 @@ export async function getAnalyticsOverview(input: {
       throw rpcHttpError("Account not found", 404);
     }
   }
+  // The all-accounts view fans out across platforms, so it pages tighter than a
+  // single-account view. Report the limit we actually used - the UI prints it.
+  const effectiveLimit = accountId
+    ? SAMPLE_LIMIT
+    : Math.min(SAMPLE_LIMIT, ALL_ACCOUNTS_SAMPLE_LIMIT);
   const pubs = await loadPublishedPubs({
     resourceUserId: ctx.resourceUserId,
     workspaceId: ctx.workspaceId,
     since,
     until,
     accountId,
-    limit: accountId ? SAMPLE_LIMIT : Math.min(SAMPLE_LIMIT, 12),
+    limit: effectiveLimit,
   });
 
   const budget = createLiveRequestBudget();
@@ -517,17 +584,25 @@ export async function getAnalyticsOverview(input: {
       collectReconnectHints(results),
     ),
     fetchedAt: new Date().toISOString(),
-    sampled: pubs.length >= SAMPLE_LIMIT || partial,
-    sampleLimit: SAMPLE_LIMIT,
+    sampled: pubs.length >= effectiveLimit || partial,
+    sampleLimit: effectiveLimit,
     partial,
   };
 }
 
-export async function getPostAnalytics(input: {
-  postId?: unknown;
-} | string): Promise<PostAnalyticsResult> {
+export async function getPostAnalytics(
+  input: { postId?: unknown } | string,
+): Promise<PostAnalyticsResult> {
   const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
+  return postAnalyticsForScope(ws.ctx, input);
+}
+
+/** Core per-post analytics. See `analyticsOverviewForScope` for the scope contract. */
+export async function postAnalyticsForScope(
+  ctx: AnalyticsScope,
+  input: { postId?: unknown } | string,
+): Promise<PostAnalyticsResult> {
   const postId =
     typeof input === "string"
       ? input
@@ -538,8 +613,7 @@ export async function getPostAnalytics(input: {
     throw rpcHttpError("postId required", 400);
   }
 
-  const ctx = ws.ctx;
-  const timeZone = await getUserTimezone(ws.ctx.resourceUserId);
+  const timeZone = await getUserTimezone(ctx.resourceUserId);
   const until = new Date();
   const since = new Date(0);
   const pubs = await loadPublishedPubs({
@@ -645,19 +719,24 @@ function mergeReconnectHints(
 }
 
 /** Connected accounts list for analytics filter chips. */
-export async function listAnalyticsAccounts(): Promise<
-  Array<{
-    id: string;
-    platform: string;
-    username: string | null;
-    profileImageUrl: string | null;
-    missingScopes: string[];
-  }>
-> {
+export type AnalyticsAccountRow = {
+  id: string;
+  platform: string;
+  username: string | null;
+  profileImageUrl: string | null;
+  missingScopes: string[];
+};
+
+export async function listAnalyticsAccounts(): Promise<AnalyticsAccountRow[]> {
   const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
+  return analyticsAccountsForScope(ws.ctx);
+}
 
-  const ctx = ws.ctx;
+/** Core account list. See `analyticsOverviewForScope` for the scope contract. */
+export async function analyticsAccountsForScope(
+  ctx: AnalyticsScope,
+): Promise<AnalyticsAccountRow[]> {
   const rows = await listActiveConnectedAccounts(ctx);
 
   return rows

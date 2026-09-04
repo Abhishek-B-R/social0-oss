@@ -232,7 +232,8 @@ backend/
 │   ├── db/schema.ts          # Drizzle source of truth
 │   ├── routes/api/           # auth, rpc, publish, billing, connect, media, cron,
 │   │                         # team, webhooks, api-keys, legal, queue, …
-│   ├── routes/v1/            # me, accounts, posts, media, jobs, webhooks (API key)
+│   ├── routes/v1/            # me, accounts, posts, media, jobs, webhooks,
+│   │                         # analytics, inbox (API key)
 │   ├── routes/admin/, oauth/, docs, public-agent
 │   ├── services/             # RPC handlers + publish-dispatch/enqueue + analytics + inbox
 │   ├── publish/              # execute-publish, finalize-post, process-platform-server
@@ -321,6 +322,9 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 - Inbox DMs today: Instagram, X, Bluesky, TikTok (TikTok needs Business Messaging; Login Kit tokens fail until a BM app is connected).
 - Post-detail analytics stay **collapsed** until the user clicks Show analytics (`analytics.getPostAnalytics`).
 - Team-scoped under `/dashboard/teams/:teamId/analytics` and `/inbox`.
+- Service functions come in pairs: `getAnalyticsOverview(input)` resolves the
+  session, `analyticsOverviewForScope(ctx, input)` holds the logic. RPC uses the
+  first, `/v1` the second. Same for every `inbox.*` handler.
 
 ---
 
@@ -329,9 +333,32 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 | Package | Use |
 | ------- | --- |
 | `social0-cli/` | npm CLI `social0` → `/v1` with `SOCIAL0_API_KEY` |
-| `social0-mcp/` | `@social0/mcp` stdio tools → same `/v1` |
+| `social0-mcp/` | `@social0/mcp` stdio tools → same `/v1` (also bundled by `cloudflare/mcp-worker`) |
 
-`/v1` routes are **implemented** (`me`, `accounts`, `posts`, `media`, `jobs`, `webhooks`) — not stubs. Auth: Bearer API key (`sk_live_…` / legacy `s0_live_`).
+`/v1` routes are **implemented** (`me`, `accounts`, `posts`, `media`, `jobs`, `webhooks`, `analytics`, `inbox`) — not stubs. Auth: Bearer API key (`sk_live_…` / legacy `s0_live_`).
+
+### Analytics + inbox on `/v1`
+
+| Route | Notes |
+| ----- | ----- |
+| `GET /v1/analytics/{accounts,overview,posts/:postId}` | Live metrics; `range`/`since`/`until`/`account_id`/`fresh` |
+| `GET /v1/inbox/{accounts,comments,dms}` | Live reads; `before`/`limit` paging via `next_before` |
+| `GET /v1/inbox/dms/:conversationId` | One DM thread (`account_id` required) |
+| `POST /v1/inbox/comments/:commentId/{reply,like,hide}` | Body carries `publication_id` |
+| `POST /v1/inbox/dms/:conversationId/reply` | Body carries `account_id` |
+
+- Services: `services/v1-analytics.ts`, `services/v1-inbox.ts` — thin snake_case
+  DTO mappers over the **same cores** the dashboard RPC uses
+  (`*ForScope(ctx, input)` in `services/analytics.ts` / `services/inbox.ts`).
+  Add behavior to the core, never to one caller.
+- Scope: API keys read the **personal (main) pool** (`workspaceId: null`), same
+  rule as `/v1/accounts`. Workspace-scoped accounts stay dashboard-only.
+- Same `LIVE_PLATFORMS` gate, cache, and outbound platform limits as the SPA.
+- Keep `backend/server/openapi/openapi.json` in step — `src/tests/v1-analytics-inbox-contract.test.ts` fails if a route or scope drifts.
+- CLI: `social0 analytics …`, `social0 inbox …`.
+  MCP: `get_analytics`, `get_post_analytics`, `list_inbox_comments`,
+  `reply_to_comment`, `moderate_comment`, `list_inbox_dms`,
+  `get_inbox_dm_thread`, `reply_to_dm`.
 
 ---
 

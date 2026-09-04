@@ -3,6 +3,7 @@
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonPost } from "../http-json.js";
+import { fetchAllowedMedia } from "../media-fetch.js";
 import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
 import { inboxAllowsMedia } from "./media-capabilities.js";
 import { blueskySession, blueskySessionAfter401 } from "./bluesky-session.js";
@@ -14,6 +15,9 @@ import {
   tiktokBmSentMessageId,
   tiktokBmUploadImage,
 } from "./tiktok-bm.js";
+
+/** Outbound platform calls always carry a deadline - a hung socket pins an API worker. */
+const DM_TIMEOUT_MS = 12_000;
 
 export type DmReplyInput = {
   platform: string;
@@ -213,6 +217,7 @@ async function replyBluesky(input: DmReplyInput): Promise<DmReplyResult> {
         convoId: input.conversationId,
         message: { text: input.text },
       }),
+      signal: AbortSignal.timeout(DM_TIMEOUT_MS),
     });
 
   let session = await blueskySession(accountKey, handle, input.accessSecret);
@@ -242,9 +247,14 @@ async function replyTikTok(input: DmReplyInput): Promise<DmReplyResult> {
     if (!input.mediaMimeType.startsWith("image/")) {
       return fail("TikTok DMs only accept images.");
     }
-    const fileRes = await fetch(input.mediaUrl);
-    if (!fileRes.ok) return fail("Could not fetch the image to send.");
-    const buf = await fileRes.arrayBuffer();
+    // Same SSRF-guarded fetch the publish + comment-reply paths use.
+    let buf: ArrayBuffer;
+    try {
+      const fileRes = await fetchAllowedMedia(input.mediaUrl);
+      buf = await fileRes.arrayBuffer();
+    } catch {
+      return fail("Could not fetch the image to send.");
+    }
     const mime = input.mediaMimeType.split(";")[0]?.trim() || "image/jpeg";
     const ext = mime === "image/png" ? "png" : mime === "image/webp" ? "webp" : "jpg";
     const blob = new Blob([buf], { type: mime });

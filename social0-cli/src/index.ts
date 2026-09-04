@@ -17,6 +17,8 @@ import {
   postInitCommand,
 } from "./commands/post.js";
 import { publishCommand } from "./commands/publish.js";
+import { analyticsCommand } from "./commands/analytics.js";
+import { inboxCommand } from "./commands/inbox.js";
 import { scheduleCommand } from "./commands/schedule.js";
 import { uploadCommand } from "./commands/upload.js";
 import { statusCommand } from "./commands/status.js";
@@ -231,6 +233,48 @@ const draftsCmd = program
   .option("-t, --time <when>", "Schedule time")
   .action(async (action, id, opts, cmd) => {
     await draftsCommand(action, id, { ...globalOpts(cmd), ...opts });
+  });
+
+// Analytics
+program
+  .command("analytics")
+  .description("Live metrics for posts published through Social0")
+  .argument("[action]", "overview (default), accounts, or post")
+  .argument("[id]", "Post ID for `analytics post`")
+  .option("-r, --range <range>", "7d, 14d, 28d, 90d, 365d, or custom", "7d")
+  .option("--since <iso>", "Custom window start (ISO 8601)")
+  .option("--until <iso>", "Custom window end (ISO 8601)")
+  .option("-a, --account <id>", "Limit to one account (numeric ID, platform, or UUID)")
+  .option("--fresh", "Bypass warm cache and hit the platform APIs")
+  .action(async (action, id, opts, cmd) => {
+    await analyticsCommand(action, id, { ...globalOpts(cmd), ...opts });
+  });
+
+// Inbox
+program
+  .command("inbox")
+  .description("Comments and DMs from your connected accounts")
+  .argument(
+    "[action]",
+    "comments (default), dms, dm, dm-reply, reply, like, unlike, hide, accounts",
+  )
+  .argument("[id]", "Comment ID or conversation ID, depending on the action")
+  .option("-r, --range <range>", "7d, 14d, 28d, 90d, 365d, or custom", "7d")
+  .option("--since <iso>", "Custom window start (ISO 8601)")
+  .option("--until <iso>", "Custom window end (ISO 8601)")
+  .option("-a, --account <id>", "Account (numeric ID, platform, or UUID)")
+  .option("-p, --platform <platform>", "Limit comments to one platform")
+  .option("--before <cursor>", "Page older results using next_before")
+  .option("-l, --limit <n>", "Publications or conversations per page (1-24)")
+  .option("--unanswered", "Only threads your account has not replied to")
+  .option("--dms", "With `accounts`: list DM-capable accounts instead")
+  .option("--publication <id>", "publication_id the comment belongs to")
+  .option("-t, --text <text>", "Reply text")
+  .option("-m, --media <id>", "Media upload ID to attach")
+  .option("--unlike", "With `like`: remove the like instead")
+  .option("--peer <id>", "DM peer id (only needed when the platform omits it)")
+  .action(async (action, id, opts, cmd) => {
+    await inboxCommand(action, id, { ...globalOpts(cmd), ...opts });
   });
 
 // Doctor / version / update

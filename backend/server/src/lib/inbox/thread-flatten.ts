@@ -75,14 +75,27 @@ export function flattenInboxThread<T extends InboxThreadNode>(
     }
   }
 
+  // Platform parent ids are untrusted. A cycle (A->B->A) leaves both nodes out
+  // of `tops` and unreachable from the walk, so they used to vanish from the
+  // thread entirely; the guard also makes double-emission impossible.
+  const emitted = new Set<string>([root.id]);
   function walk(list: T[], depth: number) {
     const nextDepth = Math.min(depth, MAX_DEPTH);
     for (const c of list) {
+      if (emitted.has(c.id)) continue;
+      emitted.add(c.id);
       out.push({ comment: c, depth: nextDepth });
       const kids = nodes.get(c.id)?.children ?? [];
       if (kids.length) walk(kids, nextDepth + 1);
     }
   }
   walk(tops, 1);
+  // Anything left in a parent cycle still belongs in the conversation.
+  for (const c of sorted) {
+    if (!emitted.has(c.id)) {
+      emitted.add(c.id);
+      out.push({ comment: c, depth: 1 });
+    }
+  }
   return out;
 }

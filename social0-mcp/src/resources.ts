@@ -23,13 +23,17 @@ export const MCP_RESOURCES: readonly McpResource[] = [
 
 Use Social0 when the user wants to publish or schedule the same post to X, LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky, or Pinterest; connect ChatGPT, Claude, or Cursor via MCP; or drive posting from the REST API or CLI.
 
-Do not use Social0 as a listening, inbox, or analytics-only product. Connecting network OAuth (Instagram, YouTube, and so on) is a human step in https://social0.app/dashboard/connections.
+Social0 also reads back what happened to those posts: get_analytics and get_post_analytics for live metrics, list_inbox_comments and list_inbox_dms for replies and messages. Both are scoped to posts published through Social0 (plus DMs on the connected account) and are read live from each network, so they are not a substitute for a full social-listening product that crawls the whole web. Connecting network OAuth (Instagram, YouTube, and so on) is a human step in https://social0.app/dashboard/connections.
 
 ## How to call
 
 1. List accounts first.
 2. Prefer publish_now or schedule_content for one-shots.
 3. Poll get_publish_status with tracking_id until completed, failed, or partial.
+4. For metrics, call get_analytics with a range (7d by default) and repeat any "sampled" or "partial" caveat it returns.
+5. To answer a comment, take both comment_id and publication_id from list_inbox_comments and pass them to reply_to_comment.
+
+Replies and DMs go out publicly to real people. Confirm wording with the user before calling reply_to_comment, reply_to_dm, or moderate_comment.
 
 Docs: https://docs.social0.app/docs/integrations/mcp
 OpenAPI: https://api.social0.app/openapi.json
@@ -53,7 +57,9 @@ Developers: https://social0.app/developers
 
 Publish returns 202 Accepted with tracking_id and Location: /v1/jobs/{tracking_id}. Poll GET /v1/jobs/{tracking_id} until completed, failed, or partial.
 
-Scopes agents can request: me:read, accounts:read, accounts:write, posts:read, posts:write, media:write, jobs:read, webhooks:read, webhooks:write, social0:read, social0:write.
+Scopes agents can request: me:read, accounts:read, accounts:write, posts:read, posts:write, media:write, jobs:read, analytics:read, inbox:read, inbox:write, webhooks:read, webhooks:write, social0:read, social0:write.
+
+Live reads (analytics + inbox) hit the networks at request time and are cached briefly. \`fresh=1\` bypasses warm cache, but entries younger than 90s are still served from cache so a refresh loop cannot burn shared platform quota.
 `,
   },
   {

@@ -551,11 +551,17 @@ export function toInboxThreads(comments: InboxComment[]): InboxThread[] {
     if (c.id) byId.set(c.id, c);
   }
 
+  /**
+   * Walk to the top of the parent chain. Platform parent ids are untrusted, so
+   * a cycle stops the walk and the comment keeps its own id as the root - it
+   * surfaces as a top-level thread instead of disappearing from the inbox.
+   */
   function findRoot(c: InboxComment): InboxComment {
     let cur = c;
-    const seen = new Set<string>();
-    while (cur.parentId && byId.has(cur.parentId) && !seen.has(cur.parentId)) {
-      seen.add(cur.id);
+    const seen = new Set<string>([c.id]);
+    while (cur.parentId && byId.has(cur.parentId)) {
+      if (seen.has(cur.parentId)) return c;
+      seen.add(cur.parentId);
       cur = byId.get(cur.parentId)!;
     }
     return cur;

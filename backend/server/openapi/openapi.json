@@ -45,6 +45,14 @@
     {
       "name": "Webhooks",
       "description": "Outbound event subscriptions"
+    },
+    {
+      "name": "Analytics",
+      "description": "Live metrics for posts published through Social0"
+    },
+    {
+      "name": "Inbox",
+      "description": "Comments and DMs on connected accounts"
     }
   ],
   "security": [
@@ -130,6 +138,83 @@
           "type": "string"
         },
         "description": "Client-supplied key so retries do not double-publish."
+      },
+      "WindowRange": {
+        "name": "range",
+        "in": "query",
+        "required": false,
+        "description": "Lookback window. `custom` uses `since`/`until` (max 365 days).",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "7d",
+            "14d",
+            "28d",
+            "90d",
+            "365d",
+            "custom"
+          ],
+          "default": "7d"
+        }
+      },
+      "WindowSince": {
+        "name": "since",
+        "in": "query",
+        "required": false,
+        "description": "ISO 8601 start, only used with `range=custom`.",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "WindowUntil": {
+        "name": "until",
+        "in": "query",
+        "required": false,
+        "description": "ISO 8601 end, only used with `range=custom`.",
+        "schema": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "Fresh": {
+        "name": "fresh",
+        "in": "query",
+        "required": false,
+        "description": "Bypass warm cache and hit the platform APIs. Entries younger than 90s are still served from cache to protect shared platform quotas.",
+        "schema": {
+          "type": "boolean",
+          "default": false
+        }
+      },
+      "InboxBefore": {
+        "name": "before",
+        "in": "query",
+        "required": false,
+        "description": "Cursor from the previous response's `next_before`.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "InboxLimit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        }
+      },
+      "AccountIdQuery": {
+        "name": "account_id",
+        "in": "query",
+        "required": false,
+        "description": "Restrict to one connected account.",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
       }
     },
     "schemas": {
@@ -814,6 +899,716 @@
             "type": "string"
           },
           "instance": {
+            "type": "string"
+          }
+        }
+      },
+      "MetricSet": {
+        "type": "object",
+        "description": "Metric values the platform actually reported. `null` means the network does not expose that metric for this post.",
+        "properties": {
+          "views": {
+            "type": "integer",
+            "nullable": true
+          },
+          "impressions": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reach": {
+            "type": "integer",
+            "nullable": true
+          },
+          "likes": {
+            "type": "integer",
+            "nullable": true
+          },
+          "comments": {
+            "type": "integer",
+            "nullable": true
+          },
+          "shares": {
+            "type": "integer",
+            "nullable": true
+          },
+          "reposts": {
+            "type": "integer",
+            "nullable": true
+          },
+          "quotes": {
+            "type": "integer",
+            "nullable": true
+          },
+          "saves": {
+            "type": "integer",
+            "nullable": true
+          },
+          "clicks": {
+            "type": "integer",
+            "nullable": true
+          },
+          "engagement": {
+            "type": "integer",
+            "description": "likes + comments + shares + reposts + quotes + saves + clicks"
+          }
+        }
+      },
+      "ReconnectHint": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "missing_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AnalyticsAccountList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "platform": {
+                  "type": "string"
+                },
+                "username": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "profile_image_url": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "missing_scopes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "PublicationMetrics": {
+        "type": "object",
+        "properties": {
+          "publication_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "post_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "account_username": {
+            "type": "string",
+            "nullable": true
+          },
+          "platform_post_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "platform_post_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "published_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "scope_missing",
+              "unsupported",
+              "error",
+              "no_platform_id",
+              "skipped"
+            ]
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "missing_scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "metrics": {
+            "$ref": "#/components/schemas/MetricSet"
+          }
+        }
+      },
+      "AnalyticsOverview": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sampled": {
+            "type": "boolean",
+            "description": "True when only the most recent `sample_limit` publications were read."
+          },
+          "sample_limit": {
+            "type": "integer"
+          },
+          "partial": {
+            "type": "boolean",
+            "description": "True when the live request budget expired before every publication was read."
+          },
+          "totals": {
+            "$ref": "#/components/schemas/MetricSet"
+          },
+          "by_platform": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "post_count": {
+                  "type": "integer"
+                },
+                "metrics": {
+                  "$ref": "#/components/schemas/MetricSet"
+                }
+              }
+            }
+          },
+          "series": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "views": {
+                  "type": "integer"
+                },
+                "likes": {
+                  "type": "integer"
+                },
+                "comments": {
+                  "type": "integer"
+                },
+                "shares": {
+                  "type": "integer"
+                },
+                "engagement": {
+                  "type": "integer"
+                }
+              }
+            }
+          },
+          "top_posts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "post_id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "snippet": {
+                  "type": "string"
+                },
+                "published_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "platforms": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "metrics": {
+                  "$ref": "#/components/schemas/MetricSet"
+                }
+              }
+            }
+          },
+          "publications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationMetrics"
+            }
+          },
+          "accounts_needing_reconnect": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconnectHint"
+            }
+          }
+        }
+      },
+      "PostAnalytics": {
+        "type": "object",
+        "properties": {
+          "post_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "partial": {
+            "type": "boolean"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/MetricSet"
+          },
+          "publications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicationMetrics"
+            }
+          },
+          "accounts_needing_reconnect": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconnectHint"
+            }
+          }
+        }
+      },
+      "InboxAttachment": {
+        "type": "object",
+        "nullable": true,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "thumbnail_url": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "InboxComment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "account_username": {
+            "type": "string",
+            "nullable": true
+          },
+          "post_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publication_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Required when replying to, liking, or hiding this comment."
+          },
+          "platform_post_id": {
+            "type": "string"
+          },
+          "platform_post_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "post_snippet": {
+            "type": "string"
+          },
+          "author_name": {
+            "type": "string"
+          },
+          "author_handle": {
+            "type": "string",
+            "nullable": true
+          },
+          "text": {
+            "type": "string"
+          },
+          "attachment": {
+            "$ref": "#/components/schemas/InboxAttachment"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "like_count": {
+            "type": "integer",
+            "nullable": true
+          },
+          "liked_by_me": {
+            "type": "boolean",
+            "nullable": true
+          },
+          "parent_id": {
+            "type": "string",
+            "nullable": true
+          },
+          "can_reply": {
+            "type": "boolean"
+          },
+          "is_own": {
+            "type": "boolean"
+          }
+        }
+      },
+      "InboxCommentList": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "threads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "comment": {
+                  "$ref": "#/components/schemas/InboxComment"
+                },
+                "replies": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InboxComment"
+                  }
+                },
+                "answered": {
+                  "type": "boolean",
+                  "description": "True when the connected account already replied in this thread."
+                }
+              }
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "next_before": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `before` to page older publications."
+          },
+          "sampled": {
+            "type": "boolean"
+          },
+          "sample_limit": {
+            "type": "integer"
+          },
+          "unsupported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "accounts_needing_reconnect": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconnectHint"
+            }
+          },
+          "fetch_errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "account_id": {
+                  "type": "string"
+                },
+                "platform": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InboxConversation": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "account_username": {
+            "type": "string",
+            "nullable": true
+          },
+          "peer_id": {
+            "type": "string"
+          },
+          "peer_name": {
+            "type": "string"
+          },
+          "peer_handle": {
+            "type": "string",
+            "nullable": true
+          },
+          "peer_avatar_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "last_message_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "can_reply": {
+            "type": "boolean"
+          },
+          "media_kinds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "image",
+                "video"
+              ]
+            }
+          }
+        }
+      },
+      "InboxDmList": {
+        "type": "object",
+        "properties": {
+          "range": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "conversations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InboxConversation"
+            }
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "next_before": {
+            "type": "string",
+            "nullable": true
+          },
+          "sampled": {
+            "type": "boolean"
+          },
+          "sample_limit": {
+            "type": "integer"
+          },
+          "unsupported": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "accounts_needing_reconnect": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReconnectHint"
+            }
+          },
+          "fetch_errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "account_id": {
+                  "type": "string"
+                },
+                "platform": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "notices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "platform": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "InboxDmThread": {
+        "type": "object",
+        "properties": {
+          "conversation_id": {
+            "type": "string"
+          },
+          "conversation": {
+            "$ref": "#/components/schemas/InboxConversation"
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "nullable": true
+                },
+                "is_own": {
+                  "type": "boolean"
+                },
+                "author_id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "author_name": {
+                  "type": "string"
+                },
+                "author_handle": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "attachment": {
+                  "$ref": "#/components/schemas/InboxAttachment"
+                }
+              }
+            }
+          },
+          "fetched_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InboxMutationResult": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "reply_id": {
+            "type": "string"
+          },
+          "message_id": {
             "type": "string"
           }
         }
@@ -2322,6 +3117,834 @@
           },
           "default": {
             "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/analytics/accounts": {
+      "get": {
+        "operationId": "listAnalyticsAccounts",
+        "summary": "List accounts with live analytics",
+        "description": "Connected accounts on networks where live analytics is currently enabled.",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "analytics:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accounts eligible for live analytics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsAccountList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/analytics/overview": {
+      "get": {
+        "operationId": "getAnalyticsOverview",
+        "summary": "Aggregate metrics for a window",
+        "description": "Live metrics for posts published through Social0 in the window. Metrics are fetched from each platform at request time; check `sampled` and `partial` before treating totals as complete.",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "analytics:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WindowRange"
+          },
+          {
+            "$ref": "#/components/parameters/WindowSince"
+          },
+          {
+            "$ref": "#/components/parameters/WindowUntil"
+          },
+          {
+            "$ref": "#/components/parameters/AccountIdQuery"
+          },
+          {
+            "$ref": "#/components/parameters/Fresh"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Aggregated live metrics",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsOverview"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "Account not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/analytics/posts/{postId}": {
+      "get": {
+        "operationId": "getPostAnalytics",
+        "summary": "Live metrics for one post",
+        "description": "Per-publication metrics for a single Social0 post, across every network it went out on.",
+        "tags": [
+          "Analytics"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "analytics:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "postId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Live metrics for the post",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostAnalytics"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "Post not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/inbox/accounts": {
+      "get": {
+        "operationId": "listInboxAccounts",
+        "summary": "List accounts with a live inbox",
+        "description": "Connected accounts on networks where comments (or DMs) are currently enabled.",
+        "tags": [
+          "Inbox"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "inbox:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "comments",
+                "dms"
+              ],
+              "default": "comments"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accounts eligible for the live inbox",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyticsAccountList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/inbox/comments": {
+      "get": {
+        "operationId": "listInboxComments",
+        "summary": "List comment threads",
+        "description": "Comments on posts published through Social0, fetched live from each platform. Page older publications with `before=next_before`.",
+        "tags": [
+          "Inbox"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "inbox:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WindowRange"
+          },
+          {
+            "$ref": "#/components/parameters/WindowSince"
+          },
+          {
+            "$ref": "#/components/parameters/WindowUntil"
+          },
+          {
+            "$ref": "#/components/parameters/AccountIdQuery"
+          },
+          {
+            "$ref": "#/components/parameters/InboxBefore"
+          },
+          {
+            "$ref": "#/components/parameters/InboxLimit"
+          },
+          {
+            "$ref": "#/components/parameters/Fresh"
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Comment threads in the window",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxCommentList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/inbox/comments/{commentId}/reply": {
+      "post": {
+        "operationId": "replyToInboxComment",
+        "summary": "Reply to a comment",
+        "description": "Posts a reply on the originating network. The comment must belong to `publication_id` \u2014 Social0 verifies this against the live thread before sending.",
+        "tags": [
+          "Inbox"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "inbox:write",
+              "social0:write"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "publication_id"
+                ],
+                "properties": {
+                  "publication_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "media_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Media upload id. Only X and Bluesky accept attachments on comment replies."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reply posted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxMutationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          },
+          "400": {
+            "description": "Reply rejected by Social0 or the platform",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/inbox/comments/{commentId}/like": {
+      "post": {
+        "operationId": "likeInboxComment",
+        "summary": "Like or unlike a comment",
+        "tags": [
+          "Inbox"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "inbox:write",
+              "social0:write"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "publication_id"
+                ],
+                "properties": {
+                  "publication_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "unlike": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Like applied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxMutationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          },
+          "400": {
+            "description": "Not supported for this network, or rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/inbox/comments/{commentId}/hide": {
+      "post": {
+        "operationId": "hideInboxComment",
+        "summary": "Hide a comment",
+        "description": "Moderation. Supported on Instagram and Facebook Pages.",
+        "tags": [
+          "Inbox"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "inbox:write",
+              "social0:write"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "publication_id"
+                ],
+                "properties": {
+                  "publication_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Comment hidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxMutationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          },
+          "400": {
+            "description": "Not supported for this network, or rejected",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/inbox/dms": {
+      "get": {
+        "operationId": "listInboxDms",
+        "summary": "List DM conversations",
+        "tags": [
+          "Inbox"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "inbox:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/WindowRange"
+          },
+          {
+            "$ref": "#/components/parameters/WindowSince"
+          },
+          {
+            "$ref": "#/components/parameters/WindowUntil"
+          },
+          {
+            "$ref": "#/components/parameters/AccountIdQuery"
+          },
+          {
+            "$ref": "#/components/parameters/InboxBefore"
+          },
+          {
+            "$ref": "#/components/parameters/InboxLimit"
+          },
+          {
+            "$ref": "#/components/parameters/Fresh"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "DM conversations in the window",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxDmList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/inbox/dms/{conversationId}": {
+      "get": {
+        "operationId": "getInboxDmThread",
+        "summary": "Get one DM conversation",
+        "tags": [
+          "Inbox"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "inbox:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "peer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Fresh"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages in the conversation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxDmThread"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "description": "Conversation not found for this account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/inbox/dms/{conversationId}/reply": {
+      "post": {
+        "operationId": "replyToInboxDm",
+        "summary": "Send a DM reply",
+        "description": "Sends into an existing conversation. Social0 verifies the conversation belongs to `account_id` before sending.",
+        "tags": [
+          "Inbox"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "inbox:write",
+              "social0:write"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "account_id"
+                ],
+                "properties": {
+                  "account_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "peer_id": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "media_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "Media upload id. X accepts image and video; TikTok image only; Bluesky text only."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxMutationResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          },
+          "400": {
+            "description": "Rejected by Social0 or the platform",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         }
       }

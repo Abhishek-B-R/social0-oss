@@ -1,6 +1,6 @@
 {
   "name": "@social0/mcp",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Post to Instagram, TikTok, YouTube, X, LinkedIn, and more from Claude, Cursor, or ChatGPT",
   "type": "module",
   "main": "dist/index.js",
@@ -23,7 +23,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "tsx --test src/resources.test.ts",
+    "test": "tsx --test src/resources.test.ts src/tools/tools.test.ts",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
