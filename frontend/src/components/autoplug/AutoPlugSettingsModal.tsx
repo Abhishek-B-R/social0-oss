@@ -43,7 +43,7 @@ export function AutoPlugSettingsModal({
         if (!open) onCancel();
       }}
     >
-      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col gap-0 p-0 border-border bg-bg">
+      <DialogContent className="sm:max-w-lg max-h-[88dvh] flex flex-col gap-0 p-0 border-border bg-bg">
         <DialogHeader className="shrink-0 p-4 border-b border-border pb-4">
           <DialogTitle className="text-lg font-semibold text-text">
             Auto-Plug settings
@@ -72,11 +72,11 @@ export function AutoPlugSettingsModal({
           )}
         </div>
 
-        <DialogFooter className="shrink-0 p-4 border-t border-border flex gap-3 pt-4">
+        <DialogFooter className="shrink-0 flex-row gap-3 border-t border-border p-4 pt-4 pb-[max(1rem,calc(env(safe-area-inset-bottom)+0.5rem))] sm:pb-4">
           <button
             type="button"
             onClick={onCancel}
-            className="flex-1 rounded-xl border border-border bg-bg px-4 py-2.5 text-sm font-medium text-text shadow-sm hover:bg-bg-subtle transition-colors"
+            className="flex-1 touch:min-h-11 touch-manipulation rounded-xl border border-border bg-bg px-4 py-2.5 text-sm font-medium text-text shadow-sm hover:bg-bg-subtle transition-colors active:opacity-90"
           >
             Cancel
           </button>
@@ -87,7 +87,7 @@ export function AutoPlugSettingsModal({
               onDone();
             }}
             disabled={!currentConfig}
-            className="flex-1 rounded-xl bg-accent hover:bg-accent-hover text-white px-4 py-2.5 text-sm font-semibold shadow-md transition-colors"
+            className="flex-1 touch:min-h-11 touch-manipulation rounded-xl bg-accent hover:bg-accent-hover text-white px-4 py-2.5 text-sm font-semibold shadow-md transition-colors active:opacity-90"
           >
             Done
           </button>

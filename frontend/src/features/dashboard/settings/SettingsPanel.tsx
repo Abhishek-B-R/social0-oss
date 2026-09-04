@@ -184,7 +184,7 @@ function ProfileSettingsSection({
         <button
           type="submit"
           disabled={savingName}
-          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors touch-manipulation hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 touch:min-h-11"
         >
           {savingName ? "Saving..." : "Save"}
         </button>
@@ -919,7 +919,7 @@ function AvatarEditor({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={loading}
-          className="text-xs font-medium text-accent hover:text-accent/80 disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-lg px-2 py-1 text-xs font-medium text-accent touch-manipulation hover:text-accent/80 disabled:opacity-60 touch:min-h-11 touch:px-3"
         >
           {loading ? "Uploading..." : "Upload image"}
         </button>
@@ -939,7 +939,7 @@ function AvatarEditor({
             type="button"
             onClick={handleSaveUrl}
             disabled={loading || !urlInput.trim()}
-            className="rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed"
+            className="inline-flex shrink-0 items-center justify-center rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-foreground touch-manipulation hover:bg-accent-hover disabled:opacity-60 disabled:cursor-not-allowed touch:min-h-11"
           >
             Save URL
           </button>
@@ -1108,7 +1108,10 @@ export function SettingsPanel({
         </p>
       </div>
 
-      <div className="flex gap-1 border-b border-border mb-8">
+      {/* Scrollable on narrow screens. As a plain flex row this reached 506px
+          on a 320px viewport and, with html { overflow-x: clip }, the last
+          tabs were clipped away with no way to reach them. */}
+      <div className="-mx-3 mb-8 flex gap-1 overflow-x-auto border-b border-border px-3 scroll-touch sm:mx-0 sm:px-0">
         {SETTINGS_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -1118,7 +1121,7 @@ export function SettingsPanel({
               setSettingsUrlHash(tab.id);
             }}
             className={cn(
-              "flex items-center gap-2 px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px",
+              "flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm transition-colors border-b-2 -mb-px touch-manipulation touch:min-h-11",
               activeTab === tab.id
                 ? "border-accent text-foreground font-medium"
                 : "border-transparent text-muted-foreground hover:text-foreground",
@@ -1274,7 +1277,7 @@ export function SettingsPanel({
                 <button
                   type="submit"
                   disabled={preferencesPending}
-                  className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors touch-manipulation hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 touch:min-h-11"
                 >
                   {preferencesPending ? "Saving..." : "Save"}
                 </button>
@@ -1343,7 +1346,7 @@ export function SettingsPanel({
                 <button
                   type="submit"
                   disabled={timezonePending}
-                  className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors touch-manipulation hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 touch:min-h-11"
                 >
                   {timezonePending ? "Saving..." : "Save timezone"}
                 </button>
@@ -1440,7 +1443,7 @@ export function SettingsPanel({
                 <button
                   type="submit"
                   disabled={emailPrefsPending}
-                  className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors touch-manipulation hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60 touch:min-h-11"
                 >
                   {emailPrefsPending ? "Saving..." : "Save"}
                 </button>

@@ -33,7 +33,7 @@ export function SignOutAllDevicesButton({ className }: { className?: string }) {
       onClick={() => void handleClick()}
       disabled={loading}
       className={cn(
-        "rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition-colors touch-manipulation touch:min-h-11 hover:bg-emerald-700 dark:bg-accent dark:hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60",
         className,
       )}
     >

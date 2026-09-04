@@ -390,7 +390,7 @@ function QuickActionsMenu({
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground touch-manipulation hover:bg-muted hover:text-foreground touch:size-11"
         aria-label="Open quick actions"
       >
         <MoreHorizontal className="h-4 w-4" />

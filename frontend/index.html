@@ -2,7 +2,33 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- viewport-fit=cover is required for env(safe-area-inset-*) to resolve to
+         real values on notched / gesture-bar devices. Without it every
+         safe-area calc in the app silently evaluates to 0.
+         Deliberately no maximum-scale/user-scalable: pinch-zoom stays available
+         (WCAG 1.4.4). iOS focus-zoom is prevented with 16px controls instead. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <!-- Mobile browser chrome matches the app canvas per theme -->
+    <meta
+      name="theme-color"
+      content="#f3f1ec"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#000000"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="format-detection" content="telephone=no" />
     <meta http-equiv="Cache-Control" content="no-cache, must-revalidate" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.png" type="image/png" sizes="192x192" />

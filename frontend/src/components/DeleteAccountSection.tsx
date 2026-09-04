@@ -60,7 +60,7 @@ export function DeleteAccountSection({ className }: { className?: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="mt-4 rounded-xl border border-destructive/40 px-4 py-2 text-sm font-semibold text-destructive transition-colors hover:bg-destructive/10"
+        className="mt-4 inline-flex items-center justify-center rounded-xl border border-destructive/40 px-4 py-2 text-sm font-semibold text-destructive transition-colors touch-manipulation hover:bg-destructive/10 touch:min-h-11"
       >
         Delete my account…
       </button>

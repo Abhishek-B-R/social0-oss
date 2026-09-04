@@ -81,7 +81,7 @@ const WORKSPACE_ITEMS: StaticNavItem[] = [
 export function DashboardShellSkeleton() {
   return (
     <div
-      className="dashboard-shell flex h-screen overflow-hidden bg-bg"
+      className="dashboard-shell flex h-app-shell overflow-hidden bg-bg"
       aria-busy="true"
       aria-label="Loading dashboard"
     >

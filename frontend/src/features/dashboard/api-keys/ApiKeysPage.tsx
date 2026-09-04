@@ -415,7 +415,7 @@ export default function ApiKeysPage() {
 
       {/* ── API Keys / Webhooks ─────────────────────────────────── */}
       <section className="space-y-3">
-        <div className="flex gap-2 border-b border-border">
+        <div className="-mx-3 flex gap-2 overflow-x-auto border-b border-border px-3 scroll-touch sm:mx-0 sm:px-0">
           {(
             [
               { id: "keys", label: "API Keys" },
@@ -427,7 +427,7 @@ export default function ApiKeysPage() {
               type="button"
               onClick={() => setTab(item.id)}
               className={cn(
-                "border-b-2 px-4 py-2 text-sm font-medium -mb-px transition-colors",
+                "shrink-0 whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium -mb-px transition-colors touch-manipulation touch:min-h-11",
                 tab === item.id
                   ? "border-accent text-foreground"
                   : "border-transparent text-text-muted hover:text-foreground",

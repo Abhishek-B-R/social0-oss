@@ -30,6 +30,7 @@ import {
 } from "@/lib/video-duration";
 import { cn } from "@/lib/utils";
 import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
+import { shouldAutoFocusOnMount } from "@/lib/touch";
 import { toast } from "sonner";
 import {
   CLIENT_MAX_VIDEO_UPLOAD_BYTES,
@@ -117,7 +118,12 @@ export function Composer() {
     el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT_PX) + "px";
   }, []);
 
+  // Composer is the default dashboard home, so this runs on every mobile
+  // app open. Claiming focus there throws up the keyboard over half the
+  // screen before the user has seen the page — see lib/touch.ts. Desktop
+  // keeps the ready-to-type cursor.
   useEffect(() => {
+    if (!shouldAutoFocusOnMount()) return;
     textareaRef.current?.focus();
   }, []);
 
@@ -712,20 +718,20 @@ export function Composer() {
                 handleSubmit();
               }
             }}
-            autoFocus
+            autoFocus={shouldAutoFocusOnMount()}
           />
 
           {media.length > 0 && (
             <div className="space-y-2">
               <p className="text-xs text-text-muted">
-                Drag to reorder · Click remove on hover
+                Drag to reorder · Tap the bin to remove
               </p>
               <div className="flex items-center gap-1">
                 {scrollArrows.left && (
                   <button
                     type="button"
                     onClick={() => scrollMediaStrip("left")}
-                    className="flex h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-composer-chip text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip-hover hover:text-text active:scale-[0.97]"
+                    className="hidden h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-composer-chip text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip-hover hover:text-text active:scale-[0.97] hoverable:flex"
                     aria-label="Scroll left"
                   >
                     <ChevronLeft className="h-5 w-5" />
@@ -733,7 +739,7 @@ export function Composer() {
                 )}
                 <div
                   ref={mediaStripRef}
-                  className="flex min-w-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden py-1 scroll-smooth scrollbar-thin"
+                  className="flex min-w-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden py-1 scroll-smooth scrollbar-thin scroll-touch"
                   style={{ scrollbarWidth: "thin" }}
                 >
                   {media.map((item, index) => (
@@ -775,7 +781,7 @@ export function Composer() {
                         type="button"
                         onClick={() => removeMedia(item.id)}
                         onMouseDown={(e) => e.stopPropagation()}
-                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-black/80 active:scale-[0.97]"
+                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white transition-opacity duration-150 touch:p-1.5 hover:bg-black/80 active:scale-[0.97] hoverable:opacity-0 hoverable:group-hover:opacity-100"
                         aria-label="Remove"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -787,7 +793,7 @@ export function Composer() {
                   <button
                     type="button"
                     onClick={() => scrollMediaStrip("right")}
-                    className="flex h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-composer-chip text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip-hover hover:text-text active:scale-[0.97]"
+                    className="hidden h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-composer-chip text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip-hover hover:text-text active:scale-[0.97] hoverable:flex"
                     aria-label="Scroll right"
                   >
                     <ChevronRight className="h-5 w-5" />
@@ -816,7 +822,7 @@ export function Composer() {
             <div className="flex flex-wrap items-center gap-2">
               <label
                 className={cn(
-                  "inline-flex cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium touch-manipulation sm:py-1.5",
+                  "inline-flex cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium touch-manipulation touch:min-h-11 sm:py-1.5",
                   "bg-composer-chip text-text",
                   "transition-[background-color,color,transform] duration-150",
                   "hover:bg-composer-chip-hover active:scale-[0.97]",
@@ -874,7 +880,7 @@ export function Composer() {
                   }
                 }}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium touch-manipulation sm:py-1.5",
+                  "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium touch-manipulation touch:min-h-11 sm:py-1.5",
                   "transition-[background-color,color,transform] duration-150",
                   "active:scale-[0.97]",
                   isThread
@@ -1040,7 +1046,7 @@ export function Composer() {
                                 removeThreadSlotMedia(slot.id, item.id)
                               }
                               onMouseDown={(e) => e.stopPropagation()}
-                              className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white opacity-0 transition-opacity duration-150 group-hover:opacity-100 hover:bg-black/80 active:scale-[0.97]"
+                              className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white transition-opacity duration-150 touch:p-1.5 hover:bg-black/80 active:scale-[0.97] hoverable:opacity-0 hoverable:group-hover:opacity-100"
                               aria-label="Remove"
                             >
                               <Trash2 className="h-3 w-3" />

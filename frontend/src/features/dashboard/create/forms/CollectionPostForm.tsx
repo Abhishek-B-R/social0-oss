@@ -73,6 +73,7 @@ import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
 import { ChevronDown, ChevronUp, Circle, Play } from "lucide-react";
 import { uploadFile } from "@/lib/upload-file";
+import { shouldAutoFocusOnMount } from "@/lib/touch";
 import {
   getVideoDuration,
   MAX_VIDEO_DURATION_SECONDS,
@@ -1876,7 +1877,7 @@ export function CollectionPostForm({
               placeholder="Write your caption..."
               rows={3}
               className="w-full rounded-xl border border-border bg-bg px-4 py-3 text-text placeholder-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-              autoFocus
+              autoFocus={shouldAutoFocusOnMount()}
               onFocus={() => setIsCaptionFocused(true)}
               onBlur={() => setIsCaptionFocused(false)}
               maxHeight={280}

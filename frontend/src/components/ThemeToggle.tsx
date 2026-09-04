@@ -47,7 +47,7 @@ export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
       <button
         type="button"
         onClick={() => setTheme(isDark ? "light" : "dark")}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted text-foreground transition-colors hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted text-foreground transition-colors touch-manipulation touch:size-11 hover:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       >
         {isDark ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
@@ -69,7 +69,7 @@ export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
             type="button"
             onClick={() => setTheme(value)}
             className={[
-              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors touch-manipulation touch:min-h-11",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               active
                 ? "bg-card text-foreground shadow-sm"

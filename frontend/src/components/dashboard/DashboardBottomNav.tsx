@@ -93,8 +93,13 @@ export function DashboardBottomNav({
   };
 
   return (
+    // Height comes from --bottom-nav-h so page bottom clearance
+    // (.pb-bottom-nav) can never drift from the real tab bar. The safe-area
+    // inset is *padding below* that row, keeping tap targets clear of the
+    // iOS gesture bar, and the x-insets keep the outer tabs off the notch
+    // in landscape.
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-border bg-bg-elevated py-0.5 pb-[calc(env(safe-area-inset-bottom)+2px)] lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-border bg-bg-elevated pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] lg:hidden"
       aria-label="Main navigation"
     >
       {navItems.map(({ href, label, icon: Icon, key }) => {
@@ -103,7 +108,10 @@ export function DashboardBottomNav({
 
         if (isCreate) {
           return (
-            <div key={key} className="relative flex min-h-[60px] flex-1 shrink-0">
+            <div
+              key={key}
+              className="relative flex h-[var(--bottom-nav-h)] flex-1 shrink-0 items-center justify-center"
+            >
               <TiktokCreateButton
                 href={href}
                 isActive={active}
@@ -121,7 +129,7 @@ export function DashboardBottomNav({
             onClick={() => {
               if (!active) setPendingHref(href);
             }}
-            className={`flex min-h-[60px] flex-1 shrink-0 flex-col items-center justify-center gap-0.5 px-1 pb-2.5 pt-2 text-xs transition-colors touch-manipulation ${
+            className={`flex h-[var(--bottom-nav-h)] flex-1 shrink-0 flex-col items-center justify-center gap-1 px-1 text-[11px] leading-none transition-colors touch-manipulation ${
               active
                 ? "text-accent"
                 : "text-text-muted hover:text-text active:text-text"
@@ -135,7 +143,7 @@ export function DashboardBottomNav({
                 weight={active ? "fill" : "regular"}
               />
             )}
-            <span>{label}</span>
+            <span className="w-full truncate text-center">{label}</span>
           </Link>
         );
       })}

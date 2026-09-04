@@ -61,6 +61,7 @@ import {
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
 import { CaptionCounter } from "@/components/caption-counter";
+import { shouldAutoFocusOnMount } from "@/lib/touch";
 import {
   XPostSettingsInline,
   type XPostSettings,
@@ -1069,7 +1070,7 @@ export function TextPostForm({
               rows={6}
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
               required
-              autoFocus
+              autoFocus={shouldAutoFocusOnMount()}
               maxHeight={400}
             />
             <CaptionCounter

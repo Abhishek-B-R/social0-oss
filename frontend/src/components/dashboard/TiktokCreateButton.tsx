@@ -7,7 +7,8 @@ import { useState } from "react";
 /** Brand-aligned floating create button: green core + subtle dual glow. Premium SaaS, not neon. */
 const TOKENS = {
   width: 56,
-  height: 40,
+  // 44px is the minimum comfortable thumb target (WCAG 2.5.5 / Apple HIG).
+  height: 44,
   /** Horizontal offset (px) for glow layers - subtle, not flashy */
   glowOffset: 2,
 } as const;
@@ -28,6 +29,7 @@ type CreateButtonProps = {
 export function TiktokCreateButton({
   href,
   isActive = false,
+  label = "Create",
   "aria-label": ariaLabel,
 }: CreateButtonProps) {
   const pathname = useLocation().pathname;
@@ -45,8 +47,8 @@ export function TiktokCreateButton({
       onClick={() => {
         if (!isActive) setNavPending(true);
       }}
-      className={`absolute left-1/2 top-0.5 flex -translate-x-1/2 flex-col items-center justify-end touch-manipulation ${navPending ? "opacity-75" : ""}`}
-      aria-label={ariaLabel}
+      className={`flex flex-col items-center justify-center touch-manipulation ${navPending ? "opacity-75" : ""}`}
+      aria-label={ariaLabel ?? label}
       aria-current={isActive ? "page" : undefined}
     >
       <div

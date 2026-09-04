@@ -187,28 +187,37 @@ function DayCell({
   const from = `${location.pathname}${location.search}`;
 
   if (mobileCompactCell) {
+    // The whole cell is the tap target, not just the date glyph. Previously
+    // only the ~18x20px number was a button while the surrounding cell was
+    // an inert div, so opening a day on a phone meant hitting a target less
+    // than half the minimum size. The cell's contents are all
+    // non-interactive (the status dots are aria-hidden), so promoting the
+    // cell itself to a button is safe and needs no nested controls.
+    const CellTag = onDayClick ? "button" : "div";
+    const cellProps = onDayClick
+      ? {
+          type: "button" as const,
+          onClick: () => onDayClick(date),
+          "aria-label": `${format(date, "EEEE d MMMM yyyy")}${
+            hasAnyDots ? `, ${posts.length} post${posts.length === 1 ? "" : "s"}` : ""
+          }`,
+        }
+      : {};
     return (
-      <div
-        className={`flex min-h-[72px] flex-col border border-border p-1.5 ${
+      <CellTag
+        {...cellProps}
+        className={`flex min-h-[72px] w-full flex-col border border-border p-1.5 text-left touch-manipulation ${
+          onDayClick ? "active:bg-bg-muted" : ""
+        } ${
           fillHeight ? "min-h-0 flex-1" : "sm:min-h-[100px]"
         } ${
           isCurrentMonth ? "bg-bg" : "bg-bg-subtle"
         } ${isToday(date) ? "bg-accent/10" : ""}`}
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-1">
-          {onDayClick ? (
-            <button
-              type="button"
-              onClick={() => onDayClick(date)}
-              className="rounded text-sm font-medium text-text hover:bg-bg-muted hover:text-accent"
-            >
-              {format(date, "d")}
-            </button>
-          ) : (
-            <span className="text-sm font-medium text-text">
-              {format(date, "d")}
-            </span>
-          )}
+          <span className="text-sm font-medium text-text">
+            {format(date, "d")}
+          </span>
           {loading ? (
             <div className="flex items-center justify-center gap-0.5" aria-hidden>
               <SkeletonBone className="h-2 w-2 rounded-full" />
@@ -251,7 +260,7 @@ function DayCell({
             </div>
           )}
         </div>
-      </div>
+      </CellTag>
     );
   }
 
@@ -544,7 +553,7 @@ export function CalendarGrid({
           <button
             type="button"
             onClick={handlePrev}
-            className="rounded-lg p-2 text-text-muted hover:bg-bg-muted touch-manipulation"
+            className="inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-bg-muted touch-manipulation touch:size-11"
             aria-label={
               view === "week"
                 ? "Previous week"
@@ -566,7 +575,7 @@ export function CalendarGrid({
           <button
             type="button"
             onClick={handleNext}
-            className="rounded-lg p-2 text-text-muted hover:bg-bg-muted touch-manipulation"
+            className="inline-flex size-9 items-center justify-center rounded-lg text-text-muted hover:bg-bg-muted touch-manipulation touch:size-11"
             aria-label={
               view === "week"
                 ? "Next week"
@@ -582,7 +591,7 @@ export function CalendarGrid({
           <button
             type="button"
             onClick={switchToMonth}
-            className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation sm:gap-1.5 sm:px-3 sm:text-sm ${
+            className={`flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation touch:min-h-10 sm:gap-1.5 sm:px-3 sm:text-sm ${
               view === "month"
                 ? "bg-accent/15 text-accent"
                 : "text-text-muted hover:bg-bg-muted"
@@ -594,7 +603,7 @@ export function CalendarGrid({
           <button
             type="button"
             onClick={handleSwitchToWeek}
-            className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation sm:gap-1.5 sm:px-3 sm:text-sm ${
+            className={`flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation touch:min-h-10 sm:gap-1.5 sm:px-3 sm:text-sm ${
               view === "week"
                 ? "bg-accent/15 text-accent"
                 : "text-text-muted hover:bg-bg-muted"
@@ -606,7 +615,7 @@ export function CalendarGrid({
           <button
             type="button"
             onClick={handleSwitchToDay}
-            className={`flex items-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation sm:gap-1.5 sm:px-3 sm:text-sm ${
+            className={`flex items-center justify-center gap-1 rounded-md px-2 py-1.5 text-xs font-medium touch-manipulation touch:min-h-10 sm:gap-1.5 sm:px-3 sm:text-sm ${
               view === "day"
                 ? "bg-accent/15 text-accent"
                 : "text-text-muted hover:bg-bg-muted"
