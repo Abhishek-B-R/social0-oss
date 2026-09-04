@@ -154,7 +154,7 @@ async function pollThreadsContainer(opts: {
 }
 
 /**
- * Fetch permalink via GET /{threadId}?fields=id,permalink - never invent shortcodes.
+ * Fetch permalink via GET /{threadId}?fields=id,permalink — never invent shortcodes.
  * Cosmetic only; never fail a live Threads publish over permalink lookup.
  */
 async function fetchThreadsPermalink(
