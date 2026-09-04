@@ -96,19 +96,26 @@ function metricLine(m: MetricSet): string {
 }
 
 /** Caveats the model must repeat rather than present the numbers as complete. */
-function coverageNotes(data: {
-  sampled?: boolean;
-  sample_limit?: number;
-  partial?: boolean;
-  accounts_needing_reconnect?: Array<{ platform: string; username: string | null }>;
-  unsupported?: string[];
-  fetch_errors?: Array<{ platform: string; error: string }>;
-  notices?: Array<{ platform: string; message: string }>;
-}): string[] {
+function coverageNotes(
+  data: {
+    sampled?: boolean;
+    sample_limit?: number;
+    partial?: boolean;
+    accounts_needing_reconnect?: Array<{ platform: string; username: string | null }>;
+    unsupported?: string[];
+    fetch_errors?: Array<{ platform: string; error: string }>;
+    notices?: Array<{ platform: string; message: string }>;
+  },
+  kind: "metrics" | "comments" | "dms" = "metrics",
+): string[] {
   const notes: string[] = [];
   if (data.sampled && data.sample_limit) {
     notes.push(
-      `Sampled: only the latest ${data.sample_limit} publications in this range were read, so totals are not a lifetime count.`,
+      kind === "metrics"
+        ? `Sampled: only the latest ${data.sample_limit} publications in this range were read, so totals are not a lifetime count.`
+        : kind === "comments"
+          ? `Sampled: only the latest ${data.sample_limit} publications in this range were scanned, so older posts may have comments not listed here.`
+          : `Sampled: only ${data.sample_limit} conversations were returned; page with before= for older ones.`,
     );
   }
   if (data.partial) {
@@ -232,7 +239,7 @@ export async function handleListInboxComments(
           input.unanswered_only
             ? `No unanswered comments between ${data.since.slice(0, 10)} and ${data.until.slice(0, 10)}.`
             : `No comments between ${data.since.slice(0, 10)} and ${data.until.slice(0, 10)}.`,
-          coverageNotes(data),
+          coverageNotes(data, "comments"),
         ),
       );
     }
@@ -262,7 +269,7 @@ export async function handleListInboxComments(
       "Reply with reply_to_comment using both comment_id and publication_id.",
     );
 
-    return textResult(withNotes(lines.join("\n"), coverageNotes(data)));
+    return textResult(withNotes(lines.join("\n"), coverageNotes(data, "comments")));
   } catch (error) {
     return handleApiError("list inbox comments", error);
   }
@@ -325,7 +332,7 @@ export async function handleListInboxDms(
       return textResult(
         withNotes(
           `No DM conversations between ${data.since.slice(0, 10)} and ${data.until.slice(0, 10)}. Inbox DMs currently cover X and Bluesky.`,
-          coverageNotes(data),
+          coverageNotes(data, "dms"),
         ),
       );
     }
@@ -345,7 +352,7 @@ export async function handleListInboxDms(
     if (data.has_more && data.next_before) {
       lines.push("", `More available: call again with before="${data.next_before}".`);
     }
-    return textResult(withNotes(lines.join("\n"), coverageNotes(data)));
+    return textResult(withNotes(lines.join("\n"), coverageNotes(data, "dms")));
   } catch (error) {
     return handleApiError("list inbox DMs", error);
   }

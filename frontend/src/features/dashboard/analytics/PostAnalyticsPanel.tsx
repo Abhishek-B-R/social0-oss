@@ -108,6 +108,13 @@ export function PostAnalyticsPanel({
                 />
               </div>
 
+              {query.data.partial ? (
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  Partial metrics — the request budget ran out before every
+                  network answered. Refresh to load more.
+                </p>
+              ) : null}
+
               {query.data.accountsNeedingReconnect.length > 0 ? (
                 <p className="text-xs text-amber-800 dark:text-amber-200">
                   Some accounts need reconnect for full insights.{" "}

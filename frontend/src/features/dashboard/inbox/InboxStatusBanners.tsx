@@ -15,6 +15,8 @@ type InboxStatusBannersProps = {
   notices?: InboxNotice[];
   fetchErrors?: InboxFetchError[];
   unsupported?: string[];
+  /** Which pane is showing these - the unsupported copy differs. */
+  mode?: "comments" | "dms";
 };
 
 export function InboxStatusBanners({
@@ -22,6 +24,7 @@ export function InboxStatusBanners({
   notices = [],
   fetchErrors = [],
   unsupported = [],
+  mode = "comments",
 }: InboxStatusBannersProps) {
   const dash = useDashboardPath();
   const uniqueUnsupported = [...new Set(unsupported)];
@@ -110,7 +113,8 @@ export function InboxStatusBanners({
           tone="muted"
           onDismiss={() => hide("unsupported")}
         >
-          Comments are not available yet for{" "}
+          {mode === "dms" ? "Direct messages are" : "Comments are"} not
+          available yet for{" "}
           {uniqueUnsupported
             .map((p) => PLATFORM_LABEL[p] ?? p)
             .join(", ")}

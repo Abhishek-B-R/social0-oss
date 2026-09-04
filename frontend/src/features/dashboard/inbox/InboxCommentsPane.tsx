@@ -29,6 +29,7 @@ import { InboxStatusBanners } from "./InboxStatusBanners";
 import type { InboxCommentStatusFilter } from "./InboxStatusFilter";
 import { inboxMetaFromPages } from "./inbox-meta";
 import {
+  inboxPostGroupVisible,
   inboxThreadMatchesFilter,
   isInboxThreadAnswered,
 } from "@/lib/inbox-comment-status";
@@ -390,15 +391,7 @@ export function InboxCommentsPane({
           inboxThreadMatchesFilter(t, statusFilter),
         ),
       }))
-      .filter((g) => {
-        if (!g.threads.length) return false;
-        if (statusFilter === "unanswered") {
-          if (hiddenSet.has(g.publicationId)) return false;
-          return g.unanswered > 0;
-        }
-        if (statusFilter === "answered") return g.unanswered === 0;
-        return true;
-      });
+      .filter((g) => inboxPostGroupVisible(g, statusFilter, hiddenSet));
   }, [postGroupsAll, statusFilter, hiddenSet]);
 
   const [pickedPostId, setPickedPostId] = useState<string | null>(null);

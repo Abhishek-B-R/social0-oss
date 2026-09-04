@@ -51,12 +51,32 @@ export function InboxComposer({
     setDraft(initialText);
   }, [initialText]);
 
+  // Blob URLs handed to onSend stay alive - the optimistic bubble renders them
+  // and there is no signal back here when the server copy takes over. Anything
+  // the user picked and then dropped is ours to revoke, or the File stays
+  // pinned in memory for the life of the page.
+  const sentUrls = useRef(new Set<string>());
+  const livePreviewUrl = useRef<string | null>(null);
+
+  const releasePreview = useCallback((url: string | null) => {
+    if (!url || sentUrls.current.has(url)) return;
+    URL.revokeObjectURL(url);
+  }, []);
+
   const clearFile = useCallback(() => {
-    // Don't revoke blob URLs: the optimistic bubble still uses them.
+    releasePreview(livePreviewUrl.current);
+    livePreviewUrl.current = null;
     setPreviewUrl(null);
     setFile(null);
     if (inputRef.current) inputRef.current.value = "";
-  }, []);
+  }, [releasePreview]);
+
+  useEffect(
+    () => () => {
+      releasePreview(livePreviewUrl.current);
+    },
+    [releasePreview],
+  );
 
   const pickFile = useCallback(
     (next: File | null) => {
@@ -66,8 +86,10 @@ export function InboxComposer({
         toast.error("This platform does not support that file type.");
         return;
       }
+      const url = URL.createObjectURL(next);
+      livePreviewUrl.current = url;
       setFile(next);
-      setPreviewUrl(URL.createObjectURL(next));
+      setPreviewUrl(url);
     },
     [clearFile, mediaKinds, mode, platform],
   );
@@ -80,6 +102,7 @@ export function InboxComposer({
     if (disabled || sending || inFlightRef.current) return;
     if (!draft.trim() && !file) return;
     inFlightRef.current = true;
+    if (previewUrl) sentUrls.current.add(previewUrl);
     onSend({ text: draft.trim(), file, previewUrl });
     setDraft("");
     clearFile();

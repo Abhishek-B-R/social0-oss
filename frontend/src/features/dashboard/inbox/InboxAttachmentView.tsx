@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { InboxAttachment } from "@/api/inbox";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,10 @@ export function InboxAttachmentView({
   className?: string;
 }) {
   const [broken, setBroken] = useState(false);
+  // Reset when the slot renders a different attachment - otherwise one broken
+  // URL leaves "Media unavailable" stuck on whatever reuses this component.
+  useEffect(() => setBroken(false), [attachment.url]);
+
   if (broken || !attachment.url) {
     return (
       <p className="mt-1.5 text-[11px] text-text-muted">Media unavailable</p>

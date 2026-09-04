@@ -57,3 +57,28 @@ export function visibleInboxComments<T extends InboxStatusComment>(
   if (filter === "answered") return answered ? flat : [];
   return answered ? [] : flat;
 }
+
+export type InboxPostGroup<T extends InboxStatusThread = InboxStatusThread> = {
+  publicationId: string;
+  threads: T[];
+};
+
+/**
+ * Which post groups survive the status filter.
+ *
+ * `threads` is already filtered per thread, so an empty group is the only
+ * thing to drop. An earlier version also gated on the group-wide unanswered
+ * count, which hid answered threads on any post that still had an unanswered
+ * one - the Answered tab silently lost them.
+ */
+export function inboxPostGroupVisible<T extends InboxStatusThread>(
+  group: InboxPostGroup<T>,
+  filter: InboxCommentStatusFilter,
+  hiddenPublicationIds: ReadonlySet<string>,
+): boolean {
+  if (group.threads.length === 0) return false;
+  if (filter === "unanswered" && hiddenPublicationIds.has(group.publicationId)) {
+    return false;
+  }
+  return true;
+}
