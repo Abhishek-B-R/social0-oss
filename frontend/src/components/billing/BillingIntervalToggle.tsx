@@ -14,7 +14,10 @@ export function BillingIntervalToggle({
   className = "",
   size = "default",
 }: BillingIntervalToggleProps) {
-  const pad = size === "sm" ? "px-3 py-1.5 text-xs" : "px-4 py-2 text-sm";
+  const pad =
+    size === "sm"
+      ? "px-3 py-1.5 text-xs touch:min-h-10 touch:px-4"
+      : "px-4 py-2 text-sm touch:min-h-11";
   const yearlyLabel =
     size === "sm" ? "Yearly (2 mo free)" : "Yearly (2 months free)";
 
@@ -28,7 +31,7 @@ export function BillingIntervalToggle({
         type="button"
         onClick={() => onChange("monthly")}
         aria-pressed={value === "monthly"}
-        className={`rounded-full font-medium transition-colors ${pad} ${
+        className={`inline-flex items-center justify-center rounded-full font-medium transition-colors touch-manipulation ${pad} ${
           value === "monthly"
             ? "bg-foreground text-background shadow-sm"
             : "text-muted-foreground hover:text-foreground"
@@ -40,7 +43,7 @@ export function BillingIntervalToggle({
         type="button"
         onClick={() => onChange("yearly")}
         aria-pressed={value === "yearly"}
-        className={`rounded-full font-medium transition-colors ${pad} ${
+        className={`inline-flex items-center justify-center rounded-full font-medium transition-colors touch-manipulation ${pad} ${
           value === "yearly"
             ? "bg-foreground text-background shadow-sm"
             : "text-muted-foreground hover:text-foreground"

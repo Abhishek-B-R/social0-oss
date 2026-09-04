@@ -473,7 +473,7 @@ export function ConnectionsList({
                               href={apiUrl(
                                 `/api/connect/${account.platform}/reauth?accountId=${encodeURIComponent(account.id)}`,
                               )}
-                              className="shrink-0 rounded p-0.5 text-text-muted transition-colors hover:bg-bg-muted hover:text-text cursor-auto"
+                              className="inline-flex shrink-0 items-center justify-center rounded p-0.5 text-text-muted transition-colors touch-manipulation hover:bg-bg-muted hover:text-text cursor-auto touch:h-10 touch:w-10"
                               title="Refresh account tokens"
                             >
                               <RefreshCw className="h-3 w-3" />

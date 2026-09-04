@@ -610,19 +610,9 @@ function WorkspaceBoardCardView({
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={switchLocked || card.isActive}
-              onClick={onSwitch}
-              className="truncate text-left text-sm font-medium capitalize text-text transition-opacity duration-150 ease-out hover:opacity-70 disabled:opacity-100"
-              title={
-                card.isActive
-                  ? "Active workspace"
-                  : "Switch to this workspace"
-              }
-            >
+            <p className="truncate text-left text-sm font-medium capitalize text-text">
               {card.name}
-            </button>
+            </p>
           </div>
           <p className="mt-0.5 text-xs text-text-muted">
             {switching
@@ -645,7 +635,7 @@ function WorkspaceBoardCardView({
             <button
               type="button"
               onClick={onRename}
-              className="rounded-lg p-1.5 text-text-muted transition-colors duration-150 ease-out hover:bg-muted hover:text-text active:scale-[0.97]"
+              className="inline-flex items-center justify-center rounded-lg p-1.5 text-text-muted transition-colors duration-150 ease-out touch-manipulation hover:bg-muted hover:text-text active:scale-[0.97] touch:h-10 touch:w-10"
               aria-label={`Rename ${card.name}`}
               title="Rename"
             >
@@ -656,7 +646,7 @@ function WorkspaceBoardCardView({
             <button
               type="button"
               onClick={onDelete}
-              className="rounded-lg p-1.5 text-text-muted transition-colors duration-150 ease-out hover:bg-destructive/10 hover:text-destructive active:scale-[0.97]"
+              className="inline-flex items-center justify-center rounded-lg p-1.5 text-text-muted transition-colors duration-150 ease-out touch-manipulation hover:bg-destructive/10 hover:text-destructive active:scale-[0.97] touch:h-10 touch:w-10"
               aria-label={`Delete ${card.name}`}
               title="Delete"
             >
@@ -689,6 +679,19 @@ function WorkspaceBoardCardView({
           </ul>
         )}
       </div>
+
+      {!card.isActive ? (
+        <div className="mt-auto border-t border-border p-3">
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={switchLocked}
+            onClick={onSwitch}
+          >
+            {switching ? "Switching…" : "Switch to this workspace"}
+          </Button>
+        </div>
+      ) : null}
 
       {isTeam && !card.isOwner ? (
         <div className="mt-auto border-t border-border px-4 py-3">
@@ -880,7 +883,7 @@ function MoveMenu({
         aria-busy={busy || undefined}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="min-w-[3.25rem] rounded-xl border border-border bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text transition-[opacity,colors,transform] duration-150 ease-out hover:bg-muted active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
+        className="inline-flex min-w-[3.25rem] items-center justify-center rounded-xl border border-border bg-bg-elevated px-2.5 py-1 text-xs font-medium text-text transition-[opacity,colors,transform] duration-150 ease-out touch-manipulation hover:bg-muted active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100 touch:min-h-10 touch:px-3"
       >
         {busy ? "Moving…" : "Move"}
       </button>

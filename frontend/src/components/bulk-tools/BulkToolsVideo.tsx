@@ -692,7 +692,7 @@ export function BulkToolsVideo({
                 Post to
               </p>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-4 sm:gap-5">
                   <button
                     type="button"
                     onClick={selectAll}
@@ -713,7 +713,7 @@ export function BulkToolsVideo({
                     <span className="text-sm text-foreground">Remember</span>
                   </label>
                 </div>
-                <div className="min-w-0 flex-1 sm:max-w-[280px] [&_input]:h-9">
+                <div className="w-full [&_input]:h-9 sm:min-w-0 sm:flex-1 sm:max-w-[280px]">
                   <input
                     type="search"
                     placeholder="Search accounts..."

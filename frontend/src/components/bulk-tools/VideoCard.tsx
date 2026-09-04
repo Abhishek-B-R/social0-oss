@@ -165,7 +165,11 @@ export function VideoCard({
   };
 
   return (
-    <div className="relative flex gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+    /* Grid, not flex: on mobile the thumbnail and filename occupy row 1 and
+       the caption + schedule span both columns in row 2, so the body gets the
+       card's full width. From sm up the thumbnail spans both rows and it
+       reads as the original two-column card. */
+    <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 rounded-xl border border-border bg-card p-4 shadow-sm sm:gap-x-4">
       <button
         type="button"
         onClick={() => onDelete(item.id)}
@@ -175,7 +179,7 @@ export function VideoCard({
         <Trash2 className="h-4 w-4" />
       </button>
 
-      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted relative">
+      <div className="relative col-start-1 row-start-1 h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-muted sm:row-span-2 sm:h-20 sm:w-28">
         <video
           ref={thumbVideoRef}
           src={item.previewUrl}
@@ -256,11 +260,16 @@ export function VideoCard({
         </div>
       )}
 
-      <div className="min-w-0 flex-1 space-y-2">
-        <p className="truncate text-sm font-medium text-foreground">
+      <div className="col-start-2 row-start-1 min-w-0">
+        {/* pr-7 clears the absolute Delete button; without it a long
+            filename truncated underneath the trash icon. */}
+        <p className="truncate pr-7 text-sm font-medium text-foreground">
           {item.file.name}
         </p>
         <p className="text-xs text-muted-foreground">{formatFileSize(item.file.size)}</p>
+      </div>
+
+      <div className="col-span-2 row-start-2 min-w-0 space-y-2 sm:col-span-1 sm:col-start-2">
         <AspectRatioGuidanceBanner guidance={aspectGuidance} />
         <AspectRatioGuidanceBanner guidance={tiktokResolutionGuidance} />
         <textarea
@@ -298,23 +307,23 @@ export function VideoCard({
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-muted-foreground">
+          <span className="w-full text-muted-foreground sm:w-auto">
             {item.caption.length} / {MAX_CAPTION}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 [&>input]:min-w-[8.5rem]">
             <input
               type="date"
               value={dateStr}
               onChange={handleDateChange}
               min={getTodayStr()}
               max={getMaxDateStr()}
-              className="rounded border border-input bg-background px-2 py-1.5 text-foreground"
+              className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1.5 text-foreground sm:flex-none"
             />
             <input
               type="time"
               value={timeStr}
               onChange={handleTimeChange}
-              className="rounded border border-input bg-background px-2 py-1.5 text-foreground"
+              className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1.5 text-foreground sm:flex-none"
             />
           </div>
         </div>

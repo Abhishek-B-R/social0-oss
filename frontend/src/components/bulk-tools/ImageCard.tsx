@@ -135,7 +135,9 @@ export function ImageCard({
           </button>
         </div>
       ) : (
-        <div className="relative flex gap-4 p-4">
+        /* Grid for the same reason as VideoCard: on mobile the body needs
+           the card's full width, not what is left beside the thumbnail. */
+        <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 p-4 sm:gap-x-4">
           <button
             type="button"
             onClick={() => onDelete(item.id)}
@@ -153,7 +155,7 @@ export function ImageCard({
             <ChevronUp className="h-4 w-4" />
           </button>
 
-          <div className="h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted">
+          <div className="col-start-1 row-start-1 h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-muted sm:row-span-2 sm:h-20 sm:w-28">
             <img
               src={item.previewUrl}
               alt=""
@@ -161,11 +163,16 @@ export function ImageCard({
             />
           </div>
 
-          <div className="min-w-0 flex-1 space-y-2">
-            <p className="truncate text-sm font-medium text-foreground">
+          <div className="col-start-2 row-start-1 min-w-0">
+            {/* pr-16 clears the absolute Delete + Collapse buttons; without
+                it a long filename truncated underneath them. */}
+            <p className="truncate pr-16 text-sm font-medium text-foreground">
               {item.file.name}
             </p>
             <p className="text-xs text-muted-foreground">{formatFileSize(item.file.size)}</p>
+          </div>
+
+          <div className="col-span-2 row-start-2 min-w-0 space-y-2 sm:col-span-1 sm:col-start-2">
             <textarea
               value={item.caption}
               onChange={(e) => onCaptionChange(item.id, e.target.value.slice(0, MAX_CAPTION))}
@@ -174,23 +181,23 @@ export function ImageCard({
               className="w-full resize-y min-h-[120px] rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             />
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="text-muted-foreground">
+              <span className="w-full text-muted-foreground sm:w-auto">
                 {item.caption.length} / {MAX_CAPTION}
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 [&>input]:min-w-[8.5rem]">
                 <input
                   type="date"
                   value={dateStr}
                   onChange={handleDateChange}
                   min={getTodayStr()}
                   max={getMaxDateStr()}
-                  className="rounded border border-input bg-background px-2 py-1.5 text-foreground"
+                  className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1.5 text-foreground sm:flex-none"
                 />
                 <input
                   type="time"
                   value={timeStr}
                   onChange={handleTimeChange}
-                  className="rounded border border-input bg-background px-2 py-1.5 text-foreground"
+                  className="min-w-0 flex-1 rounded border border-input bg-background px-2 py-1.5 text-foreground sm:flex-none"
                 />
               </div>
             </div>

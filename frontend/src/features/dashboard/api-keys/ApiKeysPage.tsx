@@ -496,73 +496,83 @@ export default function ApiKeysPage() {
                       Create API key
                     </Button>
                   </div>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-bg-muted/60 text-left text-text-muted">
-                        <th className="px-4 py-3 font-medium">Name</th>
-                        <th className="px-4 py-3 font-medium">Key</th>
-                        <th className="hidden px-4 py-3 font-medium sm:table-cell">
-                          Last used
-                        </th>
-                        <th className="hidden px-4 py-3 font-medium md:table-cell">
-                          Created
-                        </th>
-                        <th className="w-32 px-4 py-3 font-medium" />
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-bg-elevated">
-                      {keysQuery.data?.map((key) => (
-                        <tr
-                          key={key.id}
-                          className="border-b border-border last:border-0"
-                        >
-                          <td className="px-4 py-3 font-medium">{key.name}</td>
-                          <td className="px-4 py-3 font-mono text-xs text-text-muted">
-                            {key.keyPrefix}…
-                          </td>
-                          <td className="hidden px-4 py-3 text-text-muted sm:table-cell">
-                            {formatDate(key.lastUsedAt)}
-                          </td>
-                          <td className="hidden px-4 py-3 text-text-muted md:table-cell">
+                  {/* Was a <table>: on a 390px screen the Name + Key +
+                      actions columns forced it 92px past the viewport, where
+                      `overflow-x: clip` cut the Rename/Regenerate/Revoke
+                      buttons off with no way to scroll to them. A list that
+                      stacks on mobile and lays out in columns from sm up
+                      needs no horizontal scrolling at any width. */}
+                  <div
+                    className="hidden border-b border-border bg-bg-muted/60 px-4 py-3 text-sm text-text-muted sm:flex sm:items-center sm:gap-4"
+                    aria-hidden
+                  >
+                    <span className="min-w-0 flex-1 font-medium">Name</span>
+                    <span className="w-40 shrink-0 font-medium">Key</span>
+                    <span className="w-28 shrink-0 font-medium">Last used</span>
+                    <span className="hidden w-28 shrink-0 font-medium md:block">
+                      Created
+                    </span>
+                    <span className="w-[8.5rem] shrink-0" />
+                  </div>
+                  <ul className="divide-y divide-border bg-white text-sm dark:bg-bg-elevated">
+                    {keysQuery.data?.map((key) => (
+                      <li
+                        key={key.id}
+                        className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4"
+                      >
+                        <div className="min-w-0 sm:flex-1">
+                          <p className="truncate font-medium">{key.name}</p>
+                          {/* Columns hidden at this width fold into the row. */}
+                          <p className="mt-0.5 text-xs text-text-muted sm:hidden">
+                            Last used {formatDate(key.lastUsedAt)} · Created{" "}
                             {formatDate(key.createdAt)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setRenameId(key.id);
-                                  setRenameValue(key.name);
-                                }}
-                              >
-                                Rename
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title="Regenerate"
-                                onClick={() => regenerateKey(key.id)}
-                              >
-                                <ArrowClockwise className="h-4 w-4" size={16} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title="Revoke"
-                                onClick={() => revokeKey(key.id)}
-                              >
-                                <Trash
-                                  className="h-4 w-4 text-destructive"
-                                  size={16}
-                                />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </p>
+                        </div>
+                        <p className="truncate font-mono text-xs text-text-muted sm:w-40 sm:shrink-0">
+                          {key.keyPrefix}…
+                        </p>
+                        <p className="hidden w-28 shrink-0 text-text-muted sm:block">
+                          {formatDate(key.lastUsedAt)}
+                        </p>
+                        <p className="hidden w-28 shrink-0 text-text-muted md:block">
+                          {formatDate(key.createdAt)}
+                        </p>
+                        <div className="flex items-center gap-1 sm:w-[8.5rem] sm:shrink-0 sm:justify-end">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setRenameId(key.id);
+                              setRenameValue(key.name);
+                            }}
+                          >
+                            Rename
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Regenerate"
+                            aria-label={`Regenerate ${key.name}`}
+                            onClick={() => regenerateKey(key.id)}
+                          >
+                            <ArrowClockwise className="h-4 w-4" size={16} />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title="Revoke"
+                            aria-label={`Revoke ${key.name}`}
+                            onClick={() => revokeKey(key.id)}
+                          >
+                            <Trash
+                              className="h-4 w-4 text-destructive"
+                              size={16}
+                            />
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 </>
               )}
             </div>
