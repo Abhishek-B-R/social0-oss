@@ -924,7 +924,10 @@ function AvatarEditor({
           {loading ? "Uploading..." : "Upload image"}
         </button>
       </div>
-      <div className="flex-1 min-w-0 space-y-2">
+      {/* `flex-1 min-w-0` alone let this column shrink beside the avatar
+          instead of wrapping, squeezing the URL field to ~98px on a 320px
+          screen. Take the full row on mobile, share it from sm up. */}
+      <div className="w-full space-y-2 sm:min-w-0 sm:flex-1">
         <p className="text-xs text-text-muted">Or paste image URL</p>
         <div className="flex gap-2">
           <input
