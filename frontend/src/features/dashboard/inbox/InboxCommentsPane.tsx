@@ -474,8 +474,13 @@ export function InboxCommentsPane({
     dateWindow.range === "custom"
       ? "this range"
       : WINDOW_EMPTY_LABEL[dateWindow.range];
+  // Same as the DM pane: `selected` falls back to the first thread so the
+  // desktop two-pane view always has something on the right. Keying mobile
+  // detail visibility off it rendered the list and the thread stacked,
+  // pushing the reply box behind the tab bar. Mobile follows explicit
+  // navigation; `lg:` classes keep the desktop two-pane view unconditional.
   const showList = !mobileDetail;
-  const showDetail = mobileDetail || Boolean(selected);
+  const showDetail = mobileDetail;
 
   return (
     <>
@@ -518,10 +523,10 @@ export function InboxCommentsPane({
           ) : null}
         </div>
       ) : (
-        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-bg-elevated shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] dark:border-white/[0.08] lg:grid-cols-[19rem_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-bg-elevated shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] dark:border-white/[0.08] sm:min-h-[24rem] lg:grid-cols-[19rem_minmax(0,1fr)]">
           <div
             className={cn(
-              "max-h-[min(70vh,40rem)] min-h-0 overflow-y-auto border-border lg:max-h-none lg:border-r",
+              "min-h-0 overflow-y-auto overscroll-contain border-border lg:border-r",
               showList ? "block" : "hidden lg:block",
             )}
           >
@@ -567,7 +572,10 @@ export function InboxCommentsPane({
 
           <section
             className={cn(
-              "min-h-0 min-w-0 flex-col",
+              "min-h-0 min-w-0",
+              // Own screen on mobile, right-hand pane on desktop — see the
+              // DM pane for the rationale.
+              "fixed inset-x-0 top-0 z-30 bottom-[var(--bottom-nav-total)] flex-col bg-bg-elevated pt-[env(safe-area-inset-top)] lg:static lg:inset-auto lg:bottom-auto lg:z-auto lg:bg-transparent lg:pt-0",
               showDetail ? "flex" : "hidden lg:flex",
             )}
           >
@@ -741,7 +749,7 @@ function PostGroupList({
                 <button
                   type="button"
                   onClick={() => onHide(group.publicationId)}
-                  className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center self-start rounded-full text-text-muted transition-[background-color,color] hover:bg-bg-muted hover:text-text"
+                  className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center self-start rounded-full text-text-muted transition-[background-color,color] touch-manipulation hover:bg-bg-muted hover:text-text touch:h-10 touch:w-10"
                   aria-label="Hide from Unanswered"
                   title="Hide from Unanswered"
                 >

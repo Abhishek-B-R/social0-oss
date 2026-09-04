@@ -145,7 +145,7 @@ function DismissibleBanner({
       <button
         type="button"
         onClick={onDismiss}
-        className="absolute top-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-md text-current opacity-70 transition-[transform,opacity,background-color] duration-150 ease-out hover:bg-black/10 hover:opacity-100 active:scale-[0.94] dark:hover:bg-white/10"
+        className="absolute top-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-md text-current opacity-70 transition-[transform,opacity,background-color] duration-150 ease-out touch-manipulation hover:bg-black/10 hover:opacity-100 active:scale-[0.94] touch:h-10 touch:w-10 dark:hover:bg-white/10"
         aria-label="Dismiss"
       >
         <X size={14} weight="bold" />

@@ -193,11 +193,11 @@ export function AnalyticsPage() {
     <div className="flex flex-col gap-6">
       <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="flex flex-wrap items-center gap-2.5 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          <h1 className="flex flex-wrap items-center gap-2.5 dash-page-title">
             Analytics
             <ExperimentalBadge withTip />
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="dash-page-subtitle">
             Live metrics for posts you published through Social0.
           </p>
         </div>
@@ -217,7 +217,7 @@ export function AnalyticsPage() {
             });
           }}
           disabled={loading || refetching}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-[transform,background-color,color,opacity] duration-150 ease-out hover:bg-bg-subtle active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100"
+          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-[transform,background-color,color,opacity] duration-150 ease-out touch-manipulation hover:bg-bg-subtle active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100 touch:min-h-10"
         >
           <ArrowClockwise
             className={cn("h-4 w-4", refetching && "animate-spin")}
@@ -355,7 +355,7 @@ export function AnalyticsPage() {
             />
           </div>
           {loading && !data ? (
-            <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
+            <div className="h-56 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
           ) : (
             <EngagementTrendChart
               data={data?.series ?? []}
@@ -378,7 +378,7 @@ export function AnalyticsPage() {
                 .
               </p>
               {loading && !data ? (
-                <div className="h-64 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
+                <div className="h-56 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
               ) : (
                 <EngagementMixChart data={mixChart} />
               )}
@@ -392,7 +392,7 @@ export function AnalyticsPage() {
                 Totals across publications in this range.
               </p>
               {loading && !data ? (
-                <div className="h-80 animate-pulse rounded-xl bg-bg-muted sm:h-[22rem]" />
+                <div className="h-60 animate-pulse rounded-xl bg-bg-muted sm:h-[22rem]" />
               ) : (
                 <PlatformBreakdownChart data={platformChart} />
               )}
@@ -458,7 +458,7 @@ export function AnalyticsPage() {
                         target="_blank"
                         rel="noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="my-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-muted hover:text-accent active:scale-[0.97]"
+                        className="my-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-[transform,background-color,color] duration-150 ease-out touch-manipulation hover:bg-bg-muted hover:text-accent active:scale-[0.97] touch:h-11 touch:w-11"
                         aria-label="Open on platform"
                         title="Open on platform"
                       >

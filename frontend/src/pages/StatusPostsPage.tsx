@@ -110,7 +110,7 @@ export function StatusPostsPage({ config }: { config: StatusPostsConfig }) {
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          <h2 className="mb-2 dash-page-title">
             {config.title}
           </h2>
           <p className="text-text-muted mt-1 font-medium">{config.description}</p>

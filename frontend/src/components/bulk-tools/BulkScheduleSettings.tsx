@@ -97,14 +97,14 @@ export function BulkScheduleSettings({
   const youtubeTitleCount = bulkYoutubeTitle.length;
 
   return (
-    <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm -mt-14">
+    <div className="space-y-6 rounded-2xl border border-border bg-card p-4 shadow-sm sm:p-6 lg:-mt-14">
       <div className="flex items-center gap-2">
-        <h3 className="mb-0 font-logo text-[1.75rem] font-normal tracking-tight text-foreground sm:text-[2.15rem] sm:leading-tight">
+        <h3 className="mb-0 font-logo text-[1.35rem] font-normal leading-tight tracking-tight text-foreground sm:text-[2.15rem]">
           Bulk Schedule Settings
         </h3>
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground"
+          className="inline-flex shrink-0 items-center justify-center rounded-full text-muted-foreground touch-manipulation hover:text-foreground touch:h-10 touch:w-10"
           aria-label="Help"
           onClick={() => {
             window.open(DOCS_BULK_TOOLS_VIDEO_URL, "_blank");

@@ -80,7 +80,7 @@ export function MorePage() {
 
   return (
     <div>
-      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+      <h1 className="mb-2 dash-page-title">
         More
       </h1>
       <p className="mt-1.5 text-sm text-text-muted sm:mt-2">

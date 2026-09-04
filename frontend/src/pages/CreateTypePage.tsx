@@ -60,7 +60,7 @@ export function CreateTypePage() {
 
   return (
     <div>
-      <h2 className="mb-16 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+      <h2 className="mb-16 dash-page-title">
         {contentType.name}
       </h2>
       <CreatePostWithAccounts

@@ -671,7 +671,7 @@ export function Composer() {
     >
       <div className="space-y-5 sm:space-y-6">
         <div className="space-y-1.5 sm:space-y-2">
-          <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:mb-0.5 sm:text-[2.35rem] sm:leading-tight">
+          <h1 className="dash-page-title sm:mb-0.5">
             Composer
           </h1>
           <p className="max-w-xl text-sm leading-snug text-text-muted sm:leading-normal">

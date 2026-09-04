@@ -167,7 +167,7 @@ function SegmentedControl<T extends string>({
           type="button"
           onClick={() => onChange(option.id)}
           className={cn(
-            "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+            "inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors touch-manipulation touch:min-h-9",
             value === option.id
               ? "bg-zinc-100 text-foreground dark:bg-zinc-800"
               : "bg-transparent text-text-muted hover:text-foreground",
@@ -185,7 +185,7 @@ function CopyButton({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-2 text-xs font-medium text-text-muted transition-colors hover:bg-bg hover:text-foreground dark:bg-bg-elevated"
+      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-white px-2.5 py-2 text-xs font-medium text-text-muted transition-colors touch-manipulation hover:bg-bg hover:text-foreground touch:min-h-10 dark:bg-bg-elevated"
     >
       <Copy className="h-3.5 w-3.5" size={14} />
       Copy
@@ -403,7 +403,7 @@ export default function ApiKeysPage() {
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 sm:pb-12">
       <header>
-        <h1 className="font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        <h1 className="dash-page-title">
           Developer
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-text-muted">

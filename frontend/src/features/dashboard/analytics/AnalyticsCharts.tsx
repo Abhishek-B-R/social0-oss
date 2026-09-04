@@ -75,7 +75,7 @@ const ChartTooltip = memo(function ChartTooltip({
 
 function ChartShell({ children }: { children: ReactNode }) {
   return (
-    <div className="h-64 w-full min-w-0 sm:h-72 [&_.recharts-surface]:outline-none">
+    <div className="h-56 w-full min-w-0 sm:h-72 [&_.recharts-surface]:outline-none">
       {children}
     </div>
   );
@@ -111,7 +111,7 @@ export function TrendChartViewToggle({
             aria-selected={selected}
             onClick={() => onChange(id)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.97]",
+              "inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-[transform,background-color,color] duration-150 ease-out touch-manipulation active:scale-[0.97] touch:min-h-10 touch:px-3",
               selected
                 ? "bg-bg-elevated text-text shadow-sm"
                 : "text-text-muted hover:text-text",
@@ -393,7 +393,7 @@ function MetricPicker<T extends string>({
         aria-haspopup="listbox"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-muted px-2.5 py-1.5 text-xs font-medium text-text transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-elevated active:scale-[0.97]",
+          "inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-muted px-2.5 py-1.5 text-xs font-medium text-text transition-[transform,background-color,color] duration-150 ease-out touch-manipulation hover:bg-bg-elevated active:scale-[0.97] touch:min-h-10 touch:px-3",
           open && "bg-bg-elevated shadow-sm",
         )}
       >
@@ -462,7 +462,7 @@ export const PlatformBreakdownChart = memo(function PlatformBreakdownChart({
   }
 
   return (
-    <div className="h-80 w-full min-w-0 sm:h-[22rem] [&_.recharts-surface]:outline-none">
+    <div className="h-60 w-full min-w-0 sm:h-[22rem] [&_.recharts-surface]:outline-none">
       <ResponsiveContainer width="100%" height="100%" debounce={120}>
         <BarChart
           data={model.rows}
@@ -532,7 +532,7 @@ export const EngagementMixChart = memo(function EngagementMixChart({
   }
 
   return (
-    <div className="flex h-64 w-full min-w-0 items-center gap-4 sm:h-72">
+    <div className="flex h-56 w-full min-w-0 items-center gap-4 sm:h-72">
       <div className="h-full min-w-0 flex-1">
         <ResponsiveContainer width="100%" height="100%" debounce={120}>
           <PieChart>
@@ -585,7 +585,7 @@ export const EngagementMixChart = memo(function EngagementMixChart({
 
 function EmptyChart({ message }: { message: string }) {
   return (
-    <div className="flex h-64 items-center justify-center rounded-xl border border-dashed border-border bg-bg-muted/30 px-6 text-center text-sm text-text-muted sm:h-72">
+    <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-bg-muted/30 px-6 text-center text-sm text-text-muted sm:h-72">
       {message}
     </div>
   );

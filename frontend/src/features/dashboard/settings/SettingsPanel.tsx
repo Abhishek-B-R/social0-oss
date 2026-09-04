@@ -829,7 +829,10 @@ function AvatarEditor({
     setImgFailed(false);
   }
 
-  const sizeClass = size === "lg" ? "h-20 w-20 text-2xl" : "h-14 w-14 text-lg";
+  const sizeClass =
+    size === "lg"
+      ? "h-16 w-16 text-xl sm:h-20 sm:w-20 sm:text-2xl"
+      : "h-12 w-12 text-base sm:h-14 sm:w-14 sm:text-lg";
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1103,10 +1106,10 @@ export function SettingsPanel({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        <h1 className="mb-2 dash-page-title">
           Settings
         </h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <p className="dash-page-subtitle">
           Manage your account, security, and posting preferences.
         </p>
       </div>

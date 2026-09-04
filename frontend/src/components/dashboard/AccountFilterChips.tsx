@@ -34,11 +34,11 @@ export function AccountFilterChips({
 }) {
   if (loading) {
     return (
-      <div className="flex flex-wrap gap-3" aria-hidden>
+      <div className="-mx-3 flex gap-3 overflow-x-hidden px-3 sm:mx-0 sm:flex-wrap sm:px-0" aria-hidden>
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex w-16 flex-col items-center gap-1.5">
-            <div className="h-12 w-12 animate-pulse rounded-full bg-bg-muted" />
-            <div className="h-2.5 w-12 animate-pulse rounded bg-bg-muted" />
+          <div key={i} className="flex w-14 shrink-0 flex-col items-center gap-1 sm:w-16 sm:gap-1.5">
+            <div className="h-10 w-10 animate-pulse rounded-full bg-bg-muted sm:h-12 sm:w-12" />
+            <div className="h-2.5 w-10 animate-pulse rounded bg-bg-muted sm:w-12" />
           </div>
         ))}
       </div>
@@ -49,11 +49,11 @@ export function AccountFilterChips({
   }
   const allSelected = selectedId === null;
   return (
-    <div className="flex flex-wrap items-start gap-3">
+    <div className="-mx-3 flex items-start gap-3 overflow-x-auto px-3 scroll-touch sm:mx-0 sm:flex-wrap sm:overflow-x-visible sm:px-0">
       <ChipButton selected={allSelected} onClick={() => onSelect(null)}>
         <span
           className={cn(
-            "relative flex h-12 w-12 items-center justify-center rounded-full border-2 transition-[transform,border-color,background-color,color,opacity] duration-150 ease-out",
+            "relative flex h-10 w-10 items-center justify-center rounded-full border-2 transition-[transform,border-color,background-color,color,opacity] duration-150 ease-out sm:h-12 sm:w-12",
             allSelected
               ? "border-accent bg-accent/15 text-accent"
               : "border-transparent bg-bg-muted text-text-muted opacity-70 hover:opacity-100",
@@ -80,7 +80,7 @@ export function AccountFilterChips({
           >
             <span
               className={cn(
-                "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-2 transition-[transform,border-color,opacity] duration-150 ease-out",
+                "relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-[transform,border-color,opacity] duration-150 ease-out sm:h-12 sm:w-12",
                 selected
                   ? "border-accent opacity-100"
                   : "border-transparent opacity-60 hover:opacity-100",
@@ -125,7 +125,7 @@ function ChipButton({
       onClick={onClick}
       aria-pressed={selected}
       title={title}
-      className="flex w-16 flex-col items-center gap-1.5 rounded-2xl transition-transform duration-150 ease-out active:scale-[0.97]"
+      className="flex w-14 shrink-0 flex-col items-center gap-1 rounded-2xl transition-transform duration-150 ease-out touch-manipulation active:scale-[0.97] sm:w-16 sm:gap-1.5"
     >
       {children}
     </button>

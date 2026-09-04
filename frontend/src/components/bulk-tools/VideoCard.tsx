@@ -248,7 +248,7 @@ export function VideoCard({
                 playerRef.current?.pause();
                 setIsPlaying(false);
               }}
-              className="absolute top-2 right-2 rounded-lg bg-black/60 px-3 py-1.5 text-sm font-medium text-white hover:bg-black/80"
+              className="absolute top-2 right-2 inline-flex items-center justify-center rounded-lg bg-black/60 px-3 py-1.5 text-sm font-medium text-white touch-manipulation hover:bg-black/80 touch:min-h-11 touch:px-4"
             >
               Close
             </button>

@@ -22,7 +22,7 @@ export function CalendarPage() {
         aria-label="Loading calendar"
       >
         <div className="shrink-0">
-          <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          <h1 className="mb-2 dash-page-title">
             Calendar
           </h1>
           <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
@@ -72,7 +72,7 @@ export function CalendarPage() {
       aria-label={postsLoading ? "Loading calendar" : undefined}
     >
       <div className="shrink-0">
-        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        <h1 className="mb-2 dash-page-title">
           Calendar
         </h1>
         <p className="mt-1.5 text-sm text-text-muted sm:mt-2">

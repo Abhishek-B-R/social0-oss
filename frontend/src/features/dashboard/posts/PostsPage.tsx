@@ -210,7 +210,7 @@ export function PostsPage() {
       )}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 sm:mb-6 sm:gap-4">
         <div className="min-w-0">
-          <h2 className="mb-1.5 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight sm:mb-2">
+          <h2 className="mb-1.5 dash-page-title sm:mb-2">
             All Posts
           </h2>
           <p className="mt-1 text-sm font-medium text-text-muted sm:text-base">

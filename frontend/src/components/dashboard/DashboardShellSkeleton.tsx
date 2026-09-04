@@ -146,20 +146,29 @@ export function DashboardShellSkeleton() {
         </div>
       </aside>
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto pb-20 lg:pb-0">
-        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] flex-1 flex-col px-3 pt-5 sm:px-6 sm:pt-6 lg:px-8 lg:py-8 2xl:max-w-7xl">
+      <main className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] flex-1 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-bottom-nav pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:pl-4 sm:pr-6 sm:pt-6 lg:px-8 lg:py-8 lg:pb-8 2xl:max-w-7xl">
           <SkeletonBone className="mb-3 h-9 w-48" />
           <SkeletonBone className="mb-6 h-4 w-72 max-w-full" />
           <SkeletonBone className="min-h-[24rem] flex-1 rounded-xl" />
         </div>
       </main>
 
+      {/* Must match DashboardBottomNav's box exactly — same height token,
+          same safe-area padding — or the shell shifts under the user when
+          the real nav replaces it. */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around border-t border-border bg-bg-elevated py-2 pb-[calc(env(safe-area-inset-bottom)+2px)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 flex items-stretch justify-around border-t border-border bg-bg-elevated pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] lg:hidden"
         aria-hidden
       >
         {Array.from({ length: 5 }, (_, i) => (
-          <SkeletonBone key={i} className="h-8 w-8 rounded-full" />
+          <div
+            key={i}
+            className="flex h-[var(--bottom-nav-h)] flex-1 flex-col items-center justify-center gap-1"
+          >
+            <SkeletonBone className="h-5 w-5 rounded-md" />
+            <SkeletonBone className="h-2 w-10 rounded" />
+          </div>
         ))}
       </nav>
     </div>

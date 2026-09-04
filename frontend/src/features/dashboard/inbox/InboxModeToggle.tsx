@@ -23,7 +23,7 @@ export function InboxModeToggle({
       role="tablist"
       aria-label="Inbox type"
       className={cn(
-        "grid w-[15.5rem] shrink-0 grid-cols-2 rounded-full border border-border bg-bg-muted p-1",
+        "grid w-full max-w-[15.5rem] grid-cols-2 rounded-full border border-border bg-bg-muted p-1 sm:w-[15.5rem] sm:shrink-0",
         className,
       )}
     >
@@ -38,7 +38,7 @@ export function InboxModeToggle({
             aria-selected={selected}
             onClick={() => onChange(tab.id)}
             className={cn(
-              "inline-flex h-8 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition-colors",
+              "inline-flex h-8 items-center justify-center gap-1.5 rounded-full text-sm font-semibold transition-colors touch-manipulation touch:h-10",
               selected
                 ? "bg-accent text-accent-foreground"
                 : "text-text-muted hover:text-text",

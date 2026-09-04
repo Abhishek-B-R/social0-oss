@@ -768,10 +768,13 @@ html {
   /* Clears the fixed bottom nav + the gesture bar under it. Any mobile
      screen with its own scroll container or sticky footer should use this
      instead of guessing a pb-* value. */
-  .pb-bottom-nav {
-    padding-bottom: calc(
-      var(--bottom-nav-h) + env(safe-area-inset-bottom) + 0.75rem
-    );
+  /* Scoped below lg so it contributes nothing on desktop and a page's own
+     `lg:pb-*` wins. Utilities share one layer, so an unconditional rule here
+     would beat `lg:pb-8` purely on source order. */
+  @media (max-width: 63.999rem) {
+    .pb-bottom-nav {
+      padding-bottom: calc(var(--bottom-nav-total) + 0.75rem);
+    }
   }
 
   /* Horizontal scrollers (chip rows, media strips, tables) should feel
@@ -786,9 +789,19 @@ html {
 }
 
 :root {
-  /* Single source of truth for the mobile tab bar height. Referenced by
-     the shell padding and .pb-bottom-nav so the two can never drift. */
+  /* Single source of truth for the mobile tab bar. --bottom-nav-h is the
+     tab row itself; --bottom-nav-total adds the gesture-bar inset below it,
+     i.e. the full height of screen the bar occupies. Every page that needs
+     to clear the bar derives from these, so nothing can drift.
+     On lg the bar is hidden, so the total collapses to zero. */
   --bottom-nav-h: 60px;
+  --bottom-nav-total: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --bottom-nav-total: 0px;
+  }
 }
 
 /* App-shell height. `100vh` is wrong on mobile: it measures the viewport as
@@ -927,5 +940,126 @@ input[type="radio"] {
   input[type="radio"] {
     width: 20px;
     height: 20px;
+  }
+}
+
+/* ---- Overlay panels that are not Radix dialogs ----
+   Bulk-tools hand-rolls six `fixed inset-0 flex items-center justify-center`
+   overlays. Their panels had no max-height and no overflow, so a tall
+   settings form (Pinterest, X, YouTube) simply ran off the top and bottom
+   of a phone screen with no way to scroll to the buttons.
+
+   `.sheet-scrim` + `.sheet-panel` give them the same shape as DialogContent:
+   a bottom sheet on mobile, a centred card from sm up. Kept as CSS rather
+   than a component so the existing markup only needs its classes swapped. */
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-panel {
+  width: 100%;
+  max-height: calc(var(--vv-height, 100dvh) - 2.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-bottom-width: 0;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  /* Clear the gesture bar; the scrim sits above the tab bar so the bar
+     itself does not need clearing. */
+  padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+  animation: s0-sheet-in 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (min-width: 40rem) {
+  .sheet-scrim {
+    align-items: center;
+    padding: 1rem;
+  }
+  .sheet-panel {
+    max-height: calc(100dvh - 4rem);
+    border-bottom-width: 1px;
+    border-radius: 1rem;
+    padding-bottom: 1.25rem;
+    animation: s0-dialog-in 180ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-panel {
+    animation-duration: 1ms;
+  }
+}
+
+/* ---- Dashboard page title ----
+   33 call sites carried the identical class string. Consolidating them
+   means mobile type scale is one edit, not 33. Phones are held closer than
+   monitors, so the mobile step is deliberately smaller than a naive
+   scale-down of the desktop size — it buys back vertical space for the
+   content below without hurting legibility. */
+.dash-page-title {
+  font-family: var(--font-logo);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+@media (min-width: 40rem) {
+  .dash-page-title {
+    font-size: 2.35rem;
+    line-height: 1.2;
+  }
+}
+
+/* ---- Toasts ----
+   Sonner applies its mobile offset as `left` but keeps `width: 100%`, so on
+   a phone the toast container ran 16px past the right edge and toasts were
+   clipped. Pin both edges and let the width follow. Also clear the status
+   bar / notch, since toasts render at top-center. */
+@media (max-width: 600px) {
+  [data-sonner-toaster] {
+    right: var(--mobile-offset, 16px) !important;
+    width: auto !important;
+  }
+  [data-sonner-toaster][data-y-position="top"] {
+    top: calc(var(--mobile-offset, 16px) + env(safe-area-inset-top)) !important;
+  }
+}
+
+/* Page subtitle under .dash-page-title. Slightly smaller and tighter on a
+   phone: two lines of it cost ~55px out of a 664px viewport on every page,
+   and the title above already names the page. */
+.dash-page-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+@media (min-width: 40rem) {
+  .dash-page-subtitle {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+}
+
+/* Expands a control's hit area without changing its size or the layout
+   around it — for controls whose visual dimensions are conventional but
+   thin for a thumb (a 44x24 switch, a small chevron). The host must be
+   positioned. */
+@layer utilities {
+  .touch-hit {
+    position: relative;
+  }
+  .touch-hit::after {
+    content: "";
+    position: absolute;
+    inset: -0.5rem;
   }
 }

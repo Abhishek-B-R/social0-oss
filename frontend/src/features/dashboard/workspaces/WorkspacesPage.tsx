@@ -326,7 +326,7 @@ export function WorkspacesPage() {
     <>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          <h1 className="mb-2 dash-page-title">
             Workspaces
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-text-muted">
