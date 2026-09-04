@@ -1,7 +1,7 @@
 {
   "name": "social0",
-  "version": "0.1.2",
-  "description": "Official CLI for Social0 — manage social media from your terminal",
+  "version": "0.2.0",
+  "description": "Official CLI for Social0 \u2014 manage social media from your terminal",
   "type": "module",
   "main": "dist/index.js",
   "bin": {

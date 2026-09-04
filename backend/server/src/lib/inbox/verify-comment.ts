@@ -38,6 +38,11 @@ async function fetchCommentsForVerify(
     kind: "inbox_comments",
     suffix: inboxCommentThreadCacheSuffix(input.publicationId),
     fresh,
+    // The retry pass must actually reach the platform. Under the default
+    // soft-fresh floor a thread cached moments ago was served straight back,
+    // so a comment posted since that read looked like it was not on the post
+    // and the reply was rejected.
+    ...(fresh ? { softFreshMinAgeMs: 0 } : {}),
     fetch: () =>
       fetchPublicationComments({
         ...input,

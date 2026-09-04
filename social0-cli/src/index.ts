@@ -42,7 +42,7 @@ const program = new Command();
 program
   .name("social0")
   .description(chalk.bold("Social0 CLI") + " — manage social media from your terminal")
-  .version("0.1.2")
+  .version("0.2.0")
   .option("--json", "Output as JSON")
   .option("--yaml", "Output as YAML")
   .option("--table", "Output as table (default)")

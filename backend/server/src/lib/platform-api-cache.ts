@@ -497,6 +497,13 @@ export async function withPlatformReadCache<T>(opts: {
   kind: PlatformReadKind;
   suffix: string;
   fresh?: boolean;
+  /**
+   * Soft-fresh floor for this read. Defaults to SOFT_FRESH_MIN_AGE_MS so a
+   * Refresh click cannot hammer platforms. Mutation *verification* passes 0:
+   * it has already missed once, and rejecting a real comment because the
+   * cached thread is 20s old is worse than one extra platform call.
+   */
+  softFreshMinAgeMs?: number;
   fetch: () => Promise<T>;
 }): Promise<PlatformReadResult<T>> {
   const key = cacheKey(opts.kind, opts.platform, opts.accountId, opts.suffix);
@@ -509,7 +516,11 @@ export async function withPlatformReadCache<T>(opts: {
 
   const cached = await readCache<T>(key);
   if (cached && shouldCachePlatformRead(cached.data)) {
-    if (!opts.fresh || !shouldBypassCacheForFresh(cached.cachedAt)) {
+    const minAge = opts.softFreshMinAgeMs ?? SOFT_FRESH_MIN_AGE_MS;
+    if (
+      !opts.fresh ||
+      !shouldBypassCacheForFresh(cached.cachedAt, Date.now(), minAge)
+    ) {
       return { data: cached.data, fromCache: true };
     }
   }
