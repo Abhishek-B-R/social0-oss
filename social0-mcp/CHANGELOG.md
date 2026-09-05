@@ -18,6 +18,11 @@ All notable changes to the Social0 MCP server are documented here.
 - `list_inbox_comments` / `list_inbox_dms` follow `next_before` once when a page is empty but `has_more` is true, and otherwise say `0 … on this page` with the cursor so a model neither stops early nor loops
 - A `429` tool error names the `Retry-After` wait and tells the model not to retry in a loop
 
+### Security
+
+- Comment and DM text is scrubbed of hidden code points and returned inside `<untrusted-social-text>` tags with a leading notice, so text written by strangers is data to show, not instructions to follow
+- Every tool carries MCP annotations (`readOnlyHint`, `destructiveHint`, `openWorldHint`) so hosts can put a confirmation boundary in front of publish, reply, and moderation tools
+
 ## [0.4.0] - 2026-07-21
 
 ### Changed

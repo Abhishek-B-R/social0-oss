@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { TOOL_DEFINITIONS } from "./definitions.js";
+import { TOOL_DEFINITIONS, annotationsFor } from "./definitions.js";
 import {
   getAnalyticsOverviewInputSchema,
   getInboxDmThreadInputSchema,
@@ -113,5 +113,43 @@ describe("analytics + inbox input schemas", () => {
       }).success,
       true,
     );
+  });
+});
+
+describe("tool annotations", () => {
+  it("annotates every advertised tool", () => {
+    for (const tool of TOOL_DEFINITIONS) {
+      assert.ok(tool.annotations, `${tool.name} has no annotations`);
+      assert.equal(typeof tool.annotations.readOnlyHint, "boolean", tool.name);
+      assert.equal(typeof tool.annotations.destructiveHint, "boolean", tool.name);
+      assert.equal(typeof tool.annotations.openWorldHint, "boolean", tool.name);
+    }
+  });
+
+  it("marks reads read-only and public actions as destructive + open-world", () => {
+    for (const name of [
+      "list_inbox_comments",
+      "list_inbox_dms",
+      "get_inbox_dm_thread",
+      "get_analytics",
+      "list_accounts",
+    ]) {
+      assert.equal(annotationsFor(name)?.readOnlyHint, true, name);
+    }
+    for (const name of [
+      "reply_to_comment",
+      "reply_to_dm",
+      "moderate_comment",
+      "publish_now",
+      "publish_post",
+      "schedule_content",
+    ]) {
+      const a = annotationsFor(name);
+      assert.equal(a?.readOnlyHint, false, name);
+      assert.equal(a?.destructiveHint, true, name);
+      assert.equal(a?.openWorldHint, true, name);
+    }
+    assert.equal(annotationsFor("create_draft")?.openWorldHint, false);
+    assert.equal(annotationsFor("delete_draft")?.destructiveHint, true);
   });
 });

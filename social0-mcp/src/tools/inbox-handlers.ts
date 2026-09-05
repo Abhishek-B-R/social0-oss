@@ -24,6 +24,7 @@ import {
   isEmptyPageWithMore,
 } from "../api/paging.js";
 import { formatToolError, isUuid } from "../utils/index.js";
+import { UNTRUSTED_NOTICE, untrusted } from "../utils/untrusted.js";
 
 function textResult(text: string, isError = false): CallToolResult {
   return { content: [{ type: "text", text }], isError };
@@ -269,20 +270,22 @@ export async function handleListInboxComments(
     }
 
     const lines: string[] = [
+      UNTRUSTED_NOTICE,
+      "",
       `${threads.length} comment thread${threads.length === 1 ? "" : "s"} (${data.range})`,
       "",
     ];
     for (const t of threads) {
       const c = t.comment;
-      const who = c.author_handle ? `@${c.author_handle}` : c.author_name;
+      const who = untrusted(c.author_handle ? `@${c.author_handle}` : c.author_name);
       lines.push(
-        `[${c.platform}] ${who} on "${c.post_snippet}" — ${t.answered ? "answered" : "UNANSWERED"}`,
-        `  ${c.text.replace(/\s+/g, " ").trim()}`,
+        `[${c.platform}] ${who} on ${untrusted(c.post_snippet)} — ${t.answered ? "answered" : "UNANSWERED"}`,
+        `  ${untrusted(c.text)}`,
         `  comment_id=${c.id} publication_id=${c.publication_id}${c.created_at ? ` at=${c.created_at}` : ""}`,
       );
       for (const r of t.replies) {
-        const rw = r.is_own ? "you" : (r.author_handle ?? r.author_name);
-        lines.push(`    ↳ ${rw}: ${r.text.replace(/\s+/g, " ").trim()}`);
+        const rw = r.is_own ? "you" : untrusted(r.author_handle ?? r.author_name);
+        lines.push(`    ↳ ${rw}: ${untrusted(r.text)}`);
       }
       lines.push("");
     }
@@ -380,13 +383,15 @@ export async function handleListInboxDms(
     }
 
     const lines = [
+      UNTRUSTED_NOTICE,
+      "",
       `${data.conversations.length} conversation${data.conversations.length === 1 ? "" : "s"} (${data.range})`,
       "",
       ...data.conversations.map((c) => {
-        const peer = c.peer_handle ? `@${c.peer_handle}` : c.peer_name;
+        const peer = untrusted(c.peer_handle ? `@${c.peer_handle}` : c.peer_name);
         return [
           `[${c.platform}] ${peer}${c.last_message_at ? ` · ${c.last_message_at}` : ""}`,
-          `  ${c.snippet.replace(/\s+/g, " ").trim() || "(no text)"}`,
+          `  ${c.snippet.trim() ? untrusted(c.snippet) : "(no text)"}`,
           `  conversation_id=${c.conversation_id} account=${c.account_id}`,
         ].join("\n");
       }),
@@ -415,15 +420,23 @@ export async function handleGetInboxDmThread(
       ...(input.peer_id ? { peer_id: input.peer_id } : {}),
       ...(input.fresh !== undefined ? { fresh: input.fresh } : {}),
     });
-    const peer = data.conversation.peer_handle
-      ? `@${data.conversation.peer_handle}`
-      : data.conversation.peer_name;
+    const peer = untrusted(
+      data.conversation.peer_handle
+        ? `@${data.conversation.peer_handle}`
+        : data.conversation.peer_name,
+    );
     const lines = [
+      UNTRUSTED_NOTICE,
+      "",
       `${peer} on ${data.conversation.platform} (${data.messages.length} message${data.messages.length === 1 ? "" : "s"})`,
       "",
       ...data.messages.map((m) => {
-        const who = m.is_own ? "you" : m.author_name;
-        const body = m.text.trim() || (m.attachment ? `[${m.attachment.type}]` : "");
+        const who = m.is_own ? "you" : untrusted(m.author_name);
+        const body = m.text.trim()
+          ? untrusted(m.text)
+          : m.attachment
+            ? `[${m.attachment.type}]`
+            : "";
         return `${m.created_at ?? ""} ${who}: ${body}`.trim();
       }),
     ];

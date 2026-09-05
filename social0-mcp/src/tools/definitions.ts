@@ -28,7 +28,71 @@ const platformOptionsProperty = {
   additionalProperties: true,
 } as const;
 
-export const TOOL_DEFINITIONS: Tool[] = [
+type ToolAnnotations = NonNullable<Tool["annotations"]>;
+
+/** Reads platform or Social0 state; never changes anything. */
+const READ: ToolAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+};
+/** Changes Social0 state only (drafts, uploads); nothing leaves the account. */
+const LOCAL_WRITE: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+};
+/** Removes a Social0 draft. */
+const LOCAL_DELETE: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+/**
+ * Publishes, replies, or moderates on a real network as the user. Hosts use
+ * `destructiveHint` + `openWorldHint` to require a confirmation boundary
+ * before running these, which matters because inbox reads return text
+ * written by strangers in the same session.
+ */
+const PUBLIC_ACTION: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
+const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
+  list_accounts: READ,
+  list_posts: READ,
+  get_post: READ,
+  get_publish_status: READ,
+  suggest_best_platforms: READ,
+  get_analytics: READ,
+  get_post_analytics: READ,
+  list_inbox_comments: READ,
+  list_inbox_dms: READ,
+  get_inbox_dm_thread: READ,
+  create_draft: LOCAL_WRITE,
+  update_draft: LOCAL_WRITE,
+  upload_media: LOCAL_WRITE,
+  delete_draft: LOCAL_DELETE,
+  publish_post: PUBLIC_ACTION,
+  schedule_post: PUBLIC_ACTION,
+  publish_now: PUBLIC_ACTION,
+  schedule_content: PUBLIC_ACTION,
+  reply_to_comment: PUBLIC_ACTION,
+  moderate_comment: PUBLIC_ACTION,
+  reply_to_dm: PUBLIC_ACTION,
+};
+
+export function annotationsFor(name: string): ToolAnnotations | undefined {
+  return TOOL_ANNOTATIONS[name];
+}
+
+const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "list_accounts",
     description:
@@ -527,6 +591,11 @@ export const TOOL_DEFINITIONS: Tool[] = [
     },
   },
 ];
+
+export const TOOL_DEFINITIONS: Tool[] = RAW_TOOL_DEFINITIONS.map((tool) => {
+  const annotations = annotationsFor(tool.name);
+  return annotations ? { ...tool, annotations } : tool;
+});
 
 export const TOOL_NAMES = TOOL_DEFINITIONS.map((t) => t.name);
 
