@@ -262,7 +262,7 @@ export function InboxConversation({
           <button
             type="button"
             onClick={onHideFromUnanswered}
-            className="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97]"
+            className="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[12px] font-medium text-text-muted transition-[transform,background-color,color] duration-150 ease-out touch-manipulation hover:bg-bg-subtle hover:text-text active:scale-[0.97] touch:h-10 touch:px-3"
             aria-label={hideFromUnansweredLabel ?? "Hide from Unanswered"}
             title={hideFromUnansweredLabel ?? "Hide from Unanswered"}
           >

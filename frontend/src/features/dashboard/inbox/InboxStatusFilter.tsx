@@ -30,7 +30,7 @@ export function InboxStatusFilter({
           aria-selected={value === opt.id}
           onClick={() => onChange(opt.id)}
           className={cn(
-            "flex-1 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wide transition-[transform,background-color,color] duration-150 ease-out active:scale-[0.97] sm:flex-none",
+            "flex-1 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wide transition-[transform,background-color,color] duration-150 ease-out touch-manipulation active:scale-[0.97] touch:min-h-10 sm:flex-none",
             value === opt.id
               ? "bg-foreground text-background shadow-sm"
               : "text-text-muted hover:text-text",

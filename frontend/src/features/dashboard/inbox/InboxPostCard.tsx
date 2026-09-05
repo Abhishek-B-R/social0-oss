@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from "date-fns";
-import { ArrowSquareOut } from "@/icons/phosphor";
+import { ArrowSquareOut, NoteBlank } from "@/icons/phosphor";
 import { AccountPlatformMark } from "@/components/PlatformIcon";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import { InboxAvatar } from "./InboxAvatar";
@@ -40,8 +40,12 @@ export function InboxPostThumbnail({
             />
           )
         ) : (
-          <span className="line-clamp-3 p-1 text-[8px] leading-tight text-text-muted">
-            {content?.slice(0, 60) || "Post"}
+          <span
+            className="flex h-full w-full items-center justify-center text-text-subtle"
+            title={content?.slice(0, 120) || "Text post"}
+          >
+            <NoteBlank size={18} weight="regular" aria-hidden />
+            <span className="sr-only">Text post</span>
           </span>
         )}
       </div>

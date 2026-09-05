@@ -298,7 +298,7 @@ export function SchedulePostSidebar({
 
   return (
     <aside
-      className="flex w-full flex-col gap-6 pb-24 lg:sticky lg:top-15 lg:w-[35%] lg:pb-0 lg:-mt-16"
+      className="flex w-full flex-col gap-6 lg:sticky lg:top-15 lg:w-[35%] lg:-mt-16"
       style={{ minWidth: 0 }}
     >
       {children}
@@ -311,7 +311,7 @@ export function SchedulePostSidebar({
             role="switch"
             aria-checked={isScheduled}
             onClick={toggleScheduled}
-            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 ${
+            className={`touch-hit inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors touch-manipulation focus:outline-none focus:ring-2 focus:ring-accent/20 ${
               isScheduled
                 ? "border-accent bg-accent"
                 : "border-gray-400 bg-bg-muted dark:border-gray-600"

@@ -216,14 +216,14 @@ export function ConnectionsList({
             <button
               type="button"
               onClick={() => setPremiumRefreshError(null)}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded transition-colors hover:bg-amber-500/20 dark:hover:bg-amber-500/20 touch-manipulation"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded transition-colors hover:bg-amber-500/20 dark:hover:bg-amber-500/20 touch-manipulation touch:h-11 touch:w-11"
               aria-label="Dismiss"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         )}
-        <h2 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        <h2 className="mb-2 dash-page-title">
           Connected Accounts
         </h2>
         <p className="text-sm leading-snug text-text-muted">
@@ -384,7 +384,7 @@ export function ConnectionsList({
                                 <button
                                   type="button"
                                   onClick={() => handleOpenDisconnect(account)}
-                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20"
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20 touch:h-10 touch:w-10"
                                   title="Remove account"
                                   aria-label={`Disconnect ${account.platformUsername || account.platform}`}
                                 >
@@ -473,7 +473,7 @@ export function ConnectionsList({
                               href={apiUrl(
                                 `/api/connect/${account.platform}/reauth?accountId=${encodeURIComponent(account.id)}`,
                               )}
-                              className="shrink-0 rounded p-0.5 text-text-muted transition-colors hover:bg-bg-muted hover:text-text cursor-auto"
+                              className="inline-flex shrink-0 items-center justify-center rounded p-0.5 text-text-muted transition-colors touch-manipulation hover:bg-bg-muted hover:text-text cursor-auto touch:h-10 touch:w-10"
                               title="Refresh account tokens"
                             >
                               <RefreshCw className="h-3 w-3" />
@@ -496,7 +496,7 @@ export function ConnectionsList({
                             <button
                               type="button"
                               onClick={() => handleOpenDisconnect(account)}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded text-destructive transition-colors hover:bg-destructive/10 touch-manipulation active:bg-destructive/20 touch:h-10 touch:w-10"
                               title="Remove account"
                               aria-label={`Disconnect ${account.platformDisplayName && account.platformUsername ? `${account.platformDisplayName} (@${account.platformUsername})` : account.platformUsername || account.platform}`}
                             >
@@ -528,7 +528,7 @@ export function ConnectionsList({
                 onClick={handleRefreshAllPremium}
                 disabled={refreshingAllPremium}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text transition-colors hover:bg-bg-muted disabled:opacity-60",
+                  "inline-flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs font-medium text-text transition-colors touch-manipulation hover:bg-bg-muted disabled:opacity-60 touch:min-h-10",
                 )}
                 title="Recheck X Premium status for all connected Twitter accounts"
               >

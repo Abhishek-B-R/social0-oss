@@ -106,15 +106,12 @@ export function AccountBubbleSelector({
   const allSelected =
     selectableAccounts.length > 0 &&
     selectableAccounts.every((a) => selectedIds.has(a.id));
-  const avatarSize = compact ? "h-12 w-12" : "h-12 w-12";
-  const bubbleGap = compact ? "gap-4" : "gap-4";
+  const avatarSize = "h-10 w-10 sm:h-12 sm:w-12";
+  const bubbleGap = compact ? "gap-3" : "gap-3 sm:gap-4";
   const usernameMaxChars = compact ? 10 : 12;
-  const usernameClass = compact
-    ? "mt-1.5 max-w-[5rem] truncate text-center text-xs font-medium text-text"
-    : "mt-1.5 max-w-[80px] truncate text-center text-xs font-medium text-text";
-  const platformClass = compact
-    ? "text-xs text-text-muted"
-    : "text-xs text-text-muted";
+  const usernameClass =
+    "mt-1 max-w-[4.5rem] truncate text-center text-[11px] font-medium leading-tight text-text sm:mt-1.5 sm:max-w-[80px] sm:text-xs";
+  const platformClass = "text-[10px] leading-tight text-text-muted sm:text-xs";
 
   return (
     <div className={cn("flex flex-wrap items-center", bubbleGap)}>
@@ -208,7 +205,7 @@ export function AccountBubbleSelector({
                     className="absolute inset-0 flex items-center justify-center rounded-full bg-red-900/40"
                     aria-hidden
                   >
-                    <AlertTriangle className="h-6 w-6 text-white drop-shadow-md" />
+                    <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-white drop-shadow-md" />
                   </span>
                 )}
                 {disabledByLimit && !expired && (
@@ -216,7 +213,7 @@ export function AccountBubbleSelector({
                     className="absolute inset-0 flex items-center justify-center rounded-full bg-amber-500/50"
                     aria-hidden
                   >
-                    <AlertTriangle className="h-6 w-6 text-amber-950 drop-shadow-md" />
+                    <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-950 drop-shadow-md" />
                   </span>
                 )}
                 {softWarn && !disabled && (

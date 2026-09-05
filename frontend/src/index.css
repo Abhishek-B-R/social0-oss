@@ -3,6 +3,14 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Pointer-type variants. Width breakpoints are a bad proxy for touch: a
+   narrow desktop window is not a phone, and a landscape phone is not a
+   desktop. Use `touch:` for thumb-sized affordances and `fine:` for
+   hover/precision-only affordances. */
+@custom-variant touch (@media (pointer: coarse));
+@custom-variant fine (@media (pointer: fine));
+@custom-variant hoverable (@media (hover: hover) and (pointer: fine));
+
 :root {
   /* Brand emerald palette — single source of truth for dashboard + landing */
   --brand-emerald: #10b981;
@@ -679,5 +687,379 @@ html {
 
   .landing-page :is(h1, h2, h3) {
     color: var(--landing-heading);
+  }
+}
+
+/* ============================================
+   MOBILE FOUNDATION
+   Touch/small-viewport defaults that apply app-wide, so screens do not
+   each re-solve the same problems with one-off `min-h-[44px] sm:min-h-0`
+   sprinkles. Anything here is a default — Tailwind utilities in @layer
+   utilities still win, except the control font floor below (see note).
+   ============================================ */
+
+@layer base {
+  html {
+    /* Safari inflates text on orientation change without this */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    /* Grey flash on every tap otherwise; we render our own :active states */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Long unbroken strings (URLs, handles, API keys, platform ids) are the
+     single most common source of horizontal overflow on a 360px viewport. */
+  body {
+    overflow-wrap: break-word;
+  }
+}
+
+/* The control font floor is intentionally UNLAYERED so it beats Tailwind's
+   `text-sm`/`text-xs` utilities. iOS Safari zooms the viewport whenever a
+   focused control computes under 16px, which shifts the whole layout and
+   leaves the user pinching back out. 16px controls are also simply the
+   right size for touch. Desktop keeps the designed 14px. */
+@media (pointer: coarse) and (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  textarea,
+  select {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
+  /* Form fields are always a primary target, so floor their height too.
+     `min-height` rather than `height` so tall textareas keep growing. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="hidden"]),
+  select {
+    min-height: 44px;
+  }
+}
+
+/* Touch targets. WCAG 2.5.5 / Apple HIG / Material all land on ~44px.
+   Applied to controls that opt in via the primitives, plus a utility for
+   bespoke markup. */
+@layer utilities {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Safe-area helpers — real values now that viewport-fit=cover is set. */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pl-safe {
+    padding-left: env(safe-area-inset-left);
+  }
+  .pr-safe {
+    padding-right: env(safe-area-inset-right);
+  }
+  .px-safe {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Clears the fixed bottom nav + the gesture bar under it. Any mobile
+     screen with its own scroll container or sticky footer should use this
+     instead of guessing a pb-* value. */
+  /* Scoped below lg so it contributes nothing on desktop and a page's own
+     `lg:pb-*` wins. Utilities share one layer, so an unconditional rule here
+     would beat `lg:pb-8` purely on source order. */
+  @media (max-width: 63.999rem) {
+    .pb-bottom-nav {
+      padding-bottom: calc(var(--bottom-nav-total) + 0.75rem);
+    }
+  }
+
+  /* Horizontal scrollers (chip rows, media strips, tables) should feel
+     native: momentum, snap, and no visible scrollbar on touch. */
+  .scroll-touch {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .scroll-touch::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+:root {
+  /* Single source of truth for the mobile tab bar. --bottom-nav-h is the
+     tab row itself; --bottom-nav-total adds the gesture-bar inset below it,
+     i.e. the full height of screen the bar occupies. Every page that needs
+     to clear the bar derives from these, so nothing can drift.
+     On lg the bar is hidden, so the total collapses to zero. */
+  --bottom-nav-h: 60px;
+  --bottom-nav-total: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 64rem) {
+  :root {
+    --bottom-nav-total: 0px;
+  }
+}
+
+/* App-shell height. `100vh` is wrong on mobile: it measures the viewport as
+   if the browser's URL bar were hidden, so the bottom of the shell sits
+   under the chrome and the tab bar gets clipped. `100dvh` tracks the real
+   visible height. Declaration order gives the fallback for old browsers —
+   this must be a real CSS rule, not two competing Tailwind classes. */
+.h-app-shell {
+  height: 100vh;
+}
+/* @supports (rather than a duplicate declaration) so the fallback survives
+   minification — lightningcss collapses back-to-back same-property rules. */
+@supports (height: 100dvh) {
+  .h-app-shell {
+    height: 100dvh;
+  }
+}
+
+/* The dashboard is an app shell, not a document: stop pull-to-refresh and
+   scroll-chaining from firing when an inner list hits its end. */
+.dashboard-shell {
+  overscroll-behavior-y: contain;
+}
+
+/* Slim custom scrollbars are a desktop affordance. On touch they render as
+   a permanent grey stripe next to content. */
+@media (pointer: coarse) {
+  .dashboard-shell::-webkit-scrollbar,
+  .dashboard-shell *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+  .dashboard-shell {
+    scrollbar-width: none;
+  }
+}
+
+/* iOS keeps a focused control under the keyboard when an ancestor scrolls.
+   Give scroll containers momentum so the browser's scroll-into-focus lands
+   smoothly rather than snapping. */
+@media (pointer: coarse) {
+  [data-dashboard-main] {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ---- Dialog / bottom-sheet motion ----
+   The `animate-in` / `zoom-in-95` utilities the dialog previously carried
+   were never emitted — no animate plugin is installed here — so dialogs
+   simply teleported into place. That reads as a glitch for a sheet that is
+   meant to rise from the bottom edge, so the motion is defined here against
+   Radix's own data-state attributes instead of adding a dependency.
+
+   Safe to animate `transform`: Tailwind 4 centres the desktop dialog with
+   the standalone `translate` property, so the two compose instead of
+   fighting. Radix's Presence waits for animationend before unmounting, so
+   the exit animations play. */
+@keyframes s0-overlay-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes s0-overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes s0-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+@keyframes s0-sheet-out {
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+@keyframes s0-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes s0-dialog-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+[data-slot="dialog-overlay"][data-state="open"] {
+  animation: s0-overlay-in 200ms ease-out;
+}
+[data-slot="dialog-overlay"][data-state="closed"] {
+  animation: s0-overlay-out 150ms ease-in;
+}
+
+/* Mobile: rise from the bottom edge on the iOS sheet easing curve. */
+[data-slot="dialog-content"][data-state="open"] {
+  animation: s0-sheet-in 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+[data-slot="dialog-content"][data-state="closed"] {
+  animation: s0-sheet-out 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* sm and up it is a centred dialog again, so it scales rather than slides. */
+@media (min-width: 40rem) {
+  [data-slot="dialog-content"][data-state="open"] {
+    animation: s0-dialog-in 180ms ease-out;
+  }
+  [data-slot="dialog-content"][data-state="closed"] {
+    animation: s0-dialog-out 150ms ease-in;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="dialog-overlay"][data-state],
+  [data-slot="dialog-content"][data-state] {
+    animation-duration: 1ms;
+  }
+}
+
+/* Native checkboxes and radios at `h-4 w-4` (16px) are fiddly under a thumb.
+   Unlayered so it wins over the Tailwind size utilities on the ~19 call
+   sites, without touching desktop density. `accent-color` also paints the
+   native checked state in the brand emerald instead of OS blue. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--accent);
+}
+
+@media (pointer: coarse) {
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+/* ---- Overlay panels that are not Radix dialogs ----
+   Bulk-tools hand-rolls six `fixed inset-0 flex items-center justify-center`
+   overlays. Their panels had no max-height and no overflow, so a tall
+   settings form (Pinterest, X, YouTube) simply ran off the top and bottom
+   of a phone screen with no way to scroll to the buttons.
+
+   `.sheet-scrim` + `.sheet-panel` give them the same shape as DialogContent:
+   a bottom sheet on mobile, a centred card from sm up. Kept as CSS rather
+   than a component so the existing markup only needs its classes swapped. */
+.sheet-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet-panel {
+  width: 100%;
+  max-height: calc(var(--vv-height, 100dvh) - 2.5rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-bottom-width: 0;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  /* Clear the gesture bar; the scrim sits above the tab bar so the bar
+     itself does not need clearing. */
+  padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.5rem));
+  animation: s0-sheet-in 260ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (min-width: 40rem) {
+  .sheet-scrim {
+    align-items: center;
+    padding: 1rem;
+  }
+  .sheet-panel {
+    max-height: calc(100dvh - 4rem);
+    border-bottom-width: 1px;
+    border-radius: 1rem;
+    padding-bottom: 1.25rem;
+    animation: s0-dialog-in 180ms ease-out;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet-panel {
+    animation-duration: 1ms;
+  }
+}
+
+/* ---- Dashboard page title ----
+   33 call sites carried the identical class string. Consolidating them
+   means mobile type scale is one edit, not 33. Phones are held closer than
+   monitors, so the mobile step is deliberately smaller than a naive
+   scale-down of the desktop size — it buys back vertical space for the
+   content below without hurting legibility. */
+.dash-page-title {
+  font-family: var(--font-logo);
+  font-weight: 400;
+  font-size: 1.6rem;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--foreground);
+}
+
+@media (min-width: 40rem) {
+  .dash-page-title {
+    font-size: 2.35rem;
+    line-height: 1.2;
+  }
+}
+
+/* ---- Toasts ----
+   Sonner applies its mobile offset as `left` but keeps `width: 100%`, so on
+   a phone the toast container ran 16px past the right edge and toasts were
+   clipped. Pin both edges and let the width follow. Also clear the status
+   bar / notch, since toasts render at top-center. */
+@media (max-width: 600px) {
+  [data-sonner-toaster] {
+    right: var(--mobile-offset, 16px) !important;
+    width: auto !important;
+  }
+  [data-sonner-toaster][data-y-position="top"] {
+    top: calc(var(--mobile-offset, 16px) + env(safe-area-inset-top)) !important;
+  }
+}
+
+/* Page subtitle under .dash-page-title. Slightly smaller and tighter on a
+   phone: two lines of it cost ~55px out of a 664px viewport on every page,
+   and the title above already names the page. */
+.dash-page-subtitle {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+
+@media (min-width: 40rem) {
+  .dash-page-subtitle {
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+}
+
+/* Expands a control's hit area without changing its size or the layout
+   around it — for controls whose visual dimensions are conventional but
+   thin for a thumb (a 44x24 switch, a small chevron). The host must be
+   positioned. */
+@layer utilities {
+  .touch-hit {
+    position: relative;
+  }
+  .touch-hit::after {
+    content: "";
+    position: absolute;
+    inset: -0.5rem;
   }
 }

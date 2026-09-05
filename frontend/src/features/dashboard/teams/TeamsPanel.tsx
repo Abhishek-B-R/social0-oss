@@ -145,10 +145,10 @@ function TeamRow({ team }: { team: TeamListItem }) {
 function TeamsHeader() {
   return (
     <div>
-      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+      <h1 className="mb-2 dash-page-title">
         Teams
       </h1>
-      <p className="mt-1 text-sm text-text-muted">
+      <p className="dash-page-subtitle">
         Teams you own or have joined.
       </p>
     </div>

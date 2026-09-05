@@ -183,11 +183,11 @@ export function PostFormOptions({
               </p>
             )}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-4 sm:gap-5">
                 <button
                   type="button"
                   onClick={selectAll}
-                  className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-text-muted transition-colors hover:bg-bg-muted"
+                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated px-3 py-1 text-xs font-medium text-text-muted transition-colors touch-manipulation hover:bg-bg-muted touch:min-h-9"
                 >
                   {allSelected ? "Deselect all" : "Select all"}
                 </button>
@@ -204,7 +204,7 @@ export function PostFormOptions({
                 )}
               </div>
               {searchSlot && (
-                <div className="min-w-0 flex-1 sm:max-w-[280px] [&_input]:h-9">
+                <div className="w-full [&_input]:h-9 sm:min-w-0 sm:flex-1 sm:max-w-[280px]">
                   {searchSlot}
                 </div>
               )}

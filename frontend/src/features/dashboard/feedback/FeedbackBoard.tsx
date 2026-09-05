@@ -259,7 +259,7 @@ export function FeedbackBoard() {
 export function FeedbackHeader() {
   return (
     <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
-      <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+      <h1 className="mb-2 dash-page-title">
         Feedback or Feature Request
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">

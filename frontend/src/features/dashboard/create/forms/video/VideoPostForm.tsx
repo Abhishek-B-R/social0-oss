@@ -105,6 +105,7 @@ import {
   hasMissingPinterestBoard,
 } from "@/lib/pinterest-board-validation";
 import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
+import { shouldAutoFocusOnMount } from "@/lib/touch";
 import { SwitchPostTypeLinks } from "../../SwitchPostTypeLinks";
 
 const defaultTiktokSettings: TikTokPostSettings = DEFAULT_TIKTOK_POST_SETTINGS;
@@ -1983,7 +1984,8 @@ export function VideoPostForm({
                     <button
                       type="button"
                       onClick={removeVideo}
-                      className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 rounded text-white transition-opacity"
+                      aria-label="Remove video"
+                      className="absolute inset-0 flex items-center justify-center rounded bg-black/50 text-white transition-opacity touch-manipulation hoverable:opacity-0 hoverable:hover:opacity-100"
                     >
                       <MdClose className="w-3.5 h-3.5" />
                     </button>
@@ -2002,7 +2004,7 @@ export function VideoPostForm({
               placeholder="Add a caption..."
               rows={3}
               className="w-full rounded-xl border border-input bg-bg px-4 py-3 text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-              autoFocus
+              autoFocus={shouldAutoFocusOnMount()}
               onFocus={() => setIsCaptionFocused(true)}
               onBlur={() => setIsCaptionFocused(false)}
               maxHeight={220}

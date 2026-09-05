@@ -663,7 +663,7 @@ export function BulkToolsVideo({
   return (
     <div className="space-y-6 -ml-2 sm:-ml-3 lg:-ml-4">
       <div className="flex items-center gap-2">
-        <h1 className="mb-2 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+        <h1 className="mb-2 dash-page-title">
           Bulk Video Scheduling
         </h1>
         <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
@@ -692,11 +692,11 @@ export function BulkToolsVideo({
                 Post to
               </p>
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-4 sm:gap-5">
                   <button
                     type="button"
                     onClick={selectAll}
-                    className="shrink-0 rounded-full border border-border bg-bg-elevated px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted"
+                    className="inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated px-3 py-1 text-xs font-medium text-muted-foreground transition-colors touch-manipulation hover:bg-muted touch:min-h-9"
                   >
                     {selectableAccounts.length > 0 &&
                     selectableAccounts.every((a) => selectedIds.has(a.id))
@@ -713,7 +713,7 @@ export function BulkToolsVideo({
                     <span className="text-sm text-foreground">Remember</span>
                   </label>
                 </div>
-                <div className="min-w-0 flex-1 sm:max-w-[280px] [&_input]:h-9">
+                <div className="w-full [&_input]:h-9 sm:min-w-0 sm:flex-1 sm:max-w-[280px]">
                   <input
                     type="search"
                     placeholder="Search accounts..."
@@ -877,9 +877,9 @@ export function BulkToolsVideo({
       )}
 
       {showPinterestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="sheet-scrim bg-black/50">
           <div
-            className="w-full max-w-2xl rounded-2xl border border-border bg-card p-5 shadow-xl"
+            className="sheet-panel max-w-2xl border border-border bg-card p-5 shadow-xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="bulk-pinterest-settings-title"
@@ -1014,9 +1014,9 @@ export function BulkToolsVideo({
         </div>
       )}
       {showXModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="sheet-scrim bg-black/50">
           <div
-            className="w-full max-w-xl rounded-2xl border border-border bg-card p-5 shadow-xl"
+            className="sheet-panel max-w-xl border border-border bg-card p-5 shadow-xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="bulk-x-settings-title"
@@ -1062,9 +1062,9 @@ export function BulkToolsVideo({
       )}
 
       {showYoutubeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="sheet-scrim bg-black/50">
           <div
-            className="w-full max-w-lg rounded-2xl border border-border bg-card p-5 shadow-xl"
+            className="sheet-panel max-w-lg border border-border bg-card p-5 shadow-xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="bulk-youtube-settings-title"

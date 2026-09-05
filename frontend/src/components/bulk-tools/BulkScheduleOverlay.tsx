@@ -45,13 +45,13 @@ export function BulkScheduleOverlay({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-bg/70 p-4 backdrop-blur-[2px] dark:bg-black/70 lg:left-64"
+      className="sheet-scrim bg-bg/70 backdrop-blur-[2px] dark:bg-black/70 lg:left-64"
       role="dialog"
       aria-modal="true"
       aria-labelledby="bulk-schedule-overlay-title"
       aria-busy="true"
     >
-      <div className="relative w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl sm:p-8">
+      <div className="sheet-panel relative max-w-md border border-border bg-card p-6 shadow-xl sm:p-8">
         <button
           type="button"
           onClick={onCancel}

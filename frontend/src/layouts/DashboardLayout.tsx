@@ -107,7 +107,7 @@ export function DashboardLayout() {
   const layoutPending = !layoutData;
 
   return (
-    <div className="dashboard-shell flex h-screen overflow-hidden bg-bg">
+    <div className="dashboard-shell flex h-app-shell overflow-hidden bg-bg">
       <SeoHead
         {...dashboardSeo}
         path={location.pathname}
@@ -129,9 +129,21 @@ export function DashboardLayout() {
       <PersonalWorkspaceBoot enabled />
       <main
         data-dashboard-main
-        className="flex flex-1 flex-col min-h-0 overflow-y-auto pb-80 mb-20 lg:mb-0 lg:pb-0"
+        className="flex flex-1 flex-col min-h-0 overflow-y-auto"
       >
-        <div className="mx-auto flex h-full min-h-0 w-full max-w-[1200px] 2xl:max-w-7xl flex-1 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-12 sm:pl-4 sm:pr-6 sm:pt-6 sm:pb-6 lg:px-8 lg:py-8 lg:pb-8">
+        {/* `min-h-full`, NOT `h-full`. With a fixed height this box stops at
+            the viewport and taller content overflows *past* its padding, so
+            `pb-bottom-nav` cleared nothing and page content sat under the tab
+            bar even scrolled to the end. `min-h-full` fills a short page and
+            grows with a long one, so the padding always lands below the
+            content.
+            `shrink-0` is load-bearing, and `flex-1` is deliberately absent.
+            As a normal flex item this box has flex-shrink: 1, so against a
+            664px line it shrank from its real 1898px content height down to
+            the `min-height: 100%` floor — which is exactly why the padding
+            cleared nothing. Not shrinking + `min-h-full` gives both
+            behaviours: fills a short page, grows with a long one. */}
+        <div className="mx-auto flex min-h-full w-full max-w-[1200px] 2xl:max-w-7xl shrink-0 flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-bottom-nav pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] sm:pl-4 sm:pr-6 sm:pt-6 lg:px-8 lg:py-8 lg:pb-8">
           <TeamInviteBanners />
           {showConnectBanner && <ConnectAccountsBanner />}
           {layoutData?.freePostsBanner && (

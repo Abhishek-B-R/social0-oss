@@ -124,10 +124,10 @@ export function CreateTeamPage() {
         Back to teams
       </Link>
 
-      <h1 className="mt-4 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+      <h1 className="mt-4 dash-page-title">
         Create new team
       </h1>
-      <p className="mt-1 text-sm text-text-muted">
+      <p className="dash-page-subtitle">
         Create a team with a default workspace. You can add more workspaces
         later.
       </p>

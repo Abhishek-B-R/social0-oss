@@ -38,7 +38,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50 duration-200",
+        "fixed inset-0 z-50 bg-black/50",
         className
       )}
       {...props}
@@ -60,16 +60,39 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-bg-elevated text-text data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl border border-border p-6 shadow-lg duration-200 ease-out outline-none sm:max-w-lg",
+          // Enter/exit motion lives in index.css, keyed off Radix's
+          // data-state: the animate-in / zoom-in-95 utilities this file used
+          // to carry were never emitted by this build, so dialogs had no
+          // animation at all.
+          "bg-bg-elevated text-text fixed z-50 flex flex-col gap-4 border border-border shadow-lg outline-none",
+          // ---- Mobile: bottom sheet ----
+          // A centred modal is the wrong pattern on a phone: it is far from
+          // the thumb, it has nowhere to grow, and the keyboard shoves it
+          // off-screen. So anchor to the bottom edge, sit above the keyboard
+          // via --kb-inset, and bound the height by the *visible* viewport
+          // (--vv-height) so a tall sheet scrolls internally instead of
+          // running off the top once the keyboard is up. 88dvh is the
+          // pre-JS fallback.
+          "inset-x-0 mx-auto bottom-[var(--kb-inset,0px)] max-h-[calc(var(--vv-height,88dvh)-2.5rem)] overflow-y-auto rounded-t-2xl border-b-0 p-5 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))]",
+          // ---- sm and up: the original centred dialog ----
+          "sm:inset-x-auto sm:bottom-auto sm:top-[50%] sm:left-[50%] sm:max-h-[calc(100dvh-4rem)] sm:w-full sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-xl sm:border-b sm:p-6 sm:pb-6",
           className
         )}
         {...props}
       >
+        {/* Sheet grab handle — signals "this panel came up from the bottom
+            and can be dismissed". Purely decorative; dismissal is the
+            overlay tap, the close button, or Escape. */}
+        <div
+          aria-hidden
+          className="mx-auto -mt-1 mb-1 h-1 w-9 shrink-0 rounded-full bg-border sm:hidden"
+        />
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-lg p-1 text-text-muted opacity-70 transition-opacity hover:bg-muted hover:text-text hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            aria-label="Close"
+            className="absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-lg text-text-muted opacity-70 transition-opacity touch-manipulation hover:bg-muted hover:text-text hover:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 disabled:pointer-events-none touch:size-11 sm:top-4 sm:right-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">Close</span>

@@ -42,7 +42,7 @@ export function BulkToolsVideoPage() {
         href={DOCS_BULK_TOOLS_VIDEO_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute top-0 right-4 sm:right-6 lg:right-10 z-10 rounded-full p-1.5 text-text-muted hover:text-text hover:bg-muted transition-colors flex gap-2 items-center"
+        className="absolute top-0 right-2 z-10 inline-flex items-center justify-center gap-2 rounded-full p-1.5 text-text-muted transition-colors touch-manipulation hover:bg-muted hover:text-text touch:h-11 touch:w-11 sm:right-6 lg:right-10"
         title="Documentation for this page"
         aria-label="Documentation for this page"
       >

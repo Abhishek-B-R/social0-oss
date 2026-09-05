@@ -249,6 +249,9 @@ export function InboxDmsPane({
       : null;
     if (fromUrl) {
       setPickedId(dmKey(fromUrl));
+      // Arriving with ?convo= is an explicit request for that thread, so on
+      // mobile open the conversation rather than the list.
+      setMobileDetail(true);
       return;
     }
     setPickedId(keys[0] ?? null);
@@ -447,8 +450,14 @@ export function InboxDmsPane({
     dateWindow.range === "custom"
       ? "this range"
       : WINDOW_EMPTY_LABEL[dateWindow.range];
+  // On a phone the list and the conversation are alternate screens, never
+  // stacked. `selected` falls back to threads[0] for the desktop two-pane
+  // layout, so keying detail visibility off it made BOTH panes render on
+  // mobile — which pushed the reply composer down behind the tab bar. Mobile
+  // now follows explicit navigation only; the `lg:` classes keep the desktop
+  // two-pane view unconditional.
   const showList = !mobileDetail;
-  const showDetail = mobileDetail || Boolean(selected);
+  const showDetail = mobileDetail;
   const convoKey = selected ? dmKey(selected) : "";
   const pending = convoKey ? pendingByConvo[convoKey] ?? [] : [];
   const messages = mergeMessages(
@@ -507,7 +516,7 @@ export function InboxDmsPane({
       <InboxStatusBanners {...inboxMeta} />
 
       {loading && !listQuery.data ? (
-        <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
+        <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated sm:min-h-[24rem] lg:grid-cols-[17.5rem_minmax(0,1fr)]">
           <div className="h-full min-h-[20rem] animate-pulse bg-bg-muted/60" />
           <div className="hidden h-full animate-pulse bg-bg-muted/40 lg:block" />
         </div>
@@ -524,7 +533,7 @@ export function InboxDmsPane({
         <div className="grid min-h-[24rem] flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated lg:grid-cols-[17.5rem_minmax(0,1fr)]">
           <ul
             className={cn(
-              "max-h-[min(70vh,40rem)] min-h-0 overflow-y-auto border-border lg:max-h-none lg:border-r",
+              "min-h-0 overflow-y-auto overscroll-contain border-border lg:border-r",
               showList ? "block" : "hidden lg:block",
             )}
           >
@@ -613,7 +622,8 @@ export function InboxDmsPane({
 
           <section
             className={cn(
-              "min-h-0 min-w-0 flex-col",
+              "min-h-0 min-w-0",
+              "fixed inset-x-0 top-0 z-30 bottom-[var(--bottom-nav-total)] flex-col bg-bg-elevated pt-[env(safe-area-inset-top)] lg:static lg:inset-auto lg:bottom-auto lg:z-auto lg:bg-transparent lg:pt-0",
               showDetail ? "flex" : "hidden lg:flex",
             )}
           >
@@ -630,7 +640,17 @@ export function InboxDmsPane({
                       : "Failed to load conversation"
                     : null
                 }
-                onBack={() => setMobileDetail(false)}
+                onBack={() => {
+                  setMobileDetail(false);
+                  setSearchParams(
+                    (prev) => {
+                      const next = new URLSearchParams(prev);
+                      next.delete("convo");
+                      return next;
+                    },
+                    { replace: true },
+                  );
+                }}
                 onSend={(payload) =>
                   void sendMessage(activeThread ?? selected, payload)
                 }

@@ -90,7 +90,7 @@ export function ConnectPlatformButton({
               ? "cursor-wait opacity-75"
               : "hover:bg-bg-subtle"
         } ${
-          size === "sm" ? "flex h-8 w-8 items-center justify-center p-0 sm:h-auto sm:w-auto sm:px-2 sm:py-1 text-xs" : "rounded-xl px-4 py-2 text-sm"
+          size === "sm" ? "flex h-11 w-11 items-center justify-center p-0 text-xs touch-manipulation sm:h-auto sm:w-auto sm:px-2 sm:py-1" : "rounded-xl px-4 py-2 text-sm touch-manipulation touch:min-h-11"
         } ${className ?? ""}`}
       >
         {isLoading ? (

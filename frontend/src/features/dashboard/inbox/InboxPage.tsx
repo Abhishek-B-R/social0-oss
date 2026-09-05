@@ -168,14 +168,17 @@ export function InboxPage() {
   const loading = fetching > 0;
 
   return (
-    <div className="-mx-1 flex min-h-[calc(100dvh-8rem)] flex-col gap-4 sm:mx-0">
+    // Mobile: an ordinary scrolling document (the conversation is its own
+    // fixed layer). lg: a fixed-height two-pane app view, so the grid below
+    // has a definite height for its internal scrollers to resolve against.
+    <div className="-mx-1 flex flex-col gap-3 sm:mx-0 sm:gap-4 lg:min-h-[calc(100dvh-10rem)]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
-          <h1 className="flex flex-wrap items-center gap-2.5 font-logo text-[2rem] font-normal tracking-tight text-foreground sm:text-[2.35rem] sm:leading-tight">
+          <h1 className="flex flex-wrap items-center gap-2.5 dash-page-title">
             Inbox
             <ExperimentalBadge withTip />
           </h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="dash-page-subtitle">
             {mode === "comments"
               ? "Comments on posts you published through Social0."
               : "Direct messages from your connected accounts."}
@@ -234,7 +237,7 @@ export function InboxPage() {
               }
             }}
             disabled={loading || !accountFilterReady}
-            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-bg-elevated px-3 text-sm font-medium text-text transition-colors hover:bg-bg-subtle disabled:opacity-60"
+            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-bg-elevated px-3 text-sm font-medium text-text transition-colors touch-manipulation hover:bg-bg-subtle disabled:opacity-60 touch:h-10"
           >
             <ArrowClockwise
               className={cn("h-4 w-4", loading && "animate-spin")}
