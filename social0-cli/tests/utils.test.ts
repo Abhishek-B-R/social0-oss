@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   buildAliases,
   formatAccountLabel,
@@ -133,5 +133,49 @@ Launch day!`;
   it("guesses mime types", () => {
     expect(guessMimeType("photo.jpg")).toBe("image/jpeg");
     expect(guessMimeType("video.mp4")).toBe("video/mp4");
+  });
+});
+
+describe("sanitizeForTerminal", () => {
+  it("strips ANSI colour and cursor sequences", async () => {
+    const { sanitizeForTerminal } = await import("../src/utils/output.js");
+    expect(sanitizeForTerminal("\u001b[31mred\u001b[0m text \u001b[2J\u001b[H")).toBe(
+      "red text ",
+    );
+  });
+
+  it("strips OSC sequences such as clipboard writes and title changes", async () => {
+    const { sanitizeForTerminal } = await import("../src/utils/output.js");
+    expect(sanitizeForTerminal("hi \u001b]52;c;aGVsbG8=\u0007there")).toBe("hi there");
+    expect(sanitizeForTerminal("hi \u001b]0;pwned\u001b\\there")).toBe("hi there");
+    expect(sanitizeForTerminal("hi \u009d0;pwned\u009cthere")).toBe("hi 0;pwnedthere");
+  });
+
+  it("drops C0 controls and folds line breaks so a row stays one line", async () => {
+    const { sanitizeForTerminal } = await import("../src/utils/output.js");
+    expect(sanitizeForTerminal("a\u0000b\u0007c\r\nd\te")).toBe("abc d e");
+  });
+
+  it("keeps ordinary text, unicode, and emoji untouched", async () => {
+    const { sanitizeForTerminal } = await import("../src/utils/output.js");
+    expect(sanitizeForTerminal("héllo — 世界 🚀 @user")).toBe("héllo — 世界 🚀 @user");
+  });
+
+  it("scrubs table cells and status lines end to end", async () => {
+    const { printOutput, warn } = await import("../src/utils/output.js");
+    const lines: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      lines.push(args.map(String).join(" "));
+    });
+    try {
+      printOutput([{ author: "\u001b]52;c;eHg=\u0007mallory", comment: "\u001b[31mhi" }], "table");
+      warn("X: \u001b[2Jrate limited");
+    } finally {
+      spy.mockRestore();
+    }
+    const joined = lines.join("\n");
+    expect(joined).not.toContain("\u001b");
+    expect(joined).toContain("mallory");
+    expect(joined).toContain("rate limited");
   });
 });

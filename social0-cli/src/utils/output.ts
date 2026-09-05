@@ -2,6 +2,35 @@ import chalk from "chalk";
 import YAML from "yaml";
 import type { OutputFormat } from "../types/index.js";
 
+/**
+ * Strip anything a terminal would interpret from untrusted text.
+ *
+ * Comment and DM bodies come from arbitrary social users. An ANSI CSI/OSC
+ * sequence in one of them (colour, cursor moves, OSC 52 clipboard writes,
+ * title changes) would execute the moment the operator lists their inbox.
+ * JSON output is safe (JSON.stringify escapes control characters); every
+ * table, key/value, and free-form line goes through here.
+ */
+export function sanitizeForTerminal(value: string): string {
+  return (
+    value
+      // ESC-introduced sequences: CSI (ESC [ ... final), OSC (ESC ] ... BEL/ST),
+      // and two-byte ESC x forms (charset selects, ESC c reset, ...).
+      .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "")
+      .replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)?/g, "")
+      .replace(/\u001b[@-Z\\-_]?/g, "")
+      // 8-bit C1 controls (CSI 0x9b, OSC 0x9d, ST 0x9c, ...).
+      .replace(/[\u0080-\u009f]/g, "")
+      // Remaining C0 controls and DEL; keep the line readable on one row.
+      .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "")
+      .replace(/[\t\n\r]+/g, " ")
+  );
+}
+
+function cellText(value: unknown): string {
+  return sanitizeForTerminal(String(value ?? ""));
+}
+
 export function printOutput(data: unknown, format: OutputFormat): void {
   switch (format) {
     case "json":
@@ -16,7 +45,7 @@ export function printOutput(data: unknown, format: OutputFormat): void {
       } else if (typeof data === "object" && data !== null) {
         printKeyValue(data as Record<string, unknown>);
       } else {
-        console.log(String(data));
+        console.log(cellText(data));
       }
       break;
   }
@@ -30,7 +59,7 @@ export function printTable(rows: Record<string, unknown>[]): void {
 
   const columns = Object.keys(rows[0]);
   const widths = columns.map((col) =>
-    Math.max(col.length, ...rows.map((r) => String(r[col] ?? "").length)),
+    Math.max(col.length, ...rows.map((r) => cellText(r[col]).length)),
   );
 
   const header = columns.map((col, i) => chalk.bold(col.toUpperCase().padEnd(widths[i]))).join("  ");
@@ -42,7 +71,7 @@ export function printTable(rows: Record<string, unknown>[]): void {
   for (const row of rows) {
     const line = columns
       .map((col, i) => {
-        const val = String(row[col] ?? "");
+        const val = cellText(row[col]);
         return formatCell(col, val).padEnd(widths[i]);
       })
       .join("  ");
@@ -78,25 +107,27 @@ function printKeyValue(obj: Record<string, unknown>): void {
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) return chalk.dim("—");
   if (typeof value === "boolean") return value ? chalk.green("yes") : chalk.red("no");
-  if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+  if (Array.isArray(value)) return sanitizeForTerminal(value.join(", "));
+  if (typeof value === "object") return sanitizeForTerminal(JSON.stringify(value));
+  return cellText(value);
 }
 
+// Status lines often embed platform-supplied text (fetch errors, notices,
+// author names); scrub those too so no path prints untrusted bytes raw.
 export function success(message: string): void {
-  console.log(chalk.green("✓"), message);
+  console.log(chalk.green("✓"), sanitizeForTerminal(message));
 }
 
 export function error(message: string): void {
-  console.error(chalk.red("✗"), message);
+  console.error(chalk.red("✗"), sanitizeForTerminal(message));
 }
 
 export function info(message: string): void {
-  console.log(chalk.blue("→"), message);
+  console.log(chalk.blue("→"), sanitizeForTerminal(message));
 }
 
 export function warn(message: string): void {
-  console.log(chalk.yellow("!"), message);
+  console.log(chalk.yellow("!"), sanitizeForTerminal(message));
 }
 
 export function platformStatusIcon(phase: string): string {

@@ -9,7 +9,14 @@ import {
   replyToComment,
   replyToDm,
 } from "../api/inbox.js";
-import { printOutput, info, warn, success, truncate } from "../utils/output.js";
+import {
+  printOutput,
+  info,
+  warn,
+  success,
+  truncate,
+  sanitizeForTerminal,
+} from "../utils/output.js";
 import { exitWithError } from "../utils/errors.js";
 import { applyGlobalOptions, getFormat } from "./helpers.js";
 import { formatPlatformName } from "../utils/aliases.js";
@@ -253,18 +260,26 @@ export async function inboxCommand(
         printOutput(data, format);
         return;
       }
-      const peer = data.conversation.peer_handle
-        ? `@${data.conversation.peer_handle}`
-        : data.conversation.peer_name;
+      // Peer names and message bodies are written by other social users:
+      // scrub them before they reach the terminal.
+      const peer = sanitizeForTerminal(
+        data.conversation.peer_handle
+          ? `@${data.conversation.peer_handle}`
+          : data.conversation.peer_name,
+      );
       console.log(
         chalk.bold(peer),
         chalk.dim(`· ${formatPlatformName(data.conversation.platform)}`),
       );
       console.log("");
       for (const m of data.messages) {
-        const who = m.is_own ? chalk.green("you") : chalk.cyan(m.author_name);
+        const who = m.is_own
+          ? chalk.green("you")
+          : chalk.cyan(sanitizeForTerminal(m.author_name));
         const when = m.created_at?.slice(0, 16).replace("T", " ") ?? "";
-        const body = m.text.trim() || (m.attachment ? `[${m.attachment.type}]` : "");
+        const body = sanitizeForTerminal(
+          m.text.trim() || (m.attachment ? `[${m.attachment.type}]` : ""),
+        );
         console.log(`${chalk.dim(when)}  ${who}: ${body}`);
       }
       if (!data.conversation.can_reply) {

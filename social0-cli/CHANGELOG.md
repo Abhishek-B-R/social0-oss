@@ -17,6 +17,10 @@ All notable changes to `social0` will be documented in this file.
 - `social0 inbox` follows `next_before` once when a page is empty but `has_more` is true, and otherwise prints `0 threads on this page` with the cursor instead of an ambiguous "no comments"
 - A `429` from the API prints the `Retry-After` wait instead of a generic failure
 
+### Security
+
+- Table, key/value, and status output strip ANSI/OSC escape sequences and control characters, so a comment or DM written by another user cannot drive the operator's terminal (colour, cursor, clipboard, title)
+
 ## [0.1.2] - 2026-07-14
 
 ### Changed
