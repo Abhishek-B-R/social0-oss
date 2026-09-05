@@ -3412,6 +3412,7 @@
             "name": "platform",
             "in": "query",
             "required": false,
+            "description": "Limit to one network. Only networks with a live comments inbox are accepted (see GET /v1/inbox/accounts); a network that is still rolling out returns 400.",
             "schema": {
               "type": "string"
             }
@@ -3424,6 +3425,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/InboxCommentList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query, or `platform` names a network whose comments inbox is not live yet",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }

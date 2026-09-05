@@ -183,7 +183,11 @@ async function loadPubs(opts: {
   limit?: number;
 }): Promise<PubRow[]> {
   const live = livePlatformIds("inboxComments");
-  if (!opts.platform && !live.length) return [];
+  // An explicit platform narrows the live set; it never widens it. Without
+  // this, `?platform=instagram` on /v1 forced live fetches for a network that
+  // is still off in LIVE_PLATFORMS (App Review pending).
+  if (!live.length) return [];
+  if (opts.platform && !live.includes(opts.platform)) return [];
   const postFilter = postScopeCondition({
     resourceUserId: opts.resourceUserId,
     workspaceId: opts.workspaceId,
@@ -420,6 +424,25 @@ export async function listInboxCommentsForScope(
       ? input.accountId
       : undefined;
   const platform = parsePlatform(input.platform);
+  if (platform && !isPlatformLive("inboxComments", platform)) {
+    // Same shape the dashboard gets for a network without a comments API:
+    // an empty page plus `unsupported`, and no platform call was made.
+    return {
+      range,
+      since: since.toISOString(),
+      until: until.toISOString(),
+      threads: [],
+      accountsNeedingReconnect: [],
+      unsupported: [platform],
+      fetchErrors: [],
+      notices: [],
+      fetchedAt: new Date().toISOString(),
+      sampled: false,
+      sampleLimit: 0,
+      hasMore: false,
+      nextBefore: null,
+    };
+  }
   const before = parseBefore(input.before);
   const fresh = input.fresh === true;
   const limit = parsePageLimit(

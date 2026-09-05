@@ -139,7 +139,7 @@ export default function McpOAuthConnectPage() {
     <MarketingPageLayout showCta={false}>
       <SeoHead
         title="Connect Social0 MCP"
-        description="Authorize Claude or another AI assistant to manage your Social0 posts."
+        description="Authorize Claude or another AI assistant to publish posts, read analytics, and answer comments and DMs on your Social0 account."
         path="/oauth/mcp/connect"
         robots={{ index: false, follow: false }}
       />
@@ -162,7 +162,17 @@ export default function McpOAuthConnectPage() {
             <div className="mb-6 rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm">
               <p className="font-medium text-foreground">{sessionDetails.clientName}</p>
               <p className="mt-1 text-muted-foreground">
-                wants to manage posts on your Social0 account.
+                will be able to act on your Social0 account as you:
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                <li>Create, schedule, publish, and delete posts on your connected networks</li>
+                <li>Read live analytics for posts published through Social0</li>
+                <li>Read comments and direct messages, and reply, like, or hide them publicly</li>
+                <li>Manage media uploads, connected accounts, and webhooks</li>
+              </ul>
+              <p className="mt-2 text-xs text-muted-foreground">
+                The connector key carries full API access; there is no narrower
+                grant. Only connect assistants you trust to post and reply as you.
               </p>
               <p className="mt-3 flex items-start gap-2 break-all text-xs text-muted-foreground">
                 <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0" />

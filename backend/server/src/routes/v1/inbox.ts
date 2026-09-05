@@ -7,6 +7,7 @@ import {
   requireV1MutationBudget,
 } from "../../middleware/v1-live-limits.js";
 import { WINDOW_PRESETS } from "../../lib/date-window.js";
+import { isPlatformLive } from "../../lib/live-platforms.js";
 import { PLATFORMS } from "../../lib/platforms.js";
 import {
   v1GetInboxDmThread,
@@ -120,6 +121,16 @@ export async function registerInboxRoutes(app: FastifyInstance) {
     const userId = v1UserId(request);
     const query = listQuerySchema.safeParse(request.query ?? {});
     if (!query.success) return invalid(reply, query.error);
+    // The rollout gate is backend-only (LIVE_PLATFORMS); a platform that is
+    // still off must not be reachable by naming it in the query.
+    if (query.data.platform && !isPlatformLive("inboxComments", query.data.platform)) {
+      return reply.status(400).send(
+        apiError(
+          "validation_error",
+          `platform: Comments are not available yet for ${query.data.platform}. See GET /v1/inbox/accounts for networks with a live inbox.`,
+        ),
+      );
+    }
     return v1ListInboxComments(userId, query.data);
   });
 
