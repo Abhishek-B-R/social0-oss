@@ -23,7 +23,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "tsx --test src/resources.test.ts src/tools/tools.test.ts",
+    "test": "tsx --test src/resources.test.ts src/tools/tools.test.ts src/api/api.test.ts",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },

@@ -14,6 +14,8 @@ All notable changes to `social0` will be documented in this file.
 ### Changed
 
 - Sampled or partial analytics responses print a warning so capped totals are not quoted as lifetime numbers
+- `social0 inbox` follows `next_before` once when a page is empty but `has_more` is true, and otherwise prints `0 threads on this page` with the cursor instead of an ambiguous "no comments"
+- A `429` from the API prints the `Retry-After` wait instead of a generic failure
 
 ## [0.1.2] - 2026-07-14
 

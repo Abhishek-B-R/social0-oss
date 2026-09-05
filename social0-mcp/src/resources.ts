@@ -32,6 +32,8 @@ Social0 also reads back what happened to those posts: get_analytics and get_post
 3. Poll get_publish_status with tracking_id until completed, failed, or partial.
 4. For metrics, call get_analytics with a range (7d by default) and repeat any "sampled" or "partial" caveat it returns.
 5. To answer a comment, take both comment_id and publication_id from list_inbox_comments and pass them to reply_to_comment.
+6. An inbox page can be empty while has_more is true (pages are per publication). The tool auto-follows the cursor once; after that, pass the before cursor it returns or widen the range - do not conclude "no comments" until has_more is false.
+7. A 429 names how long to wait. Wait that long; never retry in a loop.
 
 Replies and DMs go out publicly to real people. Confirm wording with the user before calling reply_to_comment, reply_to_dm, or moderate_comment.
 

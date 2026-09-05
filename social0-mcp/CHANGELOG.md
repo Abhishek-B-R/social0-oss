@@ -15,6 +15,8 @@ All notable changes to the Social0 MCP server are documented here.
 
 - `social0://docs/when-to-use` and `social0://docs/onboarding` describe the analytics and inbox surface and the `analytics:read` / `inbox:read` / `inbox:write` scopes
 - Server version reported as `0.5.0`
+- `list_inbox_comments` / `list_inbox_dms` follow `next_before` once when a page is empty but `has_more` is true, and otherwise say `0 … on this page` with the cursor so a model neither stops early nor loops
+- A `429` tool error names the `Retry-After` wait and tells the model not to retry in a loop
 
 ## [0.4.0] - 2026-07-21
 

@@ -241,6 +241,12 @@ need a reconnect.
 Comments on posts published through Social0. Every thread prints
 `comment_id=… publication_id=…` — you need **both** to act on it.
 
+Pages are per *publication*, so a page can be empty while `has_more` is true
+(the newest posts had no comments in the window). The tool follows the cursor
+once on its own; if it is still empty it says `0 comment threads on this page`
+and gives the `before` cursor. Empty is not "no comments" until `has_more` is
+false.
+
 ### `reply_to_comment`
 
 | Param | Required | Notes |

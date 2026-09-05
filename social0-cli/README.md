@@ -262,6 +262,16 @@ social0 inbox accounts --dms
 verifies the comment is actually on that post before sending, so a wrong id is
 rejected rather than posted to the wrong thread.
 
+Inbox pages are per *publication*, so a page can come back empty while older
+publications remain. The CLI follows `next_before` once on its own; if the page
+is still empty it prints `0 threads on this page` with the cursor to pass to
+`--before`. In `--json` mode check `has_more` before treating an empty
+`threads` array as "no comments".
+
+When the API answers `429`, the CLI already retried with `Retry-After`; the
+final error prints how many seconds to wait. Live analytics and inbox reads
+share a per-minute budget with the dashboard.
+
 ### Configuration
 
 ```bash

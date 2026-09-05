@@ -18,6 +18,7 @@ import { resolveAccountAccess } from "../lib/account-access.js";
 import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
 import { mapPool } from "../lib/map-pool.js";
 import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
+import { analyticsCoverage } from "../lib/analytics/coverage.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import {
   addZonedCalendarDays,
@@ -250,6 +251,7 @@ async function metricsForPub(
             timeZone: window?.timeZone,
             accountId: row.account!.id,
             accountHandle: row.account!.platformUsername,
+            publishedAt: row.publishedAt,
           }),
       });
       result = cached.data;
@@ -584,9 +586,11 @@ export async function analyticsOverviewForScope(
       collectReconnectHints(results),
     ),
     fetchedAt: new Date().toISOString(),
-    sampled: pubs.length >= effectiveLimit || partial,
-    sampleLimit: effectiveLimit,
-    partial,
+    ...analyticsCoverage({
+      publicationCount: pubs.length,
+      limit: effectiveLimit,
+      partial,
+    }),
   };
 }
 

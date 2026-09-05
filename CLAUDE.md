@@ -325,6 +325,18 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 - Service functions come in pairs: `getAnalyticsOverview(input)` resolves the
   session, `analyticsOverviewForScope(ctx, input)` holds the logic. RPC uses the
   first, `/v1` the second. Same for every `inbox.*` handler.
+- Coverage flags are independent: `sampled` = publication page was capped,
+  `partial` = live budget ran out (`lib/analytics/coverage.ts`). Never fold
+  one into the other.
+- A dead platform token (401 / X code 89) is a **reconnect**, not a transient
+  error: `lib/platform-auth-errors.ts` maps it to `status: "scope_missing"`
+  with `missingScopes: ["token_expired"]` so it rides the existing reconnect
+  path on every surface.
+- TikTok: a `ttpub:` publish id that no longer resolves is backfilled from
+  `video.list` by publish time (`pickTikTokVideoByPublishTime`) and persisted
+  onto `post_publications` by `metricsForPub` - the same core `/v1` uses.
+- Comment pages are per publication, so `threads: []` with `hasMore: true` is
+  normal (X pages once). CLI/MCP follow the cursor once, then say so.
 
 ---
 

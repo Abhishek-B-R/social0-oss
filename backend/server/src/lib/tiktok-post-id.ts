@@ -9,7 +9,7 @@ export const TIKTOK_PUBLISH_ID_PREFIX = "ttpub:";
 /** Quote integer literals with 16+ digits so they survive JSON.parse as strings. */
 export function parseTikTokJson(text: string): unknown {
   const quoted = text.replace(
-    /([:\[,]\s*)(-?\d{16,})(?=\s*[,\]}])/g,
+    /([:[,]\s*)(-?\d{16,})(?=\s*[,\]}])/g,
     '$1"$2"',
   );
   return JSON.parse(quoted);
@@ -67,4 +67,34 @@ export function isTikTokApiOk(
   if (!httpOk) return false;
   const code = data?.error?.code;
   return !code || code === "ok";
+}
+
+/** How far a video's create_time may sit from our publish time and still match. */
+export const TIKTOK_PUBLISH_MATCH_TOLERANCE_MS = 15 * 60 * 1000;
+
+/**
+ * Pick the video whose `create_time` (unix seconds) is closest to when we
+ * published, within tolerance. Used to backfill a publication whose short-
+ * lived publish id can no longer be resolved. Returns the id as a string so
+ * 64-bit ids survive (see parseTikTokJson).
+ */
+export function pickTikTokVideoByPublishTime(
+  videos: Array<{ id?: unknown; create_time?: unknown }>,
+  publishedAt: Date,
+  toleranceMs = TIKTOK_PUBLISH_MATCH_TOLERANCE_MS,
+): string | null {
+  const target = publishedAt.getTime();
+  if (!Number.isFinite(target)) return null;
+  let best: { id: string; distance: number } | null = null;
+  for (const v of videos) {
+    const id = firstTikTokPublicVideoId(v.id);
+    if (!id) continue;
+    const created =
+      typeof v.create_time === "number" ? v.create_time : Number(v.create_time);
+    if (!Number.isFinite(created)) continue;
+    const distance = Math.abs(created * 1000 - target);
+    if (distance > toleranceMs) continue;
+    if (!best || distance < best.distance) best = { id, distance };
+  }
+  return best?.id ?? null;
 }

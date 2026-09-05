@@ -968,6 +968,7 @@
             "nullable": true
           },
           "missing_scopes": {
+            "description": "OAuth scopes the account still needs for this feature. The marker `token_expired` means the stored token itself was revoked or expired; reconnect the account either way.",
             "type": "array",
             "items": {
               "type": "string"
@@ -999,6 +1000,7 @@
                   "nullable": true
                 },
                 "missing_scopes": {
+                  "description": "OAuth scopes the account still needs for this feature. The marker `token_expired` means the stored token itself was revoked or expired; reconnect the account either way.",
                   "type": "array",
                   "items": {
                     "type": "string"
@@ -1060,6 +1062,7 @@
             "nullable": true
           },
           "missing_scopes": {
+            "description": "Scopes missing on the publishing account, or the marker `token_expired` when its token was revoked or expired. Reconnect either way.",
             "type": "array",
             "items": {
               "type": "string"

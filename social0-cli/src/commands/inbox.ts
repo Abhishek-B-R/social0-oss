@@ -14,6 +14,7 @@ import { exitWithError } from "../utils/errors.js";
 import { applyGlobalOptions, getFormat } from "./helpers.js";
 import { formatPlatformName } from "../utils/aliases.js";
 import { resolveAccountRef } from "./inbox-helpers.js";
+import { fetchWithOneAutoPage, isEmptyPageWithMore } from "../api/paging.js";
 import {
   WINDOW_RANGES,
   type GlobalOptions,
@@ -83,7 +84,14 @@ function requirePublication(opts: InboxOptions): string {
   return opts.publication;
 }
 
-function printListFooter(data: InboxCommentList | InboxDmList): void {
+function printListFooter(
+  data: InboxCommentList | InboxDmList,
+  opts?: { autoPaged?: boolean },
+): void {
+  if (opts?.autoPaged) {
+    console.log("");
+    info("The newest publications had nothing in this window; showing the next page.");
+  }
   for (const notice of data.notices) {
     console.log("");
     info(`${formatPlatformName(notice.platform)}: ${notice.message}`);
@@ -196,14 +204,25 @@ export async function inboxCommand(
     }
 
     if (action === "dms") {
-      const data = await listInboxDms(await buildQuery(opts));
+      const query = await buildQuery(opts);
+      const { page: data, autoPaged } = await fetchWithOneAutoPage(
+        (before) => listInboxDms({ ...query, before }),
+        (page) => page.conversations,
+        query.before,
+      );
       if (format !== "table") {
         printOutput(data, format);
         return;
       }
       if (data.conversations.length === 0) {
-        info(`No DM conversations in this range (${data.range}).`);
-        printListFooter(data);
+        if (isEmptyPageWithMore(data, data.conversations)) {
+          info(
+            `0 conversations on this page, but older ones remain. Re-run with --before ${data.next_before}.`,
+          );
+        } else {
+          info(`No DM conversations in this range (${data.range}).`);
+        }
+        printListFooter(data, { autoPaged });
         return;
       }
       printOutput(
@@ -217,7 +236,7 @@ export async function inboxCommand(
         })),
         format,
       );
-      printListFooter(data);
+      printListFooter(data, { autoPaged });
       return;
     }
 
@@ -280,7 +299,12 @@ export async function inboxCommand(
       process.exit(1);
     }
 
-    const data = await listInboxComments(await buildQuery(opts));
+    const query = await buildQuery(opts);
+    const { page: data, autoPaged } = await fetchWithOneAutoPage(
+      (before) => listInboxComments({ ...query, before }),
+      (page) => page.threads,
+      query.before,
+    );
     const threads = opts.unanswered
       ? data.threads.filter((t) => !t.answered)
       : data.threads;
@@ -291,12 +315,20 @@ export async function inboxCommand(
     }
 
     if (threads.length === 0) {
-      info(
-        opts.unanswered
-          ? `No unanswered comments in this range (${data.range}).`
-          : `No comments in this range (${data.range}).`,
-      );
-      printListFooter(data);
+      if (isEmptyPageWithMore(data, data.threads)) {
+        // Empty is not "done": this page of publications had no comments,
+        // older publications are still unscanned.
+        info(
+          `0 threads on this page, but older publications remain. Re-run with --before ${data.next_before}, or widen --range.`,
+        );
+      } else {
+        info(
+          opts.unanswered
+            ? `No unanswered comments in this range (${data.range}).`
+            : `No comments in this range (${data.range}).`,
+        );
+      }
+      printListFooter(data, { autoPaged });
       return;
     }
 
@@ -307,7 +339,7 @@ export async function inboxCommand(
         '  Reply: social0 inbox reply <comment_id> --publication <publication_id> --text "..."',
       ),
     );
-    printListFooter(data);
+    printListFooter(data, { autoPaged });
   } catch (err) {
     exitWithError(err);
   }

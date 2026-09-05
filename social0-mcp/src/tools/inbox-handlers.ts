@@ -18,6 +18,11 @@ import type {
   WindowRange,
 } from "../types/index.js";
 import { resolveAccountIds } from "../utils/accounts.js";
+import {
+  emptyPageWithMoreNote,
+  fetchWithOneAutoPage,
+  isEmptyPageWithMore,
+} from "../api/paging.js";
 import { formatToolError, isUuid } from "../utils/index.js";
 
 function textResult(text: string, isError = false): CallToolResult {
@@ -228,18 +233,37 @@ export async function handleListInboxComments(
       ...(input.before ? { before: input.before } : {}),
       ...(input.limit !== undefined ? { limit: input.limit } : {}),
     };
-    const data = await inboxApi.listComments(query);
+    const { page: data, autoPaged } = await fetchWithOneAutoPage(
+      (before) =>
+        inboxApi.listComments({
+          ...query,
+          ...(before ? { before } : {}),
+        }),
+      (page) => page.threads,
+      query.before,
+    );
     const threads = input.unanswered_only
       ? data.threads.filter((t) => !t.answered)
       : data.threads;
+    const pagingNotes = autoPaged
+      ? ["The newest publications had no comments in this window; this is the next page."]
+      : [];
 
     if (threads.length === 0) {
+      if (isEmptyPageWithMore(data, data.threads)) {
+        return textResult(
+          withNotes(emptyPageWithMoreNote("comment threads", data.next_before!), [
+            ...pagingNotes,
+            ...coverageNotes(data, "comments"),
+          ]),
+        );
+      }
       return textResult(
         withNotes(
           input.unanswered_only
             ? `No unanswered comments between ${data.since.slice(0, 10)} and ${data.until.slice(0, 10)}.`
             : `No comments between ${data.since.slice(0, 10)} and ${data.until.slice(0, 10)}.`,
-          coverageNotes(data, "comments"),
+          [...pagingNotes, ...coverageNotes(data, "comments")],
         ),
       );
     }
@@ -269,7 +293,9 @@ export async function handleListInboxComments(
       "Reply with reply_to_comment using both comment_id and publication_id.",
     );
 
-    return textResult(withNotes(lines.join("\n"), coverageNotes(data, "comments")));
+    return textResult(
+      withNotes(lines.join("\n"), [...pagingNotes, ...coverageNotes(data, "comments")]),
+    );
   } catch (error) {
     return handleApiError("list inbox comments", error);
   }
@@ -322,17 +348,33 @@ export async function handleListInboxDms(
     if ("error" in base) {
       return textResult(formatToolError("list inbox DMs", base.error), true);
     }
-    const data = await inboxApi.listDms({
-      ...base,
-      ...(input.before ? { before: input.before } : {}),
-      ...(input.limit !== undefined ? { limit: input.limit } : {}),
-    });
+    const { page: data, autoPaged } = await fetchWithOneAutoPage(
+      (before) =>
+        inboxApi.listDms({
+          ...base,
+          ...(before ? { before } : {}),
+          ...(input.limit !== undefined ? { limit: input.limit } : {}),
+        }),
+      (page) => page.conversations,
+      input.before,
+    );
+    const pagingNotes = autoPaged
+      ? ["The first page had no conversations in this window; this is the next page."]
+      : [];
 
     if (data.conversations.length === 0) {
+      if (isEmptyPageWithMore(data, data.conversations)) {
+        return textResult(
+          withNotes(emptyPageWithMoreNote("conversations", data.next_before!), [
+            ...pagingNotes,
+            ...coverageNotes(data, "dms"),
+          ]),
+        );
+      }
       return textResult(
         withNotes(
           `No DM conversations between ${data.since.slice(0, 10)} and ${data.until.slice(0, 10)}. Inbox DMs currently cover X and Bluesky.`,
-          coverageNotes(data, "dms"),
+          [...pagingNotes, ...coverageNotes(data, "dms")],
         ),
       );
     }
@@ -352,7 +394,9 @@ export async function handleListInboxDms(
     if (data.has_more && data.next_before) {
       lines.push("", `More available: call again with before="${data.next_before}".`);
     }
-    return textResult(withNotes(lines.join("\n"), coverageNotes(data, "dms")));
+    return textResult(
+      withNotes(lines.join("\n"), [...pagingNotes, ...coverageNotes(data, "dms")]),
+    );
   } catch (error) {
     return handleApiError("list inbox DMs", error);
   }
