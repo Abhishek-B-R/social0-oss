@@ -22,6 +22,9 @@ export const MCP_OAUTH_SCOPES = [
   "posts:write",
   "media:write",
   "jobs:read",
+  "analytics:read",
+  "inbox:read",
+  "inbox:write",
   "webhooks:read",
   "webhooks:write",
 ] as const;

@@ -28,7 +28,71 @@ const platformOptionsProperty = {
   additionalProperties: true,
 } as const;
 
-export const TOOL_DEFINITIONS: Tool[] = [
+type ToolAnnotations = NonNullable<Tool["annotations"]>;
+
+/** Reads platform or Social0 state; never changes anything. */
+const READ: ToolAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+};
+/** Changes Social0 state only (drafts, uploads); nothing leaves the account. */
+const LOCAL_WRITE: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+};
+/** Removes a Social0 draft. */
+const LOCAL_DELETE: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: false,
+};
+/**
+ * Publishes, replies, or moderates on a real network as the user. Hosts use
+ * `destructiveHint` + `openWorldHint` to require a confirmation boundary
+ * before running these, which matters because inbox reads return text
+ * written by strangers in the same session.
+ */
+const PUBLIC_ACTION: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
+const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
+  list_accounts: READ,
+  list_posts: READ,
+  get_post: READ,
+  get_publish_status: READ,
+  suggest_best_platforms: READ,
+  get_analytics: READ,
+  get_post_analytics: READ,
+  list_inbox_comments: READ,
+  list_inbox_dms: READ,
+  get_inbox_dm_thread: READ,
+  create_draft: LOCAL_WRITE,
+  update_draft: LOCAL_WRITE,
+  upload_media: LOCAL_WRITE,
+  delete_draft: LOCAL_DELETE,
+  publish_post: PUBLIC_ACTION,
+  schedule_post: PUBLIC_ACTION,
+  publish_now: PUBLIC_ACTION,
+  schedule_content: PUBLIC_ACTION,
+  reply_to_comment: PUBLIC_ACTION,
+  moderate_comment: PUBLIC_ACTION,
+  reply_to_dm: PUBLIC_ACTION,
+};
+
+export function annotationsFor(name: string): ToolAnnotations | undefined {
+  return TOOL_ANNOTATIONS[name];
+}
+
+const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "list_accounts",
     description:
@@ -320,7 +384,218 @@ export const TOOL_DEFINITIONS: Tool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "get_analytics",
+    description:
+      "Live performance metrics for posts published through Social0 in a date window: totals, per-platform breakdown, daily series, and top posts. Metrics are read from each network at call time. Use when the user asks how their posts are doing, which platform performs best, or for engagement/views numbers. Example: 'How did my posts do last month?'",
+    inputSchema: {
+      type: "object",
+      properties: {
+        range: {
+          type: "string",
+          enum: ["7d", "14d", "28d", "90d", "365d", "custom"],
+          default: "7d",
+          description: "Lookback window. Use custom with since/until.",
+        },
+        since: { type: "string", description: "ISO 8601 start (range=custom)" },
+        until: { type: "string", description: "ISO 8601 end (range=custom)" },
+        account: {
+          type: "string",
+          description: "Connected account UUID or unambiguous platform name",
+        },
+        fresh: {
+          type: "boolean",
+          default: false,
+          description:
+            "Bypass warm cache and re-read the platform APIs. Entries younger than 90s are still served from cache.",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_post_analytics",
+    description:
+      "Live metrics for one Social0 post, broken out per network it was published to. Use after list_posts or get_post when the user asks how a specific post performed.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        post_id: { type: "string", format: "uuid", description: "Social0 post ID" },
+      },
+      required: ["post_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_inbox_comments",
+    description:
+      "Read comment threads on posts published through Social0, fetched live from each network. Each thread carries the `comment_id` and `publication_id` needed to reply, like, or hide. Use when the user asks what people are saying, or wants to triage replies. Example: 'Any comments I haven't answered?'",
+    inputSchema: {
+      type: "object",
+      properties: {
+        range: {
+          type: "string",
+          enum: ["7d", "14d", "28d", "90d", "365d", "custom"],
+          default: "7d",
+          description: "Lookback window. Use custom with since/until.",
+        },
+        since: { type: "string", description: "ISO 8601 start (range=custom)" },
+        until: { type: "string", description: "ISO 8601 end (range=custom)" },
+        account: {
+          type: "string",
+          description: "Connected account UUID or unambiguous platform name",
+        },
+        fresh: {
+          type: "boolean",
+          default: false,
+          description:
+            "Bypass warm cache and re-read the platform APIs. Entries younger than 90s are still served from cache.",
+        },
+        platform: {
+          type: "string",
+          description: "Limit to one platform (e.g. bluesky, twitter_x, youtube)",
+        },
+        before: {
+          type: "string",
+          description: "Cursor from a previous response's next_before",
+        },
+        limit: { type: "integer", minimum: 1, maximum: 24 },
+        unanswered_only: {
+          type: "boolean",
+          default: false,
+          description: "Only threads the connected account has not replied to",
+        },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "reply_to_comment",
+    description:
+      "Post a public reply to a comment on the originating network. Requires both `comment_id` and the `publication_id` from list_inbox_comments — Social0 verifies the comment is on that post before sending. This is a live public action; confirm the wording with the user first.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        comment_id: { type: "string", description: "Comment ID from list_inbox_comments" },
+        publication_id: {
+          type: "string",
+          format: "uuid",
+          description: "publication_id from the same comment",
+        },
+        text: { type: "string", description: "Reply text" },
+        media_id: {
+          type: "string",
+          format: "uuid",
+          description: "Media upload ID. Only X and Bluesky accept comment attachments.",
+        },
+      },
+      required: ["comment_id", "publication_id", "text"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "moderate_comment",
+    description:
+      "Like, unlike, or hide a comment. Hiding is Instagram and Facebook Pages only. Requires `publication_id` from list_inbox_comments. Hiding is a moderation action — confirm with the user first.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        comment_id: { type: "string", description: "Comment ID from list_inbox_comments" },
+        publication_id: {
+          type: "string",
+          format: "uuid",
+          description: "publication_id from the same comment",
+        },
+        action: { type: "string", enum: ["like", "unlike", "hide"] },
+      },
+      required: ["comment_id", "publication_id", "action"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_inbox_dms",
+    description:
+      "List direct-message conversations for connected accounts that support DMs (X and Bluesky today). Returns conversation_id + account_id needed to open or reply to a thread.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        range: {
+          type: "string",
+          enum: ["7d", "14d", "28d", "90d", "365d", "custom"],
+          default: "7d",
+          description: "Lookback window. Use custom with since/until.",
+        },
+        since: { type: "string", description: "ISO 8601 start (range=custom)" },
+        until: { type: "string", description: "ISO 8601 end (range=custom)" },
+        account: {
+          type: "string",
+          description: "Connected account UUID or unambiguous platform name",
+        },
+        fresh: {
+          type: "boolean",
+          default: false,
+          description:
+            "Bypass warm cache and re-read the platform APIs. Entries younger than 90s are still served from cache.",
+        },
+        before: {
+          type: "string",
+          description: "Cursor from a previous response's next_before",
+        },
+        limit: { type: "integer", minimum: 1, maximum: 24 },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_inbox_dm_thread",
+    description:
+      "Read the messages in one DM conversation. Call list_inbox_dms first to get conversation_id.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        conversation_id: { type: "string", description: "conversation_id from list_inbox_dms" },
+        account: {
+          type: "string",
+          description: "Connected account UUID or platform name that owns the conversation",
+        },
+        peer_id: { type: "string", description: "Only needed when the platform omits it" },
+        fresh: { type: "boolean", default: false },
+      },
+      required: ["conversation_id", "account"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "reply_to_dm",
+    description:
+      "Send a message into an existing DM conversation. Social0 verifies the conversation belongs to the account before sending. This delivers a real message to a real person; confirm the wording with the user first.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        conversation_id: { type: "string", description: "conversation_id from list_inbox_dms" },
+        account: {
+          type: "string",
+          description: "Connected account UUID or platform name that owns the conversation",
+        },
+        text: { type: "string", description: "Message text" },
+        peer_id: { type: "string" },
+        media_id: {
+          type: "string",
+          format: "uuid",
+          description:
+            "Media upload ID. X accepts image and video, TikTok image only, Bluesky text only.",
+        },
+      },
+      required: ["conversation_id", "account", "text"],
+      additionalProperties: false,
+    },
+  },
 ];
+
+export const TOOL_DEFINITIONS: Tool[] = RAW_TOOL_DEFINITIONS.map((tool) => {
+  const annotations = annotationsFor(tool.name);
+  return annotations ? { ...tool, annotations } : tool;
+});
 
 export const TOOL_NAMES = TOOL_DEFINITIONS.map((t) => t.name);
 

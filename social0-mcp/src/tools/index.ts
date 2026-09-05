@@ -4,6 +4,14 @@ import { z } from "zod";
 import {
   createPostInputSchema,
   deletePostInputSchema,
+  getAnalyticsOverviewInputSchema,
+  getInboxDmThreadInputSchema,
+  getPostAnalyticsInputSchema,
+  listInboxCommentsInputSchema,
+  listInboxDmsInputSchema,
+  moderateCommentInputSchema,
+  replyToCommentInputSchema,
+  replyToDmInputSchema,
   getPostInputSchema,
   getPublishStatusInputSchema,
   listAccountsInputSchema,
@@ -33,6 +41,16 @@ import {
   handleUpdatePost,
   handleUploadMedia,
 } from "./handlers.js";
+import {
+  handleGetAnalytics,
+  handleGetInboxDmThread,
+  handleGetPostAnalytics,
+  handleListInboxComments,
+  handleListInboxDms,
+  handleModerateComment,
+  handleReplyToComment,
+  handleReplyToDm,
+} from "./inbox-handlers.js";
 
 /** Canonical tool names advertised via tools/list. */
 const TOOL_SCHEMAS: Record<ToolName, z.ZodTypeAny> = {
@@ -49,6 +67,14 @@ const TOOL_SCHEMAS: Record<ToolName, z.ZodTypeAny> = {
   schedule_content: scheduleContentInputSchema,
   get_publish_status: getPublishStatusInputSchema,
   suggest_best_platforms: suggestBestPlatformsInputSchema,
+  get_analytics: getAnalyticsOverviewInputSchema,
+  get_post_analytics: getPostAnalyticsInputSchema,
+  list_inbox_comments: listInboxCommentsInputSchema,
+  reply_to_comment: replyToCommentInputSchema,
+  moderate_comment: moderateCommentInputSchema,
+  list_inbox_dms: listInboxDmsInputSchema,
+  get_inbox_dm_thread: getInboxDmThreadInputSchema,
+  reply_to_dm: replyToDmInputSchema,
 };
 
 /**
@@ -79,7 +105,7 @@ export function createMcpServer(): Server {
   const server = new Server(
     {
       name: "social0-mcp",
-      version: "0.4.0",
+      version: "0.5.0",
       title: "Social0",
       websiteUrl: "https://social0.app",
       icons: [
@@ -161,6 +187,22 @@ export function createMcpServer(): Server {
         return handleGetPublishStatus(parsed.data);
       case "suggest_best_platforms":
         return handleSuggestBestPlatforms(parsed.data);
+      case "get_analytics":
+        return handleGetAnalytics(parsed.data);
+      case "get_post_analytics":
+        return handleGetPostAnalytics(parsed.data);
+      case "list_inbox_comments":
+        return handleListInboxComments(parsed.data);
+      case "reply_to_comment":
+        return handleReplyToComment(parsed.data);
+      case "moderate_comment":
+        return handleModerateComment(parsed.data);
+      case "list_inbox_dms":
+        return handleListInboxDms(parsed.data);
+      case "get_inbox_dm_thread":
+        return handleGetInboxDmThread(parsed.data);
+      case "reply_to_dm":
+        return handleReplyToDm(parsed.data);
       default:
         return {
           content: [{ type: "text", text: `Tool not implemented: ${name}` }],

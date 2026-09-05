@@ -94,6 +94,8 @@ Rolling out as App Review lands. `LIVE_PLATFORMS.analytics` — keep frontend an
 
 Team roles: **Analyst**, **Member**, and **Admin** can open Analytics. **Community** cannot.
 
+Also available outside the dashboard: `social0 analytics` (CLI), `get_analytics` / `get_post_analytics` (MCP), and `GET /v1/analytics/*`.
+
 ---
 
 ## Inbox
@@ -132,6 +134,8 @@ Same gate as Analytics: `LIVE_PLATFORMS.inboxComments` / `inboxDms`.
 Inbox chips use `inbox.listAccounts` with the matching live flag (not the analytics list).
 
 Team roles: **Community**, **Member**, and **Admin** can open Inbox and reply. **Analyst** cannot. **Community** cannot publish.
+
+Also available outside the dashboard: `social0 inbox` (CLI), `list_inbox_comments` / `reply_to_comment` / `moderate_comment` / `list_inbox_dms` / `get_inbox_dm_thread` / `reply_to_dm` (MCP), and `/v1/inbox/*`.
 
 ---
 
@@ -243,10 +247,21 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 | Browser app → `POST /api/rpc` | ✓ Production path for dashboard |
 | REST `/api/*` (auth, publish, media, billing, connect, cron) | ✓ |
 | Publish now + SSE job stream | ✓ |
-| API keys UI (`/dashboard/api-keys`) | Coming soon (backend supports keys) |
+| API keys UI (`/dashboard/api-keys`) | ✓ Self-serve `sk_live_…` keys |
 | User outbound webhooks | ✓ Backend |
-| REST `/v1/*` CRUD API | Stubs / not implemented |
+| REST `/v1/*` API (`me`, `accounts`, `posts`, `media`, `jobs`, `webhooks`) | ✓ Implemented; Bearer API key |
+| REST `/v1/analytics/*` | ✓ Live metrics: overview, per-post, eligible accounts |
+| REST `/v1/inbox/*` | ✓ Comments + DMs: list, reply, like, hide, DM thread, DM reply |
+| CLI (`npm i -g social0`) | ✓ Includes `social0 analytics` and `social0 inbox` |
+| MCP (`@social0/mcp`, `mcp.social0.app`) | ✓ Includes analytics + inbox tools |
+| OpenAPI (`/openapi.json`, `/docs`) | ✓ Covers every `/v1` route |
 | Teams (`/dashboard/teams`) | ✓ Invite teammates as Admin, Member, Community, or Analyst (Pro-gated) |
+
+`/v1` analytics and inbox reuse the same cores as the dashboard, but API keys
+address the **personal (main) pool** only — workspace-scoped accounts stay in the
+dashboard. Live reads are subject to the same `LIVE_PLATFORMS` gate, cache, and
+per-platform outbound limits, so totals can come back `sampled` or `partial`;
+clients are expected to surface that rather than quote a partial total as final.
 
 ---
 
@@ -264,4 +279,4 @@ Not user-facing, but powers the product:
 
 ---
 
-*Last updated from codebase on `main` (Analytics + Inbox launch). For how-to guides, see [docs.social0.app](https://docs.social0.app).*
+*Last updated from codebase on `main` (Analytics + Inbox on the dashboard, `/v1`, CLI, and MCP). For how-to guides, see [docs.social0.app](https://docs.social0.app).*

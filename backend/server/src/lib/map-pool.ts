@@ -32,7 +32,12 @@ export async function mapPool<T, R>(
       results[i] = await fn(items[i]!);
     }
   }
-  const n = Math.min(concurrency, Math.max(items.length, 1));
+  // Never fall to 0 workers: a bad concurrency value would silently return
+  // an array of `undefined` instead of doing the work.
+  const safeConcurrency = Number.isFinite(concurrency)
+    ? Math.max(1, Math.floor(concurrency))
+    : 1;
+  const n = Math.min(safeConcurrency, Math.max(items.length, 1));
   await Promise.all(Array.from({ length: n }, () => worker()));
   return results;
 }

@@ -62,8 +62,8 @@ export default {
       return jsonResponse({
         name: "Social0 MCP",
         description:
-          "Publish and schedule to Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Bluesky, and Pinterest from Claude, ChatGPT, Cursor, or any MCP host.",
-        version: "0.4.2",
+          "Publish and schedule to Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Bluesky, and Pinterest from Claude, ChatGPT, Cursor, or any MCP host - then read back live metrics, comments, and DMs.",
+        version: "0.5.0",
         serverUrl: `${baseUrl}/mcp`,
         documentationUrl: "https://docs.social0.app/docs/integrations/mcp",
         icon: "https://social0.app/logo.png",
@@ -88,6 +88,14 @@ export default {
           { name: "schedule_content", description: "Create and schedule in one step." },
           { name: "get_publish_status", description: "Poll a publish job by tracking_id." },
           { name: "suggest_best_platforms", description: "Recommend platforms for a caption." },
+          { name: "get_analytics", description: "Live metrics for posts published through Social0." },
+          { name: "get_post_analytics", description: "Live metrics for one post, per network." },
+          { name: "list_inbox_comments", description: "Read comment threads on published posts." },
+          { name: "reply_to_comment", description: "Reply to a comment on the originating network." },
+          { name: "moderate_comment", description: "Like, unlike, or hide a comment." },
+          { name: "list_inbox_dms", description: "List DM conversations for connected accounts." },
+          { name: "get_inbox_dm_thread", description: "Read messages in one DM conversation." },
+          { name: "reply_to_dm", description: "Send a message into an existing DM conversation." },
         ],
       });
     }

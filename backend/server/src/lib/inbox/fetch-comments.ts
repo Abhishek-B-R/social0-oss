@@ -5,6 +5,11 @@
 import { TwitterApi, type TweetV2 } from "twitter-api-v2";
 import { env } from "../env.js";
 import { extractHttpStatus } from "../twitter-errors.js";
+import {
+  expiredTokenMessage,
+  isPlatformAuthError,
+  TOKEN_EXPIRED_MARKER,
+} from "../platform-auth-errors.js";
 import { jsonGet } from "../http-json.js";
 import type { InboxComment } from "./types.js";
 import {
@@ -391,6 +396,10 @@ async function fetchYouTube(
       if (first && (status === 403 || /forbidden|insufficient|permission/i.test(msg))) {
         return err(msg, INBOX_REQUIRED_SCOPES.youtube);
       }
+      // A dead Google token is a reconnect, not a transient failure.
+      if (first && isPlatformAuthError(msg, status)) {
+        return err(expiredTokenMessage("YouTube"), [TOKEN_EXPIRED_MARKER]);
+      }
       if (first) return err(msg);
       break;
     }
@@ -679,6 +688,17 @@ export async function fetchTwitterCommentsBatch(
       }
     } catch (e) {
       if (extractHttpStatus(e) === 429) throw e;
+      // X answers a revoked/expired user token with a bare 401. Surface it as
+      // a reconnect (like the DM path does) instead of a raw error the caller
+      // would retry as if it were a blip.
+      if (isPlatformAuthError(e)) {
+        for (const input of chunk) {
+          out[input.publicationId] = err(expiredTokenMessage("X"), [
+            TOKEN_EXPIRED_MARKER,
+          ]);
+        }
+        continue;
+      }
       const msg = e instanceof Error ? e.message : "X replies failed";
       for (const input of chunk) {
         out[input.publicationId] = err(msg);

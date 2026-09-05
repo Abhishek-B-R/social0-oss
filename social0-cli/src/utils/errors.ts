@@ -32,7 +32,13 @@ export function formatApiError(err: unknown): string {
     }
 
     if (apiErr.status === 429) {
-      lines.push("", chalk.dim("You can also use --verbose to see retry details."));
+      lines.push(
+        "",
+        apiErr.retryAfterSec != null
+          ? `Retry after ${apiErr.retryAfterSec}s. Live analytics and inbox reads share a per-minute budget with the dashboard.`
+          : "Live analytics and inbox reads share a per-minute budget with the dashboard; wait a minute and retry.",
+        chalk.dim("Use --verbose to see the automatic retries the CLI already made."),
+      );
     }
 
     return lines.join("\n");

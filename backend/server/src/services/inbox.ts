@@ -44,7 +44,11 @@ import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
 import { verifyCommentOnPublication } from "../lib/inbox/verify-comment.js";
 import { verifyDmConversationOnAccount } from "../lib/inbox/verify-dm.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
-import { parseDateWindow, inDateWindow } from "../lib/date-window.js";
+import { inDateWindow, parseDateWindow } from "../lib/date-window.js";
+import {
+  dmListCacheSuffix,
+  olderThanDmCursor,
+} from "../lib/inbox/page-param.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
 import { noteFetchError, noteFetchNotice, isInboxFetchNotice } from "../lib/inbox/fetch-errors.js";
 import { createLiveRequestBudget, raceTimeout, LIVE_RPC_BUDGET_MS } from "../lib/live-request-budget.js";
@@ -153,6 +157,15 @@ type PubRow = {
   } | null;
 };
 
+/**
+ * Everything the inbox core needs from a caller. The dashboard RPC passes the
+ * session's active workspace; `/v1` passes the personal (main) pool.
+ */
+export type InboxScope = {
+  resourceUserId: string;
+  workspaceId: string | null;
+};
+
 async function requireUser(permission: WorkspacePermission = "view_inbox") {
   const ws = await requireWorkspaceSession(permission);
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
@@ -170,7 +183,11 @@ async function loadPubs(opts: {
   limit?: number;
 }): Promise<PubRow[]> {
   const live = livePlatformIds("inboxComments");
-  if (!opts.platform && !live.length) return [];
+  // An explicit platform narrows the live set; it never widens it. Without
+  // this, `?platform=instagram` on /v1 forced live fetches for a network that
+  // is still off in LIVE_PLATFORMS (App Review pending).
+  if (!live.length) return [];
+  if (opts.platform && !live.includes(opts.platform)) return [];
   const postFilter = postScopeCondition({
     resourceUserId: opts.resourceUserId,
     workspaceId: opts.workspaceId,
@@ -374,7 +391,7 @@ async function assertCommentOnPublication(
   );
 }
 
-export async function listInboxComments(input: {
+export type InboxCommentsInput = {
   accountId?: unknown;
   platform?: unknown;
   range?: unknown;
@@ -383,8 +400,23 @@ export async function listInboxComments(input: {
   before?: unknown;
   limit?: unknown;
   fresh?: unknown;
-}): Promise<InboxListResult> {
-  const ctx = await requireUser();
+};
+
+/** Dashboard RPC entry point - resolves the session's active workspace. */
+export async function listInboxComments(
+  input: InboxCommentsInput,
+): Promise<InboxListResult> {
+  return listInboxCommentsForScope(await requireUser(), input);
+}
+
+/**
+ * Core comment list. Callers own authorization and pass the resolved scope, so
+ * `/v1` (API keys - personal pool) and the dashboard RPC share one code path.
+ */
+export async function listInboxCommentsForScope(
+  ctx: InboxScope,
+  input: InboxCommentsInput,
+): Promise<InboxListResult> {
   const timeZone = await getUserTimezone(ctx.resourceUserId);
   const { range, since, until } = parseDateWindow(input, timeZone);
   const accountId =
@@ -392,6 +424,25 @@ export async function listInboxComments(input: {
       ? input.accountId
       : undefined;
   const platform = parsePlatform(input.platform);
+  if (platform && !isPlatformLive("inboxComments", platform)) {
+    // Same shape the dashboard gets for a network without a comments API:
+    // an empty page plus `unsupported`, and no platform call was made.
+    return {
+      range,
+      since: since.toISOString(),
+      until: until.toISOString(),
+      threads: [],
+      accountsNeedingReconnect: [],
+      unsupported: [platform],
+      fetchErrors: [],
+      notices: [],
+      fetchedAt: new Date().toISOString(),
+      sampled: false,
+      sampleLimit: 0,
+      hasMore: false,
+      nextBefore: null,
+    };
+  }
   const before = parseBefore(input.before);
   const fresh = input.fresh === true;
   const limit = parsePageLimit(
@@ -418,6 +469,7 @@ export async function listInboxComments(input: {
   let cursorBefore = before;
   let hasMore = false;
   let nextBefore: string | null = null;
+  let builtThreads: InboxListResult["threads"] | null = null;
 
   for (let round = 0; round < pageRounds; round++) {
     if (budget.isExpired()) {
@@ -612,6 +664,7 @@ export async function listInboxComments(input: {
       since,
       until,
     );
+    builtThreads = threads;
     hasMore = pubs.length >= limit;
     const lastPub = pubs[pubs.length - 1];
     nextBefore = hasMore ? lastPub?.publishedAt?.toISOString() ?? null : null;
@@ -645,11 +698,10 @@ export async function listInboxComments(input: {
     }
   }
 
-  const filteredThreads = filterThreadsByActivity(
-    toInboxThreads(allComments),
-    since,
-    until,
-  );
+  // Rounds already built this list; only rebuild when no round ran.
+  const filteredThreads =
+    builtThreads ??
+    filterThreadsByActivity(toInboxThreads(allComments), since, until);
 
   return {
     range,
@@ -668,13 +720,30 @@ export async function listInboxComments(input: {
   };
 }
 
-export async function replyToInboxComment(input: {
+export type InboxReplyCommentInput = {
   publicationId?: unknown;
   commentId?: unknown;
   text?: unknown;
   mediaId?: unknown;
-}): Promise<{ ok: true; replyId?: string } | { ok: false; error: string }> {
-  const ctx = await requireUser("reply_comments");
+};
+
+export type InboxMutationResult =
+  | { ok: true; replyId?: string }
+  | { ok: false; error: string };
+
+export async function replyToInboxComment(
+  input: InboxReplyCommentInput,
+): Promise<InboxMutationResult> {
+  return replyToInboxCommentForScope(
+    await requireUser("reply_comments"),
+    input,
+  );
+}
+
+export async function replyToInboxCommentForScope(
+  ctx: InboxScope,
+  input: InboxReplyCommentInput,
+): Promise<InboxMutationResult> {
   if (typeof input.publicationId !== "string" || !input.publicationId) {
     return { ok: false, error: "publicationId required" };
   }
@@ -743,12 +812,24 @@ export async function replyToInboxComment(input: {
   }
 }
 
-export async function likeInboxComment(input: {
+export type InboxLikeCommentInput = {
   publicationId?: unknown;
   commentId?: unknown;
   unlike?: unknown;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
-  const ctx = await requireUser("reply_comments");
+};
+
+export type InboxOkResult = { ok: true } | { ok: false; error: string };
+
+export async function likeInboxComment(
+  input: InboxLikeCommentInput,
+): Promise<InboxOkResult> {
+  return likeInboxCommentForScope(await requireUser("reply_comments"), input);
+}
+
+export async function likeInboxCommentForScope(
+  ctx: InboxScope,
+  input: InboxLikeCommentInput,
+): Promise<InboxOkResult> {
   if (typeof input.publicationId !== "string" || !input.publicationId) {
     return { ok: false, error: "publicationId required" };
   }
@@ -805,11 +886,21 @@ export async function likeInboxComment(input: {
   }
 }
 
-export async function hideInboxComment(input: {
+export type InboxHideCommentInput = {
   publicationId?: unknown;
   commentId?: unknown;
-}): Promise<{ ok: true } | { ok: false; error: string }> {
-  const ctx = await requireUser("reply_comments");
+};
+
+export async function hideInboxComment(
+  input: InboxHideCommentInput,
+): Promise<InboxOkResult> {
+  return hideInboxCommentForScope(await requireUser("reply_comments"), input);
+}
+
+export async function hideInboxCommentForScope(
+  ctx: InboxScope,
+  input: InboxHideCommentInput,
+): Promise<InboxOkResult> {
   if (typeof input.publicationId !== "string" || !input.publicationId) {
     return { ok: false, error: "publicationId required" };
   }
@@ -904,7 +995,7 @@ async function loadDmAccounts(
 const DM_CONCURRENCY = 1;
 const DM_SAMPLE_LIMIT = 8;
 
-export async function listInboxDms(input: {
+export type InboxDmsInput = {
   accountId?: unknown;
   range?: unknown;
   since?: unknown;
@@ -912,8 +1003,19 @@ export async function listInboxDms(input: {
   before?: unknown;
   limit?: unknown;
   fresh?: unknown;
-}): Promise<InboxDmListResult> {
-  const ctx = await requireUser();
+};
+
+export async function listInboxDms(
+  input: InboxDmsInput,
+): Promise<InboxDmListResult> {
+  return listInboxDmsForScope(await requireUser(), input);
+}
+
+/** Core DM list. See `listInboxCommentsForScope` for the scope contract. */
+export async function listInboxDmsForScope(
+  ctx: InboxScope,
+  input: InboxDmsInput,
+): Promise<InboxDmListResult> {
   const timeZone = await getUserTimezone(ctx.resourceUserId);
   const { range, since, until } = parseDateWindow(input, timeZone);
   const fresh = input.fresh === true;
@@ -928,6 +1030,12 @@ export async function listInboxDms(input: {
   // re-fetches the same since..until set and the client-side slice quickly
   // runs out.
   const untilForFetch = beforeMs != null ? new Date(beforeMs) : until;
+  const dmCacheSuffix = dmListCacheSuffix({
+    since,
+    untilForFetch,
+    hasCursor: beforeMs != null,
+    timeZone,
+  });
 
   const accounts = await loadDmAccounts(ctx, accountId);
   const dmAccounts = accountId ? accounts : accounts.slice(0, DM_SAMPLE_LIMIT);
@@ -956,7 +1064,7 @@ export async function listInboxDms(input: {
           platform: row.platform,
           accountId: row.id,
           kind: "inbox_dms",
-          suffix: `${since.toISOString()}:${untilForFetch.toISOString()}`,
+          suffix: dmCacheSuffix,
           fresh,
           fetch: () =>
             fetchAccountDms(
@@ -1054,13 +1162,7 @@ export async function listInboxDms(input: {
   threads.sort((a, b) =>
     (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
   );
-  const older =
-    beforeMs == null
-      ? threads
-      : threads.filter((t) => {
-          const tms = t.lastMessageAt ? Date.parse(t.lastMessageAt) : 0;
-          return Number.isFinite(tms) && tms <= beforeMs;
-        });
+  const older = olderThanDmCursor(threads, beforeMs);
   const hasMore = older.length > limit;
   const page = older.slice(0, limit);
   const nextBefore = page[page.length - 1]?.lastMessageAt ?? null;
@@ -1089,26 +1191,54 @@ async function loadDmAccount(
   return rows[0] ?? null;
 }
 
-export async function getInboxDmThread(input: {
+export type InboxDmThreadInput = {
   accountId?: unknown;
   conversationId?: unknown;
   peerId?: unknown;
   fresh?: unknown;
-}): Promise<InboxDmThreadResult | { error: string }> {
-  const ctx = await requireUser();
+};
+
+/**
+ * Why a DM thread read failed. `/v1` maps `not_found` to 404 and everything
+ * else to 400 - a platform hiccup must not be reported as a missing thread.
+ */
+export type InboxDmThreadErrorCode =
+  | "invalid"
+  | "not_found"
+  | "unsupported"
+  | "fetch_failed";
+
+export type InboxDmThreadError = {
+  error: string;
+  code: InboxDmThreadErrorCode;
+};
+
+export async function getInboxDmThread(
+  input: InboxDmThreadInput,
+): Promise<InboxDmThreadResult | InboxDmThreadError> {
+  return getInboxDmThreadForScope(await requireUser(), input);
+}
+
+export async function getInboxDmThreadForScope(
+  ctx: InboxScope,
+  input: InboxDmThreadInput,
+): Promise<InboxDmThreadResult | InboxDmThreadError> {
   if (typeof input.accountId !== "string" || !input.accountId) {
-    return { error: "accountId required" };
+    return { error: "accountId required", code: "invalid" };
   }
   if (typeof input.conversationId !== "string" || !input.conversationId) {
-    return { error: "conversationId required" };
+    return { error: "conversationId required", code: "invalid" };
   }
   const peerId = typeof input.peerId === "string" ? input.peerId : "";
   const fresh = input.fresh === true;
 
   const row = await loadDmAccount(ctx, input.accountId);
-  if (!row) return { error: "Account not found" };
+  if (!row) return { error: "Account not found", code: "not_found" };
   if (!isInboxDmPlatform(row.platform)) {
-    return { error: `DMs are not supported for ${row.platform}.` };
+    return {
+      error: `DMs are not supported for ${row.platform}.`,
+      code: "unsupported",
+    };
   }
 
   try {
@@ -1141,7 +1271,10 @@ export async function getInboxDmThread(input: {
     );
     const result = cached.data;
     if (result.status !== "ok") {
-      return { error: result.error ?? "Failed to load conversation" };
+      return {
+        error: result.error ?? "Failed to load conversation",
+        code: "fetch_failed",
+      };
     }
     const fallback: InboxDmThread = {
       conversationId: input.conversationId,
@@ -1179,18 +1312,33 @@ export async function getInboxDmThread(input: {
   } catch (e) {
     return {
       error: e instanceof Error ? e.message : "Failed to load conversation",
+      code: "fetch_failed",
     };
   }
 }
 
-export async function replyToInboxDm(input: {
+export type InboxReplyDmInput = {
   accountId?: unknown;
   conversationId?: unknown;
   peerId?: unknown;
   text?: unknown;
   mediaId?: unknown;
-}): Promise<{ ok: true; messageId?: string } | { ok: false; error: string }> {
-  const ctx = await requireUser("reply_dms");
+};
+
+export type InboxDmReplyResult =
+  | { ok: true; messageId?: string }
+  | { ok: false; error: string };
+
+export async function replyToInboxDm(
+  input: InboxReplyDmInput,
+): Promise<InboxDmReplyResult> {
+  return replyToInboxDmForScope(await requireUser("reply_dms"), input);
+}
+
+export async function replyToInboxDmForScope(
+  ctx: InboxScope,
+  input: InboxReplyDmInput,
+): Promise<InboxDmReplyResult> {
   if (typeof input.accountId !== "string" || !input.accountId) {
     return { ok: false, error: "accountId required" };
   }
@@ -1226,7 +1374,13 @@ export async function replyToInboxDm(input: {
       input.conversationId,
     );
     if (!bound.ok) return bound;
-    const sendPeerId = peerId || bound.peerId;
+    // The recipient is whoever the verified conversation is with. A caller
+    // supplied peer id only fills the gap when the platform did not expose
+    // one; it must never redirect a send away from the verified peer, or a
+    // valid conversation id becomes a way to message any user id as the
+    // connected account.
+    const sendPeerId = resolveDmRecipient(bound.peerId, peerId);
+    if (!sendPeerId.ok) return sendPeerId;
     let mediaUrl: string | null = null;
     let mediaMimeType: string | null = null;
     if (mediaId) {
@@ -1238,7 +1392,7 @@ export async function replyToInboxDm(input: {
     return await replyToDmOnPlatform({
       platform: row.platform,
       conversationId: input.conversationId,
-      peerId: sendPeerId,
+      peerId: sendPeerId.peerId,
       text,
       mediaUrl,
       mediaMimeType,
@@ -1256,24 +1410,52 @@ export async function replyToInboxDm(input: {
   }
 }
 
+/**
+ * Pick the recipient for a DM send. The verified peer wins; a caller value
+ * is accepted only when it agrees or when the platform exposed no peer.
+ */
+export function resolveDmRecipient(
+  verifiedPeerId: string,
+  requestedPeerId: string,
+): { ok: true; peerId: string } | { ok: false; error: string } {
+  const verified = verifiedPeerId.trim();
+  const requested = requestedPeerId.trim();
+  if (verified) {
+    if (requested && requested !== verified) {
+      return {
+        ok: false,
+        error: "peerId does not match the recipient of this conversation.",
+      };
+    }
+    return { ok: true, peerId: verified };
+  }
+  return { ok: true, peerId: requested };
+}
+
 /** Connected accounts for inbox filter chips (comments or DMs). */
+export type InboxAccountRow = {
+  id: string;
+  platform: string;
+  username: string | null;
+  profileImageUrl: string | null;
+  missingScopes: string[];
+};
+
 export async function listInboxAccounts(input: {
   mode?: unknown;
-}): Promise<
-  Array<{
-    id: string;
-    platform: string;
-    username: string | null;
-    profileImageUrl: string | null;
-    missingScopes: string[];
-  }>
-> {
+}): Promise<InboxAccountRow[]> {
   const ws = await requireWorkspaceSession("view_inbox");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
+  return listInboxAccountsForScope(ws.ctx, input);
+}
 
+export async function listInboxAccountsForScope(
+  ctx: InboxScope,
+  input: { mode?: unknown },
+): Promise<InboxAccountRow[]> {
   const feature =
     input.mode === "dms" ? ("inboxDms" as const) : ("inboxComments" as const);
-  const rows = await listActiveConnectedAccounts(ws.ctx);
+  const rows = await listActiveConnectedAccounts(ctx);
 
   return rows
     .filter((r) => isPlatformLive(feature, r.platform))

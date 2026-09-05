@@ -51,7 +51,8 @@ export function startOfZonedDay(date: Date, timeZone: string): Date {
   );
 }
 
-function addZonedCalendarDays(date: Date, days: number, timeZone: string): Date {
+/** Calendar-day arithmetic in `timeZone` (DST-safe; never uses server-local time). */
+export function addZonedCalendarDays(date: Date, days: number, timeZone: string): Date {
   const tz = validTz(timeZone);
   const z = toZonedTime(date, tz);
   return fromZonedTime(

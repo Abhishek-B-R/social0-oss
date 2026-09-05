@@ -45,6 +45,14 @@ describe("platform-api-cache helpers", () => {
     expect(shouldBypassCacheForFresh(0, now)).toBe(true);
   });
 
+  it("lets a caller drop the soft-fresh floor to force a live read", () => {
+    // Mutation verify passes 0: rejecting a real comment because the cached
+    // thread is a few seconds old is worse than one extra platform call.
+    const now = 1_000_000;
+    expect(shouldBypassCacheForFresh(now - 1_000, now, 0)).toBe(true);
+    expect(shouldBypassCacheForFresh(now, now, 0)).toBe(true);
+  });
+
   it("detects rate limit errors", () => {
     expect(isPlatformRateLimitError({ status: 429 })).toBe(true);
     expect(isPlatformRateLimitError(new Error("Rate limit exceeded"))).toBe(true);

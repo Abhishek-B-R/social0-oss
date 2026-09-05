@@ -513,7 +513,7 @@ export function InboxDmsPane({
         </div>
       ) : null}
 
-      <InboxStatusBanners {...inboxMeta} />
+      <InboxStatusBanners {...inboxMeta} mode="dms" />
 
       {loading && !listQuery.data ? (
         <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-bg-elevated sm:min-h-[24rem] lg:grid-cols-[17.5rem_minmax(0,1fr)]">

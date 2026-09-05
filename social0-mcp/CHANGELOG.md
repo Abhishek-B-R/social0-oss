@@ -2,6 +2,27 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
+## [0.5.0] - 2026-09-04
+
+### Added
+
+- Analytics tools: `get_analytics` (window totals, per-platform breakdown, daily series, top posts) and `get_post_analytics` (one post, per network)
+- Inbox tools: `list_inbox_comments`, `reply_to_comment`, `moderate_comment` (like / unlike / hide), `list_inbox_dms`, `get_inbox_dm_thread`, `reply_to_dm`
+- Tool results carry a `Notes:` block for sampled / partial reads, reconnect hints, unsupported networks, and platform errors so hosts can repeat the caveats
+- `account` parameters accept a connected-account UUID or an unambiguous platform name
+
+### Changed
+
+- `social0://docs/when-to-use` and `social0://docs/onboarding` describe the analytics and inbox surface and the `analytics:read` / `inbox:read` / `inbox:write` scopes
+- Server version reported as `0.5.0`
+- `list_inbox_comments` / `list_inbox_dms` follow `next_before` once when a page is empty but `has_more` is true, and otherwise say `0 … on this page` with the cursor so a model neither stops early nor loops
+- A `429` tool error names the `Retry-After` wait and tells the model not to retry in a loop
+
+### Security
+
+- Comment and DM text is scrubbed of hidden code points and returned inside `<untrusted-social-text>` tags with a leading notice, so text written by strangers is data to show, not instructions to follow
+- Every tool carries MCP annotations (`readOnlyHint`, `destructiveHint`, `openWorldHint`) so hosts can put a confirmation boundary in front of publish, reply, and moderation tools
+
 ## [0.4.0] - 2026-07-21
 
 ### Changed

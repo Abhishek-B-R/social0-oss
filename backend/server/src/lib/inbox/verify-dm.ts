@@ -41,6 +41,9 @@ async function fetchDmsForVerify(
     kind: "inbox_dms",
     suffix: `verify:${account.id}`,
     fresh,
+    // Same reason as verify-comment: the retry pass must reach the platform,
+    // or a conversation opened seconds ago is rejected as "not in this inbox".
+    ...(fresh ? { softFreshMinAgeMs: 0 } : {}),
     fetch: () => fetchAccountDms(account, since, until),
   });
   return cached.data;

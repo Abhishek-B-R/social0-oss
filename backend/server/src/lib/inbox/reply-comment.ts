@@ -27,6 +27,11 @@ export type ReplyResult =
   | { ok: true; replyId?: string }
   | { ok: false; error: string };
 
+/** Every outbound platform call needs a deadline - a hung socket would pin an API worker. */
+const REPLY_TIMEOUT_MS = 12_000;
+/** Blob uploads move bytes; give them more room than a JSON call. */
+const REPLY_UPLOAD_TIMEOUT_MS = 30_000;
+
 async function formPost(
   url: string,
   body: Record<string, string>,
@@ -35,7 +40,7 @@ async function formPost(
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(body),
-    signal: AbortSignal.timeout(12_000),
+    signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
   });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
@@ -135,6 +140,7 @@ async function replyYouTube(input: ReplyInput): Promise<ReplyResult> {
       body: JSON.stringify({
         snippet: { parentId: input.commentId, textOriginal: input.text },
       }),
+      signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
     },
   );
   const data = await res.json().catch(() => ({}));
@@ -200,6 +206,7 @@ async function uploadBlueskyReplyBlob(
       method: "POST",
       headers: { "Content-Type": contentType, Authorization: `Bearer ${jwt}` },
       body: buffer,
+      signal: AbortSignal.timeout(REPLY_UPLOAD_TIMEOUT_MS),
     },
   );
   const data = (await uploadRes.json().catch(() => ({}))) as { blob?: unknown };
@@ -286,6 +293,7 @@ async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
         collection: "app.bsky.feed.post",
         record: rec,
       }),
+      signal: AbortSignal.timeout(REPLY_TIMEOUT_MS),
     });
 
   if (input.mediaUrl && input.mediaMimeType?.startsWith("image/")) {

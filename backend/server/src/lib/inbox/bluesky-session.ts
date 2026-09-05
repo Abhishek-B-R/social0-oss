@@ -36,6 +36,15 @@ function redisKey(accountId: string): string {
   return `${REDIS_KEY_PREFIX}${accountId}`;
 }
 
+/**
+ * AT Proto wants a bare handle as the login identifier. Call sites vary in
+ * whether they strip a stored leading `@`, so normalize here - otherwise one
+ * surface (DMs, likes, replies) can fail to log in while another works.
+ */
+function normalizeHandle(handle: string): string {
+  return handle.trim().replace(/^@+/, "");
+}
+
 export function dropBlueskySession(accountId: string): void {
   memCache.delete(accountId);
   if (redis) {
@@ -156,7 +165,10 @@ async function createSession(
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identifier: handle, password: appPassword }),
+      body: JSON.stringify({
+        identifier: normalizeHandle(handle),
+        password: appPassword,
+      }),
       signal: AbortSignal.timeout(12_000),
     },
   );

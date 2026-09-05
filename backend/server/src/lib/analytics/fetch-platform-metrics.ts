@@ -7,6 +7,11 @@ import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
 import { calendarDayKey } from "../date-window.js";
+import {
+  expiredTokenMessage,
+  isPlatformAuthError,
+  TOKEN_EXPIRED_MARKER,
+} from "../platform-auth-errors.js";
 import { blueskySession, blueskySessionAfter401 } from "../inbox/bluesky-session.js";
 import {
   PLATFORM_FETCH_TIMEOUT_MS,
@@ -18,6 +23,7 @@ import {
   isTikTokApiOk,
   isTikTokVideoId,
   parseTikTokJson,
+  pickTikTokVideoByPublishTime,
   tiktokPublishIdFromStored,
 } from "../tiktok-post-id.js";
 
@@ -35,6 +41,8 @@ export type PlatformFetchInput = {
   timeZone?: string;
   accountId?: string;
   accountHandle?: string | null;
+  /** When the publication went live; lets TikTok backfill a lost publish id. */
+  publishedAt?: Date | null;
 };
 
 export type PlatformFetchResult = {
@@ -125,6 +133,9 @@ async function fetchTwitter(
       },
     };
   } catch (e) {
+    if (isPlatformAuthError(e)) {
+      return scopeError([TOKEN_EXPIRED_MARKER], expiredTokenMessage("X"));
+    }
     return errResult(e instanceof Error ? e.message : "Twitter metrics failed");
   }
 }
@@ -136,7 +147,7 @@ async function fetchYouTube(
   const url = new URL("https://www.googleapis.com/youtube/v3/videos");
   url.searchParams.set("part", "statistics");
   url.searchParams.set("id", input.platformPostId);
-  const { ok, data } = await jsonGet(url.toString(), {
+  const { ok, status, data } = await jsonGet(url.toString(), {
     Authorization: `Bearer ${input.accessToken}`,
   });
   if (!ok) {
@@ -148,6 +159,9 @@ async function fetchYouTube(
         ["https://www.googleapis.com/auth/youtube.readonly"],
         msg,
       );
+    }
+    if (isPlatformAuthError(msg, status)) {
+      return scopeError([TOKEN_EXPIRED_MARKER], expiredTokenMessage("YouTube"));
     }
     return errResult(msg);
   }
@@ -343,11 +357,104 @@ async function fetchThreads(
   return { status: "ok", metrics };
 }
 
+/** video.list pages are small; three covers weeks of posting for most accounts. */
+const TIKTOK_VIDEO_LIST_PAGES = 3;
+const TIKTOK_VIDEO_LIST_PAGE_SIZE = 20;
+
+/**
+ * Find the public video for a publication by its publish time.
+ *
+ * TikTok publish ids are short-lived: once `publish/status/fetch` answers
+ * `invalid_publish_id` the stored `ttpub:` id can never resolve, and every
+ * analytics read failed the same way forever. The `video.list` scope the
+ * metrics call already needs lists the account's videos with `create_time`,
+ * so match the closest one to when we published. The caller persists the
+ * match, after which reads go straight to `video.query`.
+ */
+async function backfillTikTokVideoId(
+  accessToken: string,
+  publishedAt: Date,
+): Promise<{ videoId: string } | { error: string } | null> {
+  let cursor: number | undefined;
+  for (let page = 0; page < TIKTOK_VIDEO_LIST_PAGES; page++) {
+    const res = await fetch(
+      "https://open.tiktokapis.com/v2/video/list/?fields=id,create_time",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json; charset=UTF-8",
+        },
+        body: JSON.stringify({
+          max_count: TIKTOK_VIDEO_LIST_PAGE_SIZE,
+          ...(cursor != null ? { cursor } : {}),
+        }),
+        signal: AbortSignal.timeout(PLATFORM_FETCH_TIMEOUT_MS),
+      },
+    );
+    const text = await res.text();
+    let data: {
+      data?: {
+        videos?: Array<{ id?: unknown; create_time?: unknown }>;
+        cursor?: unknown;
+        has_more?: unknown;
+      };
+      error?: { code?: string; message?: string };
+    } = {};
+    try {
+      data = parseTikTokJson(text) as typeof data;
+    } catch {
+      return { error: "TikTok video.list returned invalid JSON" };
+    }
+    if (!isTikTokApiOk(data, res.ok)) {
+      return {
+        error:
+          data.error?.message ??
+          `TikTok video.list failed (${data.error?.code ?? res.status})`,
+      };
+    }
+    const videos = data.data?.videos ?? [];
+    const match = pickTikTokVideoByPublishTime(videos, publishedAt);
+    if (match) return { videoId: match };
+    // Pages are newest-first: once we are past the publish time, stop.
+    const oldest = videos.reduce<number | null>((acc, v) => {
+      const t = typeof v.create_time === "number" ? v.create_time : Number(v.create_time);
+      if (!Number.isFinite(t)) return acc;
+      return acc == null ? t : Math.min(acc, t);
+    }, null);
+    if (oldest != null && oldest * 1000 < publishedAt.getTime()) break;
+    if (data.data?.has_more !== true) break;
+    const next = Number(data.data?.cursor);
+    if (!Number.isFinite(next)) break;
+    cursor = next;
+  }
+  return null;
+}
+
 async function resolveTikTokVideoId(
   storedId: string,
   accessToken: string,
+  publishedAt?: Date | null,
 ): Promise<{ videoId: string } | { pending: true } | { error: string }> {
   if (isTikTokVideoId(storedId)) return { videoId: storedId };
+  const direct = await resolveTikTokVideoIdFromPublishStatus(
+    storedId,
+    accessToken,
+  );
+  if ("videoId" in direct) return direct;
+  // Publish-status could not answer (expired publish id, still pending).
+  // Fall back to matching the account's videos by publish time.
+  if (publishedAt && Number.isFinite(publishedAt.getTime())) {
+    const backfilled = await backfillTikTokVideoId(accessToken, publishedAt);
+    if (backfilled && "videoId" in backfilled) return backfilled;
+  }
+  return direct;
+}
+
+async function resolveTikTokVideoIdFromPublishStatus(
+  storedId: string,
+  accessToken: string,
+): Promise<{ videoId: string } | { pending: true } | { error: string }> {
   const publishId = tiktokPublishIdFromStored(storedId);
   if (!publishId) return { pending: true };
   const res = await fetch(
@@ -391,6 +498,7 @@ async function fetchTikTok(
   const resolved = await resolveTikTokVideoId(
     input.platformPostId,
     input.accessToken,
+    input.publishedAt,
   );
   if ("error" in resolved) return errResult(resolved.error);
   if ("pending" in resolved) {
@@ -455,11 +563,7 @@ async function fetchPinterest(
   const tz = input.timeZone ?? "UTC";
   const nowKey = calendarDayKey(new Date(), tz);
   let end = input.until ?? new Date();
-  let endKey = calendarDayKey(end, tz);
-  if (endKey > nowKey) {
-    end = new Date();
-    endKey = nowKey;
-  }
+  if (calendarDayKey(end, tz) > nowKey) end = new Date();
   let start = input.since ?? new Date(end.getTime() - PINTEREST_MAX_MS);
   if (end.getTime() - start.getTime() > PINTEREST_MAX_MS) {
     start = new Date(end.getTime() - PINTEREST_MAX_MS);
@@ -568,10 +672,11 @@ async function fetchBluesky(
   }
   const url = new URL("https://bsky.social/xrpc/app.bsky.feed.getPosts");
   url.searchParams.set("uris", input.platformPostId);
-  let { ok, data, status } = await jsonGet(url.toString(), {
+  const firstRead = await jsonGet(url.toString(), {
     Authorization: `Bearer ${session.accessJwt}`,
   });
-  if (status === 401) {
+  let { ok, data } = firstRead;
+  if (firstRead.status === 401) {
     session = await blueskySessionAfter401(
       input.accountId,
       handle,

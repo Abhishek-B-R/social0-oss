@@ -7,14 +7,29 @@ export class Social0ApiError extends Error {
   readonly status: number;
   readonly code: string | undefined;
   readonly body: ApiErrorBody | undefined;
+  /** Seconds the server asked us to wait (429 only, from Retry-After). */
+  readonly retryAfterSec: number | undefined;
 
-  constructor(message: string, status: number, body?: ApiErrorBody) {
+  constructor(
+    message: string,
+    status: number,
+    body?: ApiErrorBody,
+    options?: { retryAfterSec?: number },
+  ) {
     super(message);
     this.name = "Social0ApiError";
     this.status = status;
     this.code = extractErrorCode(body);
     this.body = body;
+    this.retryAfterSec = options?.retryAfterSec;
   }
+}
+
+/** Whole seconds to wait per a Retry-After header, or undefined when absent. */
+export function retryAfterSeconds(header: string | null): number | undefined {
+  const ms = parseRetryAfterMs(header);
+  if (ms == null || !Number.isFinite(ms)) return undefined;
+  return Math.max(1, Math.ceil(ms / 1000));
 }
 
 type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
@@ -183,7 +198,14 @@ export class Social0ApiClient {
 
         if (!response.ok) {
           const body = await parseJsonSafe(response);
-          throw new Social0ApiError(errorMessage(body, response.status), response.status, body);
+          throw new Social0ApiError(
+            errorMessage(body, response.status),
+            response.status,
+            body,
+            response.status === 429
+              ? { retryAfterSec: retryAfterSeconds(response.headers.get("retry-after")) }
+              : undefined,
+          );
         }
 
         if (response.status === 204) {

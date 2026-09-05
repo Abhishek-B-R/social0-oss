@@ -161,6 +161,101 @@ export const suggestBestPlatformsInputSchema = z.object({
   media_type: z.enum(["none", "image", "video", "collection"]).optional(),
 });
 
+const windowRangeSchema = z
+  .enum(["7d", "14d", "28d", "90d", "365d", "custom"])
+  .describe("Lookback window. Use `custom` with since/until.");
+
+const accountRefSchema = z
+  .string()
+  .min(1)
+  .describe("Connected account UUID, or an unambiguous platform name (e.g. bluesky)");
+
+const freshSchema = z
+  .boolean()
+  .optional()
+  .describe(
+    "Bypass warm cache and re-read the platform APIs. Entries younger than 90s are still served from cache.",
+  );
+
+const windowFields = {
+  range: windowRangeSchema.optional(),
+  since: z.string().optional().describe("ISO 8601 start (range=custom)"),
+  until: z.string().optional().describe("ISO 8601 end (range=custom)"),
+  account: accountRefSchema.optional().describe("Limit to one connected account"),
+  fresh: freshSchema,
+};
+
+export const getAnalyticsOverviewInputSchema = z.object(windowFields);
+
+export const getPostAnalyticsInputSchema = z.object({
+  post_id: z.string().uuid().describe("Social0 post ID"),
+});
+
+export const listInboxCommentsInputSchema = z.object({
+  ...windowFields,
+  platform: platformSchema.optional().describe("Limit to one platform"),
+  before: z
+    .string()
+    .optional()
+    .describe("Cursor from a previous response's next_before"),
+  limit: z.number().int().min(1).max(24).optional(),
+  unanswered_only: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Only threads the connected account has not replied to"),
+});
+
+export const replyToCommentInputSchema = z.object({
+  comment_id: z.string().min(1).describe("Comment ID from list_inbox_comments"),
+  publication_id: z
+    .string()
+    .uuid()
+    .describe("publication_id from the same comment - identifies which post it is on"),
+  text: z.string().min(1).describe("Reply text"),
+  media_id: z
+    .string()
+    .uuid()
+    .optional()
+    .describe("Media upload ID. Only X and Bluesky accept comment attachments."),
+});
+
+export const moderateCommentInputSchema = z.object({
+  comment_id: z.string().min(1).describe("Comment ID from list_inbox_comments"),
+  publication_id: z.string().uuid().describe("publication_id from the same comment"),
+  action: z
+    .enum(["like", "unlike", "hide"])
+    .describe("like/unlike (X, Bluesky, YouTube, Meta) or hide (Instagram, Facebook)"),
+});
+
+export const listInboxDmsInputSchema = z.object({
+  ...windowFields,
+  before: z
+    .string()
+    .optional()
+    .describe("Cursor from a previous response's next_before"),
+  limit: z.number().int().min(1).max(24).optional(),
+});
+
+export const getInboxDmThreadInputSchema = z.object({
+  conversation_id: z.string().min(1).describe("conversation_id from list_inbox_dms"),
+  account: accountRefSchema.describe("Account that owns the conversation"),
+  peer_id: z.string().optional().describe("Only needed when the platform omits it"),
+  fresh: freshSchema,
+});
+
+export const replyToDmInputSchema = z.object({
+  conversation_id: z.string().min(1).describe("conversation_id from list_inbox_dms"),
+  account: accountRefSchema.describe("Account that owns the conversation"),
+  text: z.string().min(1).describe("Message text"),
+  peer_id: z.string().optional(),
+  media_id: z
+    .string()
+    .uuid()
+    .optional()
+    .describe("Media upload ID. X accepts image/video, TikTok image only, Bluesky text only."),
+});
+
 export type ListAccountsInput = z.infer<typeof listAccountsInputSchema>;
 export type CreatePostInput = z.infer<typeof createPostInputSchema>;
 export type UpdatePostInput = z.infer<typeof updatePostInputSchema>;
@@ -174,3 +269,11 @@ export type PublishNowInput = z.infer<typeof publishNowInputSchema>;
 export type ScheduleContentInput = z.infer<typeof scheduleContentInputSchema>;
 export type GetPublishStatusInput = z.infer<typeof getPublishStatusInputSchema>;
 export type SuggestBestPlatformsInput = z.infer<typeof suggestBestPlatformsInputSchema>;
+export type GetAnalyticsOverviewInput = z.infer<typeof getAnalyticsOverviewInputSchema>;
+export type GetPostAnalyticsInput = z.infer<typeof getPostAnalyticsInputSchema>;
+export type ListInboxCommentsInput = z.infer<typeof listInboxCommentsInputSchema>;
+export type ReplyToCommentInput = z.infer<typeof replyToCommentInputSchema>;
+export type ModerateCommentInput = z.infer<typeof moderateCommentInputSchema>;
+export type ListInboxDmsInput = z.infer<typeof listInboxDmsInputSchema>;
+export type GetInboxDmThreadInput = z.infer<typeof getInboxDmThreadInputSchema>;
+export type ReplyToDmInput = z.infer<typeof replyToDmInputSchema>;

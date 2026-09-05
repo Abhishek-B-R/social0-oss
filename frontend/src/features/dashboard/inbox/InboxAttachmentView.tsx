@@ -9,7 +9,12 @@ export function InboxAttachmentView({
   attachment: InboxAttachment;
   className?: string;
 }) {
-  const [broken, setBroken] = useState(false);
+  // Remember *which* URL failed rather than a bare boolean: when the slot is
+  // reused for a different attachment the derived flag resets on its own, so
+  // one broken URL cannot leave "Media unavailable" stuck on the next one.
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  const broken = brokenUrl !== null && brokenUrl === attachment.url;
+
   if (broken || !attachment.url) {
     return (
       <p className="mt-1.5 text-[11px] text-text-muted">Media unavailable</p>
@@ -22,7 +27,7 @@ export function InboxAttachmentView({
         src={attachment.url}
         alt=""
         referrerPolicy="no-referrer"
-        onError={() => setBroken(true)}
+        onError={() => setBrokenUrl(attachment.url)}
         className={cn(
           "mt-1.5 max-h-72 w-auto max-w-full rounded-lg object-contain",
           className,
@@ -41,7 +46,7 @@ export function InboxAttachmentView({
       playsInline
       preload="metadata"
       poster={attachment.thumbnailUrl ?? undefined}
-      onError={() => setBroken(true)}
+      onError={() => setBrokenUrl(attachment.url)}
       className={cn(
         "mt-1.5 max-h-72 w-full rounded-lg bg-black/80 object-contain",
         className,

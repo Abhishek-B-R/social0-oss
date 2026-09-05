@@ -210,6 +210,68 @@ social0 drafts schedule <id> --time "tomorrow 9am"
 social0 drafts delete <id>
 ```
 
+### Analytics
+
+Live metrics for posts you published through Social0, read from each network at
+request time. Default window is the last 7 days.
+
+```bash
+social0 analytics                       # totals, by platform, top posts
+social0 analytics --range 28d
+social0 analytics --range custom --since 2026-01-01 --until 2026-02-01
+social0 analytics --account bluesky     # numeric ID, platform name, or UUID
+social0 analytics --fresh               # bypass warm cache
+social0 analytics accounts              # which accounts have live analytics
+social0 analytics post <post-id>        # per-network breakdown for one post
+social0 analytics --json | jq '.totals'
+```
+
+Totals cover the most recent publications in the window, not your lifetime
+numbers. When the response is capped the CLI prints a `Showing the latest N
+publications` warning — respect it before quoting the figure anywhere.
+
+### Inbox
+
+Comments on posts published through Social0, plus DMs on networks that support
+them (X and Bluesky today).
+
+```bash
+# Comments
+social0 inbox                                   # comment threads, last 7 days
+social0 inbox --unanswered                      # only threads you haven't answered
+social0 inbox --platform bluesky --range 28d
+social0 inbox --before <next_before>            # page older publications
+
+# Reply / moderate — both ids come from the list above
+social0 inbox reply <comment-id> --publication <publication-id> --text "Thanks!"
+social0 inbox like <comment-id> --publication <publication-id>
+social0 inbox unlike <comment-id> --publication <publication-id>
+social0 inbox hide <comment-id> --publication <publication-id>   # Instagram, Facebook
+
+# DMs
+social0 inbox dms
+social0 inbox dm <conversation-id> --account <id>
+social0 inbox dm-reply <conversation-id> --account <id> --text "On it."
+
+# Which accounts have an inbox
+social0 inbox accounts
+social0 inbox accounts --dms
+```
+
+`--publication` is the `publication_id` shown in `social0 inbox --json`. Social0
+verifies the comment is actually on that post before sending, so a wrong id is
+rejected rather than posted to the wrong thread.
+
+Inbox pages are per *publication*, so a page can come back empty while older
+publications remain. The CLI follows `next_before` once on its own; if the page
+is still empty it prints `0 threads on this page` with the cursor to pass to
+`--before`. In `--json` mode check `has_more` before treating an empty
+`threads` array as "no comments".
+
+When the API answers `429`, the CLI already retried with `Retry-After`; the
+final error prints how many seconds to wait. Live analytics and inbox reads
+share a per-minute budget with the dashboard.
+
 ### Configuration
 
 ```bash
