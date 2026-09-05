@@ -67,6 +67,7 @@ const {
   likeInboxCommentForScope,
   replyToInboxCommentForScope,
   replyToInboxDmForScope,
+  resolveDmRecipient,
 } = await import("../services/inbox.js");
 
 /** Drizzle-style builder: every method chains, awaiting yields `rows`. */
@@ -325,5 +326,46 @@ describe("replyToInboxDm", () => {
         accountId: "acc-1",
       }),
     );
+  });
+});
+
+describe("DM recipient binding", () => {
+  it("never lets a caller peer id redirect a send away from the verified peer", async () => {
+    mockDb.select.mockReturnValue(selectChain([dmAccountRow()]));
+    mockVerifyDm.mockResolvedValue({ ok: true, peerId: "did:plc:verified" });
+    const out = await replyToInboxDmForScope(ctx, {
+      accountId: "acc-1",
+      conversationId: "conv-1",
+      peerId: "did:plc:attacker-chosen",
+      text: "hi",
+    });
+    expect(out).toEqual({
+      ok: false,
+      error: "peerId does not match the recipient of this conversation.",
+    });
+    expect(mockReplyDmOnPlatform).not.toHaveBeenCalled();
+  });
+
+  it("accepts a matching caller peer id and sends to the verified peer", async () => {
+    mockDb.select.mockReturnValue(selectChain([dmAccountRow()]));
+    mockVerifyDm.mockResolvedValue({ ok: true, peerId: "did:plc:peer" });
+    mockReplyDmOnPlatform.mockResolvedValue({ ok: true });
+    const out = await replyToInboxDmForScope(ctx, {
+      accountId: "acc-1",
+      conversationId: "conv-1",
+      peerId: "did:plc:peer",
+      text: "hi",
+    });
+    expect(out).toEqual({ ok: true });
+    expect(mockReplyDmOnPlatform).toHaveBeenCalledWith(
+      expect.objectContaining({ peerId: "did:plc:peer" }),
+    );
+  });
+
+  it("only uses the caller peer id when the platform exposed none", () => {
+    expect(resolveDmRecipient("", "x-123")).toEqual({ ok: true, peerId: "x-123" });
+    expect(resolveDmRecipient("x-1", "")).toEqual({ ok: true, peerId: "x-1" });
+    expect(resolveDmRecipient(" x-1 ", "x-1")).toEqual({ ok: true, peerId: "x-1" });
+    expect(resolveDmRecipient("x-1", "x-2").ok).toBe(false);
   });
 });

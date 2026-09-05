@@ -1374,7 +1374,13 @@ export async function replyToInboxDmForScope(
       input.conversationId,
     );
     if (!bound.ok) return bound;
-    const sendPeerId = peerId || bound.peerId;
+    // The recipient is whoever the verified conversation is with. A caller
+    // supplied peer id only fills the gap when the platform did not expose
+    // one; it must never redirect a send away from the verified peer, or a
+    // valid conversation id becomes a way to message any user id as the
+    // connected account.
+    const sendPeerId = resolveDmRecipient(bound.peerId, peerId);
+    if (!sendPeerId.ok) return sendPeerId;
     let mediaUrl: string | null = null;
     let mediaMimeType: string | null = null;
     if (mediaId) {
@@ -1386,7 +1392,7 @@ export async function replyToInboxDmForScope(
     return await replyToDmOnPlatform({
       platform: row.platform,
       conversationId: input.conversationId,
-      peerId: sendPeerId,
+      peerId: sendPeerId.peerId,
       text,
       mediaUrl,
       mediaMimeType,
@@ -1402,6 +1408,28 @@ export async function replyToInboxDmForScope(
       error: e instanceof Error ? e.message : "DM failed",
     };
   }
+}
+
+/**
+ * Pick the recipient for a DM send. The verified peer wins; a caller value
+ * is accepted only when it agrees or when the platform exposed no peer.
+ */
+export function resolveDmRecipient(
+  verifiedPeerId: string,
+  requestedPeerId: string,
+): { ok: true; peerId: string } | { ok: false; error: string } {
+  const verified = verifiedPeerId.trim();
+  const requested = requestedPeerId.trim();
+  if (verified) {
+    if (requested && requested !== verified) {
+      return {
+        ok: false,
+        error: "peerId does not match the recipient of this conversation.",
+      };
+    }
+    return { ok: true, peerId: verified };
+  }
+  return { ok: true, peerId: requested };
 }
 
 /** Connected accounts for inbox filter chips (comments or DMs). */
