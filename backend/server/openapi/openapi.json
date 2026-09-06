@@ -853,7 +853,33 @@
             "type": "boolean"
           },
           "secret": {
-            "type": "string"
+            "type": "string",
+            "description": "Returned once, on create."
+          },
+          "last_delivery_at": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "When Social0 last attempted a delivery to this endpoint. Null means nothing has been attempted yet."
+          },
+          "last_delivery_status": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "delivered",
+              "failed",
+              "blocked",
+              null
+            ]
+          },
+          "last_delivery_response_status": {
+            "type": "integer",
+            "nullable": true,
+            "description": "HTTP status the endpoint returned on the last attempt, or null if it never responded."
+          },
+          "last_delivery_error": {
+            "type": "string",
+            "nullable": true
           },
           "created_at": {
             "type": "string",
@@ -873,6 +899,80 @@
             "items": {
               "$ref": "#/components/schemas/Webhook"
             }
+          }
+        }
+      },
+      "WebhookDelivery": {
+        "type": "object",
+        "description": "One delivery attempt group. Retries of the same event collapse into a single record; `attempts` says how many requests were made.",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "delivery_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Payload `id`, sent to the endpoint as X-Social0-Delivery-Id."
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "post.published",
+              "post.failed",
+              "post.scheduled",
+              "post.deleted",
+              "webhook.test"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "delivered",
+              "failed",
+              "blocked"
+            ],
+            "description": "`blocked` means Social0 never sent the request — the URL is not a public address, or the signing secret could not be read."
+          },
+          "response_status": {
+            "type": "integer",
+            "nullable": true
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "WebhookDeliveryList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WebhookDelivery"
+            }
+          },
+          "next_before": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Pass as `before` to fetch the next page; null when the page was not full."
           }
         }
       },
@@ -3019,6 +3119,63 @@
       }
     },
     "/v1/webhooks/{id}": {
+      "get": {
+        "operationId": "getWebhook",
+        "summary": "Get webhook",
+        "description": "Fetch one webhook subscription, including the outcome of its most recent delivery attempt.",
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "webhooks:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook subscription",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Webhook"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
       "patch": {
         "operationId": "updateWebhook",
         "summary": "Update webhook",
@@ -3111,6 +3268,145 @@
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/webhooks/{id}/deliveries": {
+      "get": {
+        "operationId": "listWebhookDeliveries",
+        "summary": "List webhook deliveries",
+        "description": "Delivery attempts for one endpoint, newest first. An event that was never attempted has no row; one the endpoint rejected records the response code. Page with `before` (the `next_before` of the previous page).",
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "webhooks:read",
+              "social0:read"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "required": false,
+            "description": "Return deliveries created strictly before this timestamp.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delivery attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDeliveryList"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "default": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/v1/webhooks/{id}/test": {
+      "post": {
+        "operationId": "testWebhook",
+        "summary": "Send a test delivery",
+        "description": "Sends a signed `webhook.test` event to the endpoint now, regardless of its event filter, and returns what the endpoint answered. Subject to the per-minute mutation budget.",
+        "tags": [
+          "Webhooks"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "oauth2": [
+              "webhooks:write",
+              "social0:write"
+            ]
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Delivery outcome",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebhookDelivery"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
           },
           "429": {
             "$ref": "#/components/responses/RateLimited"
