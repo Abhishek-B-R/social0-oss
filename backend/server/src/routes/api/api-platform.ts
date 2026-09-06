@@ -1,6 +1,5 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq, isNull } from "drizzle-orm";
-import { isSafeOutboundUrl } from "@social0/shared";
 import { db } from "../../db/index.js";
 import { apiKeys, userWebhookSubscriptions } from "../../db/schema.js";
 import { generateApiKey } from "../../lib/api-keys.js";
@@ -9,6 +8,7 @@ import { requireUserId } from "../../middleware/auth.js";
 import { enforceRateLimit, rpcMutationLimiter } from "../../lib/ratelimit.js";
 import { WEBHOOK_EVENTS } from "../../lib/user-webhook-delivery.js";
 import { isValidUUID } from "../../lib/validation.js";
+import { isAllowedWebhookUrl } from "../../lib/webhook-url.js";
 import {
   clampDeliveryLimit,
   listWebhookDeliveriesForUser,
@@ -17,11 +17,6 @@ import {
   testWebhookForUser,
 } from "../../services/webhooks.js";
 import crypto from "node:crypto";
-
-function isAllowedWebhookUrl(url: string): boolean {
-  const httpsOnly = process.env.NODE_ENV === "production";
-  return isSafeOutboundUrl(url, { httpsOnly });
-}
 
 const SUBSCRIBABLE_EVENTS = new Set<string>(WEBHOOK_EVENTS);
 
@@ -166,10 +161,10 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
         error: `Unknown event${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}. Supported: ${WEBHOOK_EVENTS.join(", ")}`,
       });
     }
-    if (!isAllowedWebhookUrl(body.url)) {
+    if (!(await isAllowedWebhookUrl(body.url))) {
       return reply.status(400).send({
         error:
-          "Webhook URL must be a public https URL (no localhost or private networks).",
+          "Webhook URL must be a public https URL that resolves to a public address (no localhost or private networks).",
       });
     }
     const secret = crypto.randomBytes(32).toString("base64url");

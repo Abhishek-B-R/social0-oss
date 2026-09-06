@@ -30,11 +30,16 @@ mid-session.
 node -e "console.log(require('./backend/migrations/meta/_journal.json').entries.map(e=>e.tag+'.sql').join('\n'))"
 ```
 
-**Order matters and the journal is not the whole story.** `20260711_api_keys.sql`
-is *not* in `meta/_journal.json` but creates `api_keys` and
-`user_webhook_subscriptions`. Apply it **before** any journaled migration that
-references those tables (0048 does). Run each file with
-`psql -v ON_ERROR_STOP=1 -f <file>`.
+Run each file with `psql -v ON_ERROR_STOP=1 -f <file>`. The journaled set is
+self-sufficient — `0048_webhook_deliveries.sql` re-creates `api_keys` and
+`user_webhook_subscriptions` idempotently because `20260711_api_keys.sql`, which
+owns them, is *not* in `meta/_journal.json` and so never runs under
+`drizzle-kit migrate`. Expect NOTICEs about already-existing objects; those are
+not errors.
+
+`is_twitter_premium` is declared in `schema.ts` but no migration creates it, so
+`executePublish` throws on a from-scratch database. Pre-existing drift — add the
+column by hand if you need the publish body to run, not just finalize.
 
 ## 3. Backend env
 
@@ -84,12 +89,23 @@ obvious: `posts` needs `original_content` + `final_content` (no `content`),
 
 ## 6. Outbound webhook targets
 
-`isSafeOutboundUrl` rejects `localhost`/`127.0.0.1` **by hostname string**, so a
-loopback receiver is unreachable by IP. Add a hosts entry and use that name:
+Two different guards apply, so a local receiver takes two steps.
+
+*Delivery* uses the string-only `isSafeOutboundUrl` on every redirect hop, which
+rejects `localhost`/`127.0.0.1` by hostname text. A hosts entry gets you past it:
 
 ```bash
 echo "127.0.0.1 hooks.verify.test" >> /etc/hosts   # then use http://hooks.verify.test:9099/hook
 ```
+
+*Registration* (`POST /api/webhooks/subscriptions`, `POST /v1/webhooks`) uses
+`isSafeResolvedOutboundUrl`, which resolves DNS — so that hosts entry is
+correctly rejected there. Seed the subscription row directly instead; the
+`secret` column is `encryptToken(secret, subscriptionId)` from
+`backend/shared/dist/index.js` with `ENCRYPTION_KEY` set.
+
+Adding a public-range alias (`203.0.113.9`) to `lo` would let registration
+through too, but `ip`/`ifconfig` are not installed in the sandbox.
 
 ## 7. Driving the dashboard
 
