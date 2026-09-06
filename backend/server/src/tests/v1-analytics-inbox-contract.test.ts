@@ -33,6 +33,13 @@ const ROUTES: Array<[string, string, string]> = [
   ["post", "/v1/inbox/dms/{conversationId}/reply", "replyToInboxDm"],
 ];
 
+/** Webhook debugging surface: read one endpoint, its deliveries, ping it. */
+const WEBHOOK_ROUTES: Array<[string, string, string]> = [
+  ["get", "/v1/webhooks/{id}", "getWebhook"],
+  ["get", "/v1/webhooks/{id}/deliveries", "listWebhookDeliveries"],
+  ["post", "/v1/webhooks/{id}/test", "testWebhook"],
+];
+
 describe("v1 analytics + inbox spec", () => {
   it.each(ROUTES)("documents %s %s", (method, path, operationId) => {
     const op = spec.paths[path]?.[method];
@@ -60,7 +67,7 @@ describe("v1 analytics + inbox spec", () => {
 
   it("only references scopes the catalog knows about", () => {
     const catalog = new Set(Object.keys(API_OAUTH_SCOPES));
-    for (const [method, path] of ROUTES) {
+    for (const [method, path] of WEBHOOK_ROUTES.concat(ROUTES)) {
       const op = spec.paths[path]![method] as unknown as {
         security?: Array<Record<string, string[]>>;
       };
@@ -69,6 +76,35 @@ describe("v1 analytics + inbox spec", () => {
           expect(catalog.has(scope), `${scope} on ${method} ${path}`).toBe(true);
         }
       }
+    }
+  });
+});
+
+describe("v1 webhooks spec", () => {
+  it.each(WEBHOOK_ROUTES)("documents %s %s", (method, path, operationId) => {
+    const op = spec.paths[path]?.[method];
+    expect(op, `${method.toUpperCase()} ${path} missing from openapi.json`).toBeTruthy();
+    expect(op!.operationId).toBe(operationId);
+    expect(op!.tags).toContain("Webhooks");
+  });
+
+  it("documents the delivery fields customers debug with", () => {
+    const webhook = (
+      spec as unknown as {
+        components: { schemas: Record<string, { properties: Record<string, unknown> }> };
+      }
+    ).components.schemas;
+
+    for (const field of [
+      "last_delivery_at",
+      "last_delivery_status",
+      "last_delivery_response_status",
+      "last_delivery_error",
+    ]) {
+      expect(webhook.Webhook!.properties[field], field).toBeTruthy();
+    }
+    for (const field of ["status", "response_status", "attempts", "error"]) {
+      expect(webhook.WebhookDelivery!.properties[field], field).toBeTruthy();
     }
   });
 });

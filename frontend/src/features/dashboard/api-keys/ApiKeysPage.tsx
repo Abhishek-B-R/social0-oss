@@ -29,6 +29,7 @@ import {
   ArrowClockwise,
   Copy,
   Key,
+  PaperPlaneTilt,
   Plus,
   Trash,
   WebhooksLogo,
@@ -49,7 +50,19 @@ type WebhookRow = {
   url: string;
   events: string[];
   active: boolean;
+  lastDeliveryAt: string | null;
+  lastDeliveryStatus: "delivered" | "failed" | "blocked" | null;
+  lastDeliveryResponseStatus: number | null;
+  lastDeliveryError: string | null;
   createdAt: string | null;
+};
+
+type WebhookTestOutcome = {
+  status: "delivered" | "failed" | "blocked";
+  responseStatus: number | null;
+  attempts: number;
+  durationMs: number;
+  error: string | null;
 };
 
 const WEBHOOK_EVENT_OPTIONS = [
@@ -135,6 +148,35 @@ async function fetchWebhooks(): Promise<WebhookRow[]> {
   if (!res.ok) throw new Error("Failed to load webhooks");
   const data = (await res.json()) as { subscriptions: WebhookRow[] };
   return data.subscriptions;
+}
+
+/** One-line delivery health so a silent endpoint is visible without the API. */
+function LastDeliveryLine({ webhook }: { webhook: WebhookRow }) {
+  if (!webhook.lastDeliveryAt || !webhook.lastDeliveryStatus) {
+    return (
+      <p className="mt-1 text-xs text-text-muted">
+        No deliveries yet — send a test to check the endpoint.
+      </p>
+    );
+  }
+
+  const delivered = webhook.lastDeliveryStatus === "delivered";
+  const code = webhook.lastDeliveryResponseStatus;
+  const detail = delivered
+    ? `HTTP ${code ?? "2xx"}`
+    : (webhook.lastDeliveryError ?? `HTTP ${code ?? "no response"}`);
+
+  return (
+    <p
+      className={cn(
+        "mt-1 truncate text-xs",
+        delivered ? "text-text-muted" : "text-destructive",
+      )}
+      title={detail}
+    >
+      Last delivery {formatDate(webhook.lastDeliveryAt)} · {detail}
+    </p>
+  );
 }
 
 function DocsLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -253,6 +295,7 @@ export default function ApiKeysPage() {
   const [tab, setTab] = useState<"keys" | "webhooks">("keys");
   const [cliMode, setCliMode] = useState<"local" | "remote">("local");
   const [mcpMode, setMcpMode] = useState<"cli" | "remote">("cli");
+  const [testingWebhookId, setTestingWebhookId] = useState<string | null>(null);
 
   const keysQuery = useQuery({ queryKey: ["api-keys"], queryFn: fetchApiKeys });
   const webhooksQuery = useQuery({
@@ -395,6 +438,38 @@ export default function ApiKeysPage() {
     }
     await queryClient.invalidateQueries({ queryKey: ["webhooks"] });
     toast.success("Webhook deleted");
+  };
+
+  const testWebhook = async (id: string) => {
+    setTestingWebhookId(id);
+    try {
+      const res = await fetchApi(`/api/webhooks/subscriptions/${id}/test`, {
+        method: "POST",
+      });
+      const body = (await res.json().catch(() => null)) as {
+        delivery?: WebhookTestOutcome;
+        error?: string;
+      } | null;
+
+      if (!res.ok || !body?.delivery) {
+        toast.error(body?.error ?? "Could not send the test delivery");
+        return;
+      }
+
+      const { delivery } = body;
+      if (delivery.status === "delivered") {
+        toast.success(
+          `Endpoint responded HTTP ${delivery.responseStatus} in ${delivery.durationMs}ms`,
+        );
+      } else {
+        toast.error(delivery.error ?? "Endpoint did not accept the delivery");
+      }
+    } catch {
+      toast.error("Could not send the test delivery");
+    } finally {
+      setTestingWebhookId(null);
+      await queryClient.invalidateQueries({ queryKey: ["webhooks"] });
+    }
   };
 
   const cliCommands =
@@ -634,14 +709,32 @@ export default function ApiKeysPage() {
                           <p className="mt-1 text-xs text-text-muted">
                             {wh.events.join(", ")}
                           </p>
+                          <LastDeliveryLine webhook={wh} />
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteWebhook(wh.id)}
-                        >
-                          <Trash className="h-4 w-4" size={16} />
-                        </Button>
+                        <div className="flex shrink-0 items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={testingWebhookId === wh.id}
+                            onClick={() => testWebhook(wh.id)}
+                            title="Send a signed test delivery"
+                          >
+                            <PaperPlaneTilt className="h-4 w-4" size={16} />
+                            <span className="ml-1 hidden sm:inline">
+                              {testingWebhookId === wh.id
+                                ? "Sending…"
+                                : "Send test"}
+                            </span>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteWebhook(wh.id)}
+                            title="Delete endpoint"
+                          >
+                            <Trash className="h-4 w-4" size={16} />
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ul>

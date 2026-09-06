@@ -124,7 +124,7 @@ UI / RPC publish.* / POST /api/publish
   → publish/finalize-post.ts (maybeFinalizePostPublish)
        ├─ aggregate post status
        ├─ maybeSendPostFailureEmail (Resend; await — never void on CF)
-       └─ user webhooks
+       └─ user webhooks (`deliverUserWebhookEvent`; await — never void on CF)
 ```
 
 | File | Role |
@@ -143,6 +143,8 @@ UI / RPC publish.* / POST /api/publish
 **Content types:** text, image, video, threads, collection — composer + `/dashboard/create/:type`.
 
 **Failure emails:** only from awaited `maybeFinalizePostPublish`. Settings: `automationEmails` + `emailOnPostFailed` (default on). Publish-worker needs `RESEND_API_KEY`.
+
+**User webhooks (`post.published` / `post.failed`):** also only from awaited `maybeFinalizePostPublish`. `backend/server/src/lib/user-webhook-delivery.ts` owns delivery — 3 attempts (retry on 5xx/408/425/429/network, never on other 4xx), SSRF-checked on every redirect hop, and every outcome written to `webhook_deliveries` plus `user_webhook_subscriptions.last_delivery_*`. Emission is claimed once per post via `posts.metadata._publishWebhookSentAt` because platform jobs finalize concurrently. Debug surfaces: `GET /v1/webhooks/:id`, `GET /v1/webhooks/:id/deliveries`, `POST /v1/webhooks/:id/test` (and the `/api/webhooks/subscriptions/*` twins the dashboard uses).
 
 ---
 
@@ -449,6 +451,7 @@ Publish worker: see `cloudflare/publish-worker/README.md`.
 
 - Keep `main` deployable; backend changes on `main` auto-deploy via workflow when `backend/**` changes.
 - When fixing CF worker email/send paths: **await** work before the isolate returns.
+- Same rule for user webhooks: publish paths call `deliverUserWebhookEvent` (awaited). `emitUserWebhookEvent` is fire-and-forget and is only safe inside Fastify handlers on the API droplet — on Workers the isolate is torn down and the request never leaves.
 
 ---
 

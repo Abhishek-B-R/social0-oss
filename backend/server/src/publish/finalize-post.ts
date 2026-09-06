@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   connectedAccounts,
@@ -8,7 +8,8 @@ import {
 } from "../db/schema.js";
 import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
 import {
-  emitUserWebhookEvent,
+  deliverUserWebhookEvent,
+  hasWebhookSubscriberFor,
   type WebhookEvent,
 } from "../lib/user-webhook-delivery.js";
 
@@ -29,7 +30,48 @@ async function loadPublicationRows(postId: string) {
     .where(eq(postPublications.postId, postId));
 }
 
-/** Emit post.published / post.failed when every platform row is terminal. */
+const PUBLISH_WEBHOOK_SENT_KEY = "_publishWebhookSentAt";
+
+/**
+ * One publish webhook per post. Platform jobs run concurrently (CF Queues
+ * fans out per platform), so the last two to finish can both see every row
+ * terminal and both try to emit. Same conditional-jsonb claim the failure
+ * email uses.
+ */
+async function claimPublishWebhook(postId: string): Promise<boolean> {
+  const claimed = await db
+    .update(posts)
+    .set({
+      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) || jsonb_build_object(${PUBLISH_WEBHOOK_SENT_KEY}, ${new Date().toISOString()})`,
+      updatedAt: new Date(),
+    })
+    .where(
+      sql`${posts.id} = ${postId} and (${posts.metadata}->>${PUBLISH_WEBHOOK_SENT_KEY}) is null`,
+    )
+    .returning({ id: posts.id });
+  return claimed.length > 0;
+}
+
+/** Nothing was attempted — let the next finalize pass try again. */
+async function releasePublishWebhookClaim(postId: string): Promise<void> {
+  await db
+    .update(posts)
+    .set({
+      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) - ${PUBLISH_WEBHOOK_SENT_KEY}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(posts.id, postId));
+}
+
+/**
+ * Emit post.published / post.failed when every platform row is terminal.
+ *
+ * Awaits the HTTP delivery. The Cloudflare publish worker runs this from a
+ * queue consumer, and a promise left in flight when that handler resolves is
+ * cancelled with the isolate — a fire-and-forget send never leaves the edge.
+ * Delivery failures are logged, never rethrown: a customer's endpoint being
+ * down must not fail the publish that already succeeded.
+ */
 export async function emitPublishWebhooksForPost(
   postId: string,
   userId: string,
@@ -68,7 +110,27 @@ export async function emitPublishWebhooksForPost(
   } else if (overallStatus === "failed") {
     type = "post.failed";
   }
-  if (type) emitUserWebhookEvent(userId, type, webhookData);
+  if (!type) return;
+
+  // Check before claiming: the claim writes post metadata, and most users have
+  // no webhooks at all.
+  if (!(await hasWebhookSubscriberFor(userId, type))) return;
+  if (!(await claimPublishWebhook(postId))) return;
+
+  try {
+    await deliverUserWebhookEvent(userId, type, webhookData);
+  } catch (err) {
+    // Nothing left the process (the subscription lookup itself failed), so
+    // hand the claim back rather than swallowing the event entirely.
+    console.error("[finalize-post] webhook delivery failed", postId, err);
+    await releasePublishWebhookClaim(postId).catch((releaseErr) =>
+      console.error(
+        "[finalize-post] failed to release webhook claim",
+        postId,
+        releaseErr,
+      ),
+    );
+  }
 }
 
 /** After per-platform jobs finish, update aggregate post status and notify user. */

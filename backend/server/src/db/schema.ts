@@ -8,6 +8,7 @@ import {
   real,
   jsonb,
   pgEnum,
+  index,
   unique,
   check,
 } from "drizzle-orm/pg-core";
@@ -406,9 +407,48 @@ export const userWebhookSubscriptions = pgTable("user_webhook_subscriptions", {
   secret: text("secret").notNull(),
   events: text("events").array().notNull(),
   active: boolean("active").default(true).notNull(),
+  // Denormalized summary of the newest attempt so listing a subscription answers
+  // "is my endpoint receiving anything?" without joining the delivery log.
+  lastDeliveryAt: timestamp("last_delivery_at"),
+  lastDeliveryStatus: text("last_delivery_status"), // delivered | failed | blocked
+  lastDeliveryResponseStatus: integer("last_delivery_response_status"),
+  lastDeliveryError: text("last_delivery_error"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+/**
+ * One row per delivered event per subscription — every retry of the same event
+ * collapses into a single row. Trimmed to the newest rows per subscription on
+ * write (see WEBHOOK_DELIVERY_LOG_LIMIT), so this table stays small.
+ */
+export const webhookDeliveries = pgTable(
+  "webhook_deliveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subscriptionId: uuid("subscription_id")
+      .references(() => userWebhookSubscriptions.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: text("user_id")
+      .references(() => user.id, { onDelete: "cascade" })
+      .notNull(),
+    /** Payload `id`, echoed to the endpoint as X-Social0-Delivery-Id. */
+    deliveryId: uuid("delivery_id").notNull(),
+    event: text("event").notNull(),
+    url: text("url").notNull(),
+    status: text("status").notNull(), // delivered | failed | blocked
+    responseStatus: integer("response_status"),
+    attempts: integer("attempts").default(0).notNull(),
+    durationMs: integer("duration_ms"),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    subscriptionCreatedIdx: index(
+      "webhook_deliveries_subscription_created_idx",
+    ).on(table.subscriptionId, table.createdAt),
+  }),
+);
 
 // ===== USER SETTINGS =====
 export const userSettings = pgTable("user_settings", {

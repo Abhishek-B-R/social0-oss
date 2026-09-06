@@ -6,11 +6,28 @@ import { apiKeys, userWebhookSubscriptions } from "../../db/schema.js";
 import { generateApiKey } from "../../lib/api-keys.js";
 import { encryptToken } from "@social0/shared";
 import { requireUserId } from "../../middleware/auth.js";
+import { enforceRateLimit, rpcMutationLimiter } from "../../lib/ratelimit.js";
+import { WEBHOOK_EVENTS } from "../../lib/user-webhook-delivery.js";
+import { isValidUUID } from "../../lib/validation.js";
+import {
+  clampDeliveryLimit,
+  listWebhookDeliveriesForUser,
+  listWebhooksForUser,
+  parseDeliveryCursor,
+  testWebhookForUser,
+} from "../../services/webhooks.js";
 import crypto from "node:crypto";
 
 function isAllowedWebhookUrl(url: string): boolean {
   const httpsOnly = process.env.NODE_ENV === "production";
   return isSafeOutboundUrl(url, { httpsOnly });
+}
+
+const SUBSCRIBABLE_EVENTS = new Set<string>(WEBHOOK_EVENTS);
+
+/** Reject unknown event names at create time; they would never fire. */
+function invalidEvents(events: string[]): string[] {
+  return events.filter((e) => !SUBSCRIBABLE_EVENTS.has(e));
 }
 
 export async function registerApiPlatformRoutes(app: FastifyInstance) {
@@ -143,6 +160,12 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
     if (!body.url || !body.events?.length) {
       return reply.status(400).send({ error: "url and events required" });
     }
+    const unknown = invalidEvents(body.events);
+    if (unknown.length > 0) {
+      return reply.status(400).send({
+        error: `Unknown event${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}. Supported: ${WEBHOOK_EVENTS.join(", ")}`,
+      });
+    }
     if (!isAllowedWebhookUrl(body.url)) {
       return reply.status(400).send({
         error:
@@ -174,6 +197,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
     const userId = await requireUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
     const { id } = request.params as { id: string };
+    if (!isValidUUID(id)) return { ok: true };
     await db
       .delete(userWebhookSubscriptions)
       .where(
@@ -185,17 +209,52 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
   app.get("/webhooks/subscriptions", async (request, reply) => {
     const userId = await requireUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
-    const subs = await db
-      .select({
-        id: userWebhookSubscriptions.id,
-        url: userWebhookSubscriptions.url,
-        events: userWebhookSubscriptions.events,
-        active: userWebhookSubscriptions.active,
-        createdAt: userWebhookSubscriptions.createdAt,
-        updatedAt: userWebhookSubscriptions.updatedAt,
-      })
-      .from(userWebhookSubscriptions)
-      .where(eq(userWebhookSubscriptions.userId, userId));
-    return { subscriptions: subs };
+    return { subscriptions: await listWebhooksForUser(userId) };
+  });
+
+  /** Delivery attempts for one endpoint, newest first. */
+  app.get("/webhooks/subscriptions/:id/deliveries", async (request, reply) => {
+    const userId = await requireUserId(request);
+    if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+    const { id } = request.params as { id: string };
+    if (!isValidUUID(id)) {
+      return reply.status(404).send({ error: "Webhook not found" });
+    }
+    const query = request.query as { limit?: string; before?: string };
+    const deliveries = await listWebhookDeliveriesForUser(userId, id, {
+      limit: clampDeliveryLimit(query.limit),
+      before: parseDeliveryCursor(query.before),
+    });
+    if (!deliveries) {
+      return reply.status(404).send({ error: "Webhook not found" });
+    }
+    return { deliveries };
+  });
+
+  /**
+   * Send a signed test delivery now and report the response code. Rate limited
+   * because every call makes an outbound request to a user-supplied URL.
+   */
+  app.post("/webhooks/subscriptions/:id/test", async (request, reply) => {
+    const userId = await requireUserId(request);
+    if (!userId) return reply.status(401).send({ error: "Unauthorized" });
+    const { id } = request.params as { id: string };
+    if (!isValidUUID(id)) {
+      return reply.status(404).send({ error: "Webhook not found" });
+    }
+
+    const rate = await enforceRateLimit(
+      rpcMutationLimiter,
+      `webhook-test:${userId}`,
+    );
+    if (!rate.allowed) {
+      return reply.status(rate.status).send({ error: rate.error });
+    }
+
+    const outcome = await testWebhookForUser(userId, id);
+    if (!outcome) {
+      return reply.status(404).send({ error: "Webhook not found" });
+    }
+    return { delivery: outcome };
   });
 }
