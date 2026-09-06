@@ -1,6 +1,10 @@
 import { db } from "@/db";
-import { posts, user, userSettings } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { user, userSettings } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import {
+  claimPostMetadataKey,
+  releasePostMetadataKey,
+} from "@/lib/post-metadata-claim";
 import { env } from "@/lib/env";
 import { sendEmail } from "@/lib/mail";
 import { PLATFORMS } from "@/lib/platforms";
@@ -14,30 +18,13 @@ export type PostFailureEmailItem = {
 const FAILURE_EMAIL_SENT_KEY = "_failureEmailSentAt";
 
 /** One failure email per post (queue retries / parallel finalize safe). */
-async function claimPostFailureEmail(postId: string): Promise<boolean> {
-  const sentAt = new Date().toISOString();
-  const claimed = await db
-    .update(posts)
-    .set({
-      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) || jsonb_build_object(${FAILURE_EMAIL_SENT_KEY}, ${sentAt})`,
-      updatedAt: new Date(),
-    })
-    .where(
-      sql`${posts.id} = ${postId} and (${posts.metadata}->>${FAILURE_EMAIL_SENT_KEY}) is null`,
-    )
-    .returning({ id: posts.id });
-  return claimed.length > 0;
+function claimPostFailureEmail(postId: string): Promise<boolean> {
+  return claimPostMetadataKey(postId, FAILURE_EMAIL_SENT_KEY);
 }
 
 /** Allow a later retry if the provider send failed after we claimed. */
-async function releasePostFailureEmailClaim(postId: string): Promise<void> {
-  await db
-    .update(posts)
-    .set({
-      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) - ${FAILURE_EMAIL_SENT_KEY}`,
-      updatedAt: new Date(),
-    })
-    .where(eq(posts.id, postId));
+function releasePostFailureEmailClaim(postId: string): Promise<void> {
+  return releasePostMetadataKey(postId, FAILURE_EMAIL_SENT_KEY);
 }
 
 function platformDisplayName(platformId: string): string {

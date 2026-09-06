@@ -1,5 +1,9 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
+import {
+  claimPostMetadataKey,
+  releasePostMetadataKey,
+} from "../lib/post-metadata-claim.js";
 import {
   connectedAccounts,
   postPublications,
@@ -35,32 +39,15 @@ const PUBLISH_WEBHOOK_SENT_KEY = "_publishWebhookSentAt";
 /**
  * One publish webhook per post. Platform jobs run concurrently (CF Queues
  * fans out per platform), so the last two to finish can both see every row
- * terminal and both try to emit. Same conditional-jsonb claim the failure
- * email uses.
+ * terminal and both try to emit.
  */
-async function claimPublishWebhook(postId: string): Promise<boolean> {
-  const claimed = await db
-    .update(posts)
-    .set({
-      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) || jsonb_build_object(${PUBLISH_WEBHOOK_SENT_KEY}, ${new Date().toISOString()})`,
-      updatedAt: new Date(),
-    })
-    .where(
-      sql`${posts.id} = ${postId} and (${posts.metadata}->>${PUBLISH_WEBHOOK_SENT_KEY}) is null`,
-    )
-    .returning({ id: posts.id });
-  return claimed.length > 0;
+function claimPublishWebhook(postId: string): Promise<boolean> {
+  return claimPostMetadataKey(postId, PUBLISH_WEBHOOK_SENT_KEY);
 }
 
 /** Nothing was attempted — let the next finalize pass try again. */
-async function releasePublishWebhookClaim(postId: string): Promise<void> {
-  await db
-    .update(posts)
-    .set({
-      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) - ${PUBLISH_WEBHOOK_SENT_KEY}`,
-      updatedAt: new Date(),
-    })
-    .where(eq(posts.id, postId));
+function releasePublishWebhookClaim(postId: string): Promise<void> {
+  return releasePostMetadataKey(postId, PUBLISH_WEBHOOK_SENT_KEY);
 }
 
 /**

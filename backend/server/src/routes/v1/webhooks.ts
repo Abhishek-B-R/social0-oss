@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { isSafeOutboundUrl } from "@social0/shared";
 import crypto from "node:crypto";
 import { db } from "../../db/index.js";
 import { userWebhookSubscriptions } from "../../db/schema.js";
@@ -9,6 +8,7 @@ import { apiError } from "../../lib/api-errors.js";
 import { encryptToken } from "@social0/shared";
 import { WEBHOOK_EVENTS } from "../../lib/user-webhook-delivery.js";
 import { isValidUUID } from "../../lib/validation.js";
+import { isAllowedWebhookUrl } from "../../lib/webhook-url.js";
 import {
   clampDeliveryLimit,
   getWebhookForUser,
@@ -32,12 +32,6 @@ const updateWebhookSchema = z.object({
   events: z.array(z.enum(WEBHOOK_EVENTS)).min(1).optional(),
   active: z.boolean().optional(),
 });
-
-function isAllowedWebhookUrl(url: string): boolean {
-  return isSafeOutboundUrl(url, {
-    httpsOnly: process.env.NODE_ENV === "production",
-  });
-}
 
 function toWebhookDto(row: WebhookSummary) {
   return {
@@ -85,13 +79,13 @@ export async function registerWebhooksRoutes(app: FastifyInstance) {
         .status(400)
         .send(apiError("validation_error", "url and events are required."));
     }
-    if (!isAllowedWebhookUrl(body.data.url)) {
+    if (!(await isAllowedWebhookUrl(body.data.url))) {
       return reply
         .status(400)
         .send(
           apiError(
             "validation_error",
-            "Webhook URL must be a public https URL.",
+            "Webhook URL must be a public https URL that resolves to a public address.",
           ),
         );
     }
@@ -205,10 +199,15 @@ export async function registerWebhooksRoutes(app: FastifyInstance) {
         .status(400)
         .send(apiError("validation_error", "Invalid request body."));
     }
-    if (body.data.url && !isAllowedWebhookUrl(body.data.url)) {
+    if (body.data.url && !(await isAllowedWebhookUrl(body.data.url))) {
       return reply
         .status(400)
-        .send(apiError("validation_error", "Invalid webhook URL."));
+        .send(
+          apiError(
+            "validation_error",
+            "Webhook URL must be a public https URL that resolves to a public address.",
+          ),
+        );
     }
 
     const [updated] = await db
