@@ -13,13 +13,21 @@ export type PostFailureEmailItem = {
 
 const FAILURE_EMAIL_SENT_KEY = "_failureEmailSentAt";
 
-/** One failure email per post (queue retries / parallel finalize safe). */
+/**
+ * One failure email per post (queue retries / parallel finalize safe).
+ *
+ * The `::text` casts are load-bearing: jsonb_build_object is variadic "any",
+ * so Postgres cannot infer the type of a bare bind parameter and rejects the
+ * statement with 42P18 ("could not determine data type of parameter $1").
+ * Without them this claim always threw and the catch in maybeSendPostFailureEmail
+ * swallowed it, so no failure email was ever sent.
+ */
 async function claimPostFailureEmail(postId: string): Promise<boolean> {
   const sentAt = new Date().toISOString();
   const claimed = await db
     .update(posts)
     .set({
-      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) || jsonb_build_object(${FAILURE_EMAIL_SENT_KEY}, ${sentAt})`,
+      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) || jsonb_build_object(${FAILURE_EMAIL_SENT_KEY}::text, ${sentAt}::text)`,
       updatedAt: new Date(),
     })
     .where(

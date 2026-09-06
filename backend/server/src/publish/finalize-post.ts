@@ -37,12 +37,16 @@ const PUBLISH_WEBHOOK_SENT_KEY = "_publishWebhookSentAt";
  * fans out per platform), so the last two to finish can both see every row
  * terminal and both try to emit. Same conditional-jsonb claim the failure
  * email uses.
+ *
+ * The `::text` casts are load-bearing: jsonb_build_object is variadic "any",
+ * so Postgres cannot infer the type of a bare bind parameter and rejects the
+ * statement with 42P18 ("could not determine data type of parameter $1").
  */
 async function claimPublishWebhook(postId: string): Promise<boolean> {
   const claimed = await db
     .update(posts)
     .set({
-      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) || jsonb_build_object(${PUBLISH_WEBHOOK_SENT_KEY}, ${new Date().toISOString()})`,
+      metadata: sql`coalesce(${posts.metadata}, '{}'::jsonb) || jsonb_build_object(${PUBLISH_WEBHOOK_SENT_KEY}::text, ${new Date().toISOString()}::text)`,
       updatedAt: new Date(),
     })
     .where(
