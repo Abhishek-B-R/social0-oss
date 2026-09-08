@@ -162,6 +162,16 @@ Full list: `.env.example`. SPA: `frontend/.env.example`.
 Migrations: `backend/migrations/`. Schema: `server/src/db/schema.ts`.  
 `background-worker` has a **copy** — keep in sync when schema changes.
 
+**Migrations are hand-written.** There is no `db:generate` script and drizzle-kit
+generate must not be run here: `migrations/meta/` snapshots stop at `0018` while
+the journal runs through `0048`, so generate diffs against a stale baseline and
+emits phantom CREATEs plus a `platform_rate_limits` DROP. Drizzle has no codegen —
+app types come from `typeof table.$inferSelect` off `schema.ts`, so nothing is lost.
+
+To add one: write `migrations/00NN_<name>.sql`, append a `_journal.json` entry whose
+`when` is **greater than the previous entry's** (`drizzle-kit migrate` skips anything
+not newer than the last applied `created_at`), then `npm run db:migrate`.
+
 **AI rule:** Do not generate or run migrations unless the user explicitly requests a schema change.
 
 ---

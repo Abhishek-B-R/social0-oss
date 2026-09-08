@@ -24,28 +24,7 @@ Production stack in one line:
 
 ## 1. Repo map
 
-```
-social0/
-├── package.json                 # orchestration only (install:all, dev, build, db:*)
-├── CLAUDE.md                    # this file — whole-system map
-├── FEATURES.md                  # product feature list / plan gates
-├── frontend/                    # PRODUCTION SPA (Vite + RR7) — Pages root
-│   ├── claude.md
-│   ├── functions/_middleware.ts # bot OG / canonical / trailing-slash for crawlers
-│   └── src/
-├── backend/                     # Bun/npm workspaces
-│   ├── claude.md
-│   ├── migrations/              # Drizzle SQL
-│   ├── server/                  # @social0/server — Fastify API
-│   ├── background-worker/       # @social0/background-worker — cron consumers
-│   └── shared/                  # @social0/shared — queues, CF client, types
-├── cloudflare/
-│   ├── publish-worker/          # per-platform publish at the edge
-│   ├── cron-worker/             # CF Cron → POST /api/cron/*
-│   └── mcp-worker/              # hosted MCP (mcp.social0.app)
-├── social0-cli/                 # public CLI → /v1
-└── social0-mcp/                 # public @social0/mcp (stdio) → /v1
-```
+Layout is whatever `ls` shows; ownership is not:
 
 | Layer | Owns |
 | ----- | ---- |
@@ -150,136 +129,13 @@ UI / RPC publish.* / POST /api/publish
 
 ## 5. Frontend (`frontend/`)
 
-### Stack
-
-Vite 8, React 19, React Router 7, TanStack Query, Tailwind 4 / shadcn, better-auth client, PostHog, Vemetric, Simple Analytics.
-
-### Layout
-
-```
-frontend/src/
-├── routes/router.tsx
-├── layouts/          RootLayout, DashboardLayout, OnboardingLayout, TeamAppLayout
-├── pages/            thin route entries
-├── features/
-│   ├── auth/         AuthPage, AuthContinuePage, verify, reset
-│   ├── dashboard/    composer, posts, calendar, analytics, inbox, billing,
-│   │                 settings, bulk-tools, connections, api-keys, teams,
-│   │                 workspaces, feedback, create
-│   ├── marketing/    terms, privacy, features, alternatives, mcp, tools,
-│   │                 pricing, about, contact, developers
-│   ├── onboarding/
-│   └── oauth/        MCP OAuth connect page
-├── api/              typed RPC wrappers (dashboard-data, posts, publish, settings,
-│                     onboarding, resurface, team, analytics, inbox, …)
-├── lib/              rpc, fetch-api, auth-client, env, plans, sign-in-url, …
-├── components/       landing/*, dashboard chrome, auth, billing, bulk-tools
-└── index.css         dashboard tokens + scoped `.landing` / `.landing-page`
-```
-
-### Important routes
-
-| Path | Purpose |
-| ---- | ------- |
-| `/` | Landing; signed-in → `/auth/continue` |
-| `/auth`, `/auth/continue`, `/auth/verify-email` | Auth + post-auth gate |
-| `/auth/forgot-password`, `/auth/reset-password` | Password reset |
-| `/onboarding` (+ step2–4) | Goal → connect → plan → ready |
-| `/dashboard` → composer | Default app home |
-| `/dashboard/composer` | Quick compose |
-| `/dashboard/create`, `/dashboard/create/:type` | Create hub + typed forms |
-| `/dashboard/posts` | All posts |
-| `/dashboard/posts/drafts`, `/scheduled`, `/posted` | Status lists |
-| `/dashboard/posts/:id`, `/posts/:id/edit` | Detail + edit |
-| `/dashboard/calendar` | Calendar |
-| `/dashboard/analytics` | Live post metrics (experimental; not plan-gated) |
-| `/dashboard/inbox` | Comments + DMs (experimental; not plan-gated) |
-| `/dashboard/connections` | OAuth accounts (+ platform select subroutes) |
-| `/dashboard/billing` | Dodo plans |
-| `/dashboard/settings` | Prefs, emails, queue, account |
-| `/dashboard/bulk-tools/*` | Bulk image/video (Growth+) |
-| `/dashboard/api-keys` | Developer / keys / webhooks / CLI / MCP links |
-| `/dashboard/more` | Mobile overflow nav |
-| `/dashboard/teams`, `/workspaces` | Collaboration |
-| `/dashboard/teams/:teamId/*` | Team-scoped app (`TeamAppLayout`; same pages) |
-| `/invite/:token` | Team invite |
-| `/features`, `/alternatives`, `/pricing`, `/mcp`, `/tools`, `/about`, `/contact`, `/developers`, … | Marketing / PSEO |
-| `/oauth/mcp/connect` | MCP OAuth |
-
-### Theming
-
-- Dashboard: semantic tokens (`bg-accent`, `text-accent`, …) — emerald brand `#10b981`.
-- Landing: scoped `.landing` / `.landing-page` (DM Sans / Plus Jakarta / **Instrument Serif** `font-logo`).
-- Dashboard page titles use `font-logo` (Instrument Serif). Do not restyle landing when tweaking dashboard tokens.
-
-### Data access
-
-- `rpc("service.fn", …)` → `POST /api/rpc`
-- `fetchApi()` for REST (SSE, OAuth redirects, uploads, legal)
-- Plans/limits: `frontend/src/lib/plans.ts` (`free` \| `starter` \| `growth` \| `pro` \| `max`)
-- Analytics/inbox account lists: RPC only — never a frontend `LIVE_PLATFORMS` copy
+Stack, `src/` layout, route table, theming tokens and data-access rules: **[`frontend/claude.md`](frontend/claude.md)** — it loads automatically when you work under `frontend/`. Routes are defined in `frontend/src/routes/router.tsx`.
 
 ---
 
 ## 6. Backend (`backend/`)
 
-### Workspaces
-
-```
-backend/
-├── package.json              # workspaces: shared, server, background-worker
-├── migrations/
-├── server/src/
-│   ├── index.ts, app.ts, instrument.ts
-│   ├── db/schema.ts          # Drizzle source of truth
-│   ├── routes/api/           # auth, rpc, publish, billing, connect, media, cron,
-│   │                         # team, webhooks, api-keys, legal, queue, …
-│   ├── routes/v1/            # me, accounts, posts, media, jobs, webhooks,
-│   │                         # analytics, inbox (API key)
-│   ├── routes/admin/, oauth/, docs, public-agent
-│   ├── services/             # RPC handlers + publish-dispatch/enqueue + analytics + inbox
-│   ├── publish/              # execute-publish, finalize-post, process-platform-server
-│   ├── connect/              # OAuth start/callback/select
-│   ├── handlers/             # billing, webhooks, queue helpers
-│   └── lib/                  # auth, workspace, publish-platforms, live-platforms,
-│                             # analytics/, inbox/, mail, …
-└── background-worker/src/
-    ├── main.ts
-    ├── workers/scheduler.ts, token-refresh.ts
-    └── cron/                 # publish-scheduled, repost, autoplug, billing-zombie, …
-```
-
-### RPC surface (high-signal)
-
-Registered in `backend/server/src/routes/api/rpc.ts`. Groups include:
-
-- `dashboard-data.*` — layout, posts, connections, billing, calendar, post detail
-- `onboarding.*` — status, goal, completed
-- `posts.*` — create/update/delete/draft/schedule/edit/publish helpers
-- `publish.*` — publishPost, publication list
-- `resurface.*` — auto-plug / auto-repost schedules
-- `analytics.*` — overview, per-post metrics, account list (live platform APIs)
-- `inbox.*` — comments, DMs, reply / like / hide (live platform APIs)
-- `settings.*` — profile, prefs, automation emails, timezone, delete account, …
-
-Mutations: `RPC_MUTATION_HANDLERS`. Live analytics/inbox reads: `RPC_LIVE_READ_HANDLERS` (stricter per-user limiter).
-
-### REST groups
-
-`/api/auth/*`, `/api/publish`, `/api/jobs/:id/stream`, `/api/billing/*`, `/api/connect/:platform`, `/api/media/*`, `/api/team*`, `/api/webhooks/dodo`, `/api/cron/*`, `/api/api-keys`, `/api/legal/*`, `/api/queue/*`, `/admin/*`, `/v1/*`, `GET /health`, `GET /metrics`, `GET /api/routes`, `GET /openapi.json`, `GET /.well-known/api-catalog`.
-
-### Background cron jobs
-
-| Worker | Jobs |
-| ------ | ---- |
-| scheduler | `cron.publish-scheduled`, `cron.repost`, `cron.autoplug`, `cron.billing-zombie-cleanup` |
-| token | `token.health-sweep`, `token.refresh` |
-
-Also HTTP (not BullMQ): `POST /api/cron/publish-platform` (X/TikTok in-process), `POST /api/cron/notify-legal-update`.
-
-### Shared (`@social0/shared`)
-
-`queues.ts`, `constants/cf-publish-queues.ts`, `constants/platforms.ts`, `constants/server-side-publish.ts`, `lib/cf-publish-client.ts`, `lib/job-progress.ts`, `types/jobs.ts`, …
+Layout, RPC BFF surface, REST groups, cron workers and `@social0/shared` contents: **[`backend/claude.md`](backend/claude.md)** — it loads automatically when you work under `backend/`. Schema source of truth stays `backend/server/src/db/schema.ts`.
 
 ---
 
@@ -411,22 +267,11 @@ SPA never ships server secrets. `ENCRYPTION_KEY` / publish HMAC must match API �
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
 npm run install:all
-
-npm run dev                 # API + background-worker + SPA
-npm run dev:frontend
-npm run dev:server
-npm run build               # backend then frontend
-npm run typecheck
 ```
 
-Backend workspace:
+Everything else (`dev`, `build`, `typecheck`, `db:*`) is in root `package.json` scripts.
 
-```bash
-cd backend && bun install   # or npm install
-bun run build               # shared → background-worker → server
-bun run dev:server          # :3001
-bun run dev:background-worker
-```
+Backend workspace: `cd backend && bun install` (or npm), then `bun run build` — build order matters: **shared → background-worker → server**. Do not `npm run build` inside `server/` without installing at `backend/` first.
 
 Publish worker: see `cloudflare/publish-worker/README.md`.
 

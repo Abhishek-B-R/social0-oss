@@ -18,7 +18,6 @@
     "typecheck": "npm run typecheck:backend && npm run typecheck:frontend",
     "typecheck:frontend": "npm run typecheck --prefix frontend",
     "typecheck:backend": "npm run build --prefix backend/shared && npx --prefix backend tsc -p backend/server/tsconfig.json --noEmit",
-    "db:generate": "npm run db:generate --prefix backend",
     "db:migrate": "npm run db:migrate --prefix backend",
     "db:studio": "npm run db:studio --prefix backend"
   },
