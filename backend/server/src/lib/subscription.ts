@@ -63,6 +63,20 @@ export async function getSubscriptionForUser(
       subscriptionId: null,
       customerId: null,
     });
+    // This branch is the safety net for a Dodo webhook we never received — the
+    // webhook path syncs connections itself. Without this, a lapsed subscriber
+    // keeps every connection above the free cap active indefinitely.
+    // Fire-and-forget + dynamic import: this is a hot read path, and
+    // plan-limits imports this module.
+    void import("./plan-limits.js")
+      .then((m) => m.syncConnectedAccountsToLimit(userId))
+      .catch((err) =>
+        console.error(
+          "[subscription] connection sync after expiry failed",
+          userId,
+          err,
+        ),
+      );
     return {
       tier: "free",
       expiresAt: null,
