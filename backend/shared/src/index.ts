@@ -13,6 +13,7 @@ export * from "./types/jobs.js";
 export * from "./types/posts-list.js";
 export * from "./lib/pagination.js";
 export * from "./lib/job-progress.js";
+export * from "./lib/publish-job-outcome.js";
 export * from "./lib/cf-publish-client.js";
 export * from "./lib/cf-publish-hmac.js";
 export * from "./types/job-progress.js";
