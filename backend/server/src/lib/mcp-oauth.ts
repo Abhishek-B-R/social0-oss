@@ -407,7 +407,13 @@ export async function exchangeMcpAuthorizationCode(input: {
     }
   }
 
-  const stored = await store.get<StoredAuthCode>(codeKey(input.code));
+  // Claim the code before validating the rest of the request. Read-then-delete
+  // let two concurrent exchanges both pass their checks and each walk away with
+  // a token pair; an authorization code is single-use (RFC 6749 §4.1.2), and
+  // GETDEL is the only way to say that atomically. The client has already
+  // proved its identity above, so a failed attempt burning the code is the
+  // intended outcome rather than something an outsider can trigger.
+  const stored = await store.getdel<StoredAuthCode>(codeKey(input.code));
   if (!stored) {
     throw new Error("invalid_grant");
   }
@@ -420,8 +426,6 @@ export async function exchangeMcpAuthorizationCode(input: {
   if (!verifyPkce(input.codeVerifier, stored.codeChallenge)) {
     throw new Error("invalid_grant");
   }
-
-  await store.del(codeKey(input.code));
 
   const accessToken = randomBytes(32).toString("base64url");
   const refreshToken = randomBytes(32).toString("base64url");
