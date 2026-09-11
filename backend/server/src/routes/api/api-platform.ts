@@ -4,7 +4,7 @@ import { db } from "../../db/index.js";
 import { apiKeys, userWebhookSubscriptions } from "../../db/schema.js";
 import { generateApiKey } from "../../lib/api-keys.js";
 import { encryptToken } from "@social0/shared";
-import { requireSessionUserId, requireUserId } from "../../middleware/auth.js";
+import { resolveRequestActor, requireUserId } from "../../middleware/auth.js";
 import { enforceRateLimit, rpcMutationLimiter } from "../../lib/ratelimit.js";
 import { WEBHOOK_EVENTS } from "../../lib/user-webhook-delivery.js";
 import { isValidUUID } from "../../lib/validation.js";
@@ -77,12 +77,22 @@ export async function countWebhookSubscriptions(
 export const WEBHOOK_SUBSCRIPTION_LIMIT = MAX_WEBHOOK_SUBSCRIPTIONS;
 
 /**
- * API keys are credentials, so managing them takes a browser session — never an
- * API key. Otherwise one leaked key mints replacements that survive revoking it.
+ * API keys are credentials: managing them must never be possible *with* an API
+ * key, or one leaked key mints replacements that survive revoking it. Reject
+ * that source specifically rather than demanding a cookie, so the local
+ * `x-user-id` dev header keeps working like the session it stands in for.
  */
+async function requireNonApiKeyUserId(
+  request: Parameters<typeof resolveRequestActor>[0],
+): Promise<string | null> {
+  const actor = await resolveRequestActor(request);
+  if (!actor || actor.source === "apiKey") return null;
+  return actor.userId;
+}
+
 export async function registerApiPlatformRoutes(app: FastifyInstance) {
   app.post("/api-keys", async (request, reply) => {
-    const userId = await requireSessionUserId(request);
+    const userId = await requireNonApiKeyUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
     const body = request.body as { name?: string; expiresAt?: string | null };
     if (!body?.name?.trim()) {
@@ -121,7 +131,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
   });
 
   app.get("/api-keys", async (request, reply) => {
-    const userId = await requireSessionUserId(request);
+    const userId = await requireNonApiKeyUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
     const keys = await db
       .select({
@@ -140,7 +150,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
   });
 
   app.patch("/api-keys/:id", async (request, reply) => {
-    const userId = await requireSessionUserId(request);
+    const userId = await requireNonApiKeyUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
     const { id } = request.params as { id: string };
     const body = request.body as { name?: string };
@@ -166,7 +176,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
   });
 
   app.post("/api-keys/:id/regenerate", async (request, reply) => {
-    const userId = await requireSessionUserId(request);
+    const userId = await requireNonApiKeyUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
     const { id } = request.params as { id: string };
     const [existing] = await db
@@ -202,7 +212,7 @@ export async function registerApiPlatformRoutes(app: FastifyInstance) {
   });
 
   app.delete("/api-keys/:id", async (request, reply) => {
-    const userId = await requireSessionUserId(request);
+    const userId = await requireNonApiKeyUserId(request);
     if (!userId) return reply.status(401).send({ error: "Unauthorized" });
     const { id } = request.params as { id: string };
     await db
