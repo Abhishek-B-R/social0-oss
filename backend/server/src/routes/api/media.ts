@@ -21,12 +21,24 @@ import {
   ALLOWED_EXTENSIONS,
   contentTypeMatchesMagicBytes,
   isAllowedMediaContentType,
+  isGeneratedStorageFilename,
   MAX_IMAGE_SIZE_BYTES,
   MAX_VIDEO_SIZE_BYTES,
 } from "../../lib/media-upload-policy.js";
 import { sanitizeFilename } from "../../lib/validation.js";
 
 const SIZE_TOLERANCE_BYTES = 1024;
+
+/**
+ * A byte count is only usable when it is a real positive integer. `fileSize`
+ * is signed into the presigned URL as ContentLength and compared against the
+ * object's real length, and both of those comparisons quietly pass for a
+ * non-number (`"abc" > max` is false, `contentLength - "abc"` is NaN).
+ */
+function parseFileSize(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isSafeInteger(value)) return null;
+  return value > 0 ? value : null;
+}
 
 async function requireMediaUploadSession(actor: RequestActor) {
   const { requireWorkspacePermissionForActor } = await import(
@@ -76,12 +88,24 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
       contentType?: string;
       fileSize?: number;
     };
-    const { filename, contentType, fileSize } = body;
+    const { filename, contentType } = body;
 
-    if (!filename || !contentType || !fileSize) {
+    if (
+      typeof filename !== "string" ||
+      !filename.trim() ||
+      typeof contentType !== "string" ||
+      !contentType
+    ) {
       return reply.status(400).send({
         error: "Missing required fields: filename, contentType, fileSize",
       });
+    }
+
+    const fileSize = parseFileSize(body.fileSize);
+    if (fileSize === null) {
+      return reply
+        .status(400)
+        .send({ error: "fileSize must be a positive integer number of bytes" });
     }
 
     if (!isAllowedMediaContentType(contentType)) {
@@ -150,23 +174,34 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
       fileSize?: number;
     };
 
-    const { key, storageFilename, originalFilename, contentType, fileSize } =
-      body;
+    const { key, storageFilename, originalFilename, contentType } = body;
 
     if (
-      !key ||
-      !storageFilename ||
-      !originalFilename ||
-      !contentType ||
-      !fileSize
+      typeof key !== "string" ||
+      typeof storageFilename !== "string" ||
+      typeof originalFilename !== "string" ||
+      !originalFilename.trim() ||
+      typeof contentType !== "string" ||
+      !contentType
     ) {
       return reply.status(400).send({ error: "Missing required fields" });
+    }
+
+    const fileSize = parseFileSize(body.fileSize);
+    if (fileSize === null) {
+      return reply
+        .status(400)
+        .send({ error: "fileSize must be a positive integer number of bytes" });
     }
 
     if (!isAllowedMediaContentType(contentType)) {
       return reply.status(400).send({
         error: `Unsupported file type: ${contentType}`,
       });
+    }
+
+    if (!isGeneratedStorageFilename(storageFilename)) {
+      return reply.status(400).send({ error: "Invalid storage key" });
     }
 
     const expectedPrefix = `uploads/${userId}/`;
@@ -181,7 +216,7 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
 
     const isImage = contentType.startsWith("image/");
     const maxSize = isImage ? MAX_IMAGE_SIZE_BYTES : MAX_VIDEO_SIZE_BYTES;
-    if (fileSize <= 0 || fileSize > maxSize) {
+    if (fileSize > maxSize) {
       return reply.status(400).send({ error: "Invalid file size" });
     }
 

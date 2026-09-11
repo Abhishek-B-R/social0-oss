@@ -33,6 +33,20 @@ export const ALLOWED_EXTENSIONS = new Set([
   "webm",
 ]);
 
+/**
+ * Exactly what presign mints: `crypto.randomUUID()` plus an extension from
+ * ALLOWED_EXTENSIONS (or `bin`). Confirm derives the storage key from this
+ * name, so accepting an arbitrary one would let a caller register a key
+ * containing `..` — object storage keeps that verbatim, but a CDN in front of
+ * it may resolve the traversal.
+ */
+const GENERATED_STORAGE_FILENAME =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[a-z0-9]{1,5}$/;
+
+export function isGeneratedStorageFilename(name: string): boolean {
+  return GENERATED_STORAGE_FILENAME.test(name);
+}
+
 export function isAllowedMediaContentType(
   contentType: string,
 ): contentType is AllowedMediaType {

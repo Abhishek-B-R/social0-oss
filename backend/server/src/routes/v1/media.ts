@@ -7,7 +7,7 @@ import { v1ConfirmMedia, v1GetMedia, v1PresignMedia } from "../../services/v1-me
 const presignSchema = z.object({
   filename: z.string().min(1),
   content_type: z.string().min(1),
-  size_bytes: z.number().positive(),
+  size_bytes: z.number().int().positive(),
 });
 
 const confirmSchema = z.object({
@@ -15,7 +15,7 @@ const confirmSchema = z.object({
   storage_filename: z.string().min(1),
   original_filename: z.string().min(1),
   content_type: z.string().min(1),
-  size_bytes: z.number().positive(),
+  size_bytes: z.number().int().positive(),
 });
 
 export async function registerMediaRoutes(app: FastifyInstance) {

@@ -13,6 +13,7 @@ import {
   ALLOWED_EXTENSIONS,
   contentTypeMatchesMagicBytes,
   isAllowedMediaContentType,
+  isGeneratedStorageFilename,
   MAX_IMAGE_SIZE_BYTES,
   MAX_VIDEO_SIZE_BYTES,
 } from "../lib/media-upload-policy.js";
@@ -83,6 +84,10 @@ export async function v1ConfirmMedia(
 
   const { key, storage_filename, original_filename, content_type, size_bytes } =
     input;
+
+  if (!isGeneratedStorageFilename(storage_filename)) {
+    return { ok: false, error: "Invalid storage key" };
+  }
 
   const expectedPrefix = `uploads/${userId}/`;
   if (!key.startsWith(expectedPrefix)) {
