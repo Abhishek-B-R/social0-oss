@@ -8,6 +8,17 @@ import { and, desc, eq } from "drizzle-orm";
 
 const REQUIRED_DOCS: LegalDocumentType[] = ["terms", "privacy"];
 
+/**
+ * Sentinel written to `legal_acceptances.version` when marketing consent is
+ * withdrawn.
+ *
+ * The table is an append-only audit trail, so an opt-out cannot delete the
+ * earlier opt-in row — it has to be a newer row that supersedes it. Without
+ * one, unchecking the marketing box just wrote nothing and the stale opt-in
+ * stayed the latest record, so consent could never be withdrawn.
+ */
+export const MARKETING_WITHDRAWN_VERSION = "withdrawn";
+
 export type LegalStatus = {
   needsAcceptance: boolean;
   requiredVersions: typeof LEGAL_VERSIONS;
@@ -71,9 +82,8 @@ export async function getLegalStatus(userId: string): Promise<LegalStatus> {
     needsAcceptance,
     requiredVersions: LEGAL_VERSIONS,
     accepted,
-    marketingOptIn:
-      marketing?.version === LEGAL_VERSIONS.marketing &&
-      marketing != null,
+    // The newest marketing row wins — a withdrawal row supersedes an opt-in.
+    marketingOptIn: marketing?.version === LEGAL_VERSIONS.marketing,
   };
 }
 
@@ -118,6 +128,19 @@ export async function recordLegalAcceptances(
       ipAddress: input.ipAddress ?? null,
       userAgent: input.userAgent ?? null,
     });
+  } else {
+    // Only record a withdrawal when there is live consent to withdraw, so a
+    // user who never opted in does not accumulate no-op rows.
+    const current = await latestAcceptance(input.userId, "marketing");
+    if (current?.version === LEGAL_VERSIONS.marketing) {
+      rows.push({
+        userId: input.userId,
+        documentType: "marketing",
+        version: MARKETING_WITHDRAWN_VERSION,
+        ipAddress: input.ipAddress ?? null,
+        userAgent: input.userAgent ?? null,
+      });
+    }
   }
 
   await db.insert(legalAcceptances).values(rows);

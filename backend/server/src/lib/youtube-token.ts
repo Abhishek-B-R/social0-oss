@@ -115,7 +115,9 @@ async function refreshYouTubeToken(
         : {}),
       tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
       tokenStatus: "active",
-      isActive: true,
+      // `isActive` is the plan's connection cap, not a token fact — see
+      // persistTokens in token-refresh.ts. Refreshing must not re-enable an
+      // account that syncConnectedAccountsToLimit turned off.
       updatedAt: new Date(),
     })
     .where(eq(connectedAccounts.id, account.id));

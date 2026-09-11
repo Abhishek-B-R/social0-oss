@@ -5,6 +5,7 @@ import { decryptToken, encryptToken } from "@social0/shared";
 import { env } from "./env.js";
 import { getValidYouTubeToken } from "./youtube-token.js";
 import { parseTikTokTokenResponse } from "./tiktok-connect.js";
+import { withTokenRefreshLock } from "./token-refresh-lock.js";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -39,6 +40,14 @@ function refreshBufferMs(platform: string): number {
   }
 }
 
+/**
+ * Persist a refreshed token pair.
+ *
+ * Deliberately does NOT touch `isActive`. The only thing that clears that flag
+ * is `syncConnectedAccountsToLimit` (accounts over the plan's connection cap),
+ * so setting it back to true here silently undid plan enforcement whenever a
+ * token happened to refresh. Reconnecting through OAuth sets it explicitly.
+ */
 async function persistTokens(
   accountId: string,
   accessToken: string,
@@ -49,14 +58,12 @@ async function persistTokens(
     encryptedAccessToken: string;
     tokenExpiresAt: Date;
     tokenStatus: "active";
-    isActive: true;
     updatedAt: Date;
     encryptedRefreshToken?: string;
   } = {
     encryptedAccessToken: encryptToken(accessToken, accountId),
     tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
     tokenStatus: "active",
-    isActive: true,
     updatedAt: new Date(),
   };
   if (refreshToken) {
@@ -73,6 +80,25 @@ async function persistTokens(
  * null tokenExpiresAt is treated as still-valid (e.g. Facebook page tokens).
  */
 export async function getValidToken(
+  accountId: string,
+  platform: string,
+  options?: { forceRefresh?: boolean },
+): Promise<string> {
+  const outcome = await withTokenRefreshLock(accountId, () =>
+    refreshTokenUnlocked(accountId, platform, options),
+  );
+  if (outcome.refreshed) return outcome.value;
+
+  // Another caller just refreshed this account. Read what they stored rather
+  // than calling the provider again with a refresh token they may have rotated.
+  const account = await db.query.connectedAccounts.findFirst({
+    where: eq(connectedAccounts.id, accountId),
+  });
+  if (!account) throw new Error("Account not found");
+  return decryptToken(account.encryptedAccessToken, account.id);
+}
+
+async function refreshTokenUnlocked(
   accountId: string,
   platform: string,
   options?: { forceRefresh?: boolean },
