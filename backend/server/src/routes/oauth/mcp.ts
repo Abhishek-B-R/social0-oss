@@ -17,8 +17,16 @@ import {
   verifyMcpIntrospectSecret,
 } from "../../lib/mcp-oauth.js";
 import { requireSessionUserId } from "../../middleware/auth.js";
+import { clientIpFromFastify } from "../../lib/client-ip.js";
+import {
+  enforceRateLimit,
+  mcpRegisterLimiter,
+} from "../../lib/ratelimit.js";
 import { getAuthApiBaseUrl } from "../../lib/env.js";
 import { getApiProtectedResourceMetadata } from "../../lib/api-scopes.js";
+
+const MAX_REDIRECT_URIS = 10;
+const MAX_REDIRECT_URI_LENGTH = 2048;
 
 function mcpBaseUrl(): string {
   return (process.env.MCP_BASE_URL ?? "https://mcp.social0.app").replace(/\/$/, "");
@@ -123,7 +131,23 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
     }
   });
 
+  // Dynamic client registration is unauthenticated by design (RFC 7591), so it
+  // is the one MCP endpoint anyone on the internet can write to. Cap it per IP
+  // so it cannot be used to fill the Redis client namespace.
   app.post("/oauth/register", async (request, reply) => {
+    const rate = await enforceRateLimit(
+      mcpRegisterLimiter,
+      `mcp:register:${clientIpFromFastify(request)}`,
+    );
+    if (!rate.allowed) {
+      return oauthError(
+        reply,
+        "temporarily_unavailable",
+        rate.error,
+        rate.status,
+      );
+    }
+
     const body = request.body as {
       redirect_uris?: string[];
       client_name?: string;
@@ -132,8 +156,20 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
       response_types?: string[];
     };
 
-    if (!body.redirect_uris?.length) {
+    if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
       return oauthError(reply, "invalid_client_metadata", "redirect_uris required");
+    }
+    if (
+      body.redirect_uris.length > MAX_REDIRECT_URIS ||
+      body.redirect_uris.some(
+        (uri) => typeof uri !== "string" || uri.length > MAX_REDIRECT_URI_LENGTH,
+      )
+    ) {
+      return oauthError(
+        reply,
+        "invalid_client_metadata",
+        `Provide at most ${MAX_REDIRECT_URIS} redirect_uris of up to ${MAX_REDIRECT_URI_LENGTH} characters each`,
+      );
     }
 
     try {

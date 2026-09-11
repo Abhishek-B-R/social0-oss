@@ -38,6 +38,11 @@ import {
   type CreateTwitterTweetPayload,
 } from "../lib/twitter-tweet-fetch.js";
 import { publishLog } from "../lib/publish-log.js";
+import {
+  clampInt,
+  clampNumber,
+  coerceTrimmedString,
+} from "../lib/coerce-number.js";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
 function parseLinkedInError(
@@ -213,7 +218,16 @@ export async function executePublish(
       connectedAccounts,
       eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
-    .where(eq(postPublications.postId, postId));
+    // Match `loadPublicationTargets`: a connection can change owner (Teams
+    // workspace moves), and a publication left pointing at someone else's
+    // account must not publish. The enqueue path already filtered this out, so
+    // without it the inline path would publish rows the queue path skips.
+    .where(
+      and(
+        eq(postPublications.postId, postId),
+        eq(connectedAccounts.userId, post.userId),
+      ),
+    );
 
   if (publicationIdFilter) {
     publicationsWithAccounts = publicationsWithAccounts.filter(
@@ -1712,8 +1726,11 @@ async function trySetupResurface(args: {
     .limit(1);
   if (existing.length > 0) return;
 
-  const capped = Math.min(Math.max(1, Math.round(args.maxResurfaces)), 10);
-  const interval = Math.max(0.5, Math.round(args.intervalHours * 10) / 10);
+  // `bulkAutoFeatures` rides on client-supplied post metadata, so the numbers
+  // can be anything. `Math.max(0.5, NaN)` is NaN, which would produce an
+  // Invalid Date for nextExecuteAt and a row the cron can never run.
+  const capped = clampInt(args.maxResurfaces, 1, 10, 1);
+  const interval = clampNumber(args.intervalHours, 0.5, 24 * 30, 1, 1);
   const now = new Date();
   const nextExecuteAt = new Date(now.getTime() + interval * 60 * 60 * 1000);
 
@@ -1791,10 +1808,10 @@ async function trySetupAutoPlug(args: {
   if (!xRow[0]?.connectedAccountId || !xRow[0].platformPostId) return;
   if (xRow[0].existingAutoPlugId) return;
 
-  const plugComment = (args.plugComment ?? "").trim().slice(0, 280);
+  const plugComment = coerceTrimmedString(args.plugComment, 280);
   if (!plugComment) return;
   const metricType = args.metricType === "retweets" ? "retweets" : "likes";
-  const threshold = Math.max(1, Math.round(args.threshold));
+  const threshold = clampInt(args.threshold, 1, 10_000_000, 1);
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);

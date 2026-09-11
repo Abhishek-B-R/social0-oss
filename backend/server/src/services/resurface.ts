@@ -12,6 +12,11 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { requireWorkspaceSession } from "@/lib/workspace/session";
 import { postScopeCondition } from "@/lib/workspace/context";
 import { isPostOlderThanAutoFeaturesEditWindow } from "@social0/shared";
+import {
+  clampInt,
+  clampNumber,
+  coerceTrimmedString,
+} from "@/lib/coerce-number";
 
 const PLATFORM_X = "x";
 const MAX_RESURFACES_CAP = 10;
@@ -167,9 +172,10 @@ export async function createAutoPlug(
     };
   }
 
-  const threshold = Math.max(1, Math.round(config.threshold));
+  // RPC input: threshold / plugComment are not guaranteed to be number / string.
+  const threshold = clampInt(config.threshold, 1, 10_000_000, 1);
   const metricType = config.metricType === "retweets" ? "retweets" : "likes";
-  const plugComment = (config.plugComment ?? "").trim().slice(0, 280);
+  const plugComment = coerceTrimmedString(config.plugComment, 280);
   if (!plugComment) {
     return { success: false, error: "Auto-Plug message is required" };
   }
@@ -251,12 +257,11 @@ export async function createResurfaceSchedule(
     return { success: false, error: "Only X (Twitter) is supported for now" };
   }
 
-  const capped = Math.min(
-    Math.max(1, Math.round(maxResurfaces)),
-    MAX_RESURFACES_CAP,
-  );
-  // Allow fractional hours (e.g. 0.5 = 30 min), minimum 0.5
-  const interval = Math.max(0.5, Math.round(intervalHours * 10) / 10);
+  const capped = clampInt(maxResurfaces, 1, MAX_RESURFACES_CAP, 1);
+  // Allow fractional hours (e.g. 0.5 = 30 min), minimum 0.5. A non-numeric
+  // input must not become NaN: `new Date(now + NaN)` is an Invalid Date and
+  // the resulting row could never be picked up by the cron.
+  const interval = clampNumber(intervalHours, 0.5, 24 * 30, 1, 1);
 
   const [post] = await db
     .select({ id: posts.id, userId: posts.userId, status: posts.status })
@@ -294,6 +299,7 @@ export async function createResurfaceSchedule(
       and(
         eq(postPublications.postId, postId),
         eq(connectedAccounts.platform, "twitter_x"),
+        eq(connectedAccounts.userId, userId),
         eq(postPublications.status, "published"),
       ),
     )
@@ -429,9 +435,9 @@ export async function updateAutoPlug(
     };
   }
 
-  const threshold = Math.max(1, Math.round(config.threshold));
+  const threshold = clampInt(config.threshold, 1, 10_000_000, 1);
   const metricType = config.metricType === "retweets" ? "retweets" : "likes";
-  const plugComment = (config.plugComment ?? "").trim().slice(0, 280);
+  const plugComment = coerceTrimmedString(config.plugComment, 280);
   if (!plugComment) {
     return { success: false, error: "Auto-Plug message is required" };
   }
@@ -491,7 +497,6 @@ export async function cancelAutoPlug(
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
-  const userId = ws.ctx.resourceUserId;
 
   // Allow turning off even if the user downgraded - no Growth plan check.
 
@@ -591,13 +596,21 @@ export async function updateResurfaceSchedule(
   const done = schedule.resurfacesDone ?? 0;
   const nextInterval =
     updates.intervalHours !== undefined
-      ? Math.max(0.5, Math.round(updates.intervalHours * 10) / 10)
+      ? clampNumber(
+          updates.intervalHours,
+          0.5,
+          24 * 30,
+          schedule.intervalHours ?? 4,
+          1,
+        )
       : (schedule.intervalHours ?? 4);
   const nextMax =
     updates.maxResurfaces !== undefined
-      ? Math.min(
-          Math.max(1, Math.round(updates.maxResurfaces)),
+      ? clampInt(
+          updates.maxResurfaces,
+          1,
           MAX_RESURFACES_CAP,
+          schedule.maxResurfaces ?? 1,
         )
       : (schedule.maxResurfaces ?? 1);
 
@@ -612,7 +625,7 @@ export async function updateResurfaceSchedule(
     updates.plugComment !== undefined
       ? updates.plugComment === null
         ? null
-        : updates.plugComment.trim() || null
+        : coerceTrimmedString(updates.plugComment, 280) || null
       : undefined;
 
   const intervalChanged =

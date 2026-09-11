@@ -43,6 +43,16 @@ async function ownerHasTeams(ownerUserId: string): Promise<boolean> {
   return getPlanLimits(sub.tier).allowTeams;
 }
 
+/**
+ * Personal ("Main") context for a user, ignoring their active workspace.
+ *
+ * API-key callers get this rather than the session's active workspace: a key is
+ * scoped to the personal pool (`workspaceId: null`), the same rule `/v1` follows.
+ */
+export function personalWorkspaceContext(actorUserId: string): WorkspaceContext {
+  return personalContext(actorUserId);
+}
+
 function personalContext(actorUserId: string): WorkspaceContext {
   const permissions = permissionsForRole(null, {
     isOwner: true,

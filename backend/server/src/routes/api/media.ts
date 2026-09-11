@@ -3,8 +3,9 @@ import crypto from "crypto";
 import { eq, and } from "drizzle-orm";
 import {
   notImplemented,
-  requireUserId,
+  resolveRequestActor,
   unauthorized,
+  type RequestActor,
 } from "../../middleware/auth.js";
 import { db } from "../../db/index.js";
 import { mediaUploads } from "../../db/schema.js";
@@ -27,12 +28,12 @@ import { sanitizeFilename } from "../../lib/validation.js";
 
 const SIZE_TOLERANCE_BYTES = 1024;
 
-async function requireMediaUploadSession(actorUserId: string) {
-  const { requireWorkspacePermissionForUser } = await import(
+async function requireMediaUploadSession(actor: RequestActor) {
+  const { requireWorkspacePermissionForActor } = await import(
     "../../lib/workspace/session.js"
   );
-  const ws = await requireWorkspacePermissionForUser(
-    actorUserId,
+  const ws = await requireWorkspacePermissionForActor(
+    actor,
     "view_connections",
   );
   if (!ws.ok) return ws;
@@ -49,10 +50,11 @@ async function requireMediaUploadSession(actorUserId: string) {
 
 export async function registerMediaApiRoutes(app: FastifyInstance) {
   app.post("/media/presign", async (request, reply) => {
-    const actorUserId = await requireUserId(request);
-    if (!actorUserId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
+    const actorUserId = actor.userId;
 
-    const ws = await requireMediaUploadSession(actorUserId);
+    const ws = await requireMediaUploadSession(actor);
     if (!ws.ok) {
       return reply.status(ws.statusCode).send({ error: ws.error });
     }
@@ -119,10 +121,11 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
   });
 
   app.post("/media/confirm", async (request, reply) => {
-    const actorUserId = await requireUserId(request);
-    if (!actorUserId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
+    const actorUserId = actor.userId;
 
-    const ws = await requireMediaUploadSession(actorUserId);
+    const ws = await requireMediaUploadSession(actor);
     if (!ws.ok) {
       return reply.status(ws.statusCode).send({ error: ws.error });
     }

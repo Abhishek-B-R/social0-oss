@@ -28,9 +28,11 @@ const SWAGGER_HTML = `<!DOCTYPE html>
 
 export async function registerDocsRoutes(app: FastifyInstance) {
   const specPath = resolve(__dirname, "../../openapi/openapi.json");
+  // Read once at boot: `/openapi.json` is public and unauthenticated, so a
+  // synchronous read per request is a free way to stall the event loop.
+  const spec = readFileSync(specPath, "utf8");
 
   app.get("/openapi.json", async (_request, reply) => {
-    const spec = readFileSync(specPath, "utf8");
     return reply
       .header(
         "Link",

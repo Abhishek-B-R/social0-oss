@@ -373,10 +373,16 @@ export async function platformCallback(
       );
     }
 
-    // TikTok: Retrieve verifier from DB using stateId
+    // TikTok: Retrieve verifier from DB using stateId.
+    // The identifier is part of the lookup on purpose: `verification` also
+    // holds OTPs, connect bindings and webhook idempotency rows, and a row id
+    // alone does not say which of those it is.
     if (platform === "tiktok" && decrypted.stateId) {
       const verifierRecord = await db.query.verification.findFirst({
-        where: eq(verification.id, decrypted.stateId),
+        where: and(
+          eq(verification.id, decrypted.stateId),
+          eq(verification.identifier, `pkce_${userId}_${platform}`),
+        ),
       });
 
       if (!verifierRecord || new Date(verifierRecord.expiresAt) < new Date()) {

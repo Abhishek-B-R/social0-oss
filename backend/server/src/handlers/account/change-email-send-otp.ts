@@ -16,6 +16,13 @@ import { clientIp } from "../../lib/client-ip.js";
 
 const OTP_LENGTH = 6;
 const OTP_EXPIRES_SEC = 600;
+const MAX_EMAIL_LENGTH = 254;
+/** Deliberately loose: one @, no whitespace, a dot in the domain. */
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
+
+function isPlausibleEmail(value: string): boolean {
+  return value.length <= MAX_EMAIL_LENGTH && EMAIL_SHAPE.test(value);
+}
 
 function generateOTP(): string {
   const n = randomInt(0, 10 ** OTP_LENGTH);
@@ -59,6 +66,14 @@ export async function sendChangeEmailOtp(request: Request) {
     : "";
   if (!newEmail) {
     return RouteResponse.json({ error: "Missing newEmail" }, { status: 400 });
+  }
+  // Validate before the send: an unusable address still burns the per-target
+  // budget and leaves a pending OTP row behind.
+  if (!isPlausibleEmail(newEmail)) {
+    return RouteResponse.json(
+      { error: "Enter a valid email address." },
+      { status: 400 },
+    );
   }
 
   const targetRate = await enforceRateLimit(

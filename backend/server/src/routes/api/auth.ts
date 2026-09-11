@@ -3,7 +3,7 @@ import { auth } from "../../lib/auth.js";
 import { getAuthApiBaseUrl } from "../../lib/env.js";
 import { isBlockedNativeSignUpPath } from "../../lib/block-native-sign-up.js";
 import { runRouteHandler } from "../../lib/run-route-handler.js";
-import { signUpDev } from "./auth-sign-up.js";
+import { signUpDev, signUpWithTurnstile } from "./auth-sign-up.js";
 import { checkEmail } from "./auth-check-email.js";
 import { subscriptionCheck } from "./auth-subscription-check.js";
 import { testSignin } from "./auth-test-signin.js";
@@ -62,11 +62,14 @@ export async function registerAuthRoutes(app: FastifyInstance) {
   });
 
   app.post("/auth/sign-up", async (req, reply) => {
-    await runRouteHandler(req, reply, signUpDev);
+    await runRouteHandler(req, reply, (request) => signUpDev(request));
   });
 
+  // Name is a contract: this route always verifies the Turnstile token.
   app.post("/auth/sign-up-with-turnstile", async (req, reply) => {
-    await runRouteHandler(req, reply, signUpDev);
+    await runRouteHandler(req, reply, (request) =>
+      signUpWithTurnstile(request),
+    );
   });
 
   app.get("/auth/subscription-check", async (req, reply) => {

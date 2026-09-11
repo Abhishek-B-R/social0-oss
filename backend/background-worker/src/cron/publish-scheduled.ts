@@ -188,17 +188,23 @@ export async function runPublishScheduledCron(): Promise<{
     if (!post.scheduledAt) continue;
     const due = post.scheduledAt.getTime() <= now.getTime();
     if (due) {
-      const ok = await claimAndEnqueuePost(post.id, post.userId, cfClient);
-      if (ok) {
-        processed.push(post.id);
-        if (post.scheduledAt.getTime() < recoveryCutoff.getTime()) {
-          recovered += 1;
-          console.info(
-            "[publish-scheduled] recovered overdue post",
-            post.id,
-            post.scheduledAt.toISOString(),
-          );
+      // Isolate per post: a single CF enqueue failure used to abort the whole
+      // scan, leaving every later due post unpublished until the next tick.
+      try {
+        const ok = await claimAndEnqueuePost(post.id, post.userId, cfClient);
+        if (ok) {
+          processed.push(post.id);
+          if (post.scheduledAt.getTime() < recoveryCutoff.getTime()) {
+            recovered += 1;
+            console.info(
+              "[publish-scheduled] recovered overdue post",
+              post.id,
+              post.scheduledAt.toISOString(),
+            );
+          }
         }
+      } catch (err) {
+        console.error("[publish-scheduled] post enqueue failed", post.id, err);
       }
       continue;
     }
@@ -229,22 +235,30 @@ export async function runPublishScheduledCron(): Promise<{
     if (!q.scheduledFor) continue;
     const due = q.scheduledFor.getTime() <= now.getTime();
     if (due) {
-      const ok = await claimAndEnqueueQueued(
-        q.id,
-        q.postId,
-        q.userId,
-        cfClient,
-      );
-      if (ok) {
-        queuedProcessed.push(q.postId);
-        if (q.scheduledFor.getTime() < recoveryCutoff.getTime()) {
-          recovered += 1;
-          console.info(
-            "[publish-scheduled] recovered overdue queued slot",
-            q.id,
-            q.scheduledFor.toISOString(),
-          );
+      try {
+        const ok = await claimAndEnqueueQueued(
+          q.id,
+          q.postId,
+          q.userId,
+          cfClient,
+        );
+        if (ok) {
+          queuedProcessed.push(q.postId);
+          if (q.scheduledFor.getTime() < recoveryCutoff.getTime()) {
+            recovered += 1;
+            console.info(
+              "[publish-scheduled] recovered overdue queued slot",
+              q.id,
+              q.scheduledFor.toISOString(),
+            );
+          }
         }
+      } catch (err) {
+        console.error(
+          "[publish-scheduled] queued slot enqueue failed",
+          q.id,
+          err,
+        );
       }
       continue;
     }

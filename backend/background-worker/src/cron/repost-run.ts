@@ -116,6 +116,16 @@ export async function runRepostCron() {
             connectedAccounts,
             eq(postPublications.connectedAccountId, connectedAccounts.id),
           )
+          // Join back to posts on the owner too: a connection can change hands
+          // (Teams workspace move), and a repost must never run on an account
+          // the post's owner no longer holds.
+          .innerJoin(
+            posts,
+            and(
+              eq(postPublications.postId, posts.id),
+              eq(connectedAccounts.userId, posts.userId),
+            ),
+          )
           .where(
             and(
               inArray(postPublications.postId, xPostIds),

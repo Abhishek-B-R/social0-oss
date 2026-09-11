@@ -22,6 +22,7 @@ import type { DateFormatKey } from "@social0/shared";
 import { decryptToken } from "@social0/shared";
 import { requireSessionUserId } from "@/lib/require-session-user";
 import { isSafeOutboundUrl } from "@social0/shared";
+import { isValidIanaTimezone } from "../lib/resolve-scheduled-at.js";
 import { revokeTokenOnPlatform } from "../lib/revoke-token.js";
 import type { Platform } from "../lib/platforms.js";
 
@@ -99,11 +100,19 @@ const DEFAULT_SETTINGS: SettingsSnapshot = {
   timezone: "UTC",
 };
 
-/** Valid IANA timezone from client (e.g. from Intl); max length for safety. */
+/**
+ * Valid IANA timezone from client (e.g. from Intl).
+ *
+ * This has to reject rather than store-and-hope: the value is later handed
+ * straight to `date-fns-tz` / `Intl` by the queue and analytics paths, and an
+ * unknown zone throws `RangeError` there — a stored bad value turns into 500s
+ * on every queue read for that user.
+ */
 function sanitizeClientTimezone(value: unknown): string | null {
   if (typeof value !== "string" || !value.trim()) return null;
   const tz = value.trim();
-  return tz.length <= 60 ? tz : null;
+  if (tz.length > 60) return null;
+  return isValidIanaTimezone(tz) ? tz : null;
 }
 
 async function getCurrentUserId() {
@@ -312,15 +321,21 @@ export async function updatePlatformPreferences(formData: FormData): Promise<voi
   );
 }
 
-export async function updateTimezone(formData: FormData): Promise<void> {
+export async function updateTimezone(
+  formData: FormData,
+): Promise<{ error?: string }> {
   const tz = formData.get("timezone");
-  const timezone =
-    typeof tz === "string" && tz.trim().length > 0 ? tz.trim() : "UTC";
+  const requested = typeof tz === "string" ? tz.trim() : "";
+  if (requested && !sanitizeClientTimezone(requested)) {
+    return { error: "Unknown timezone. Pick one from the list." };
+  }
+  const timezone = requested || "UTC";
   const clientTimezone = formData.get("clientTimezone");
   await upsertSettings(
     { timezone },
     typeof clientTimezone === "string" ? clientTimezone : undefined,
   );
+  return {};
 }
 
 export async function signOutAllDevices(): Promise<{ success: true }> {

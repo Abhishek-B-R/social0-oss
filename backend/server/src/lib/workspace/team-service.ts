@@ -2402,7 +2402,17 @@ async function resolveMoveTarget(
   targetWorkspaceId: string | null,
 ): Promise<{ nextUserId: string }> {
   if (targetWorkspaceId === null) {
-    // Board "Main" = actor personal pool.
+    // Board "Main" = actor personal pool, and moving there transfers ownership
+    // of the connection (tokens included). `manage_connections` is scoped to a
+    // team's workspaces — it must not let a team Admin walk the owner's
+    // connected account out of the team and into their own private pool. Only
+    // the account's current owner may pull it back to Main.
+    if (account.userId !== actorUserId) {
+      throw new TeamServiceError(
+        403,
+        "Only the account owner can move this connection to Main.",
+      );
+    }
     return { nextUserId: actorUserId };
   }
 

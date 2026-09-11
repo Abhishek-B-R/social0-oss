@@ -24,17 +24,24 @@ export function applyBulkAutoFeaturesToScheduledMetadata(
     ? {
         intervalHours: opts.resurfaceConfig.intervalHours,
         maxResurfaces: opts.resurfaceConfig.maxResurfaces,
-        plugComment: opts.resurfaceConfig.plugComment?.trim() || undefined,
+        plugComment:
+          typeof opts.resurfaceConfig.plugComment === "string"
+            ? opts.resurfaceConfig.plugComment.trim() || undefined
+            : undefined,
       }
     : null;
 
+  // `plugComment` arrives from RPC input, so it is not necessarily a string.
+  const plugComment =
+    typeof opts.autoPlugConfig?.plugComment === "string"
+      ? opts.autoPlugConfig.plugComment.trim()
+      : "";
   const autoPlug =
-    opts.autoPlugConfig &&
-    opts.autoPlugConfig.plugComment.trim().length > 0
+    opts.autoPlugConfig && plugComment.length > 0
       ? {
           metricType: opts.autoPlugConfig.metricType,
           threshold: opts.autoPlugConfig.threshold,
-          plugComment: opts.autoPlugConfig.plugComment.trim(),
+          plugComment,
         }
       : null;
 

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
-import { requireUserId, unauthorized } from "../../middleware/auth.js";
+import { resolveRequestActor, unauthorized } from "../../middleware/auth.js";
 import { enforceRateLimit, publishLimiter } from "../../lib/ratelimit.js";
 import { scheduledAtInputSchema, scheduleTimezoneSchema } from "../../lib/validation.js";
 import { resolveScheduledAt } from "../../lib/resolve-scheduled-at.js";
@@ -12,7 +12,7 @@ import {
 } from "../../services/enqueue.js";
 import { openJobSseStream } from "../../lib/job-sse-stream.js";
 import { resolveJobSnapshot } from "../../lib/resolve-job-snapshot.js";
-import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
+import { requireWorkspacePermissionForActor } from "../../lib/workspace/session.js";
 import { postScopeCondition } from "../../lib/workspace/context.js";
 import { db } from "../../db/index.js";
 import { posts } from "../../db/schema.js";
@@ -42,11 +42,12 @@ function isScheduleRequest(data: z.infer<typeof publishSchema>) {
 
 export async function registerPublishRoutes(app: FastifyInstance) {
   app.post("/publish", async (request, reply) => {
-    const actorUserId = await requireUserId(request);
-    if (!actorUserId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
+    const actorUserId = actor.userId;
 
-    const ws = await requireWorkspacePermissionForUser(
-      actorUserId,
+    const ws = await requireWorkspacePermissionForActor(
+      actor,
       "publish_posts",
     );
     if (!ws.ok) {
@@ -150,32 +151,47 @@ export async function registerPublishRoutes(app: FastifyInstance) {
   });
 }
 
+/**
+ * Publish jobs are owned by the workspace *resource* user (the team owner), not
+ * by whoever pressed publish. A teammate watching their own job must therefore
+ * be matched through the workspace context, or every team publish 403s on its
+ * own progress stream.
+ */
+async function canReadJob(
+  actor: { userId: string; source: "session" | "apiKey" | "devHeader" },
+  jobUserId: string,
+): Promise<boolean> {
+  if (jobUserId === actor.userId) return true;
+  const ws = await requireWorkspacePermissionForActor(actor, "view_posts");
+  return ws.ok && ws.ctx.resourceUserId === jobUserId;
+}
+
 export async function registerJobRoutes(app: FastifyInstance) {
   app.get("/jobs/:trackingId", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
 
     const { trackingId } = request.params as { trackingId: string };
     const snapshot = await resolveJobSnapshot(app, trackingId);
     if (!snapshot) {
       return reply.status(404).send({ error: "Job not found", trackingId });
     }
-    if (snapshot.userId !== userId) {
+    if (!(await canReadJob(actor, snapshot.userId))) {
       return reply.status(403).send({ error: "Forbidden", code: "FORBIDDEN" });
     }
     return snapshot;
   });
 
   app.get("/jobs/:trackingId/stream", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
 
     const { trackingId } = request.params as { trackingId: string };
     const snapshot = await resolveJobSnapshot(app, trackingId);
     if (!snapshot) {
       return reply.status(404).send({ error: "Job not found", trackingId });
     }
-    if (snapshot.userId !== userId) {
+    if (!(await canReadJob(actor, snapshot.userId))) {
       return reply.status(403).send({ error: "Forbidden", code: "FORBIDDEN" });
     }
 

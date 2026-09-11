@@ -19,6 +19,10 @@ import {
   type WebhookDeliveryRecord,
   type WebhookSummary,
 } from "../../services/webhooks.js";
+import {
+  countWebhookSubscriptions,
+  WEBHOOK_SUBSCRIPTION_LIMIT,
+} from "../api/api-platform.js";
 import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
 import { requireV1MutationBudget } from "../../middleware/v1-live-limits.js";
 
@@ -88,6 +92,17 @@ export async function registerWebhooksRoutes(app: FastifyInstance) {
             "Webhook URL must be a public https URL that resolves to a public address.",
           ),
         );
+    }
+
+    if (
+      (await countWebhookSubscriptions(userId)) >= WEBHOOK_SUBSCRIPTION_LIMIT
+    ) {
+      return reply.status(409).send(
+        apiError(
+          "limit_exceeded",
+          `You can have up to ${WEBHOOK_SUBSCRIPTION_LIMIT} webhook endpoints. Delete one first.`,
+        ),
+      );
     }
 
     const secret = crypto.randomBytes(32).toString("base64url");

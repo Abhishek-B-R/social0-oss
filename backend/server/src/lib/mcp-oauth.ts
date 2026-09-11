@@ -85,6 +85,18 @@ function sha256Base64Url(value: string): string {
   return createHash("sha256").update(value).digest("base64url");
 }
 
+/** Client secrets are bearer credentials — never compare them with `!==`. */
+function matchesClientSecret(
+  provided: string | undefined,
+  expected: string,
+): boolean {
+  if (typeof provided !== "string") return false;
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 function verifyPkce(codeVerifier: string | undefined, codeChallenge: string): boolean {
   if (!codeVerifier) return false;
   const computed = sha256Base64Url(codeVerifier);
@@ -390,7 +402,7 @@ export async function exchangeMcpAuthorizationCode(input: {
   }
 
   if (client.client_secret) {
-    if (!input.clientSecret || input.clientSecret !== client.client_secret) {
+    if (!matchesClientSecret(input.clientSecret, client.client_secret)) {
       throw new Error("invalid_client");
     }
   }
@@ -460,7 +472,10 @@ export async function refreshMcpAccessToken(input: {
   const store = requireRedis();
   const client = await getMcpOAuthClient(input.clientId);
   if (!client) throw new Error("invalid_client");
-  if (client.client_secret && input.clientSecret !== client.client_secret) {
+  if (
+    client.client_secret &&
+    !matchesClientSecret(input.clientSecret, client.client_secret)
+  ) {
     throw new Error("invalid_client");
   }
 
@@ -526,7 +541,7 @@ export async function revokeMcpToken(input: {
     const client = await getMcpOAuthClient(input.clientId);
     if (!client) return;
     if (client.client_secret) {
-      if (!input.clientSecret || input.clientSecret !== client.client_secret) {
+      if (!matchesClientSecret(input.clientSecret, client.client_secret)) {
         throw new Error("invalid_client");
       }
     }

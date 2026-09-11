@@ -51,7 +51,12 @@ export async function changeEmail(request: Request) {
 
   const parts = row.value.split(":");
   const storedOtp = parts[0] ?? "";
-  const attempts = Math.min(MAX_OTP_ATTEMPTS + 1, parseInt(parts[1] ?? "0", 10));
+  const parsedAttempts = Number.parseInt(parts[1] ?? "0", 10);
+  // A malformed counter must not read as NaN: `NaN + 1 >= MAX` is false, which
+  // would leave the code open to unlimited guesses.
+  const attempts = Number.isFinite(parsedAttempts)
+    ? Math.min(MAX_OTP_ATTEMPTS + 1, Math.max(0, parsedAttempts))
+    : MAX_OTP_ATTEMPTS;
   const otpUserId = parts[2] ?? "";
 
   if (!otpUserId || otpUserId !== session.user.id) {

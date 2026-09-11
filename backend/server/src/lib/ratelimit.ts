@@ -213,6 +213,15 @@ export const billingSyncLimiter = redis
     })
   : null;
 
+// MCP dynamic client registration is unauthenticated (RFC 7591) — cap per IP.
+export const mcpRegisterLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(20, "1 h"),
+      prefix: "rl:mcp_register",
+    })
+  : null;
+
 /** General RPC calls per authenticated user. */
 export const rpcLimiter = redis
   ? new Ratelimit({

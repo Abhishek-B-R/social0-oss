@@ -7,7 +7,7 @@ import {
   postPublications,
   posts,
 } from "../db/schema.js";
-import { checkFreePostLimit, incrementFreePostsUsed } from "../lib/plan-limits.js";
+import { releaseFreePost, reserveFreePost } from "../lib/plan-limits.js";
 import { getPostDetail } from "../lib/posts-list/posts-list-data.js";
 import { getValidToken } from "../lib/token-refresh.js";
 import { isValidUUID } from "../lib/validation.js";
@@ -189,10 +189,18 @@ async function validateTargetsForMedia(
   return `${platform} does not support ${form} posts in Social0 (supported for this content: ${supported}).`;
 }
 
-async function gateFreeQuota(userId: string): Promise<string | null> {
-  const limit = await checkFreePostLimit(userId);
-  if (limit.allowed) return null;
-  return limit.reason ?? "Free post limit reached. Upgrade to continue.";
+/**
+ * Take one free post atomically. Checking then incrementing let two concurrent
+ * `/v1` calls both pass the read and both publish past the free-tier limit.
+ */
+async function reserveFreeQuota(userId: string) {
+  const reservation = await reserveFreePost(userId);
+  if (reservation.allowed) return { ok: true as const, reservation };
+  return {
+    ok: false as const,
+    error:
+      reservation.reason ?? "Free post limit reached. Upgrade to continue.",
+  };
 }
 
 export type V1CreatePostInput = {
@@ -843,21 +851,28 @@ export async function v1SchedulePost(
     return { ok: false, error: "Only draft or scheduled posts can be scheduled" };
   }
 
-  if (existing.status === "draft") {
-    const quotaErr = await gateFreeQuota(userId);
-    if (quotaErr) return { ok: false, error: quotaErr };
-    await incrementFreePostsUsed(userId);
+  const scheduleQuota =
+    existing.status === "draft" ? await reserveFreeQuota(userId) : null;
+  if (scheduleQuota && !scheduleQuota.ok) {
+    return { ok: false, error: scheduleQuota.error };
   }
 
   const at = coerceDate(scheduledAt)!;
-  await db
-    .update(posts)
-    .set({
-      status: "scheduled",
-      scheduledAt: at,
-      updatedAt: new Date(),
-    })
-    .where(eq(posts.id, postId));
+  try {
+    await db
+      .update(posts)
+      .set({
+        status: "scheduled",
+        scheduledAt: at,
+        updatedAt: new Date(),
+      })
+      .where(eq(posts.id, postId));
+  } catch (err) {
+    if (scheduleQuota?.ok) {
+      await releaseFreePost(scheduleQuota.reservation, userId);
+    }
+    throw err;
+  }
 
   emitUserWebhookEvent(userId, "post.scheduled", {
     post_id: postId,
@@ -891,11 +906,16 @@ export async function v1PublishPost(
 
   if (!existing) return { ok: false, error: "Post not found" };
 
-  if (existing.status === "draft") {
-    const quotaErr = await gateFreeQuota(userId);
-    if (quotaErr) return { ok: false, error: quotaErr };
-    await incrementFreePostsUsed(userId);
+  const publishQuota =
+    existing.status === "draft" ? await reserveFreeQuota(userId) : null;
+  if (publishQuota && !publishQuota.ok) {
+    return { ok: false, error: publishQuota.error };
   }
+  const releaseQuota = async () => {
+    if (publishQuota?.ok) {
+      await releaseFreePost(publishQuota.reservation, userId);
+    }
+  };
 
   const trackingId = createPublishTrackingId();
 
@@ -906,9 +926,11 @@ export async function v1PublishPost(
       { trackingId },
     );
     if (job.enqueued === 0) {
+      await releaseQuota();
       return { ok: false, error: "Post not found or not publishable" };
     }
   } catch (err) {
+    await releaseQuota();
     const message = err instanceof Error ? err.message : "Failed to enqueue publish";
     if (message.includes("No publication targets")) {
       return { ok: false, error: "Post not found or not publishable" };

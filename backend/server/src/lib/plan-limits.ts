@@ -199,6 +199,10 @@ export async function checkFreePostLimit(
   return { allowed: true, used, limit, remaining };
 }
 
+/**
+ * @deprecated Use `reserveFreePost`. Checking the limit and then incrementing
+ * leaves a window where concurrent submissions each pass the check.
+ */
 export async function incrementFreePostsUsed(userId: string): Promise<void> {
   const sub = await getSubscriptionForUser(userId);
   if (isActiveTier(sub.tier)) return;
@@ -207,5 +211,71 @@ export async function incrementFreePostsUsed(userId: string): Promise<void> {
   await db
     .update(userSettings)
     .set({ freePostsUsed: sql`${userSettings.freePostsUsed} + 1` })
+    .where(eq(userSettings.userId, userId));
+}
+
+export type FreePostReservation =
+  | { allowed: true; consumed: boolean }
+  | { allowed: false; reason: string; used: number; limit: number };
+
+/**
+ * Take one free post, atomically.
+ *
+ * `checkFreePostLimit` + `incrementFreePostsUsed` was a read-modify-write: two
+ * "Publish now" clicks that raced both saw `used < limit` and both went
+ * through. The conditional UPDATE makes the limit the thing that decides, so a
+ * loser simply gets zero rows back.
+ *
+ * Paid tiers are unlimited and reserve nothing (`consumed: false`).
+ * Release with `releaseFreePost` when the work the reservation paid for did not
+ * happen.
+ */
+export async function reserveFreePost(
+  userId: string,
+): Promise<FreePostReservation> {
+  const sub = await getSubscriptionForUser(userId);
+  if (isActiveTier(sub.tier)) return { allowed: true, consumed: false };
+
+  const limit = getPlanLimits("free").maxFreePosts;
+
+  // The counter lives on user_settings, which is created lazily. Make sure the
+  // row exists so the conditional UPDATE below is the only thing that can fail.
+  await db
+    .insert(userSettings)
+    .values({ userId, freePostsUsed: 0 })
+    .onConflictDoNothing({ target: userSettings.userId });
+
+  const claimed = await db
+    .update(userSettings)
+    .set({ freePostsUsed: sql`coalesce(${userSettings.freePostsUsed}, 0) + 1` })
+    .where(
+      and(
+        eq(userSettings.userId, userId),
+        sql`coalesce(${userSettings.freePostsUsed}, 0) < ${limit}`,
+      ),
+    )
+    .returning({ used: userSettings.freePostsUsed });
+
+  if (claimed.length > 0) return { allowed: true, consumed: true };
+
+  return {
+    allowed: false,
+    reason: `You've used your ${limit} free posts. Subscribe to continue posting.`,
+    used: await getFreePostsUsed(userId),
+    limit,
+  };
+}
+
+/** Hand a reserved free post back when the operation it paid for failed. */
+export async function releaseFreePost(
+  reservation: FreePostReservation,
+  userId: string,
+): Promise<void> {
+  if (!reservation.allowed || !reservation.consumed) return;
+  await db
+    .update(userSettings)
+    .set({
+      freePostsUsed: sql`greatest(coalesce(${userSettings.freePostsUsed}, 0) - 1, 0)`,
+    })
     .where(eq(userSettings.userId, userId));
 }

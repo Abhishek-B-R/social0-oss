@@ -16,7 +16,10 @@ import {
   type SubscriptionTier,
 } from "@social0/shared";
 import { env } from "../../lib/env.js";
-import { claimWebhookDelivery } from "../../lib/webhook-idempotency.js";
+import {
+  claimWebhookDelivery,
+  releaseWebhookDelivery,
+} from "../../lib/webhook-idempotency.js";
 import {
   findRecentPaidUpgradePayment,
   hasTrialBeenClaimed,
@@ -656,6 +659,10 @@ export async function handleDodoWebhook(request: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
     console.error("[dodo webhook] Handler error:", msg);
+    // The claim was taken before the handler ran. Hand it back so Dodo's retry
+    // of this delivery is actually processed instead of short-circuiting as a
+    // duplicate — otherwise one transient failure drops a billing event.
+    await releaseWebhookDelivery(webhookId);
     return RouteResponse.json(
       { error: "Webhook handler failed" },
       { status: 500 },
