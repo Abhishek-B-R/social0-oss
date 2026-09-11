@@ -12,6 +12,7 @@ import {
   dispatchPublishPost,
   queueNameForJob,
   useCloudflarePublishDispatch,
+  assertPublishDispatchConfigured,
 } from "./publish-dispatch.js";
 import {
   initPublishJobTracking,
@@ -45,6 +46,8 @@ export async function enqueuePublishPostStandalone(
   backend: "cloudflare" | "bullmq";
   streamUrl?: string;
 }> {
+  assertPublishDispatchConfigured();
+
   const trackingId =
     opts?.trackingId ?? data.trackingId ?? createPublishTrackingId();
 

@@ -19,6 +19,7 @@ import {
 import {
   dispatchPlatformJob,
   useCloudflarePublishDispatch,
+  assertPublishDispatchConfigured,
 } from "./publish-dispatch.js";
 import { runPlatformJobOnServer } from "../publish/process-platform-server.js";
 
@@ -150,6 +151,10 @@ export async function prepareAndEnqueuePublish(
   enqueued: number;
   trackingId?: string;
 }> {
+  // Before `markPostPublishing`: a deployment that cannot dispatch must leave
+  // the post exactly as it was.
+  assertPublishDispatchConfigured();
+
   const trackingId = opts.trackingId ?? data.trackingId;
   const job: PublishPostJob = { ...data, trackingId };
 
@@ -160,7 +165,11 @@ export async function prepareAndEnqueuePublish(
 
   await markPostPublishing(job.postId, job.userId);
 
-  if (trackingId) {
+  // `initQueuedJobProgress` below runs `initJob`, whose persist hooks write the
+  // same `publish_jobs` row and the same "queued" event — but only when the
+  // store is `app.jobProgress`. Doing it here as well is what gave every
+  // publish two identical queued events in its progress feed.
+  if (trackingId && !app?.jobProgress) {
     await initPublishJobTracking({
       trackingId,
       postId: job.postId,
