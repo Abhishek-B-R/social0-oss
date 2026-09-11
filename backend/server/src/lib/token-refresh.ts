@@ -89,6 +89,14 @@ export async function getValidToken(
   );
   if (outcome.refreshed) return outcome.value;
 
+  // A forced refresh means the provider just rejected the stored token, and the
+  // caller we waited on may only have read that same token. Refresh now that
+  // the lock is free: `refreshTokenUnlocked` re-reads the account, so it
+  // presents whatever refresh token that caller stored.
+  if (options?.forceRefresh) {
+    return refreshTokenUnlocked(accountId, platform, options);
+  }
+
   // Another caller just refreshed this account. Read what they stored rather
   // than calling the provider again with a refresh token they may have rotated.
   const account = await db.query.connectedAccounts.findFirst({

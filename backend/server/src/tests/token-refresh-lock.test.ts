@@ -1,17 +1,27 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockRedis } = vi.hoisted(() => ({
+const { mockRedis, mockFindFirst, mockGetValidYouTubeToken } = vi.hoisted(() => ({
   mockRedis: {
     store: new Map<string, string>(),
     set: vi.fn(),
     get: vi.fn(),
     del: vi.fn(),
   },
+  mockFindFirst: vi.fn(),
+  mockGetValidYouTubeToken: vi.fn(),
 }));
 
 vi.mock("../lib/redis.js", () => ({ redis: mockRedis }));
+vi.mock("../db/index.js", () => ({
+  db: { query: { connectedAccounts: { findFirst: mockFindFirst } } },
+}));
+vi.mock("../lib/youtube-token.js", () => ({
+  getValidYouTubeToken: mockGetValidYouTubeToken,
+}));
 
+import { encryptToken } from "@social0/shared";
 import { withTokenRefreshLock } from "../lib/token-refresh-lock.js";
+import { getValidToken } from "../lib/token-refresh.js";
 
 function wireRedis() {
   mockRedis.store.clear();
@@ -98,5 +108,56 @@ describe("withTokenRefreshLock", () => {
 
     const outcome = await withTokenRefreshLock("acc-4", async () => "fallback");
     expect(outcome).toEqual({ refreshed: true, value: "fallback" });
+  });
+});
+
+describe("getValidToken behind the refresh lock", () => {
+  const accountId = "acc-yt";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    wireRedis();
+    mockFindFirst.mockResolvedValue({
+      id: accountId,
+      platform: "youtube",
+      encryptedAccessToken: encryptToken("stored-token", accountId),
+    });
+    mockGetValidYouTubeToken.mockResolvedValue("refreshed-token");
+  });
+
+  /** Every `getValidToken` takes the lock, even one that only reads the token. */
+  function holdLockBriefly() {
+    const key = `token-refresh:lock:${accountId}`;
+    mockRedis.store.set(key, "another-caller");
+    setTimeout(() => mockRedis.store.delete(key), 50);
+  }
+
+  /**
+   * YouTube retries an upload that got a 401 with a forced refresh, and token
+   * health does the same before marking an account expired. Waiting out a lock
+   * held by a caller that only read the token used to hand back that same
+   * rejected token: the retry failed again and a dead account read as active.
+   */
+  it("still refreshes when the refresh was forced", async () => {
+    holdLockBriefly();
+
+    const token = await getValidToken(accountId, "youtube", {
+      forceRefresh: true,
+    });
+
+    expect(token).toBe("refreshed-token");
+    expect(mockGetValidYouTubeToken).toHaveBeenCalledWith(
+      expect.objectContaining({ id: accountId }),
+      { forceRefresh: true },
+    );
+  });
+
+  it("reads the stored token when the refresh was not forced", async () => {
+    holdLockBriefly();
+
+    const token = await getValidToken(accountId, "youtube");
+
+    expect(token).toBe("stored-token");
+    expect(mockGetValidYouTubeToken).not.toHaveBeenCalled();
   });
 });
