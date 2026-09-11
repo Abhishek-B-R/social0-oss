@@ -28,6 +28,7 @@ describe("isSafeOutboundUrl — IPv6 literals", () => {
       "http://[fc00::1]/",
       "http://[fd12:3456::1]/",
       "http://[fe80::1]/",
+      "http://[fec0::1]/",
       "http://[ff02::1]/",
       "http://[64:ff9b::7f00:1]/",
     ]) {
@@ -53,6 +54,7 @@ describe("isSafeOutboundUrl — IPv4 and hosts", () => {
       "http://169.254.169.254/",
       "http://100.64.0.1/",
       "http://192.0.0.1/",
+      "http://198.18.0.1/",
       "http://224.0.0.1/",
       "http://255.255.255.255/",
       "http://0x7f000001/",
@@ -79,6 +81,7 @@ describe("isSafeOutboundUrl — IPv4 and hosts", () => {
       "https://172.32.0.1/",
       "https://11.0.0.1/",
       "https://192.169.1.1/",
+      "https://192.0.1.1/",
       "https://100.128.0.1/",
       "https://api.internal.example.com/",
     ]) {

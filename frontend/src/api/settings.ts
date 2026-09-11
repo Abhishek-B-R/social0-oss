@@ -53,8 +53,10 @@ export async function updatePlatformPreferences(formData: FormData): Promise<voi
   await rpc("settings.updatePlatformPreferences", formData);
 }
 
-export async function updateTimezone(formData: FormData): Promise<void> {
-  await rpc("settings.updateTimezone", formData);
+export async function updateTimezone(
+  formData: FormData,
+): Promise<{ error?: string }> {
+  return (await rpc("settings.updateTimezone", formData)) ?? {};
 }
 
 export async function signOutAllDevices(): Promise<void> {

@@ -234,8 +234,19 @@ export async function createPost(
     reservation = quota.reservation;
   }
 
+  // Release only while the submission has not landed yet. Once the post and
+  // its publications exist the quota stays spent — this is the same point the
+  // previous `incrementFreePostsUsed` call charged at, and refunding past it
+  // would leave an unpaid post that `/api/publish` (which never charges) could
+  // publish for free.
   const releaseQuota = async () => {
-    if (reservation) await releaseFreePost(reservation, userId);
+    if (!reservation) return;
+    const held = reservation;
+    reservation = null;
+    await releaseFreePost(held, userId);
+  };
+  const commitQuota = () => {
+    reservation = null;
   };
 
   const status = mode === "draft" ? "draft" : "scheduled";
@@ -274,6 +285,8 @@ export async function createPost(
         status: "pending" as const,
       })),
     );
+
+    commitQuota();
 
     if (mode === "now") {
       const skipPublish =
@@ -449,6 +462,7 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
   if (!quota.ok) {
     return { success: false, error: quota.error };
   }
+  let postAgainCommitted = false;
 
   try {
     const [newPost] = await db
@@ -479,6 +493,9 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       })),
     );
 
+    // Submission has landed — see createPost for why the refund stops here.
+    postAgainCommitted = true;
+
     const queued = await enqueuePublishPostStandalone({
       postId: newPost.id,
       userId: userId,
@@ -493,7 +510,9 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       streamUrl: queued.streamUrl,
     };
   } catch (e) {
-    await releaseFreePost(quota.reservation, userId);
+    if (!postAgainCommitted) {
+      await releaseFreePost(quota.reservation, userId);
+    }
     console.error("postAgain error:", e);
     return {
       success: false,
@@ -1063,6 +1082,8 @@ export async function updateAndPublish(
     return { success: false, error: quota.error };
   }
 
+  // No release below: the draft is already updated and publishable, so a
+  // refund here would let it publish a second time for free.
   try {
     const queued = await enqueuePublishPostStandalone({
       postId: draftId,
@@ -1076,7 +1097,6 @@ export async function updateAndPublish(
       streamUrl: queued.streamUrl,
     };
   } catch (err) {
-    await releaseFreePost(quota.reservation, userId);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Publish failed after update",

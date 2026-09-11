@@ -7,7 +7,7 @@ import {
   postPublications,
   posts,
 } from "../db/schema.js";
-import { releaseFreePost, reserveFreePost } from "../lib/plan-limits.js";
+import { reserveFreePost } from "../lib/plan-limits.js";
 import { getPostDetail } from "../lib/posts-list/posts-list-data.js";
 import { getValidToken } from "../lib/token-refresh.js";
 import { isValidUUID } from "../lib/validation.js";
@@ -858,21 +858,14 @@ export async function v1SchedulePost(
   }
 
   const at = coerceDate(scheduledAt)!;
-  try {
-    await db
-      .update(posts)
-      .set({
-        status: "scheduled",
-        scheduledAt: at,
-        updatedAt: new Date(),
-      })
-      .where(eq(posts.id, postId));
-  } catch (err) {
-    if (scheduleQuota?.ok) {
-      await releaseFreePost(scheduleQuota.reservation, userId);
-    }
-    throw err;
-  }
+  await db
+    .update(posts)
+    .set({
+      status: "scheduled",
+      scheduledAt: at,
+      updatedAt: new Date(),
+    })
+    .where(eq(posts.id, postId));
 
   emitUserWebhookEvent(userId, "post.scheduled", {
     post_id: postId,
@@ -911,14 +904,12 @@ export async function v1PublishPost(
   if (publishQuota && !publishQuota.ok) {
     return { ok: false, error: publishQuota.error };
   }
-  const releaseQuota = async () => {
-    if (publishQuota?.ok) {
-      await releaseFreePost(publishQuota.reservation, userId);
-    }
-  };
 
   const trackingId = createPublishTrackingId();
 
+  // Nothing is refunded past this point: the post is publishable, and
+  // `/v1/posts/:id/publish` can be retried, so a refund would hand out a free
+  // publish rather than undo a charge.
   try {
     const job = await enqueuePublishPost(
       app,
@@ -926,11 +917,9 @@ export async function v1PublishPost(
       { trackingId },
     );
     if (job.enqueued === 0) {
-      await releaseQuota();
       return { ok: false, error: "Post not found or not publishable" };
     }
   } catch (err) {
-    await releaseQuota();
     const message = err instanceof Error ? err.message : "Failed to enqueue publish";
     if (message.includes("No publication targets")) {
       return { ok: false, error: "Post not found or not publishable" };

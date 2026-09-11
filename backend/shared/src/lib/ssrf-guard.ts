@@ -15,16 +15,17 @@ function parseIpv4(host: string): number[] | null {
 function isPrivateIpv4(host: string): boolean {
   const o = parseIpv4(host);
   if (!o) return false;
-  const [a, b] = o;
-  if (a === 10) return true;
-  if (a === 127) return true;
-  if (a === 0) return true;
-  if (a === 169 && b === 254) return true;
-  if (a === 172 && b >= 16 && b <= 31) return true;
-  if (a === 192 && b === 168) return true;
-  if (a === 192 && b === 0) return true; // 192.0.0.0/24 IETF protocol assignments
-  if (a === 100 && b >= 64 && b <= 127) return true;
-  if (a >= 224) return true; // multicast + reserved/broadcast
+  const [a, b, c] = o;
+  if (a === 0) return true; // 0.0.0.0/8 "this network"
+  if (a === 10) return true; // RFC1918
+  if (a === 127) return true; // loopback
+  if (a === 100 && b! >= 64 && b! <= 127) return true; // CGNAT
+  if (a === 169 && b === 254) return true; // link-local (cloud metadata)
+  if (a === 172 && b! >= 16 && b! <= 31) return true; // RFC1918
+  if (a === 192 && b === 0 && c === 0) return true; // IETF protocol assignments
+  if (a === 192 && b === 168) return true; // RFC1918
+  if (a === 198 && b! >= 18 && b! <= 19) return true; // benchmarking
+  if (a! >= 224) return true; // multicast + reserved + broadcast
   return false;
 }
 
@@ -98,9 +99,11 @@ function isPrivateIpv6(host: string): boolean {
   // NAT64 well-known prefix 64:ff9b::/96 and 64:ff9b:1::/48
   if (g[0] === 0x64 && g[1] === 0xff9b) return true;
 
-  // fc00::/7 unique local, fe80::/10 link local, ff00::/8 multicast
+  // fc00::/7 unique local, fe80::/10 link local, fec0::/10 site local
+  // (deprecated but still honoured by some stacks), ff00::/8 multicast
   if ((g[0]! & 0xfe00) === 0xfc00) return true;
   if ((g[0]! & 0xffc0) === 0xfe80) return true;
+  if ((g[0]! & 0xffc0) === 0xfec0) return true;
   if ((g[0]! & 0xff00) === 0xff00) return true;
 
   return false;

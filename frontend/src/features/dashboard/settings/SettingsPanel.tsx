@@ -1302,7 +1302,11 @@ export function SettingsPanel({
                   const fd = new FormData(e.currentTarget);
                   startTimezoneTransition(async () => {
                     try {
-                      await updateTimezone(fd);
+                      const result = await updateTimezone(fd);
+                      if (result?.error) {
+                        toast.error(result.error);
+                        return;
+                      }
                       const tz =
                         String(fd.get("timezone") ?? "").trim() || "UTC";
                       setTimezoneValue(tz);
