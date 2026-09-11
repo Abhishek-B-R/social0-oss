@@ -91,7 +91,10 @@ export async function openJobSseStream(
   let closed = false;
   const stopTimers: Array<() => void> = [];
 
-  /** Idempotent: the done event and the client disconnect both call it. */
+  /**
+   * Idempotent, and must never reject: every caller is a `void cleanup()` from
+   * a timer or an event handler, where a rejection becomes an unhandled one.
+   */
   const cleanup = async () => {
     if (closed) return;
     closed = true;
@@ -104,18 +107,33 @@ export async function openJobSseStream(
         request.log.warn({ err, trackingId }, "job stream unsubscribe failed");
       }
     }
-    if (!reply.raw.writableEnded) reply.raw.end();
+    try {
+      if (!reply.raw.writableEnded) reply.raw.end();
+    } catch (err) {
+      request.log.warn({ err, trackingId }, "job stream close failed");
+    }
   };
 
   if (!useDbPoll) {
-    subscriber = app.jobProgress.subscribe(trackingId, async (event) => {
+    // The callback runs inside ioredis's "message" emitter, which does not await
+    // it — an unhandled rejection here would take the process down, so a failed
+    // snapshot read degrades to the one we already have.
+    subscriber = app.jobProgress.subscribe(trackingId, (event) => {
       if (closed) return;
-      const snapshot = (await resolveJobSnapshot(app, trackingId)) ?? initialSnapshot;
-      writeEvent(event, snapshot);
-      if (event.phase === "completed" || event.phase === "failed") {
-        writeDone(snapshot);
-        void cleanup();
-      }
+      void (async () => {
+        try {
+          const snapshot =
+            (await resolveJobSnapshot(app, trackingId)) ?? initialSnapshot;
+          if (closed) return;
+          writeEvent(event, snapshot);
+          if (event.phase === "completed" || event.phase === "failed") {
+            writeDone(snapshot);
+            await cleanup();
+          }
+        } catch (err) {
+          request.log.warn({ err, trackingId }, "job stream event failed");
+        }
+      })();
     });
   }
 
