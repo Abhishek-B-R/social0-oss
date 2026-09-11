@@ -10,7 +10,12 @@ import {
   type PublishPostJob,
 } from "@social0/shared";
 import { db } from "../db/index.js";
-import { posts, publishJobEvents, publishJobs } from "../db/schema.js";
+import {
+  postPublications,
+  posts,
+  publishJobEvents,
+  publishJobs,
+} from "../db/schema.js";
 import { loadPublicationTargets } from "../lib/publish-load-targets.js";
 import {
   resolveJobProgressStore,
@@ -25,11 +30,71 @@ import { runPlatformJobOnServer } from "../publish/process-platform-server.js";
 
 export type PublishPriority = "now" | "scheduled";
 
-async function markPostPublishing(postId: string, userId: string) {
+/** Claims the post for publishing and reports the status it held before. */
+async function markPostPublishing(
+  postId: string,
+  userId: string,
+): Promise<string | null> {
+  const [before] = await db
+    .select({ status: posts.status })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .limit(1);
+
   await db
     .update(posts)
     .set({ status: "publishing", failureReason: null, updatedAt: new Date() })
     .where(and(eq(posts.id, postId), eq(posts.userId, userId)));
+
+  return before?.status ?? null;
+}
+
+/**
+ * Put the post back where the user can act on it when the fan-out failed.
+ *
+ * `markPostPublishing` runs before anything is dispatched, and `publishing` is
+ * a terminal-looking state for the caller: the post can no longer be edited,
+ * deleted, or re-published, and only the cron's hour-old sweeper eventually
+ * marks it failed. So a publish worker that was briefly unreachable took the
+ * post away from its owner for an hour.
+ *
+ * The same rule as the scheduled cron in `background-worker`: nothing
+ * dispatched means restore the previous status so the user can retry; a
+ * partial fan-out stays `publishing` — re-running would double-publish what
+ * already went out — with the undispatched publications failed so the post
+ * can finalize instead of hanging.
+ */
+async function recoverFromFanOutFailure(
+  postId: string,
+  userId: string,
+  previousStatus: string | null,
+  undispatched: Awaited<ReturnType<typeof loadPublicationTargets>>,
+  dispatched: number,
+  message: string,
+): Promise<void> {
+  if (dispatched === 0) {
+    await db
+      .update(posts)
+      .set({
+        status: (previousStatus as "draft" | "scheduled" | null) ?? "draft",
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(posts.id, postId),
+          eq(posts.userId, userId),
+          eq(posts.status, "publishing"),
+        ),
+      );
+    return;
+  }
+
+  for (const target of undispatched) {
+    await db
+      .update(postPublications)
+      .set({ status: "failed", lastError: message, updatedAt: new Date() })
+      .where(eq(postPublications.id, target.publicationId));
+  }
 }
 
 /** Persist tracking row for SSE when publish_jobs table exists. */
@@ -163,7 +228,7 @@ export async function prepareAndEnqueuePublish(
     throw new Error(`No publication targets for post ${job.postId}`);
   }
 
-  await markPostPublishing(job.postId, job.userId);
+  const previousStatus = await markPostPublishing(job.postId, job.userId);
 
   // `initQueuedJobProgress` below runs `initJob`, whose persist hooks write the
   // same `publish_jobs` row and the same "queued" event — but only when the
@@ -186,27 +251,44 @@ export async function prepareAndEnqueuePublish(
 
   await initQueuedJobProgress(app, job, targets);
 
-  for (const t of targets) {
-    const platformJob: PublishPlatformJob = {
-      postId: job.postId,
-      userId: job.userId,
-      trackingId,
-      publicationId: t.publicationId,
-      connectedAccountId: t.connectedAccountId,
-      platform: t.platform,
-    };
+  let dispatched = 0;
+  try {
+    for (const t of targets) {
+      const platformJob: PublishPlatformJob = {
+        postId: job.postId,
+        userId: job.userId,
+        trackingId,
+        publicationId: t.publicationId,
+        connectedAccountId: t.connectedAccountId,
+        platform: t.platform,
+      };
 
-    if (backend === "cloudflare" && SERVER_SIDE_PUBLISH_PLATFORMS.has(t.platform)) {
-      // X + TikTok stay on the API unless TWITTER_PUBLISH_ON_CF / TIKTOK_PUBLISH_ON_CF=1.
-      void runPlatformJobOnServer(app, platformJob).catch((err) => {
-        console.error("[publish] server-side platform job failed", err);
-      });
-    } else if (backend === "cloudflare") {
-      await dispatchPlatformJob(platformJob, opts.priority);
-    } else {
-      await enqueueBullmqPlatformJob(app, platformJob, { delay: opts.delay });
+      if (
+        backend === "cloudflare" &&
+        SERVER_SIDE_PUBLISH_PLATFORMS.has(t.platform)
+      ) {
+        // X + TikTok stay on the API unless TWITTER_PUBLISH_ON_CF / TIKTOK_PUBLISH_ON_CF=1.
+        void runPlatformJobOnServer(app, platformJob).catch((err) => {
+          console.error("[publish] server-side platform job failed", err);
+        });
+      } else if (backend === "cloudflare") {
+        await dispatchPlatformJob(platformJob, opts.priority);
+      } else {
+        await enqueueBullmqPlatformJob(app, platformJob, { delay: opts.delay });
+      }
+      dispatched += 1;
+      await emitPlatformQueuedEvent(app, job, t);
     }
-    await emitPlatformQueuedEvent(app, job, t);
+  } catch (err) {
+    await recoverFromFanOutFailure(
+      job.postId,
+      job.userId,
+      previousStatus,
+      targets.slice(dispatched),
+      dispatched,
+      err instanceof Error ? err.message : "Could not queue this platform",
+    );
+    throw err;
   }
 
   return {
