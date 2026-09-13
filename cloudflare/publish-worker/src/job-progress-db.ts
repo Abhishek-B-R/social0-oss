@@ -1,3 +1,4 @@
+import { publishJobOutcome } from "@social0/shared";
 import type { PublishPlatformJob } from "./types";
 import { assertPublishJobAuthorized } from "./validate-job";
 
@@ -118,10 +119,8 @@ export async function recordPlatformResult(
 
     if (!job.trackingId) return;
 
-    const [row] = await sql<
-      { total: number; completed: number; failed: number }[]
-    >`
-      SELECT total, completed, failed
+    const [row] = await sql<{ total: number }[]>`
+      SELECT total
       FROM publish_jobs
       WHERE tracking_id = ${job.trackingId}
       LIMIT 1
@@ -129,8 +128,14 @@ export async function recordPlatformResult(
 
     if (!row) return;
 
-    const completed = row.completed + (success ? 1 : 0);
-    const failed = row.failed + (success ? 0 : 1);
+    // Count the publications rather than incrementing the stored counters.
+    // A queue retry of the same platform message incremented a second time,
+    // and `failed === total` then read false — so a publish where every
+    // platform failed recorded itself as "completed / All platforms
+    // published". The publication rows are the source of truth and are already
+    // updated above, so deriving from them is idempotent.
+    const completed = pubCounts?.published ?? 0;
+    const failed = pubCounts?.failed ?? 0;
     const total = row.total;
     const progress = { completed, failed, total };
     const phase = success ? "platform_success" : "platform_failed";
@@ -151,24 +156,19 @@ export async function recordPlatformResult(
       )
     `;
 
-    const allDone = completed + failed >= total && total > 0;
-    const status = allDone
-      ? failed === total
-        ? "failed"
-        : "completed"
-      : "processing";
+    const outcome = publishJobOutcome(completed, failed, total);
 
     await sql`
       UPDATE publish_jobs
       SET
-        status = ${status},
+        status = ${outcome.status},
         completed = ${completed},
         failed = ${failed},
         updated_at = NOW()
       WHERE tracking_id = ${job.trackingId}
     `;
 
-    if (allDone) {
+    if (outcome.allDone) {
       await sql`
         INSERT INTO publish_job_events (
           tracking_id, post_id, user_id, phase, message, progress
@@ -176,14 +176,8 @@ export async function recordPlatformResult(
           ${job.trackingId},
           ${job.postId}::uuid,
           ${job.userId},
-          ${status},
-          ${
-            failed === total
-              ? "Publish finished with failures"
-              : completed > 0 && failed > 0
-                ? `Published to ${completed}/${total} platforms (${failed} failed)`
-                : "All platforms published"
-          },
+          ${outcome.status},
+          ${outcome.message},
           ${JSON.stringify(progress)}::jsonb
         )
       `;

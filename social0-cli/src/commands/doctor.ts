@@ -1,13 +1,13 @@
 import chalk from "chalk";
 import { hasApiKey } from "../config/credentials.js";
-import { loadConfig } from "../config/settings.js";
+import { resolveApiUrl } from "../config/settings.js";
+import { CLI_VERSION } from "../version.js";
 import { getClient } from "../api/client.js";
 import { listAccounts } from "../api/accounts.js";
 import { printOutput } from "../utils/output.js";
 import { applyGlobalOptions, getFormat } from "./helpers.js";
 import type { GlobalOptions } from "../types/index.js";
 
-const VERSION = "0.1.2";
 
 interface Diagnostic {
   check: string;
@@ -23,14 +23,14 @@ export async function doctorCommand(opts: GlobalOptions): Promise<void> {
   diagnostics.push({
     check: "Version",
     status: "pass",
-    message: `social0 v${VERSION}`,
+    message: `social0 v${CLI_VERSION}`,
   });
 
-  const config = loadConfig();
   diagnostics.push({
     check: "Config",
     status: "pass",
-    message: `API URL: ${config.apiUrl}`,
+    // Effective URL, including SOCIAL0_API_URL / --api-url.
+    message: `API URL: ${resolveApiUrl()}`,
   });
 
   const authed = await hasApiKey();
@@ -41,11 +41,17 @@ export async function doctorCommand(opts: GlobalOptions): Promise<void> {
   });
 
   try {
-    const res = await fetch("https://api.social0.app/health", { signal: AbortSignal.timeout(5000) });
+    // Check the API this CLI is actually configured for. Probing the
+    // production host told self-hosted and staging users their setup was
+    // healthy no matter what their own server was doing.
+    const healthUrl = `${resolveApiUrl().replace(/\/v1$/, "")}/health`;
+    const res = await fetch(healthUrl, { signal: AbortSignal.timeout(5000) });
     diagnostics.push({
       check: "Internet",
       status: res.ok ? "pass" : "warn",
-      message: res.ok ? "Connected to Social0 API" : `API health check returned ${res.status}`,
+      message: res.ok
+        ? `Connected to ${healthUrl}`
+        : `API health check returned ${res.status}`,
     });
   } catch {
     diagnostics.push({
@@ -97,11 +103,11 @@ export async function doctorCommand(opts: GlobalOptions): Promise<void> {
 }
 
 export function versionCommand(): void {
-  console.log(`social0 v${VERSION}`);
+  console.log(`social0 v${CLI_VERSION}`);
 }
 
 export async function updateCommand(): Promise<void> {
-  console.log(`Current version: v${VERSION}`);
+  console.log(`Current version: v${CLI_VERSION}`);
   try {
     const res = await fetch("https://registry.npmjs.org/social0/latest", {
       headers: { Accept: "application/vnd.npm.install-v1+json" },
@@ -117,7 +123,7 @@ export async function updateCommand(): Promise<void> {
       return;
     }
     const data = (await res.json()) as { version: string };
-    if (data.version === VERSION) {
+    if (data.version === CLI_VERSION) {
       console.log("You are on the latest version.");
     } else {
       console.log(`Update available: v${data.version}`);

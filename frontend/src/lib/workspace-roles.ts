@@ -32,7 +32,3 @@ export const WORKSPACE_ROLE_META: Record<
 export function workspaceRoleLabel(role: string): string {
   return WORKSPACE_ROLE_META[role as WorkspaceRole]?.label ?? role;
 }
-
-export function isWorkspaceRole(value: string): value is WorkspaceRole {
-  return (WORKSPACE_ROLES as readonly string[]).includes(value);
-}

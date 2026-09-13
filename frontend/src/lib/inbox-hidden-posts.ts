@@ -55,13 +55,6 @@ export function unhideInboxPublication(
   );
 }
 
-export function clearHiddenInboxPublications(
-  userId: string | undefined | null,
-): void {
-  if (!userId) return;
-  save(userId, []);
-}
-
 export function subscribeHiddenInboxPublications(
   userId: string | undefined | null,
   onChange: () => void,

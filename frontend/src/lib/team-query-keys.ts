@@ -11,8 +11,6 @@ export function teamInvitationsQueryKey(teamId: string) {
   return ["team", teamId, "invitations"] as const;
 }
 
-export const MY_INVITATIONS_QUERY_KEY = ["team", "my-invitations"] as const;
-
 /** Invalidate all team/workspace React Query caches after a mutation. */
 export async function invalidateTeamRoomQueries(
   queryClient: QueryClient,

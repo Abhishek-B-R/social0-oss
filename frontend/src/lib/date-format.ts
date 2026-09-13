@@ -131,23 +131,6 @@ export function formatDateTime(
   return format(date, `${pattern} ${timePattern}`);
 }
 
-/** Date-fns pattern for "medium" style date (e.g. "Dec 25, 2025") for pickers. Uses locale-neutral month name. */
-export function getMediumDatePattern(
-  dateFormat: DateFormatKey | string | null | undefined,
-): string {
-  const key = normalizeDateFormat(dateFormat ?? undefined);
-  switch (key) {
-    case "dd/MM/yyyy":
-      return "dd MMM yyyy";
-    case "MM/dd/yyyy":
-      return "MMM dd, yyyy";
-    case "yyyy-MM-dd":
-      return "yyyy MMM dd";
-    default:
-      return "dd MMM yyyy";
-  }
-}
-
 /** Format for "MMM d, yyyy 'at' HH:mm" style used in schedule picker; date part follows user preference. */
 export function formatDateTimeAt(
   date: Date,

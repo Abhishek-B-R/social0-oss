@@ -13,6 +13,7 @@ import {
   getR2KeyFromUrl,
   getR2PublicBaseUrl,
 } from "@/lib/r2";
+import { fetchMediaBytes } from "@/lib/publish-platforms/media";
 
 // Lazy: sharp cannot load on Cloudflare Workers (native bindings).
 async function getSharp() {
@@ -22,7 +23,8 @@ async function getSharp() {
 
 const TIKTOK_PHOTO_W = 1080;
 const TIKTOK_PHOTO_H = 1920;
-const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20MB output
+const MAX_INPUT_BYTES = 60 * 1024 * 1024; // decode guard for the source image
 const JPEG_QUALITY = 90;
 const MIN_ASPECT = 1 / 3; // 1:3
 const MAX_ASPECT = 3; // 3:1
@@ -76,20 +78,41 @@ export async function processImageForTikTok(
     );
   }
 
-  const res = await fetch(imageUrl, { method: "GET" });
-  if (!res.ok) {
+  // Go through the allowlisted media fetch rather than a bare `fetch`: this is
+  // a server-side request built from a stored URL, which is exactly the shape
+  // the rest of the publish path routes through the SSRF guard.
+  let inputBuffer: Buffer;
+  try {
+    inputBuffer = Buffer.from(await fetchMediaBytes(imageUrl));
+  } catch (err) {
     throw new TikTokImageError(
-      `Failed to download image: HTTP ${res.status}`,
+      `Failed to download image: ${err instanceof Error ? err.message : "unknown error"}`,
       "download",
     );
   }
 
-  const inputBuffer = Buffer.from(await res.arrayBuffer());
+  // Cap the decode input as well as the encode output — libvips will happily
+  // try to decode a multi-gigapixel source otherwise.
+  if (inputBuffer.length > MAX_INPUT_BYTES) {
+    throw new TikTokImageError(
+      `Source image is larger than ${Math.round(MAX_INPUT_BYTES / (1024 * 1024))}MB.`,
+      "process",
+    );
+  }
   const sharp = await getSharp();
   const image = sharp(inputBuffer);
   const metadata = await image.metadata();
   const width = metadata.width ?? 0;
   const height = metadata.height ?? 0;
+
+  // Guard before the ratio: 0/0 is NaN, and NaN fails both bounds checks below,
+  // so an undecodable image would slip through to a confusing sharp error.
+  if (width <= 0 || height <= 0) {
+    throw new TikTokImageError(
+      "Could not read the image dimensions. Re-upload the image and try again.",
+      "min_dimensions",
+    );
+  }
 
   const aspectRatio = width / height;
   if (aspectRatio > MAX_ASPECT || aspectRatio < MIN_ASPECT) {

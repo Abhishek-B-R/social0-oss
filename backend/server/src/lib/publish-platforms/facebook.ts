@@ -8,6 +8,52 @@ import type { Post, Pub, PublishPlatformResult } from "./types";
 import { fetchWithRetry } from "./helpers";
 import { getMediaWithUrls } from "./media";
 
+/**
+ * POST form params to a Graph endpoint and read the `{id, post_id, error}`
+ * shape every publish branch here gets back.
+ *
+ * The photo, video and text branches each carried this: same retry policy, same
+ * parse, and the same rewrite of Graph's permission errors into something a
+ * user can act on. That rewrite is the part worth having once — it is the only
+ * hint that a Page needs reconnecting rather than a retry.
+ */
+async function postToGraph(
+  url: string,
+  params: URLSearchParams,
+): Promise<
+  | { data: FacebookGraphPostResponse }
+  | { failure: { status: "failed"; lastError: string; error: string } }
+> {
+  const res = await fetchWithRetry(
+    url,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: params.toString(),
+    },
+    { retries: 2, delayMs: 1000 },
+  );
+
+  const data = (await res.json().catch(() => ({}))) as FacebookGraphPostResponse;
+
+  if (!res.ok) {
+    let err = data.error?.message ?? `HTTP ${res.status}`;
+    if (err.includes("must be granted") || err.includes("impersonating")) {
+      err =
+        "Facebook needs updated permissions. Please disconnect and reconnect your Facebook Page from the dashboard so the app can request the required access.";
+    }
+    return { failure: { status: "failed", lastError: err, error: err } };
+  }
+
+  return { data };
+}
+
+type FacebookGraphPostResponse = {
+  id?: string;
+  post_id?: string;
+  error?: { message?: string };
+};
+
 export async function publishToFacebook(
   pub: Pub,
   post: Post,
@@ -29,7 +75,7 @@ export async function publishToFacebook(
   const images = media.filter((m) => m.mimeType.startsWith("image/"));
   const firstVideo = media.find((m) => m.mimeType.startsWith("video/"));
 
-  let data: { id?: string; post_id?: string; error?: { message?: string } };
+  let data: FacebookGraphPostResponse;
   let isVideo = false;
   let postId: string | undefined;
 
@@ -123,30 +169,9 @@ export async function publishToFacebook(
       caption: message,
     });
 
-    const res = await fetchWithRetry(
-      `https://graph.facebook.com/v21.0/${pageId}/photos`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params.toString(),
-      },
-      { retries: 2, delayMs: 1000 },
-    );
-
-    data = (await res.json().catch(() => ({}))) as {
-      id?: string;
-      post_id?: string;
-      error?: { message?: string };
-    };
-
-    if (!res.ok) {
-      let err = data.error?.message ?? `HTTP ${res.status}`;
-      if (err.includes("must be granted") || err.includes("impersonating")) {
-        err =
-          "Facebook needs updated permissions. Please disconnect and reconnect your Facebook Page from the dashboard so the app can request the required access.";
-      }
-      return { status: "failed", lastError: err, error: err };
-    }
+    const posted = await postToGraph(`https://graph.facebook.com/v21.0/${pageId}/photos`, params);
+    if ("failure" in posted) return posted.failure;
+    data = posted.data;
 
     postId = data.post_id ?? data.id?.split("_")[1] ?? data.id;
   } else if (firstVideo?.url) {
@@ -157,30 +182,9 @@ export async function publishToFacebook(
       description: message,
     });
 
-    const res = await fetchWithRetry(
-      `https://graph-video.facebook.com/v21.0/${pageId}/videos`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params.toString(),
-      },
-      { retries: 2, delayMs: 1000 },
-    );
-
-    data = (await res.json().catch(() => ({}))) as {
-      id?: string;
-      post_id?: string;
-      error?: { message?: string };
-    };
-
-    if (!res.ok) {
-      let err = data.error?.message ?? `HTTP ${res.status}`;
-      if (err.includes("must be granted") || err.includes("impersonating")) {
-        err =
-          "Facebook needs updated permissions. Please disconnect and reconnect your Facebook Page from the dashboard so the app can request the required access.";
-      }
-      return { status: "failed", lastError: err, error: err };
-    }
+    const posted = await postToGraph(`https://graph-video.facebook.com/v21.0/${pageId}/videos`, params);
+    if ("failure" in posted) return posted.failure;
+    data = posted.data;
 
     isVideo = true;
     postId = data.post_id ?? data.id?.split("_")[1] ?? data.id;
@@ -191,30 +195,9 @@ export async function publishToFacebook(
       message: message,
     });
 
-    const res = await fetchWithRetry(
-      `https://graph.facebook.com/v21.0/${pageId}/feed`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: params.toString(),
-      },
-      { retries: 2, delayMs: 1000 },
-    );
-
-    data = (await res.json().catch(() => ({}))) as {
-      id?: string;
-      post_id?: string;
-      error?: { message?: string };
-    };
-
-    if (!res.ok) {
-      let err = data.error?.message ?? `HTTP ${res.status}`;
-      if (err.includes("must be granted") || err.includes("impersonating")) {
-        err =
-          "Facebook needs updated permissions. Please disconnect and reconnect your Facebook Page from the dashboard so the app can request the required access.";
-      }
-      return { status: "failed", lastError: err, error: err };
-    }
+    const posted = await postToGraph(`https://graph.facebook.com/v21.0/${pageId}/feed`, params);
+    if ("failure" in posted) return posted.failure;
+    data = posted.data;
 
     postId = data.post_id ?? data.id?.split("_")[1] ?? data.id;
   }

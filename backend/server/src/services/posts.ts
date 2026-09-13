@@ -1,5 +1,6 @@
 
 import { db } from "@/db";
+import { coerceDate } from "@/lib/coerce-date.js";
 import {
   posts,
   postPublications,
@@ -20,7 +21,12 @@ import {
 } from "@/lib/posts-list/posts-list-data";
 import { isValidUUID } from "@/lib/validation";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
-import { checkFreePostLimit, incrementFreePostsUsed } from "@/lib/plan-limits";
+import { sanitizePostMetadata } from "@/lib/post-metadata-sanitize";
+import {
+  releaseFreePost,
+  reserveFreePost,
+  type FreePostReservation,
+} from "@/lib/plan-limits";
 import { logPublishBlocked } from "@social0/shared";
 import type {
   AutoPlugConfig,
@@ -33,21 +39,30 @@ import { getUserSettingsSnapshot } from "@/services/settings";
  * "Publish now" or "Schedule" (the submission actions below). The publish
  * pipeline itself never counts - it may run many times per post (per-platform
  * progress, safety-net republish, retries, cron).
- * Returns an error message when the user is out of free posts, else null.
+ *
+ * Reserving (an atomic conditional increment) rather than check-then-increment
+ * is what makes the limit hold: two racing submissions used to both pass the
+ * read and both publish. Callers must release the reservation if they bail out
+ * before the post is actually created.
  */
-async function gateFreePostQuota(
+async function reserveFreePostQuota(
   userId: string,
   postId?: string,
-): Promise<string | null> {
-  const limit = await checkFreePostLimit(userId);
-  if (limit.allowed) return null;
+): Promise<
+  { ok: true; reservation: FreePostReservation } | { ok: false; error: string }
+> {
+  const reservation = await reserveFreePost(userId);
+  if (reservation.allowed) return { ok: true, reservation };
   logPublishBlocked("free_post_limit", userId, postId, {
-    used: limit.used,
-    limit: limit.limit,
+    used: reservation.used,
+    limit: reservation.limit,
   });
-  return (
-    limit.reason ?? "You've used your free posts. Upgrade to continue posting."
-  );
+  return {
+    ok: false,
+    error:
+      reservation.reason ??
+      "You've used your free posts. Upgrade to continue posting.",
+  };
 }
 
 export type PostAgainResult =
@@ -93,18 +108,6 @@ function toSafeClientError(e: unknown, fallback: string): string {
 }
 
 /** RPC/JSON may pass ISO strings instead of Date instances. */
-function coerceDate(value: unknown): Date | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  return null;
-}
-
 function validateScheduledAtWindow(scheduledAt: unknown): string | null {
   const date = coerceDate(scheduledAt);
   if (!date) return "Please pick a date and time to schedule";
@@ -211,12 +214,29 @@ export async function createPost(
   }
 
   // Charge one free post per "Publish now" / "Schedule" submission (drafts are free).
+  let reservation: FreePostReservation | null = null;
   if (mode !== "draft") {
-    const quotaError = await gateFreePostQuota(userId);
-    if (quotaError) {
-      return { success: false, error: quotaError };
+    const quota = await reserveFreePostQuota(userId);
+    if (!quota.ok) {
+      return { success: false, error: quota.error };
     }
+    reservation = quota.reservation;
   }
+
+  // Release only while the submission has not landed yet. Once the post and
+  // its publications exist the quota stays spent — this is the same point the
+  // previous `incrementFreePostsUsed` call charged at, and refunding past it
+  // would leave an unpaid post that `/api/publish` (which never charges) could
+  // publish for free.
+  const releaseQuota = async () => {
+    if (!reservation) return;
+    const held = reservation;
+    reservation = null;
+    await releaseFreePost(held, userId);
+  };
+  const commitQuota = () => {
+    reservation = null;
+  };
 
   const status = mode === "draft" ? "draft" : "scheduled";
   const resolvedScheduledAt =
@@ -238,11 +258,12 @@ export async function createPost(
         status,
         scheduledAt: resolvedScheduledAt,
         mediaIds: mediaIds.length > 0 ? mediaIds : [],
-        metadata: metadata || null,
+        metadata: sanitizePostMetadata(metadata),
       })
       .returning({ id: posts.id });
 
     if (!postRow) {
+      await releaseQuota();
       return { success: false, error: "Failed to create post" };
     }
 
@@ -254,9 +275,7 @@ export async function createPost(
       })),
     );
 
-    if (mode !== "draft") {
-      await incrementFreePostsUsed(userId);
-    }
+    commitQuota();
 
     if (mode === "now") {
       const skipPublish =
@@ -304,6 +323,7 @@ export async function createPost(
 
     return { success: true, postId: postRow.id };
   } catch (e) {
+    await releaseQuota();
     console.error("createPost error:", e);
     return {
       success: false,
@@ -324,7 +344,6 @@ export async function deletePost(postId: string): Promise<DeletePostResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
-  const userId = ws.ctx.resourceUserId;
 
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
@@ -428,10 +447,11 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
   const mediaIds = post.mediaIds ?? [];
 
   // "Post again" publishes a brand-new post - costs one free post.
-  const quotaError = await gateFreePostQuota(userId, postId);
-  if (quotaError) {
-    return { success: false, error: quotaError };
+  const quota = await reserveFreePostQuota(userId, postId);
+  if (!quota.ok) {
+    return { success: false, error: quota.error };
   }
+  let postAgainCommitted = false;
 
   try {
     const [newPost] = await db
@@ -445,11 +465,12 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
         status: "scheduled",
         scheduledAt: new Date(),
         mediaIds: mediaIds.length > 0 ? mediaIds : [],
-        metadata: post.metadata ?? undefined,
+        metadata: sanitizePostMetadata(post.metadata),
       })
       .returning({ id: posts.id });
 
     if (!newPost) {
+      await releaseFreePost(quota.reservation, userId);
       return { success: false, error: "Failed to create post" };
     }
 
@@ -461,7 +482,8 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       })),
     );
 
-    await incrementFreePostsUsed(userId);
+    // Submission has landed — see createPost for why the refund stops here.
+    postAgainCommitted = true;
 
     const queued = await enqueuePublishPostStandalone({
       postId: newPost.id,
@@ -477,6 +499,9 @@ export async function postAgain(postId: string): Promise<PostAgainResult> {
       streamUrl: queued.streamUrl,
     };
   } catch (e) {
+    if (!postAgainCommitted) {
+      await releaseFreePost(quota.reservation, userId);
+    }
     console.error("postAgain error:", e);
     return {
       success: false,
@@ -560,6 +585,14 @@ export async function updatePost(
     }
   }
 
+  let reservation: FreePostReservation | null = null;
+  const releaseQuota = async () => {
+    if (reservation) {
+      await releaseFreePost(reservation, userId);
+      reservation = null;
+    }
+  };
+
   try {
     const [existing] = await db
       .select({ id: posts.id, status: posts.status, mediaIds: posts.mediaIds })
@@ -579,10 +612,11 @@ export async function updatePost(
     // Rescheduling an already-scheduled post (already charged) is free.
     const chargesQuota = !!normalizedScheduledAt && existing.status === "draft";
     if (chargesQuota) {
-      const quotaError = await gateFreePostQuota(userId, postId);
-      if (quotaError) {
-        return { success: false, error: quotaError };
+      const quota = await reserveFreePostQuota(userId, postId);
+      if (!quota.ok) {
+        return { success: false, error: quota.error };
       }
+      reservation = quota.reservation;
     }
 
     if (finalMediaIds.length > 0) {
@@ -597,6 +631,7 @@ export async function updatePost(
         );
       const ownedMediaIds = new Set(ownedMedia.map((m) => m.id));
       if (!finalMediaIds.every((id) => ownedMediaIds.has(id))) {
+        await releaseQuota();
         return { success: false, error: "One or more media files are invalid" };
       }
     }
@@ -611,7 +646,7 @@ export async function updatePost(
         status,
         scheduledAt: normalizedScheduledAt,
         mediaIds: finalMediaIds,
-        ...(metadata != null && { metadata }),
+        ...(metadata != null && { metadata: sanitizePostMetadata(metadata) }),
         updatedAt: new Date(),
       })
       .where(eq(posts.id, postId));
@@ -644,6 +679,7 @@ export async function updatePost(
     if (normalizedScheduledAt && queueSlotId?.trim()) {
       const slotId = queueSlotId.trim();
       if (!(await userOwnsQueueSlot(userId, slotId))) {
+        await releaseQuota();
         return { success: false, error: "Invalid queue slot" };
       }
       await db
@@ -672,12 +708,9 @@ export async function updatePost(
         );
     }
 
-    if (chargesQuota) {
-      await incrementFreePostsUsed(userId);
-    }
-
     return { success: true };
   } catch (e) {
+    await releaseQuota();
     console.error("updatePost error:", e);
     return {
       success: false,
@@ -702,7 +735,6 @@ export async function updateScheduledPostAutoFeatures(
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
-  const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
@@ -947,7 +979,6 @@ export async function deleteDraft(postId: string): Promise<DeleteDraftResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
-  const userId = ws.ctx.resourceUserId;
   if (!isValidUUID(postId)) {
     return { success: false, error: "Invalid post ID" };
   }
@@ -1035,12 +1066,13 @@ export async function updateAndPublish(
 
   // Publishing a draft now is a "Publish now" submission - costs one free post.
   // (The updatePost call above ran with scheduledAt=null, so it charged nothing.)
-  const quotaError = await gateFreePostQuota(userId, draftId);
-  if (quotaError) {
-    return { success: false, error: quotaError };
+  const quota = await reserveFreePostQuota(userId, draftId);
+  if (!quota.ok) {
+    return { success: false, error: quota.error };
   }
-  await incrementFreePostsUsed(userId);
 
+  // No release below: the draft is already updated and publishable, so a
+  // refund here would let it publish a second time for free.
   try {
     const queued = await enqueuePublishPostStandalone({
       postId: draftId,

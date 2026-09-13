@@ -1,5 +1,11 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  readFileSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { confirm, password } from "@inquirer/prompts";
 import { ensureConfigDir, getConfigDir } from "./settings.js";
@@ -95,13 +101,27 @@ function removeFile(path: string): void {
   if (existsSync(path)) unlinkSync(path);
 }
 
+/**
+ * `writeFileSync`'s `mode` only applies when the file is created, so a
+ * credentials file left behind by an older build keeps whatever permissions it
+ * had. chmod every write so the key is owner-only either way.
+ */
+function writeOwnerOnly(path: string, contents: string): void {
+  writeFileSync(path, contents, { mode: 0o600 });
+  try {
+    chmodSync(path, 0o600);
+  } catch {
+    // Windows and some network filesystems ignore POSIX modes.
+  }
+}
+
 function writeEncrypted(apiKey: string, passphrase: string): void {
-  writeFileSync(encryptedPath(), encryptWithPassphrase(apiKey, passphrase), { mode: 0o600 });
+  writeOwnerOnly(encryptedPath(), encryptWithPassphrase(apiKey, passphrase));
   removeFile(plainPath());
 }
 
 function writePlain(apiKey: string): void {
-  writeFileSync(plainPath(), apiKey, { mode: 0o600 });
+  writeOwnerOnly(plainPath(), apiKey);
   removeFile(encryptedPath());
 }
 

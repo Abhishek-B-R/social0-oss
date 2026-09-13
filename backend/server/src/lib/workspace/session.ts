@@ -1,6 +1,10 @@
 import { auth } from "../auth.js";
 import { headers } from "../http/request-cookies.js";
-import { resolveWorkspaceContext, type WorkspaceContext } from "./context.js";
+import {
+  personalWorkspaceContext,
+  resolveWorkspaceContext,
+  type WorkspaceContext,
+} from "./context.js";
 import type { WorkspacePermission } from "./permissions.js";
 
 export type WorkspaceSession =
@@ -42,17 +46,27 @@ export async function requireWorkspaceSession(
   return { ok: true, ctx };
 }
 
-/** Same as requireWorkspaceSession, but throws with Fastify `statusCode` on deny. */
-export async function requireWorkspaceContext(
-  permission?: WorkspacePermission,
-): Promise<WorkspaceContext> {
-  const ws = await requireWorkspaceSession(permission);
-  if (!ws.ok) {
-    const err = new Error(ws.error) as Error & { statusCode: number };
-    err.statusCode = ws.statusCode;
-    throw err;
+/**
+ * Same as `requireWorkspacePermissionForUser`, but honours *how* the caller
+ * authenticated.
+ *
+ * An API key is a personal-pool credential — `/v1` scopes every key to
+ * `workspaceId: null`. Resolving the user's active workspace here instead would
+ * let a key reach a team's connections and posts, which is a wider grant than
+ * the key was issued for.
+ */
+export async function requireWorkspacePermissionForActor(
+  actor: { userId: string; source: "session" | "apiKey" | "devHeader" },
+  permission: WorkspacePermission,
+): Promise<WorkspaceSession> {
+  if (actor.source === "apiKey") {
+    const ctx = personalWorkspaceContext(actor.userId);
+    if (!ctx.permissions.has(permission)) {
+      return { ok: false, error: "Forbidden", statusCode: 403 };
+    }
+    return { ok: true, ctx };
   }
-  return ws.ctx;
+  return requireWorkspacePermissionForUser(actor.userId, permission);
 }
 
 /** For REST handlers that already validated userId from the request. */

@@ -29,8 +29,6 @@ export const ONBOARDING_GOALS = [
   },
 ] as const;
 
-export type OnboardingGoalId = (typeof ONBOARDING_GOALS)[number]["id"];
-
 export function goalCopy(goalId: string | null | undefined) {
   return (
     ONBOARDING_GOALS.find((g) => g.id === goalId) ?? ONBOARDING_GOALS[3]

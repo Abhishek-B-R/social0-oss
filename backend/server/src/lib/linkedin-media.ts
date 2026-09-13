@@ -4,8 +4,6 @@
 
 import { fetchAllowedMedia } from "@/lib/media-fetch.js";
 
-export type LinkedInMediaType = "image" | "video";
-
 /**
  * Upload an image to LinkedIn Assets API and return the digitalmediaAsset URN
  * Note: UGC Post API requires urn:li:digitalmediaAsset format (not urn:li:image)

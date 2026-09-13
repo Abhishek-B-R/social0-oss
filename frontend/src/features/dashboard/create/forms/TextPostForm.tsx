@@ -1,3 +1,8 @@
+import type {
+  PlatformCaptionState,
+  PostFormAccount as Account,
+  PostFormProps,
+} from "./types";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
@@ -9,7 +14,6 @@ import {
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
-import type { SubscriptionTier } from "@/lib/plans";
 import { signInUrl } from "@/lib/sign-in-url";
 import {
   createPost,
@@ -39,21 +43,19 @@ import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { SwitchPostTypeLinks } from "../SwitchPostTypeLinks";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type {
-  AutoPlugConfig,
-  ConnectedAccount,
-} from "@/components/autoplug/AutoPlugPanel";
-import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
-import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import { useAutoFeatureModals } from "@/features/dashboard/create/forms/use-auto-feature-modals";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import { AccountAvatar } from "@/components/AccountAvatar";
-import {
-  UploadPublishOverlay,
-  type PlatformResult,
-  type PlatformStatus,
+import type {
+  PlatformResult,
+  PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { ConfigPanelChip } from "@/features/dashboard/create/forms/ConfigPanelChip";
+import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
+import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
 import {
   consumeComposerPayload,
   clearComposerPayload,
@@ -71,21 +73,6 @@ import { ChevronDown, ChevronUp, Check, Circle } from "lucide-react";
 
 const TWITTER_THREAD_SEP = "---";
 
-type AccountCaptionState = {
-  overridden: boolean;
-  value: string;
-};
-
-type Account = {
-  id: string;
-  platform: string;
-  platformUsername: string | null;
-  profileImageUrl: string | null;
-  isActive: boolean | null;
-  isTwitterPremium?: boolean;
-  tokenExpired?: boolean;
-};
-
 export function TextPostForm({
   accounts,
   accountsLoading = false,
@@ -101,22 +88,7 @@ export function TextPostForm({
   subscriptionTier = "free",
   freePostsUsed = 0,
   isGuest = false,
-}: {
-  accounts: Account[];
-  accountsLoading?: boolean;
-  use24HourTimeFormat?: boolean;
-  dateFormat?: string | null;
-  timezone?: string | null;
-  draftId?: string;
-  scheduledId?: string;
-  editId?: string;
-  allowAutoRepost?: boolean;
-  allowAutoPlug?: boolean;
-  supportedPlatforms?: string[];
-  subscriptionTier?: SubscriptionTier;
-  freePostsUsed?: number;
-  isGuest?: boolean;
-}) {
+}: PostFormProps<Account>) {
   const navigate = useNavigate();
   const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
@@ -165,10 +137,6 @@ export function TextPostForm({
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
-  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
-  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
-  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
-  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const hasRestoredAutoFeaturesRef = useRef(false);
   const {
     remember: rememberAutoFeatures,
@@ -181,7 +149,7 @@ export function TextPostForm({
   type ConfigPanel = "platform-captions" | "x" | null;
   const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
   const [accountCaptionsState, setAccountCaptionsState] = useState<
-    Record<string, AccountCaptionState>
+    Record<string, PlatformCaptionState>
   >({});
   const [searchParams] = useSearchParams();
 
@@ -397,6 +365,23 @@ export function TextPostForm({
   const resurfaceVisible = hasXForResurface;
   const autoPlugVisible = hasXForResurface;
 
+  const {
+    autoRepost: autoRepostSidebar,
+    autoPlug: autoPlugSidebar,
+    modals: autoFeatureModals,
+  } = useAutoFeatureModals({
+    selectedAccountIds,
+    accounts,
+    use24HourTimeFormat,
+    resurfaceVisible,
+    resurfaceConfig,
+    setResurfaceConfig,
+    autoPlugVisible,
+    autoPlugConfig,
+    setAutoPlugConfig,
+  });
+
+
   // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
   useEffect(() => {
     if (!hasXForResurface) {
@@ -475,7 +460,6 @@ export function TextPostForm({
     e.preventDefault();
     toast.dismiss();
     if (isGuest) {
-      // eslint-disable-next-line react-hooks/immutability
       window.location.href = signInUrl(
         window.location.pathname + window.location.search,
       );
@@ -685,32 +669,7 @@ export function TextPostForm({
           undefined,
           (rows) => {
             setPlatformStatuses((prev) =>
-              prev.map((p) => {
-                const row = rows.find(
-                  (r) => r.connectedAccountId === p.accountId,
-                );
-                if (!row) return p;
-                const status: PlatformStatus =
-                  row.publicationStatus === "published"
-                    ? "published"
-                    : row.publicationStatus === "failed"
-                      ? "failed"
-                      : row.publicationStatus === "publishing"
-                        ? "processing"
-                        : p.status;
-                return {
-                  ...p,
-                  status,
-                  error:
-                    row.publicationStatus === "failed"
-                      ? (row.lastError ?? undefined)
-                      : undefined,
-                  postUrl:
-                    row.publicationStatus === "published"
-                      ? (row.platformPostUrl ?? undefined)
-                      : undefined,
-                };
-              }),
+              applyPublicationProgress(prev, rows),
             );
           },
         );
@@ -834,32 +793,7 @@ export function TextPostForm({
           undefined,
           (rows) => {
             setPlatformStatuses((prev) =>
-              prev.map((p) => {
-                const row = rows.find(
-                  (r) => r.connectedAccountId === p.accountId,
-                );
-                if (!row) return p;
-                const status: PlatformStatus =
-                  row.publicationStatus === "published"
-                    ? "published"
-                    : row.publicationStatus === "failed"
-                      ? "failed"
-                      : row.publicationStatus === "publishing"
-                        ? "processing"
-                        : p.status;
-                return {
-                  ...p,
-                  status,
-                  error:
-                    row.publicationStatus === "failed"
-                      ? (row.lastError ?? undefined)
-                      : undefined,
-                  postUrl:
-                    row.publicationStatus === "published"
-                      ? (row.platformPostUrl ?? undefined)
-                      : undefined,
-                };
-              }),
+              applyPublicationProgress(prev, rows),
             );
           },
         );
@@ -960,54 +894,19 @@ export function TextPostForm({
 
   return (
     <>
-      {overlayPhase !== "idle" && (
-        <UploadPublishOverlay
-          phase={overlayPhase === "saving" ? "saving" : "publishing"}
-          isScheduling={mode === "scheduled"}
-          showLinks={overlayPhase === "done"}
-          draftSuccess={!!draftSavedPostId}
-          draftPostId={draftSavedPostId}
-          scheduleSuccess={!!scheduledPostId}
-          publishedPostId={scheduledPostId ?? publishedPostId}
-          publishedToX={selectedAccounts.some(
-            (a) => a.platform === "twitter_x",
-          )}
-          resurfacePreFill={
-            overlayPhase === "done" &&
-            resurfaceConfig &&
-            !scheduledPostId &&
-            !draftSavedPostId
-              ? {
-                  intervalHours: resurfaceConfig.intervalHours,
-                  maxResurfaces: resurfaceConfig.maxResurfaces,
-                  plugComment: resurfaceConfig.plugComment ?? "",
-                }
-              : null
-          }
-          platformStatuses={platformStatuses}
-          allDone={
-            platformStatuses.length > 0 &&
-            platformStatuses.every(
-              (p) => p.status === "published" || p.status === "failed",
-            )
-          }
-          onClose={() => {
-            const allFailed =
-              platformStatuses.length > 0 &&
-              platformStatuses.every((p) => p.status === "failed");
-            if (allFailed && publishedPostId) {
-              navigate(dash(`posts/${publishedPostId}`), {
-                replace: true,
-              });
-              invalidateQueries();
-            } else {
-              setScheduledPostId(null);
-              setDraftSavedPostId(null);
-              setOverlayPhase("idle");
-            }
-          }}
-        />
-      )}
+      <PublishResultOverlay
+        overlayPhase={overlayPhase}
+        isScheduling={mode === "scheduled"}
+        draftSavedPostId={draftSavedPostId}
+        scheduledPostId={scheduledPostId}
+        publishedPostId={publishedPostId}
+        selectedAccounts={selectedAccounts}
+        resurfaceConfig={resurfaceConfig}
+        platformStatuses={platformStatuses}
+        setScheduledPostId={setScheduledPostId}
+        setDraftSavedPostId={setDraftSavedPostId}
+        setOverlayPhase={setOverlayPhase}
+      />
       <form
         ref={formRef}
         onSubmit={handleSubmit}
@@ -1104,27 +1003,13 @@ export function TextPostForm({
               </p>
               <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-11 sm:min-h-0 -mx-1 px-1 scrollbar-thin">
                 {showCustomCaptionsSection && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "platform-captions" ? null : "platform-captions",
-                      )
-                    }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                      activeConfigPanel === "platform-captions"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    <Circle className="h-3.5 w-3.5 text-text-muted" />
-                    <span>Platform Captions</span>
-                    {activeConfigPanel === "platform-captions" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  <ConfigPanelChip
+                    panel="platform-captions"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="Platform Captions"
+                    icon={<Circle className="h-3.5 w-3.5 text-text-muted" />}
+                  />
                 )}
                 {hasXSelected && (
                   <button
@@ -1157,7 +1042,7 @@ export function TextPostForm({
                       ({
                         overridden: false,
                         value: "",
-                      } as AccountCaptionState);
+                      } as PlatformCaptionState);
                     const username = account.platformUsername?.trim()
                       ? `@${account.platformUsername}`
                       : account.platform;
@@ -1317,44 +1202,8 @@ export function TextPostForm({
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
-          autoRepost={
-            resurfaceVisible
-              ? {
-                  visible: true,
-                  enabled: !!resurfaceConfig,
-                  onToggle: () => {
-                    if (resurfaceConfig) setResurfaceConfig(null);
-                    else {
-                      configBeforeResurfaceRef.current = resurfaceConfig;
-                      setResurfaceModalOpen(true);
-                    }
-                  },
-                  onOpenSettings: () => {
-                    configBeforeResurfaceRef.current = resurfaceConfig;
-                    setResurfaceModalOpen(true);
-                  },
-                }
-              : null
-          }
-          autoPlug={
-            autoPlugVisible
-              ? {
-                  visible: true,
-                  enabled: !!autoPlugConfig,
-                  onToggle: () => {
-                    if (autoPlugConfig) setAutoPlugConfig(null);
-                    else {
-                      configBeforeAutoPlugRef.current = autoPlugConfig;
-                      setAutoplugModalOpen(true);
-                    }
-                  },
-                  onOpenSettings: () => {
-                    configBeforeAutoPlugRef.current = autoPlugConfig;
-                    setAutoplugModalOpen(true);
-                  },
-                }
-              : null
-          }
+          autoRepost={autoRepostSidebar}
+          autoPlug={autoPlugSidebar}
           allowAutoRepost={allowAutoRepost}
           allowAutoPlug={allowAutoPlug}
           rememberAutoFeatures={rememberAutoFeatures}
@@ -1418,35 +1267,7 @@ export function TextPostForm({
           </div>
         </SchedulePostSidebar>
 
-        {resurfaceModalOpen && (
-          <AutoResurfaceSettingsModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts}
-            initialConfig={resurfaceConfig}
-            onChange={setResurfaceConfig}
-            onDone={() => setResurfaceModalOpen(false)}
-            onCancel={() => {
-              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
-              setResurfaceModalOpen(false);
-            }}
-            use24HourTimeFormat={use24HourTimeFormat}
-          />
-        )}
-        {autoplugModalOpen && (
-          <AutoPlugSettingsModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts as ConnectedAccount[]}
-            initialConfig={autoPlugConfig}
-            onChange={setAutoPlugConfig}
-            onDone={() => setAutoplugModalOpen(false)}
-            onCancel={() => {
-              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
-              setAutoplugModalOpen(false);
-            }}
-          />
-        )}
+        {autoFeatureModals}
       </form>
     </>
   );

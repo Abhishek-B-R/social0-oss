@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
   connectedAccounts,
@@ -41,6 +41,16 @@ export type WorkspaceContext = {
 async function ownerHasTeams(ownerUserId: string): Promise<boolean> {
   const sub = await getSubscriptionForUser(ownerUserId);
   return getPlanLimits(sub.tier).allowTeams;
+}
+
+/**
+ * Personal ("Main") context for a user, ignoring their active workspace.
+ *
+ * API-key callers get this rather than the session's active workspace: a key is
+ * scoped to the personal pool (`workspaceId: null`), the same rule `/v1` follows.
+ */
+export function personalWorkspaceContext(actorUserId: string): WorkspaceContext {
+  return personalContext(actorUserId);
 }
 
 function personalContext(actorUserId: string): WorkspaceContext {
@@ -328,27 +338,4 @@ export async function setActiveWorkspace(
     });
 
   return resolveWorkspaceContext(actorUserId);
-}
-
-export async function countConnectionsInWorkspace(
-  workspaceId: string,
-): Promise<number> {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(connectedAccounts)
-    .where(eq(connectedAccounts.workspaceId, workspaceId));
-  return row?.count ?? 0;
-}
-
-export async function requireWorkspacePermission(
-  actorUserId: string,
-  permission: WorkspacePermission,
-): Promise<WorkspaceContext> {
-  const ctx = await resolveWorkspaceContext(actorUserId);
-  if (!ctx.permissions.has(permission)) {
-    const err = new Error("Forbidden");
-    (err as Error & { statusCode: number }).statusCode = 403;
-    throw err;
-  }
-  return ctx;
 }

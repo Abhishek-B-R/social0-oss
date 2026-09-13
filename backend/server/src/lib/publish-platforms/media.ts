@@ -174,11 +174,22 @@ export async function prepareImageForPlatform(
   return { buffer: output, contentType: "image/jpeg" };
 }
 
-/** Fetch media URL with long timeout and retries so scheduled publish can reach our media server. */
+/**
+ * Fetch media URL with long timeout and retries so scheduled publish can reach
+ * our media server.
+ *
+ * The allowlist assertion is here rather than only at the callers: this is the
+ * one place in the publish path that turns a stored URL into an outbound
+ * request, so it has to hold the invariant the module name promises.
+ */
 export async function fetchMediaBytes(
   url: string,
   options: { timeoutMs?: number; retries?: number } = {},
 ): Promise<ArrayBuffer> {
+  if (!isPublishableMediaUrl(url, getAllowedMediaOrigins())) {
+    throw new Error("Media URL is not on the allowed storage origin");
+  }
+
   if (isR2Configured()) {
     const key = getOwnedUploadKey(url);
     if (key) {

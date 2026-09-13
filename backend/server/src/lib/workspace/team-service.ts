@@ -175,24 +175,19 @@ async function requireAdminTeamsContext(actorUserId: string) {
 }
 
 /**
- * Authorize an admin action against a specific team (not the active workspace).
- * Team settings pages often operate while the actor's active workspace is Main
- * or another team — member/invite IDs must resolve by their own teamId.
+ * The actor's membership row in a specific team, or a 404.
+ *
+ * Team settings pages act on a named team rather than the active workspace, so
+ * three call sites ran this same join. `defaultWorkspaceId` is selected for all
+ * of them; the callers that ignore it pay nothing for the extra column.
  */
-async function requireTeamAdminPermission(
-  actorUserId: string,
-  teamId: string,
-  permission: "invite_users" | "remove_users" | "change_roles",
-): Promise<{
-  teamId: string;
-  teamName: string;
-  ownerUserId: string;
-}> {
+async function loadTeamMembership(actorUserId: string, teamId: string) {
   const [access] = await db
     .select({
       teamId: teams.id,
       teamName: teams.name,
       ownerUserId: teams.ownerUserId,
+      defaultWorkspaceId: teams.defaultWorkspaceId,
       role: teamMembers.role,
     })
     .from(teams)
@@ -209,12 +204,46 @@ async function requireTeamAdminPermission(
   if (!access) {
     throw new TeamServiceError(404, "Team not found.");
   }
+  return access;
+}
 
+/**
+ * Membership plus the permissions it grants. Permissions follow the *owner's*
+ * plan, not the actor's — a teammate on a free plan still acts with their role
+ * while the owner pays. What to do when a permission is missing is the caller's
+ * decision: one throws, another returns an empty list.
+ */
+async function loadTeamAccess(actorUserId: string, teamId: string) {
+  const access = await loadTeamMembership(actorUserId, teamId);
   const isOwner = access.ownerUserId === actorUserId;
   const ownerSub = isOwner
     ? await getSubscriptionForUser(actorUserId)
     : await getSubscriptionForUser(access.ownerUserId);
   const teamsEnabled = getPlanLimits(ownerSub.tier).allowTeams;
+  const permissions = permissionsForRole(access.role as WorkspaceRole, {
+    isOwner,
+    teamsEnabled,
+    inWorkspace: true,
+  });
+  return { ...access, isOwner, teamsEnabled, permissions };
+}
+
+/**
+ * Authorize an admin action against a specific team (not the active workspace).
+ * Team settings pages often operate while the actor's active workspace is Main
+ * or another team — member/invite IDs must resolve by their own teamId.
+ */
+async function requireTeamAdminPermission(
+  actorUserId: string,
+  teamId: string,
+  permission: "invite_users" | "remove_users" | "change_roles",
+): Promise<{
+  teamId: string;
+  teamName: string;
+  ownerUserId: string;
+}> {
+  const access = await loadTeamAccess(actorUserId, teamId);
+  const { teamsEnabled } = access;
 
   if (!teamsEnabled) {
     throw new TeamServiceError(
@@ -223,12 +252,7 @@ async function requireTeamAdminPermission(
     );
   }
 
-  const permissions = permissionsForRole(access.role as WorkspaceRole, {
-    isOwner,
-    teamsEnabled,
-    inWorkspace: true,
-  });
-  if (!permissions.has(permission)) {
+  if (!access.permissions.has(permission)) {
     throw new TeamServiceError(403, "Forbidden");
   }
 
@@ -457,28 +481,7 @@ export async function getTeamByIdForUser(
   actorUserId: string,
   teamId: string,
 ): Promise<TeamGetResponse> {
-  const [access] = await db
-    .select({
-      teamId: teams.id,
-      teamName: teams.name,
-      ownerUserId: teams.ownerUserId,
-      defaultWorkspaceId: teams.defaultWorkspaceId,
-      role: teamMembers.role,
-    })
-    .from(teams)
-    .innerJoin(
-      teamMembers,
-      and(
-        eq(teamMembers.teamId, teams.id),
-        eq(teamMembers.userId, actorUserId),
-      ),
-    )
-    .where(eq(teams.id, teamId))
-    .limit(1);
-
-  if (!access) {
-    throw new TeamServiceError(404, "Team not found.");
-  }
+  const access = await loadTeamMembership(actorUserId, teamId);
 
   const isOwner = access.ownerUserId === actorUserId;
   const role = access.role as WorkspaceRole;
@@ -588,37 +591,8 @@ export async function listInvitationsForTeam(
   actorUserId: string,
   teamId: string,
 ): Promise<TeamInvitationDto[]> {
-  const [access] = await db
-    .select({
-      ownerUserId: teams.ownerUserId,
-      role: teamMembers.role,
-    })
-    .from(teams)
-    .innerJoin(
-      teamMembers,
-      and(
-        eq(teamMembers.teamId, teams.id),
-        eq(teamMembers.userId, actorUserId),
-      ),
-    )
-    .where(eq(teams.id, teamId))
-    .limit(1);
-
-  if (!access) {
-    throw new TeamServiceError(404, "Team not found.");
-  }
-
-  const isOwner = access.ownerUserId === actorUserId;
-  const ownerSub = isOwner
-    ? await getSubscriptionForUser(actorUserId)
-    : await getSubscriptionForUser(access.ownerUserId);
-  const teamsEnabled = getPlanLimits(ownerSub.tier).allowTeams;
-  const permissions = permissionsForRole(access.role as WorkspaceRole, {
-    isOwner,
-    teamsEnabled,
-    inWorkspace: true,
-  });
-  if (!permissions.has("invite_users")) return [];
+  const access = await loadTeamAccess(actorUserId, teamId);
+  if (!access.permissions.has("invite_users")) return [];
 
   const rows = await db
     .select({
@@ -1575,18 +1549,6 @@ export async function createTeamForUser(
   return { teamId: createdTeam.id, workspaceId: createdWs.id };
 }
 
-/** @deprecated prefer createTeamForUser */
-export async function createWorkspaceForUser(
-  actorUserId: string,
-  nameRaw: unknown,
-  workspaceNameRaw?: unknown,
-): Promise<{ workspaceId: string }> {
-  const result = await createTeamForUser(actorUserId, nameRaw, workspaceNameRaw, {
-    isCollaborative: false,
-  });
-  return { workspaceId: result.workspaceId };
-}
-
 export async function createWorkspaceInTeam(
   actorUserId: string,
   teamId: string,
@@ -1994,14 +1956,6 @@ export async function deleteTeamForUser(
   return result;
 }
 
-/** @deprecated use deleteTeamForUser or deleteWorkspaceInTeam */
-export async function deleteWorkspaceForUser(
-  actorUserId: string,
-  workspaceId: string,
-): Promise<void> {
-  await deleteWorkspaceInTeam(actorUserId, workspaceId);
-}
-
 export async function switchWorkspaceForUser(
   actorUserId: string,
   workspaceIdRaw: unknown,
@@ -2402,7 +2356,17 @@ async function resolveMoveTarget(
   targetWorkspaceId: string | null,
 ): Promise<{ nextUserId: string }> {
   if (targetWorkspaceId === null) {
-    // Board "Main" = actor personal pool.
+    // Board "Main" = actor personal pool, and moving there transfers ownership
+    // of the connection (tokens included). `manage_connections` is scoped to a
+    // team's workspaces — it must not let a team Admin walk the owner's
+    // connected account out of the team and into their own private pool. Only
+    // the account's current owner may pull it back to Main.
+    if (account.userId !== actorUserId) {
+      throw new TeamServiceError(
+        403,
+        "Only the account owner can move this connection to Main.",
+      );
+    }
     return { nextUserId: actorUserId };
   }
 

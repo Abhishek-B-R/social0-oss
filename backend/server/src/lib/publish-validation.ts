@@ -19,7 +19,6 @@ const CONTENT_LIMITS: Record<string, { max: number; name: string }> = {
   twitter_x: { max: 280, name: "X (Twitter)" },
 };
 
-const MAX_TITLE_LENGTH = 200;
 const MAX_MEDIA_IDS = 20;
 
 /** Validate content length for a platform. Returns error message or null. */
@@ -35,14 +34,6 @@ export function validateContentLength(
   if (!limit || limit.max === 0) return null;
   if (trimmed.length > limit.max) {
     return `${limit.name}: content must be ${limit.max} characters or less (got ${trimmed.length}).`;
-  }
-  return null;
-}
-
-/** Validate title length (for articles). */
-export function validateTitleLength(title: string): string | null {
-  if (title.length > MAX_TITLE_LENGTH) {
-    return `Title must be ${MAX_TITLE_LENGTH} characters or less.`;
   }
   return null;
 }

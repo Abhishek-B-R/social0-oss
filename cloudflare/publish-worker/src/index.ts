@@ -11,6 +11,8 @@ import type { PublishPlatformJob } from "./types";
 const MAX_BODY_BYTES = 8192;
 const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_LIMIT = 30;
+/** Keep the per-isolate table from growing without bound on a spray of IPs. */
+const AUTH_FAIL_MAX_TRACKED_IPS = 10_000;
 const authFailures = new Map<string, { count: number; resetAt: number }>();
 
 function clientIp(request: Request): string {
@@ -21,19 +23,35 @@ function clientIp(request: Request): string {
   );
 }
 
-function isAuthRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = authFailures.get(ip);
-  if (!entry || entry.resetAt <= now) {
-    authFailures.set(ip, { count: 1, resetAt: now + AUTH_FAIL_WINDOW_MS });
-    return false;
+function evictExpiredAuthFailures(now: number): void {
+  for (const [ip, entry] of authFailures) {
+    if (entry.resetAt <= now) authFailures.delete(ip);
   }
-  entry.count += 1;
+}
+
+/**
+ * Read-only check. This must NOT count the request: the API droplet enqueues
+ * every publish from one source IP, so counting successful calls here would
+ * throttle real publishes at 30/min. Only `recordAuthFailure` increments.
+ */
+function isAuthRateLimited(ip: string): boolean {
+  const entry = authFailures.get(ip);
+  if (!entry || entry.resetAt <= Date.now()) return false;
   return entry.count > AUTH_FAIL_LIMIT;
 }
 
 function recordAuthFailure(ip: string): void {
-  isAuthRateLimited(ip);
+  const now = Date.now();
+  const entry = authFailures.get(ip);
+  if (!entry || entry.resetAt <= now) {
+    if (authFailures.size >= AUTH_FAIL_MAX_TRACKED_IPS) {
+      evictExpiredAuthFailures(now);
+      if (authFailures.size >= AUTH_FAIL_MAX_TRACKED_IPS) return;
+    }
+    authFailures.set(ip, { count: 1, resetAt: now + AUTH_FAIL_WINDOW_MS });
+    return;
+  }
+  entry.count += 1;
 }
 
 export default {

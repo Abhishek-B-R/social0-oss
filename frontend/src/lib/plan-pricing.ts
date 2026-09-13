@@ -62,25 +62,9 @@ export function getPlanPrice(
   return interval === "yearly" ? YEARLY[tier] : MONTHLY[tier];
 }
 
-function roundCents(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
 /** Round effective monthly for display: 16.58 → 16.5, 29.08 → 29. */
 function roundEffectiveMonthlyDisplay(n: number): number {
   return Math.round(n * 2) / 2;
-}
-
-function toParts(amount: number): { dollars: number; cents: string | null } {
-  if (Number.isInteger(amount)) {
-    return { dollars: amount, cents: null };
-  }
-  const fixed =
-    Math.abs(amount * 10 - Math.round(amount * 10)) < 1e-9
-      ? amount.toFixed(1)
-      : amount.toFixed(2);
-  const [dollars, cents] = fixed.split(".");
-  return { dollars: Number(dollars), cents };
 }
 
 /** Effective monthly rate for yearly plans (display-rounded). */
@@ -97,30 +81,6 @@ export function getYearlySlashMonthly(tier: PaidPlanTier): number {
   return m.listPrice ?? m.price;
 }
 
-/** List monthly rate for yearly plans (list price ÷ 12), when applicable. */
-export function getListMonthly(tier: PaidPlanTier): number | null {
-  const list = YEARLY[tier].listPrice;
-  if (list == null) return null;
-  return roundCents(list / 12);
-}
-
-export function getEffectiveMonthlyParts(tier: PaidPlanTier): {
-  dollars: number;
-  cents: string | null;
-} {
-  return toParts(getEffectiveMonthly(tier));
-}
-
-export function getListMonthlyParts(tier: PaidPlanTier): {
-  dollars: number;
-  cents: string;
-} | null {
-  const list = getListMonthly(tier);
-  if (list == null) return null;
-  const [dollars, cents] = list.toFixed(2).split(".");
-  return { dollars: Number(dollars), cents };
-}
-
 export function formatMoney(amount: number): string {
   if (Number.isInteger(amount)) return String(amount);
   if (Math.abs(amount * 10 - Math.round(amount * 10)) < 1e-9) {
@@ -133,22 +93,12 @@ export function formatEffectiveMonthly(tier: PaidPlanTier): string {
   return formatMoney(getEffectiveMonthly(tier));
 }
 
-export function formatListMonthly(tier: PaidPlanTier): string | null {
-  const list = getListMonthly(tier);
-  return list == null ? null : formatMoney(list);
-}
-
 export function formatPlanPriceLabel(
   tier: PaidPlanTier,
   interval: BillingInterval,
 ): string {
   const { price } = getPlanPrice(tier, interval);
   return interval === "yearly" ? `$${price}/year` : `$${price}/month`;
-}
-
-/** Hero price unit — yearly toggle still leads with /month (effective rate). */
-export function periodSuffix(): string {
-  return "/month";
 }
 
 export function billedAsYearlyLabel(tier: PaidPlanTier): string {

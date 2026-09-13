@@ -16,6 +16,33 @@ export function useCloudflarePublishDispatch(): boolean {
   return useCloudflarePublishFromEnv();
 }
 
+/**
+ * Refuse to accept a publish that nothing will ever run.
+ *
+ * With `PUBLISH_DISPATCH` unset, the backend is inferred from whether the
+ * Cloudflare credentials parse — so a missing or misspelled `CF_PUBLISH_*`
+ * secret silently selects BullMQ instead. No consumer for the
+ * `platform-publish-*` queues ships in this repository (the Cloudflare worker
+ * reads Cloudflare Queues, not BullMQ), so the job waits forever: the caller
+ * gets 202, the post sits in `publishing`, and nothing is logged.
+ *
+ * Setting `PUBLISH_DISPATCH=bullmq` is an operator asserting they run their own
+ * consumer, and is left alone. This only closes the case where nobody chose it.
+ *
+ * Called before any row is written, so a misconfigured deployment leaves the
+ * post a draft the user can retry rather than a half-published one.
+ */
+export function assertPublishDispatchConfigured(): void {
+  const mode = process.env.PUBLISH_DISPATCH?.trim();
+  if (mode === "cloudflare" || mode === "bullmq") return;
+  if (cfPublishClientFromEnv()) return;
+  throw new Error(
+    "Publish dispatch is not configured: set CF_PUBLISH_WORKER_URL and " +
+      "CF_PUBLISH_HMAC_SECRET, or set PUBLISH_DISPATCH=bullmq if this " +
+      "deployment runs its own platform-publish queue consumer.",
+  );
+}
+
 /** Enqueue a single platform publish job to Cloudflare. */
 export async function dispatchPlatformJob(
   job: PublishPlatformJob,

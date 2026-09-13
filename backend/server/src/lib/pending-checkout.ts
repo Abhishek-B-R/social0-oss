@@ -3,7 +3,7 @@ import { verification } from "../db/schema.js";
 import { and, eq, gt } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { redis } from "./redis.js";
-import type { PaidPlanTier } from "@social0/shared";
+import { sleep, type PaidPlanTier } from "@social0/shared";
 
 const PENDING_CHECKOUT_TTL_SEC = 3600;
 const CHECKOUT_LOCK_TTL_SEC = 30;
@@ -123,10 +123,6 @@ function pendingMatches(
 ): boolean {
   const pendingInterval = pending.interval ?? "monthly";
   return pending.plan === plan && pendingInterval === interval;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export type ResolveCheckoutResult =

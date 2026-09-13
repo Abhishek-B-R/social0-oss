@@ -177,34 +177,3 @@ export function measureVideoAspectRatio(
     video.src = URL.createObjectURL(file);
   });
 }
-
-/** @deprecated Use measureVideoAspectRatio - we no longer block on ratio */
-export function validateVideoAspectRatio(
-  file: File,
-): Promise<VideoAspectMeasurement & { valid: true }> {
-  return measureVideoAspectRatio(file).then((m) => ({
-    ...m,
-    valid: true as const,
-  }));
-}
-
-/** Format ratio for debug copy, e.g. "1.8:1" or "1:1.8" */
-export function formatAspectRatioLabel(ratio: number): string {
-  if (ratio <= 0 || !Number.isFinite(ratio)) return "unknown";
-  if (ratio >= 1) return `${ratio.toFixed(1)}:1`;
-  return `1:${(1 / ratio).toFixed(1)}`;
-}
-
-/** Optional short descriptor (e.g. ultrawide) */
-export function getAspectRatioDescriptor(ratio: number): string {
-  if (ratio <= 0 || !Number.isFinite(ratio)) return "";
-  if (ratio > 2) return " (ultrawide landscape)";
-  if (ratio >= 1 && ratio < 1.5) return " (landscape)";
-  if (ratio < 0.5) return " (ultrawide portrait)";
-  if (ratio < 1) return " (portrait)";
-  return "";
-}
-
-/** @deprecated Non-blocking guidance only; see getAspectRatioGuidance */
-export const ASPECT_RATIO_MESSAGE =
-  "Video aspect ratio: use a standard ratio for best results across platforms.";

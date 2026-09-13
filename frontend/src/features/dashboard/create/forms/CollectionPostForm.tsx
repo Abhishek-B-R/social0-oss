@@ -1,3 +1,7 @@
+import type {
+  PostFormAccount as Account,
+  PostFormProps,
+} from "./types";
 /* eslint-disable react-hooks/set-state-in-effect */
 
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -11,7 +15,6 @@ import {
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
-import type { SubscriptionTier } from "@/lib/plans";
 import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/api/posts";
 import { getPostPublicationList } from "@/api/publish";
@@ -30,12 +33,8 @@ import { PostFormOptions } from "../PostFormOptions";
 import { SchedulePostSidebar } from "../SchedulePostSidebar";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type {
-  AutoPlugConfig,
-  ConnectedAccount,
-} from "@/components/autoplug/AutoPlugPanel";
-import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
-import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import { useAutoFeatureModals } from "@/features/dashboard/create/forms/use-auto-feature-modals";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   MdOutlineAddPhotoAlternate,
@@ -53,11 +52,14 @@ import {
   XPostSettingsInline,
   type XPostSettings,
 } from "@/components/XPostSettingsInline";
-import {
-  UploadPublishOverlay,
-  type PlatformResult,
-  type PlatformStatus,
+import type {
+  PlatformResult,
+  PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { AccountTabs } from "@/components/AccountTabs";
+import { ConfigPanelChip } from "@/features/dashboard/create/forms/ConfigPanelChip";
+import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
+import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import {
@@ -84,16 +86,6 @@ import {
   type VideoLimitWarning,
 } from "@/lib/platform-limits";
 import { toast } from "sonner";
-
-type Account = {
-  id: string;
-  platform: string;
-  platformUsername: string | null;
-  profileImageUrl: string | null;
-  isActive: boolean | null;
-  isTwitterPremium?: boolean;
-  tokenExpired?: boolean;
-};
 
 type ImageFile = {
   file?: File;
@@ -212,22 +204,7 @@ export function CollectionPostForm({
   subscriptionTier = "free",
   freePostsUsed = 0,
   isGuest = false,
-}: {
-  accounts: Account[];
-  accountsLoading?: boolean;
-  use24HourTimeFormat?: boolean;
-  dateFormat?: string | null;
-  timezone?: string | null;
-  draftId?: string;
-  scheduledId?: string;
-  editId?: string;
-  allowAutoRepost?: boolean;
-  allowAutoPlug?: boolean;
-  supportedPlatforms?: string[];
-  subscriptionTier?: SubscriptionTier;
-  freePostsUsed?: number;
-  isGuest?: boolean;
-}) {
+}: PostFormProps<Account>) {
   const navigate = useNavigate();
   const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
@@ -295,14 +272,10 @@ export function CollectionPostForm({
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
-  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
-  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
   type ConfigPanel = "tiktok" | "x" | null;
   const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
   const [selectedTiktokAccountIndex, setSelectedTiktokAccountIndex] =
     useState(0);
-  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
-  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const hasRestoredAutoFeaturesRef = useRef(false);
   const {
     remember: rememberAutoFeatures,
@@ -1450,32 +1423,7 @@ export function CollectionPostForm({
         undefined,
         (rows) => {
           setPlatformStatuses((prev) =>
-            prev.map((p) => {
-              const row = rows.find(
-                (r) => r.connectedAccountId === p.accountId,
-              );
-              if (!row) return p;
-              const status: PlatformStatus =
-                row.publicationStatus === "published"
-                  ? "published"
-                  : row.publicationStatus === "failed"
-                    ? "failed"
-                    : row.publicationStatus === "publishing"
-                      ? "processing"
-                      : p.status;
-              return {
-                ...p,
-                status,
-                error:
-                  row.publicationStatus === "failed"
-                    ? (row.lastError ?? undefined)
-                    : undefined,
-                postUrl:
-                  row.publicationStatus === "published"
-                    ? (row.platformPostUrl ?? undefined)
-                    : undefined,
-              };
-            }),
+            applyPublicationProgress(prev, rows),
           );
         },
       );
@@ -1541,6 +1489,23 @@ export function CollectionPostForm({
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
   const resurfaceVisible = hasXForResurface;
   const autoPlugVisible = hasXForResurface;
+
+  const {
+    autoRepost: autoRepostSidebar,
+    autoPlug: autoPlugSidebar,
+    modals: autoFeatureModals,
+  } = useAutoFeatureModals({
+    selectedAccountIds,
+    accounts,
+    use24HourTimeFormat,
+    resurfaceVisible,
+    resurfaceConfig,
+    setResurfaceConfig,
+    autoPlugVisible,
+    autoPlugConfig,
+    setAutoPlugConfig,
+  });
+
 
   // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
   useEffect(() => {
@@ -1636,77 +1601,34 @@ export function CollectionPostForm({
 
   return (
     <>
-      {overlayPhase !== "idle" && (
-        <UploadPublishOverlay
-          phase={
-            overlayPhase === "uploading"
-              ? "uploading"
-              : overlayPhase === "saving"
-                ? "saving"
-                : overlayPhase === "publishing"
-                  ? "publishing"
-                  : "publishing"
-          }
-          uploadProgress={uploadProgress}
-          uploadPercent={
-            fileProgresses.length > 0
-              ? Math.round(
-                  fileProgresses.reduce((a, b) => a + b, 0) /
-                    fileProgresses.length,
-                )
-              : null
-          }
-          onCancelUpload={
-            overlayPhase === "uploading"
-              ? () => collectionUploadAbortRef.current?.abort()
-              : undefined
-          }
-          mediaType="mixed"
-          isScheduling={mode === "scheduled"}
-          showLinks={overlayPhase === "done"}
-          draftSuccess={!!draftSavedPostId}
-          draftPostId={draftSavedPostId}
-          scheduleSuccess={!!scheduledPostId}
-          publishedPostId={scheduledPostId ?? publishedPostId}
-          publishedToX={selectedAccounts.some(
-            (a) => a.platform === "twitter_x",
-          )}
-          resurfacePreFill={
-            overlayPhase === "done" &&
-            resurfaceConfig &&
-            !scheduledPostId &&
-            !draftSavedPostId
-              ? {
-                  intervalHours: resurfaceConfig.intervalHours,
-                  maxResurfaces: resurfaceConfig.maxResurfaces,
-                  plugComment: resurfaceConfig.plugComment ?? "",
-                }
-              : null
-          }
-          platformStatuses={platformStatuses}
-          allDone={
-            platformStatuses.length > 0 &&
-            platformStatuses.every(
-              (p) => p.status === "published" || p.status === "failed",
-            )
-          }
-          onClose={() => {
-            const allFailed =
-              platformStatuses.length > 0 &&
-              platformStatuses.every((p) => p.status === "failed");
-            if (allFailed && publishedPostId) {
-              navigate(dash(`posts/${publishedPostId}`), {
-                replace: true,
-              });
-              invalidateQueries();
-            } else {
-              setScheduledPostId(null);
-              setDraftSavedPostId(null);
-              setOverlayPhase("idle");
-            }
-          }}
-        />
-      )}
+      <PublishResultOverlay
+        overlayPhase={overlayPhase}
+        uploadProgress={uploadProgress}
+        uploadPercent={
+          fileProgresses.length > 0
+            ? Math.round(
+                fileProgresses.reduce((a, b) => a + b, 0) /
+                fileProgresses.length,
+              )
+            : null
+        }
+        onCancelUpload={
+          overlayPhase === "uploading"
+            ? () => collectionUploadAbortRef.current?.abort()
+            : undefined
+        }
+        mediaType="mixed"
+        isScheduling={mode === "scheduled"}
+        draftSavedPostId={draftSavedPostId}
+        scheduledPostId={scheduledPostId}
+        publishedPostId={publishedPostId}
+        selectedAccounts={selectedAccounts}
+        resurfaceConfig={resurfaceConfig}
+        platformStatuses={platformStatuses}
+        setScheduledPostId={setScheduledPostId}
+        setDraftSavedPostId={setDraftSavedPostId}
+        setOverlayPhase={setOverlayPhase}
+      />
       <form
         ref={formRef}
         onSubmit={handleSubmit}
@@ -2012,27 +1934,14 @@ export function CollectionPostForm({
                 Post configurations & tools
               </p>
               <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-[44px] sm:min-h-0 -mx-1 px-1 scrollbar-thin">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveConfigPanel((p) =>
-                      p === "tiktok" ? null : "tiktok",
-                    )
-                  }
-                  className={`flex items-center gap-2 rounded-full border px-3 py-2 sm:py-1.5 text-sm font-medium transition-colors shrink-0 min-h-[44px] sm:min-h-0 touch-manipulation ${
-                    activeConfigPanel === "tiktok"
-                      ? "border-accent bg-accent/10 text-accent"
-                      : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                  }`}
-                >
-                  <Circle className="h-3.5 w-3.5 text-text-muted shrink-0" />
-                  <span>TikTok Config</span>
-                  {activeConfigPanel === "tiktok" ? (
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  )}
-                </button>
+                <ConfigPanelChip
+                  panel="tiktok"
+                  activePanel={activeConfigPanel}
+                  setActivePanel={setActiveConfigPanel}
+                  label="TikTok Config"
+                  largeTouchTarget
+                  icon={<Circle className="h-3.5 w-3.5 text-text-muted shrink-0" />}
+                />
                 {hasXSelected && (
                   <button
                     type="button"
@@ -2066,24 +1975,11 @@ export function CollectionPostForm({
                 >
                   {tiktokAccounts.length > 1 ? (
                     <>
-                      <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
-                        {tiktokAccounts.map((acc, idx) => (
-                          <button
-                            key={acc.id}
-                            type="button"
-                            onClick={() => setSelectedTiktokAccountIndex(idx)}
-                            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                              selectedTiktokAccountIndex === idx
-                                ? "bg-bg-elevated text-text shadow-sm"
-                                : "text-text-muted hover:text-text"
-                            }`}
-                          >
-                            {acc.platformUsername?.trim()
-                              ? `@${acc.platformUsername}`
-                              : `Account ${idx + 1}`}
-                          </button>
-                        ))}
-                      </div>
+                      <AccountTabs
+                        accounts={tiktokAccounts}
+                        selectedIndex={selectedTiktokAccountIndex}
+                        onSelect={setSelectedTiktokAccountIndex}
+                      />
                       <TikTokSettings
                         accountId={
                           tiktokAccounts[selectedTiktokAccountIndex]?.id ?? ""
@@ -2175,44 +2071,8 @@ export function CollectionPostForm({
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
-          autoRepost={
-            resurfaceVisible
-              ? {
-                  visible: true,
-                  enabled: !!resurfaceConfig,
-                  onToggle: () => {
-                    if (resurfaceConfig) setResurfaceConfig(null);
-                    else {
-                      configBeforeResurfaceRef.current = resurfaceConfig;
-                      setResurfaceModalOpen(true);
-                    }
-                  },
-                  onOpenSettings: () => {
-                    configBeforeResurfaceRef.current = resurfaceConfig;
-                    setResurfaceModalOpen(true);
-                  },
-                }
-              : null
-          }
-          autoPlug={
-            autoPlugVisible
-              ? {
-                  visible: true,
-                  enabled: !!autoPlugConfig,
-                  onToggle: () => {
-                    if (autoPlugConfig) setAutoPlugConfig(null);
-                    else {
-                      configBeforeAutoPlugRef.current = autoPlugConfig;
-                      setAutoplugModalOpen(true);
-                    }
-                  },
-                  onOpenSettings: () => {
-                    configBeforeAutoPlugRef.current = autoPlugConfig;
-                    setAutoplugModalOpen(true);
-                  },
-                }
-              : null
-          }
+          autoRepost={autoRepostSidebar}
+          autoPlug={autoPlugSidebar}
           allowAutoRepost={allowAutoRepost}
           allowAutoPlug={allowAutoPlug}
           rememberAutoFeatures={rememberAutoFeatures}
@@ -2400,35 +2260,7 @@ export function CollectionPostForm({
           </div>
         </SchedulePostSidebar>
 
-        {resurfaceModalOpen && (
-          <AutoResurfaceSettingsModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts}
-            initialConfig={resurfaceConfig}
-            onChange={setResurfaceConfig}
-            onDone={() => setResurfaceModalOpen(false)}
-            onCancel={() => {
-              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
-              setResurfaceModalOpen(false);
-            }}
-            use24HourTimeFormat={use24HourTimeFormat}
-          />
-        )}
-        {autoplugModalOpen && (
-          <AutoPlugSettingsModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts as ConnectedAccount[]}
-            initialConfig={autoPlugConfig}
-            onChange={setAutoPlugConfig}
-            onDone={() => setAutoplugModalOpen(false)}
-            onCancel={() => {
-              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
-              setAutoplugModalOpen(false);
-            }}
-          />
-        )}
+        {autoFeatureModals}
       </form>
     </>
   );

@@ -11,6 +11,7 @@ import { eq, and, asc } from "drizzle-orm";
 import { headers } from "../../lib/http/request-cookies.js";
 import { getNextAvailableSlot } from "../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
+import { isValidIanaTimezone } from "../../lib/resolve-scheduled-at.js";
 import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
 import { postScopeCondition } from "../../lib/workspace/context.js";
 
@@ -57,9 +58,13 @@ export async function addToQueue(request: Request) {
     .where(eq(userSettings.userId, userId))
     .limit(1);
 
-  const timezone = settings?.timezone?.trim() && settings.timezone !== "UTC"
-    ? settings.timezone
-    : "UTC";
+  // A stored zone can be stale or malformed (older writes were unvalidated);
+  // date-fns-tz throws RangeError on an unknown zone, so fall back to UTC.
+  const storedTimezone = settings?.timezone?.trim();
+  const timezone =
+    storedTimezone && isValidIanaTimezone(storedTimezone)
+      ? storedTimezone
+      : "UTC";
 
   const slots = await db.query.queueSlots.findMany({
     where: and(

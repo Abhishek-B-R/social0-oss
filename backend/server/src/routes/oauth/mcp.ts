@@ -20,6 +20,9 @@ import { requireSessionUserId } from "../../middleware/auth.js";
 import { getAuthApiBaseUrl } from "../../lib/env.js";
 import { getApiProtectedResourceMetadata } from "../../lib/api-scopes.js";
 
+const MAX_REDIRECT_URIS = 10;
+const MAX_REDIRECT_URI_LENGTH = 2048;
+
 function mcpBaseUrl(): string {
   return (process.env.MCP_BASE_URL ?? "https://mcp.social0.app").replace(/\/$/, "");
 }
@@ -123,6 +126,10 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
     }
   });
 
+  // Dynamic client registration is unauthenticated by design (RFC 7591). It is
+  // deliberately not capped per IP: connectors reach it through the mcp-worker
+  // proxy, which does not forward the client address, so every registration
+  // would share the worker's bucket and a few connects would lock out everyone.
   app.post("/oauth/register", async (request, reply) => {
     const body = request.body as {
       redirect_uris?: string[];
@@ -132,8 +139,20 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
       response_types?: string[];
     };
 
-    if (!body.redirect_uris?.length) {
+    if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
       return oauthError(reply, "invalid_client_metadata", "redirect_uris required");
+    }
+    if (
+      body.redirect_uris.length > MAX_REDIRECT_URIS ||
+      body.redirect_uris.some(
+        (uri) => typeof uri !== "string" || uri.length > MAX_REDIRECT_URI_LENGTH,
+      )
+    ) {
+      return oauthError(
+        reply,
+        "invalid_client_metadata",
+        `Provide at most ${MAX_REDIRECT_URIS} redirect_uris of up to ${MAX_REDIRECT_URI_LENGTH} characters each`,
+      );
     }
 
     try {

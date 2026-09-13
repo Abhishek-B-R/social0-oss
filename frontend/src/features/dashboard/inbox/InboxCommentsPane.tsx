@@ -34,10 +34,6 @@ import {
   isInboxThreadAnswered,
 } from "@/lib/inbox-comment-status";
 import {
-  commentIdsFromThreads,
-  markInboxCommentsSeen,
-} from "@/lib/inbox-unread";
-import {
   hideInboxPublication,
   loadHiddenInboxPublications,
   subscribeHiddenInboxPublications,
@@ -449,17 +445,6 @@ export function InboxCommentsPane({
     selectedPost?.threads.find((t) => threadKey(t) === pickedId) ??
     selectedPost?.threads[0] ??
     null;
-
-  // Keep the sidebar Inbox badge accurate: viewing a post marks its comments seen.
-  const selectedPostId = selectedPost?.publicationId ?? null;
-  useEffect(() => {
-    if (!enabled || !userId || !selectedPost) return;
-    const ids = commentIdsFromThreads(selectedPost.threads);
-    if (!ids.length) return;
-    markInboxCommentsSeen(userId, ids);
-    // Depend on publication id, not the post object (new reference every render).
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- threads content keyed by selectedPostId
-  }, [enabled, userId, selectedPostId]);
 
   const loading = inboxQuery.isPending || (inboxQuery.isFetching && !inboxQuery.data);
 

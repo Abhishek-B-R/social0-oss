@@ -6,6 +6,7 @@ import { decryptToken } from "@social0/shared";
 import { logCronSkipped } from "@social0/shared";
 import { getPlanLimits, type SubscriptionTier } from "@social0/shared";
 import { env } from "../lib/env.js";
+import { autoPlugClaimKey, claimCronWork } from "../lib/claim-cron-work.js";
 
 export async function runAutoplugCron() {
   const now = new Date();
@@ -172,6 +173,17 @@ export async function runAutoplugCron() {
       const count = plug.metricType === "retweets" ? retweetCount : likeCount;
 
       if (count < plug.metricThreshold) {
+        continue;
+      }
+
+      // The threshold is met and the reply is about to go out — the one step
+      // in this loop that cannot be repeated. Claim it so two overlapping runs
+      // cannot both post the plug comment.
+      if (!(await claimCronWork(autoPlugClaimKey(plug.id)))) {
+        console.info(
+          "[cron/autoplug] plug already claimed by another run",
+          plug.id,
+        );
         continue;
       }
 

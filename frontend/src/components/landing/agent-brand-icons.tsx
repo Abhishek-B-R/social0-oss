@@ -89,29 +89,3 @@ export function OpenClawIcon({ className }: { className?: string }) {
     </svg>
   );
 }
-
-/** Hermes Agent (Nous Research) — caduceus mark. */
-export function HermesIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 32 32"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      aria-hidden
-    >
-      <circle cx="16" cy="16" r="16" fill="#1a1a1a" />
-      <path
-        fill="#f5c542"
-        d="M15.2 6.5h1.6v19h-1.6z"
-      />
-      <path
-        fill="none"
-        stroke="#f5c542"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        d="M16 10.5c4.2-2.8 7.2-.4 7.2 2.4S20.2 17 16 14.8M16 10.5c-4.2-2.8-7.2-.4-7.2 2.4S11.8 17 16 14.8M16 14.8c4.2 2.2 7.2.4 7.2-2.4M16 14.8c-4.2 2.2-7.2.4-7.2-2.4"
-      />
-      <circle cx="16" cy="7.2" r="1.8" fill="#f5c542" />
-    </svg>
-  );
-}

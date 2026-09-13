@@ -1,4 +1,5 @@
 import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { coerceDate } from "@/lib/coerce-date.js";
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import {
@@ -7,7 +8,7 @@ import {
   postPublications,
   posts,
 } from "../db/schema.js";
-import { checkFreePostLimit, incrementFreePostsUsed } from "../lib/plan-limits.js";
+import { reserveFreePost } from "../lib/plan-limits.js";
 import { getPostDetail } from "../lib/posts-list/posts-list-data.js";
 import { getValidToken } from "../lib/token-refresh.js";
 import { isValidUUID } from "../lib/validation.js";
@@ -19,18 +20,6 @@ import {
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SCHEDULE_FUTURE_GRACE_MS = 120_000;
-
-function coerceDate(value: unknown): Date | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  return null;
-}
 
 function validateScheduledAt(scheduledAt: unknown): string | null {
   const date = coerceDate(scheduledAt);
@@ -189,10 +178,18 @@ async function validateTargetsForMedia(
   return `${platform} does not support ${form} posts in Social0 (supported for this content: ${supported}).`;
 }
 
-async function gateFreeQuota(userId: string): Promise<string | null> {
-  const limit = await checkFreePostLimit(userId);
-  if (limit.allowed) return null;
-  return limit.reason ?? "Free post limit reached. Upgrade to continue.";
+/**
+ * Take one free post atomically. Checking then incrementing let two concurrent
+ * `/v1` calls both pass the read and both publish past the free-tier limit.
+ */
+async function reserveFreeQuota(userId: string) {
+  const reservation = await reserveFreePost(userId);
+  if (reservation.allowed) return { ok: true as const, reservation };
+  return {
+    ok: false as const,
+    error:
+      reservation.reason ?? "Free post limit reached. Upgrade to continue.",
+  };
 }
 
 export type V1CreatePostInput = {
@@ -843,10 +840,10 @@ export async function v1SchedulePost(
     return { ok: false, error: "Only draft or scheduled posts can be scheduled" };
   }
 
-  if (existing.status === "draft") {
-    const quotaErr = await gateFreeQuota(userId);
-    if (quotaErr) return { ok: false, error: quotaErr };
-    await incrementFreePostsUsed(userId);
+  const scheduleQuota =
+    existing.status === "draft" ? await reserveFreeQuota(userId) : null;
+  if (scheduleQuota && !scheduleQuota.ok) {
+    return { ok: false, error: scheduleQuota.error };
   }
 
   const at = coerceDate(scheduledAt)!;
@@ -891,14 +888,17 @@ export async function v1PublishPost(
 
   if (!existing) return { ok: false, error: "Post not found" };
 
-  if (existing.status === "draft") {
-    const quotaErr = await gateFreeQuota(userId);
-    if (quotaErr) return { ok: false, error: quotaErr };
-    await incrementFreePostsUsed(userId);
+  const publishQuota =
+    existing.status === "draft" ? await reserveFreeQuota(userId) : null;
+  if (publishQuota && !publishQuota.ok) {
+    return { ok: false, error: publishQuota.error };
   }
 
   const trackingId = createPublishTrackingId();
 
+  // Nothing is refunded past this point: the post is publishable, and
+  // `/v1/posts/:id/publish` can be retried, so a refund would hand out a free
+  // publish rather than undo a charge.
   try {
     const job = await enqueuePublishPost(
       app,

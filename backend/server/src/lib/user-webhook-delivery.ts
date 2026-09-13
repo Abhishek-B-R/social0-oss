@@ -1,6 +1,11 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import { decryptToken, isSafeOutboundUrl, safeFetch } from "@social0/shared";
+import {
+  decryptToken,
+  isSafeOutboundUrl,
+  safeFetch,
+  sleep,
+} from "@social0/shared";
 import { db } from "../db/index.js";
 import { userWebhookSubscriptions, webhookDeliveries } from "../db/schema.js";
 
@@ -64,10 +69,6 @@ function signWebhookPayload(
   return createHmac("sha256", secret)
     .update(`${timestamp}.${body}`)
     .digest("hex");
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**

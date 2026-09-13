@@ -2,43 +2,14 @@
  * X/Twitter v1.1 media upload via fetch + OAuth 1.0a.
  * CF Workers cannot use twitter-api-v2 uploadMedia (Node https.request / unenv).
  */
-import crypto from "crypto";
-import OAuth from "oauth-1.0a";
 import { parseTwitterError } from "./twitter-errors.js";
+import { twitterOAuthHeader } from "./twitter-oauth1.js";
 
 const UPLOAD_URL = "https://upload.twitter.com/1.1/media/upload.json";
 const CHUNK_SIZE = 5 * 1024 * 1024;
 
 export function isPublishWorkerRuntime(): boolean {
   return process.env.SOCIAL0_PUBLISH_WORKER === "1";
-}
-
-function getOAuth(): OAuth {
-  const consumerKey = process.env.TWITTER_CONSUMER_KEY;
-  const consumerSecret = process.env.TWITTER_CONSUMER_SECRET;
-  if (!consumerKey || !consumerSecret) {
-    throw new Error("Twitter consumer key/secret not configured");
-  }
-  return new OAuth({
-    consumer: { key: consumerKey, secret: consumerSecret },
-    signature_method: "HMAC-SHA1",
-    hash_function(base: string, key: string) {
-      return crypto.createHmac("sha1", key).update(base).digest("base64");
-    },
-  });
-}
-
-function oauthHeader(
-  url: string,
-  method: string,
-  data: Record<string, string>,
-  accessToken: string,
-  accessSecret: string,
-): Record<string, string> {
-  const oauth = getOAuth();
-  return oauth.toHeader(
-    oauth.authorize({ url, method, data }, { key: accessToken, secret: accessSecret }),
-  ) as unknown as Record<string, string>;
 }
 
 function mediaIdFromResponse(data: Record<string, unknown>): string {
@@ -63,7 +34,13 @@ async function postUrlEncoded(
   accessSecret: string,
 ): Promise<Record<string, unknown>> {
   const headers = {
-    ...oauthHeader(UPLOAD_URL, "POST", params, accessToken, accessSecret),
+    ...twitterOAuthHeader({
+      url: UPLOAD_URL,
+      method: "POST",
+      data: params,
+      accessToken,
+      accessSecret,
+    }),
     "Content-Type": "application/x-www-form-urlencoded",
   };
   const res = await fetch(UPLOAD_URL, {
@@ -102,7 +79,13 @@ async function postAppendChunk(
   // in the signature makes Twitter return 401 / code 32 "Could not authenticate you".
   const res = await fetch(UPLOAD_URL, {
     method: "POST",
-    headers: oauthHeader(UPLOAD_URL, "POST", {}, accessToken, accessSecret),
+    headers: twitterOAuthHeader({
+      url: UPLOAD_URL,
+      method: "POST",
+      data: {},
+      accessToken,
+      accessSecret,
+    }),
     body: form,
   });
   if (!res.ok) {

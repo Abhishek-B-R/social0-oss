@@ -15,18 +15,41 @@ function devUserIdFromHeader(request: FastifyRequest): string | null {
   return null;
 }
 
-export async function requireUserId(
+/** How a request proved who it is. API keys are scoped to the personal pool. */
+export type RequestActor = {
+  userId: string;
+  source: "session" | "apiKey" | "devHeader";
+};
+
+/**
+ * Resolve the caller *and* how they authenticated.
+ *
+ * The source matters on `/api/*`: a session carries the user's active
+ * workspace, while an API key is a personal-pool credential (the rule `/v1`
+ * enforces). Handlers that scope by workspace must not silently hand a key the
+ * team's connections.
+ */
+export async function resolveRequestActor(
   request: FastifyRequest,
-): Promise<string | null> {
+): Promise<RequestActor | null> {
   const session = await getSessionFromRequest(request);
-  if (session?.user?.id) return session.user.id;
+  if (session?.user?.id) {
+    return { userId: session.user.id, source: "session" };
+  }
 
   const apiUser = await resolveUserIdFromApiKey(
     request.headers.authorization as string | undefined,
   );
-  if (apiUser) return apiUser;
+  if (apiUser) return { userId: apiUser, source: "apiKey" };
 
-  return devUserIdFromHeader(request);
+  const devUser = devUserIdFromHeader(request);
+  return devUser ? { userId: devUser, source: "devHeader" } : null;
+}
+
+export async function requireUserId(
+  request: FastifyRequest,
+): Promise<string | null> {
+  return (await resolveRequestActor(request))?.userId ?? null;
 }
 
 /** Session cookie auth only (RPC / BFF-style routes). */

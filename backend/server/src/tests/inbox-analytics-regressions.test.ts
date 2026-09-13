@@ -9,7 +9,6 @@ import {
   dmListCacheSuffix,
   olderThanDmCursor,
 } from "../lib/inbox/page-param.js";
-import { flattenInboxThread } from "../lib/inbox/thread-flatten.js";
 import { toInboxThreads, type InboxComment } from "../lib/inbox/types.js";
 import { addZonedCalendarDays, calendarDayKey } from "../lib/date-window.js";
 
@@ -74,22 +73,6 @@ describe("DM pagination cursor", () => {
 });
 
 describe("thread nesting is cycle-safe", () => {
-  it("keeps replies whose parent ids form a cycle", () => {
-    const root = comment({ id: "root" });
-    const a = comment({ id: "a", parentId: "b" });
-    const b = comment({ id: "b", parentId: "a" });
-    const flat = flattenInboxThread(root, [a, b]);
-    expect(flat.map((n) => n.comment.id).sort()).toEqual(["a", "b", "root"]);
-  });
-
-  it("emits each reply exactly once", () => {
-    const root = comment({ id: "root" });
-    const a = comment({ id: "a", parentId: "root" });
-    const b = comment({ id: "b", parentId: "a" });
-    const ids = flattenInboxThread(root, [a, b]).map((n) => n.comment.id);
-    expect(ids).toEqual(["root", "a", "b"]);
-  });
-
   it("keeps cyclic comments visible as top-level threads", () => {
     const a = comment({ id: "a", parentId: "b" });
     const b = comment({ id: "b", parentId: "a" });

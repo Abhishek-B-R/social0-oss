@@ -1,9 +1,6 @@
 import { SkeletonBone } from "@/components/ui/skeleton-bone";
 import Link from "@/components/AppLink";
 import { Filter } from "lucide-react";
-import { format } from "date-fns";
-import { CalendarGrid } from "@/features/dashboard/calendar/CalendarGrid";
-import { ConnectionsList } from "@/components/dashboard/ConnectionsList";
 
 /** Matches PostListCards card chrome: type + status, caption, footer avatar/time. */
 function PostCardSkeleton() {
@@ -96,12 +93,6 @@ export function PostsPageSkeleton({
   );
 }
 
-export function ConnectionsPageSkeleton() {
-  return (
-    <ConnectionsList accounts={[]} accountsLoading />
-  );
-}
-
 export function BillingPageSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading billing">
@@ -152,32 +143,6 @@ export function BillingPageSkeleton() {
             ))}
           </div>
         </section>
-      </div>
-    </div>
-  );
-}
-
-export function CalendarPageSkeleton() {
-  return (
-    <div
-      className="flex min-h-0 flex-1 flex-col"
-      aria-busy="true"
-      aria-label="Loading calendar"
-    >
-      <div className="shrink-0">
-        <h1 className="mb-2 dash-page-title">
-          Calendar
-        </h1>
-        <p className="mt-1.5 text-sm text-text-muted sm:mt-2">
-          View your scheduled and published posts by month, week, or day.
-        </p>
-      </div>
-      <div className="mt-4 flex min-h-0 flex-1 flex-col sm:mt-6">
-        <CalendarGrid
-          posts={[]}
-          initialMonth={format(new Date(), "yyyy-MM")}
-          loading
-        />
       </div>
     </div>
   );

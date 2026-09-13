@@ -12,6 +12,19 @@ type StreamFormatters = {
   formatDone?: (snapshot: JobProgressSnapshot) => Record<string, unknown>;
 };
 
+const POLL_INTERVAL_MS = 1_500;
+const HEARTBEAT_INTERVAL_MS = 15_000;
+/**
+ * Hard ceiling on one stream.
+ *
+ * A job that never reaches a terminal state (worker died, queue lost the
+ * message) otherwise leaves the connection open forever, and on the
+ * Cloudflare path each open stream polls the database every 1.5s. A handful
+ * of forgotten browser tabs turn into a permanent query load, so the stream
+ * closes itself and lets the client reconnect or fall back to polling.
+ */
+const MAX_STREAM_MS = 15 * 60 * 1_000;
+
 export async function openJobSseStream(
   request: FastifyRequest,
   reply: FastifyReply,
@@ -34,6 +47,7 @@ export async function openJobSseStream(
       ? formatters.formatEvent(event, snapshot)
       : event;
     if (data === null) return;
+    if (reply.raw.writableEnded) return;
     reply.raw.write(`event: progress\n`);
     reply.raw.write(`data: ${JSON.stringify(data)}\n\n`);
   };
@@ -42,6 +56,7 @@ export async function openJobSseStream(
     const data = formatters?.formatDone
       ? formatters.formatDone(snapshot)
       : { trackingId };
+    if (reply.raw.writableEnded) return;
     reply.raw.write(`event: done\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
@@ -73,21 +88,65 @@ export async function openJobSseStream(
     FastifyInstance["jobProgress"]["subscribe"]
   > | null = null;
 
-  if (!useDbPoll) {
-    subscriber = app.jobProgress.subscribe(trackingId, async (event) => {
-      const snapshot = (await resolveJobSnapshot(app, trackingId)) ?? initialSnapshot;
-      writeEvent(event, snapshot);
-      if (event.phase === "completed" || event.phase === "failed") {
-        writeDone(snapshot);
-        void cleanup();
+  let closed = false;
+  const stopTimers: Array<() => void> = [];
+
+  /**
+   * Idempotent, and must never reject: every caller is a `void cleanup()` from
+   * a timer or an event handler, where a rejection becomes an unhandled one.
+   */
+  const cleanup = async () => {
+    if (closed) return;
+    closed = true;
+    for (const stop of stopTimers) stop();
+    if (subscriber) {
+      try {
+        await subscriber.unsubscribe();
+        await subscriber.quit();
+      } catch (err) {
+        request.log.warn({ err, trackingId }, "job stream unsubscribe failed");
       }
+    }
+    try {
+      if (!reply.raw.writableEnded) reply.raw.end();
+    } catch (err) {
+      request.log.warn({ err, trackingId }, "job stream close failed");
+    }
+  };
+
+  if (!useDbPoll) {
+    // The callback runs inside ioredis's "message" emitter, which does not await
+    // it — an unhandled rejection here would take the process down, so a failed
+    // snapshot read degrades to the one we already have.
+    subscriber = app.jobProgress.subscribe(trackingId, (event) => {
+      if (closed) return;
+      void (async () => {
+        try {
+          const snapshot =
+            (await resolveJobSnapshot(app, trackingId)) ?? initialSnapshot;
+          if (closed) return;
+          writeEvent(event, snapshot);
+          if (event.phase === "completed" || event.phase === "failed") {
+            writeDone(snapshot);
+            await cleanup();
+          }
+        } catch (err) {
+          request.log.warn({ err, trackingId }, "job stream event failed");
+        }
+      })();
     });
   }
 
-  const pollDb = useDbPoll
-    ? setInterval(async () => {
+  if (useDbPoll) {
+    // Guard against overlap: `resolveJobSnapshot` runs three queries, and a slow
+    // database would otherwise stack one poll on top of the next.
+    let polling = false;
+    const poll = setInterval(async () => {
+      if (closed || polling) return;
+      polling = true;
+      try {
         const snapshot = await resolveJobSnapshot(app, trackingId);
-        if (!snapshot) return;
+        if (!snapshot || closed) return;
         const newEvents = snapshot.events.slice(lastEventCount);
         for (const event of newEvents) {
           writeEvent(event, snapshot);
@@ -97,22 +156,27 @@ export async function openJobSseStream(
           writeDone(snapshot);
           void cleanup();
         }
-      }, 1500)
-    : null;
+      } catch (err) {
+        request.log.warn({ err, trackingId }, "job stream poll failed");
+      } finally {
+        polling = false;
+      }
+    }, POLL_INTERVAL_MS);
+    stopTimers.push(() => clearInterval(poll));
+  }
 
   const heartbeat = setInterval(() => {
+    if (closed || reply.raw.writableEnded) return;
     reply.raw.write(`: ping\n\n`);
-  }, 15_000);
+  }, HEARTBEAT_INTERVAL_MS);
+  stopTimers.push(() => clearInterval(heartbeat));
 
-  const cleanup = async () => {
-    clearInterval(heartbeat);
-    if (pollDb) clearInterval(pollDb);
-    if (subscriber) {
-      await subscriber.unsubscribe();
-      await subscriber.quit();
-    }
-    if (!reply.raw.writableEnded) reply.raw.end();
-  };
+  const maxLifetime = setTimeout(() => {
+    request.log.info({ trackingId }, "job stream hit max lifetime; closing");
+    void cleanup();
+  }, MAX_STREAM_MS);
+  if (typeof maxLifetime.unref === "function") maxLifetime.unref();
+  stopTimers.push(() => clearTimeout(maxLifetime));
 
   request.raw.on("close", () => {
     void cleanup();

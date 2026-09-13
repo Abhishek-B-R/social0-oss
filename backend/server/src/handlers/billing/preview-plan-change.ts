@@ -1,6 +1,10 @@
 import { auth } from "../../lib/auth.js";
 import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
+import {
+  checkoutLimiter,
+  enforceRateLimit,
+} from "../../lib/ratelimit.js";
 import DodoPayments from "dodopayments";
 import { db } from "../../db/index.js";
 import { userSettings } from "../../db/schema.js";
@@ -21,6 +25,14 @@ export async function previewPlanChange(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Every branch below calls the Dodo API. Without a per-user cap an
+  // authenticated client can burn the payment provider's quota and take
+  // billing down for everyone.
+  const rate = await enforceRateLimit(checkoutLimiter, session.user.id);
+  if (!rate.allowed) {
+    return RouteResponse.json({ error: rate.error }, { status: rate.status });
   }
 
   const body = await request.json().catch(() => ({}));

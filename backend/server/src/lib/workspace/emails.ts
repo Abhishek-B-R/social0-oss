@@ -1,13 +1,6 @@
+import { escapeHtml } from "@social0/shared";
 import { sendEmail } from "../mail.js";
 import { appUrlForPath } from "../app-url.js";
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 export async function sendWorkspaceInviteEmail(opts: {
   to: string;

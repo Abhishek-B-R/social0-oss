@@ -6,11 +6,11 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "cf-typegen": "wrangler types",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "wrangler types && tsc --noEmit",
     "test": "vitest run",
     "queues:create": "wrangler queues create social0-publish-now && wrangler queues create social0-publish-scheduled && wrangler queues create social0-publish-dlq",
     "deploy:setup": "npm run queues:create && npm run deploy",
-    "check": "npm run cf-typegen && npm run typecheck && npm run test && wrangler deploy --dry-run"
+    "check": "npm run typecheck && npm run test && wrangler deploy --dry-run"
   },
   "dependencies": {
     "@social0/shared": "file:../../backend/shared",

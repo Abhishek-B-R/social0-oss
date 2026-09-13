@@ -58,18 +58,3 @@ export function armQueuedSlot(
 ): boolean {
   return arm(armedQueued, queuedId, fireAt, fire);
 }
-
-/** Test/helper: clear all armed timers. */
-export function clearAllArmedLookahead(): void {
-  for (const e of armedPosts.values()) clearTimeout(e.timeout);
-  for (const e of armedQueued.values()) clearTimeout(e.timeout);
-  armedPosts.clear();
-  armedQueued.clear();
-}
-
-export function armedLookaheadCounts(): {
-  posts: number;
-  queued: number;
-} {
-  return { posts: armedPosts.size, queued: armedQueued.size };
-}

@@ -60,63 +60,71 @@ const RPC_LIVE_READ_HANDLERS = new Set([
   "analytics.getPostAnalytics",
 ]);
 
-const RPC_HANDLERS: Record<string, RpcHandler> = {
-  "dashboard-data.loadDashboardLayoutData": dashboardData.loadDashboardLayoutData,
-  "dashboard-data.checkBulkToolsGate": dashboardData.checkBulkToolsGate,
-  "dashboard-data.loadComposerSettings": dashboardData.loadComposerSettings,
-  "dashboard-data.loadPostsPageData": dashboardData.loadPostsPageData,
-  "dashboard-data.loadConnectionsPageData": dashboardData.loadConnectionsPageData,
-  "dashboard-data.loadBillingPageData": dashboardData.loadBillingPageData,
-  "dashboard-data.loadCalendarPageData": dashboardData.loadCalendarPageData,
-  "dashboard-data.loadPostDetailCoreData": dashboardData.loadPostDetailCoreData,
-  "dashboard-data.loadPostDetailMediaData": dashboardData.loadPostDetailMediaData,
-  "dashboard-data.loadAdjacentPosts": dashboardData.loadAdjacentPosts,
-  "onboarding.getOnboardingStatus": onboarding.getOnboardingStatus,
-  "onboarding.setOnboardingGoal": onboarding.setOnboardingGoal,
-  "onboarding.setOnboardingCompleted": onboarding.setOnboardingCompleted,
-  "posts.createPost": posts.createPost,
-  "posts.deletePost": posts.deletePost,
-  "posts.postAgain": posts.postAgain,
-  "posts.updatePost": posts.updatePost,
-  "posts.updateScheduledPostAutoFeatures":
-    posts.updateScheduledPostAutoFeatures,
-  "posts.getDraft": posts.getDraft,
-  "posts.getScheduledPost": posts.getScheduledPost,
-  "posts.getPostToEdit": posts.getPostToEdit,
-  "posts.deleteDraft": posts.deleteDraft,
-  "posts.updateDraft": posts.updateDraft,
-  "posts.updateAndPublish": posts.updateAndPublish,
-  "posts.loadEditPostPageData": posts.loadEditPostPageData,
-  "publish.getPostPublicationList": publish.getPostPublicationList,
-  "publish.publishPost": publish.publishPost,
-  "resurface.createAutoPlug": resurface.createAutoPlug,
-  "resurface.createResurfaceSchedule": resurface.createResurfaceSchedule,
-  "resurface.disableResurfaceSchedule": resurface.disableResurfaceSchedule,
-  "resurface.updateAutoPlug": resurface.updateAutoPlug,
-  "resurface.cancelAutoPlug": resurface.cancelAutoPlug,
-  "resurface.updateResurfaceSchedule": resurface.updateResurfaceSchedule,
-  "analytics.getOverview": analytics.getAnalyticsOverview,
-  "analytics.getPostAnalytics": analytics.getPostAnalytics,
-  "analytics.listAccounts": analytics.listAnalyticsAccounts,
-  "inbox.listComments": inbox.listInboxComments,
-  "inbox.replyToComment": inbox.replyToInboxComment,
-  "inbox.likeComment": inbox.likeInboxComment,
-  "inbox.hideComment": inbox.hideInboxComment,
-  "inbox.listDms": inbox.listInboxDms,
-  "inbox.listAccounts": inbox.listInboxAccounts,
-  "inbox.getDmThread": inbox.getInboxDmThread,
-  "inbox.replyToDm": inbox.replyToInboxDm,
-  "settings.loadSettingsPageData": settings.loadSettingsPageData,
-  "settings.getUserSettingsSnapshot": settings.getUserSettingsSnapshot,
-  "settings.updateDisplayName": settings.updateDisplayName,
-  "settings.updateUserImage": settings.updateUserImage,
-  "settings.updateConnectionAvatar": settings.updateConnectionAvatar,
-  "settings.updateAutomationEmails": settings.updateAutomationEmails,
-  "settings.updatePlatformPreferences": settings.updatePlatformPreferences,
-  "settings.updateTimezone": settings.updateTimezone,
-  "settings.signOutAllDevices": settings.signOutAllDevices,
-  "settings.deleteAccount": settings.deleteAccount,
-};
+/**
+ * `Object.create(null)` matters: with a normal object literal, `fn` values like
+ * `"constructor"` or `"toString"` resolve through Object.prototype and get
+ * *called*, slipping past the "Unknown RPC" guard.
+ */
+const RPC_HANDLERS: Record<string, RpcHandler> = Object.assign(
+  Object.create(null) as Record<string, RpcHandler>,
+  {
+    "dashboard-data.loadDashboardLayoutData": dashboardData.loadDashboardLayoutData,
+    "dashboard-data.checkBulkToolsGate": dashboardData.checkBulkToolsGate,
+    "dashboard-data.loadComposerSettings": dashboardData.loadComposerSettings,
+    "dashboard-data.loadPostsPageData": dashboardData.loadPostsPageData,
+    "dashboard-data.loadConnectionsPageData": dashboardData.loadConnectionsPageData,
+    "dashboard-data.loadBillingPageData": dashboardData.loadBillingPageData,
+    "dashboard-data.loadCalendarPageData": dashboardData.loadCalendarPageData,
+    "dashboard-data.loadPostDetailCoreData": dashboardData.loadPostDetailCoreData,
+    "dashboard-data.loadPostDetailMediaData": dashboardData.loadPostDetailMediaData,
+    "dashboard-data.loadAdjacentPosts": dashboardData.loadAdjacentPosts,
+    "onboarding.getOnboardingStatus": onboarding.getOnboardingStatus,
+    "onboarding.setOnboardingGoal": onboarding.setOnboardingGoal,
+    "onboarding.setOnboardingCompleted": onboarding.setOnboardingCompleted,
+    "posts.createPost": posts.createPost,
+    "posts.deletePost": posts.deletePost,
+    "posts.postAgain": posts.postAgain,
+    "posts.updatePost": posts.updatePost,
+    "posts.updateScheduledPostAutoFeatures":
+      posts.updateScheduledPostAutoFeatures,
+    "posts.getDraft": posts.getDraft,
+    "posts.getScheduledPost": posts.getScheduledPost,
+    "posts.getPostToEdit": posts.getPostToEdit,
+    "posts.deleteDraft": posts.deleteDraft,
+    "posts.updateDraft": posts.updateDraft,
+    "posts.updateAndPublish": posts.updateAndPublish,
+    "posts.loadEditPostPageData": posts.loadEditPostPageData,
+    "publish.getPostPublicationList": publish.getPostPublicationList,
+    "publish.publishPost": publish.publishPost,
+    "resurface.createAutoPlug": resurface.createAutoPlug,
+    "resurface.createResurfaceSchedule": resurface.createResurfaceSchedule,
+    "resurface.disableResurfaceSchedule": resurface.disableResurfaceSchedule,
+    "resurface.updateAutoPlug": resurface.updateAutoPlug,
+    "resurface.cancelAutoPlug": resurface.cancelAutoPlug,
+    "resurface.updateResurfaceSchedule": resurface.updateResurfaceSchedule,
+    "analytics.getOverview": analytics.getAnalyticsOverview,
+    "analytics.getPostAnalytics": analytics.getPostAnalytics,
+    "analytics.listAccounts": analytics.listAnalyticsAccounts,
+    "inbox.listComments": inbox.listInboxComments,
+    "inbox.replyToComment": inbox.replyToInboxComment,
+    "inbox.likeComment": inbox.likeInboxComment,
+    "inbox.hideComment": inbox.hideInboxComment,
+    "inbox.listDms": inbox.listInboxDms,
+    "inbox.listAccounts": inbox.listInboxAccounts,
+    "inbox.getDmThread": inbox.getInboxDmThread,
+    "inbox.replyToDm": inbox.replyToInboxDm,
+    "settings.loadSettingsPageData": settings.loadSettingsPageData,
+    "settings.getUserSettingsSnapshot": settings.getUserSettingsSnapshot,
+    "settings.updateDisplayName": settings.updateDisplayName,
+    "settings.updateUserImage": settings.updateUserImage,
+    "settings.updateConnectionAvatar": settings.updateConnectionAvatar,
+    "settings.updateAutomationEmails": settings.updateAutomationEmails,
+    "settings.updatePlatformPreferences": settings.updatePlatformPreferences,
+    "settings.updateTimezone": settings.updateTimezone,
+    "settings.signOutAllDevices": settings.signOutAllDevices,
+    "settings.deleteAccount": settings.deleteAccount,
+  },
+);
 
 function reviveArgs(args: unknown[]): unknown[] {
   return args.map((arg) => {
@@ -137,11 +145,12 @@ function reviveArgs(args: unknown[]): unknown[] {
       "__formData" in arg &&
       (arg as { __formData: unknown }).__formData === true
     ) {
-      const entries = (arg as unknown as { entries: Record<string, string> })
-        .entries;
+      const entries = (arg as { entries?: unknown }).entries;
       const formData = new FormData();
-      for (const [key, value] of Object.entries(entries)) {
-        formData.set(key, value);
+      if (entries && typeof entries === "object" && !Array.isArray(entries)) {
+        for (const [key, value] of Object.entries(entries)) {
+          if (typeof value === "string") formData.set(key, value);
+        }
       }
       return formData;
     }
@@ -154,17 +163,20 @@ export async function registerRpcRoutes(app: FastifyInstance) {
     const userId = await requireSessionUserId(request);
     if (!userId) return reply.status(401).send(unauthorized());
 
-    const body = request.body as { fn?: string; args?: unknown[] };
+    const body =
+      request.body && typeof request.body === "object"
+        ? (request.body as { fn?: unknown; args?: unknown })
+        : {};
     const fn = body.fn;
     const args = Array.isArray(body.args) ? body.args : [];
 
-    if (!fn || typeof fn !== "string") {
+    if (typeof fn !== "string" || !fn) {
       return reply.status(400).send({ error: "Missing fn" });
     }
 
     const handler = RPC_HANDLERS[fn];
-    if (!handler) {
-      return reply.status(404).send({ error: `Unknown RPC: ${fn}` });
+    if (typeof handler !== "function") {
+      return reply.status(404).send({ error: "Unknown RPC" });
     }
 
     const limiter = RPC_MUTATION_HANDLERS.has(fn)

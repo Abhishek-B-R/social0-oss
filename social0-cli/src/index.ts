@@ -24,6 +24,7 @@ import { uploadCommand } from "./commands/upload.js";
 import { statusCommand } from "./commands/status.js";
 import { draftsCommand } from "./commands/drafts.js";
 import { doctorCommand, versionCommand, updateCommand } from "./commands/doctor.js";
+import { CLI_VERSION } from "./version.js";
 import { interactiveCommand } from "./commands/interactive.js";
 import { aiCommand, examplesCommand } from "./commands/ai.js";
 import {
@@ -42,7 +43,7 @@ const program = new Command();
 program
   .name("social0")
   .description(chalk.bold("Social0 CLI") + " — manage social media from your terminal")
-  .version("0.2.0")
+  .version(CLI_VERSION)
   .option("--json", "Output as JSON")
   .option("--yaml", "Output as YAML")
   .option("--table", "Output as table (default)")

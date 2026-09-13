@@ -1,6 +1,11 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 
-import type { PlatformCaptionState, Account, ImageFile } from "./types";
+import type { ImageFile } from "./types";
+import type {
+  PlatformCaptionState,
+  PostFormAccount as Account,
+  PostFormProps,
+} from "../types";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { usePostHog } from "@posthog/react";
@@ -12,7 +17,6 @@ import {
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
-import type { SubscriptionTier } from "@/lib/plans";
 import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/api/posts";
 import { SchedulePostSidebar } from "../../SchedulePostSidebar";
@@ -31,12 +35,8 @@ import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-aut
 import { PostFormOptions } from "../../PostFormOptions";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type {
-  AutoPlugConfig,
-  ConnectedAccount,
-} from "@/components/autoplug/AutoPlugPanel";
-import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
-import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import { useAutoFeatureModals } from "@/features/dashboard/create/forms/use-auto-feature-modals";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { MdClose } from "react-icons/md";
 import { TikTokSettings } from "@/components/TikTokSettings";
@@ -45,18 +45,21 @@ import {
   type TikTokPostSettings,
 } from "@/components/tiktok-post-settings";
 import type { PinterestPostSettings } from "@/lib/pinterest-settings";
-import { PinterestConfigInline } from "@/components/PinterestConfigInline";
+import { PinterestAccountSettings } from "@/components/PinterestAccountSettings";
 import {
   XPostSettingsInline,
   type XPostSettings,
 } from "@/components/XPostSettingsInline";
 
 const PREVIEW_MEDIA_MAX_H = 196;
-import {
-  UploadPublishOverlay,
-  type PlatformResult,
-  type PlatformStatus,
+import type {
+  PlatformResult,
+  PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { AccountTabs } from "@/components/AccountTabs";
+import { ConfigPanelChip } from "@/features/dashboard/create/forms/ConfigPanelChip";
+import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
+import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import {
@@ -78,8 +81,8 @@ import {
 } from "@/lib/composer-bridge";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
+import { PlatformCaptionsPanel } from "../PlatformCaptionsPanel";
 import { CaptionCounter } from "@/components/caption-counter";
-import { getLimitForAccount } from "@/lib/platform-limits";
 import { shouldAutoFocusOnMount } from "@/lib/touch";
 import { toast } from "sonner";
 import {
@@ -109,22 +112,7 @@ export function ImagePostForm({
   subscriptionTier = "free",
   freePostsUsed = 0,
   isGuest = false,
-}: {
-  accounts: Account[];
-  accountsLoading?: boolean;
-  use24HourTimeFormat?: boolean;
-  dateFormat?: string | null;
-  timezone?: string | null;
-  draftId?: string;
-  scheduledId?: string;
-  editId?: string;
-  allowAutoRepost?: boolean;
-  allowAutoPlug?: boolean;
-  supportedPlatforms?: string[];
-  subscriptionTier?: SubscriptionTier;
-  freePostsUsed?: number;
-  isGuest?: boolean;
-}) {
+}: PostFormProps<Account>) {
   const navigate = useNavigate();
   const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
@@ -191,8 +179,6 @@ export function ImagePostForm({
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
-  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
-  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
   const [pinterestSettingsByAccount, setPinterestSettingsByAccount] = useState<
     Record<string, PinterestPostSettings>
   >({});
@@ -271,8 +257,6 @@ export function ImagePostForm({
     useState(0);
   const [selectedTiktokAccountIndex, setSelectedTiktokAccountIndex] =
     useState(0);
-  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
-  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const hasRestoredAutoFeaturesRef = useRef(false);
   const {
     remember: rememberAutoFeatures,
@@ -728,6 +712,23 @@ export function ImagePostForm({
   const resurfaceVisible = hasXForResurface; // publishedAt undefined for new posts
   const autoPlugVisible = hasXForResurface; // publishedAt undefined for new posts
 
+  const {
+    autoRepost: autoRepostSidebar,
+    autoPlug: autoPlugSidebar,
+    modals: autoFeatureModals,
+  } = useAutoFeatureModals({
+    selectedAccountIds,
+    accounts,
+    use24HourTimeFormat,
+    resurfaceVisible,
+    resurfaceConfig,
+    setResurfaceConfig,
+    autoPlugVisible,
+    autoPlugConfig,
+    setAutoPlugConfig,
+  });
+
+
   // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
   useEffect(() => {
     if (!hasXForResurface) {
@@ -992,27 +993,6 @@ export function ImagePostForm({
     [selectedAccounts],
   );
   const showPlatformCaptionsSection = selectedIds.size >= 2;
-  const platformDisplayName = (platformId: string) =>
-    PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
-  const getPlatformCaptionPreview = (
-    platformId: string,
-    rawCaption: string,
-  ) => {
-    const trimmed = rawCaption.trim();
-    if (!trimmed) return "";
-    const platformAccounts = selectedAccounts.filter(
-      (account) => account.platform === platformId,
-    );
-    const limit =
-      platformAccounts.length > 0
-        ? Math.min(
-            ...platformAccounts.map((account) => getLimitForAccount(account)),
-          )
-        : getLimitForAccount({ platform: platformId, isTwitterPremium: false });
-    if (trimmed.length <= limit) return trimmed;
-    if (limit <= 3) return "...";
-    return `${trimmed.slice(0, limit - 3)}...`;
-  };
   const hasTikTok = selectedAccounts.some((a) => a.platform === "tiktok");
   const tiktokAccounts = selectedAccounts.filter(
     (a) => a.platform === "tiktok",
@@ -1076,7 +1056,6 @@ export function ImagePostForm({
     e.preventDefault();
     toast.dismiss();
     if (isGuest) {
-      // eslint-disable-next-line react-hooks/immutability
       window.location.href = signInUrl(
         window.location.pathname + window.location.search,
       );
@@ -1532,32 +1511,7 @@ export function ImagePostForm({
         publishOptions,
         (rows) => {
           setPlatformStatuses((prev) =>
-            prev.map((p) => {
-              const row = rows.find(
-                (r) => r.connectedAccountId === p.accountId,
-              );
-              if (!row) return p;
-              const status: PlatformStatus =
-                row.publicationStatus === "published"
-                  ? "published"
-                  : row.publicationStatus === "failed"
-                    ? "failed"
-                    : row.publicationStatus === "publishing"
-                      ? "processing"
-                      : p.status;
-              return {
-                ...p,
-                status,
-                error:
-                  row.publicationStatus === "failed"
-                    ? (row.lastError ?? undefined)
-                    : undefined,
-                postUrl:
-                  row.publicationStatus === "published"
-                    ? (row.platformPostUrl ?? undefined)
-                    : undefined,
-              };
-            }),
+            applyPublicationProgress(prev, rows),
           );
         },
       );
@@ -1670,77 +1624,34 @@ export function ImagePostForm({
 
   return (
     <>
-      {overlayPhase !== "idle" && (
-        <UploadPublishOverlay
-          phase={
-            overlayPhase === "uploading"
-              ? "uploading"
-              : overlayPhase === "saving"
-                ? "saving"
-                : overlayPhase === "publishing"
-                  ? "publishing"
-                  : "publishing"
-          }
-          uploadProgress={uploadProgress}
-          uploadPercent={
-            fileProgresses.length > 0
-              ? Math.round(
-                  fileProgresses.reduce((a, b) => a + b, 0) /
-                    fileProgresses.length,
-                )
-              : null
-          }
-          onCancelUpload={
-            overlayPhase === "uploading"
-              ? () => imageUploadAbortRef.current?.abort()
-              : undefined
-          }
-          mediaType="image"
-          isScheduling={mode === "scheduled"}
-          showLinks={overlayPhase === "done"}
-          draftSuccess={!!draftSavedPostId}
-          draftPostId={draftSavedPostId}
-          scheduleSuccess={!!scheduledPostId}
-          publishedPostId={scheduledPostId ?? publishedPostId}
-          publishedToX={selectedAccounts.some(
-            (a) => a.platform === "twitter_x",
-          )}
-          resurfacePreFill={
-            overlayPhase === "done" &&
-            resurfaceConfig &&
-            !scheduledPostId &&
-            !draftSavedPostId
-              ? {
-                  intervalHours: resurfaceConfig.intervalHours,
-                  maxResurfaces: resurfaceConfig.maxResurfaces,
-                  plugComment: resurfaceConfig.plugComment ?? "",
-                }
-              : null
-          }
-          platformStatuses={platformStatuses}
-          allDone={
-            platformStatuses.length > 0 &&
-            platformStatuses.every(
-              (p) => p.status === "published" || p.status === "failed",
-            )
-          }
-          onClose={() => {
-            const allFailed =
-              platformStatuses.length > 0 &&
-              platformStatuses.every((p) => p.status === "failed");
-            if (allFailed && publishedPostId) {
-              navigate(dash(`posts/${publishedPostId}`), {
-                replace: true,
-              });
-              invalidateQueries();
-            } else {
-              setScheduledPostId(null);
-              setDraftSavedPostId(null);
-              setOverlayPhase("idle");
-            }
-          }}
-        />
-      )}
+      <PublishResultOverlay
+        overlayPhase={overlayPhase}
+        uploadProgress={uploadProgress}
+        uploadPercent={
+          fileProgresses.length > 0
+            ? Math.round(
+                fileProgresses.reduce((a, b) => a + b, 0) /
+                fileProgresses.length,
+              )
+            : null
+        }
+        onCancelUpload={
+          overlayPhase === "uploading"
+            ? () => imageUploadAbortRef.current?.abort()
+            : undefined
+        }
+        mediaType="image"
+        isScheduling={mode === "scheduled"}
+        draftSavedPostId={draftSavedPostId}
+        scheduledPostId={scheduledPostId}
+        publishedPostId={publishedPostId}
+        selectedAccounts={selectedAccounts}
+        resurfaceConfig={resurfaceConfig}
+        platformStatuses={platformStatuses}
+        setScheduledPostId={setScheduledPostId}
+        setDraftSavedPostId={setDraftSavedPostId}
+        setOverlayPhase={setOverlayPhase}
+      />
       <form
         ref={formRef}
         onSubmit={handleSubmit}
@@ -2042,84 +1953,47 @@ export function ImagePostForm({
               </p>
               <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-[44px] sm:min-h-0 -mx-1 px-1 scrollbar-thin">
                 {showPlatformCaptionsSection && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "platform-captions" ? null : "platform-captions",
-                      )
-                    }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                      activeConfigPanel === "platform-captions"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    <Circle className="h-3.5 w-3.5 text-text-muted" />
-                    <span>Platform Captions</span>
-                    {activeConfigPanel === "platform-captions" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  <ConfigPanelChip
+                    panel="platform-captions"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="Platform Captions"
+                    icon={<Circle className="h-3.5 w-3.5 text-text-muted" />}
+                  />
                 )}
                 {hasPinterestSelected && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "pinterest" ? null : "pinterest",
+                  <ConfigPanelChip
+                    panel="pinterest"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="Pinterest Config"
+                    icon={
+                      pinterestAccounts.some(
+                        (acc) =>
+                          !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+                      ) ? (
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                       )
                     }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                      activeConfigPanel === "pinterest"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    {pinterestAccounts.some(
-                      (acc) =>
-                        !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
-                    ) ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    ) : (
-                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                    )}
-                    <span>Pinterest Config</span>
-                    {activeConfigPanel === "pinterest" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  />
                 )}
                 {hasTikTokSelected && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "tiktok" ? null : "tiktok",
+                  <ConfigPanelChip
+                    panel="tiktok"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="TikTok Config"
+                    largeTouchTarget
+                    icon={
+                      tiktokSettingsIncomplete ? (
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
                       )
                     }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-2 sm:py-1.5 text-sm font-medium transition-colors shrink-0 min-h-[44px] sm:min-h-0 touch-manipulation ${
-                      activeConfigPanel === "tiktok"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    {tiktokSettingsIncomplete ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                    ) : (
-                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
-                    )}
-                    <span>TikTok Config</span>
-                    {activeConfigPanel === "tiktok" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  />
                 )}
                 {hasXSelected && (
                   <button
@@ -2146,83 +2020,13 @@ export function ImagePostForm({
 
               {activeConfigPanel === "pinterest" && (
                 <div className="mt-2 border-t border-border pt-4">
-                  {pinterestAccounts.length > 1 ? (
-                    <>
-                      <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
-                        {pinterestAccounts.map((acc, idx) => (
-                          <button
-                            key={acc.id}
-                            type="button"
-                            onClick={() =>
-                              setSelectedPinterestAccountIndex(idx)
-                            }
-                            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                              selectedPinterestAccountIndex === idx
-                                ? "bg-bg-elevated text-text shadow-sm"
-                                : "text-text-muted hover:text-text"
-                            }`}
-                          >
-                            {acc.platformUsername?.trim()
-                              ? `@${acc.platformUsername}`
-                              : `Account ${idx + 1}`}
-                          </button>
-                        ))}
-                      </div>
-                      <PinterestConfigInline
-                        accountId={
-                          pinterestAccounts[selectedPinterestAccountIndex]
-                            ?.id ?? ""
-                        }
-                        value={
-                          pinterestSettingsByAccount[
-                            pinterestAccounts[selectedPinterestAccountIndex]
-                              ?.id ?? ""
-                          ] ?? {
-                            boardId: "",
-                            title: "",
-                            link: "",
-                            rememberBoard: false,
-                            rememberLink: false,
-                          }
-                        }
-                        onChange={(s) => {
-                          const id =
-                            pinterestAccounts[selectedPinterestAccountIndex]
-                              ?.id;
-                          if (id)
-                            setPinterestSettingsByAccount((prev) => ({
-                              ...prev,
-                              [id]: s,
-                            }));
-                        }}
-                        isVisible={true}
-                      />
-                    </>
-                  ) : (
-                    <PinterestConfigInline
-                      accountId={pinterestAccounts[0]?.id ?? ""}
-                      value={
-                        pinterestSettingsByAccount[
-                          pinterestAccounts[0]?.id ?? ""
-                        ] ?? {
-                          boardId: "",
-                          title: "",
-                          link: "",
-                          rememberBoard: false,
-                          rememberLink: false,
-                        }
-                      }
-                      onChange={(s) => {
-                        const id = pinterestAccounts[0]?.id;
-                        if (id)
-                          setPinterestSettingsByAccount((prev) => ({
-                            ...prev,
-                            [id]: s,
-                          }));
-                      }}
-                      isVisible={true}
-                    />
-                  )}
+                  <PinterestAccountSettings
+                    accounts={pinterestAccounts}
+                    settingsByAccount={pinterestSettingsByAccount}
+                    setSettingsByAccount={setPinterestSettingsByAccount}
+                    selectedAccountIndex={selectedPinterestAccountIndex}
+                    setSelectedAccountIndex={setSelectedPinterestAccountIndex}
+                  />
                 </div>
               )}
 
@@ -2237,24 +2041,11 @@ export function ImagePostForm({
                 >
                   {tiktokAccounts.length > 1 ? (
                     <>
-                      <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
-                        {tiktokAccounts.map((acc, idx) => (
-                          <button
-                            key={acc.id}
-                            type="button"
-                            onClick={() => setSelectedTiktokAccountIndex(idx)}
-                            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                              selectedTiktokAccountIndex === idx
-                                ? "bg-bg-elevated text-text shadow-sm"
-                                : "text-text-muted hover:text-text"
-                            }`}
-                          >
-                            {acc.platformUsername?.trim()
-                              ? `@${acc.platformUsername}`
-                              : `Account ${idx + 1}`}
-                          </button>
-                        ))}
-                      </div>
+                      <AccountTabs
+                        accounts={tiktokAccounts}
+                        selectedIndex={selectedTiktokAccountIndex}
+                        onSelect={setSelectedTiktokAccountIndex}
+                      />
                       <TikTokSettings
                         accountId={
                           tiktokAccounts[selectedTiktokAccountIndex]?.id ?? ""
@@ -2342,110 +2133,13 @@ export function ImagePostForm({
               )}
 
               {activeConfigPanel === "platform-captions" && (
-                <div className="mt-2 border-t border-border pt-4 space-y-4">
-                  {uniquePlatformsFromSelection.map((platformId) => {
-                    const state =
-                      platformCaptions[platformId] ??
-                      ({
-                        overridden: false,
-                        value: "",
-                      } as PlatformCaptionState);
-                    const displayName = platformDisplayName(platformId);
-                    const effectiveCaption = state.overridden
-                      ? state.value
-                      : content;
-                    const previewCaption = getPlatformCaptionPreview(
-                      platformId,
-                      effectiveCaption,
-                    );
-                    return (
-                      <div
-                        key={platformId}
-                        className="rounded-xl border border-border bg-bg p-4"
-                      >
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-text">
-                            {displayName}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {state.overridden ? (
-                              <>
-                                <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
-                                  Edited caption
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setPlatformCaptions((prev) => ({
-                                      ...prev,
-                                      [platformId]: {
-                                        overridden: false,
-                                        value: "",
-                                      },
-                                    }))
-                                  }
-                                  className="text-xs font-medium text-accent hover:text-accent-hover"
-                                >
-                                  Clear
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-xs text-text-muted">
-                                  Using main caption
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setPlatformCaptions((prev) => ({
-                                      ...prev,
-                                      [platformId]: {
-                                        overridden: true,
-                                        value: content.trim(),
-                                      },
-                                    }))
-                                  }
-                                  className="text-xs font-medium text-accent hover:text-accent-hover"
-                                >
-                                  Edit
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <AutoResizeTextarea
-                          rows={3}
-                          placeholder={
-                            state.overridden
-                              ? undefined
-                              : content || "Main caption..."
-                          }
-                          value={state.overridden ? state.value : ""}
-                          readOnly={!state.overridden}
-                          onChange={(e) =>
-                            state.overridden &&
-                            setPlatformCaptions((prev) => ({
-                              ...prev,
-                              [platformId]: {
-                                ...(prev[platformId] ?? {
-                                  overridden: false,
-                                  value: "",
-                                }),
-                                overridden: true,
-                                value: e.target.value,
-                              },
-                            }))
-                          }
-                          className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
-                          maxHeight={160}
-                        />
-                        <p className="mt-2 text-xs text-text-muted">
-                          Preview: {previewCaption || "No caption"}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
+                <PlatformCaptionsPanel
+                  platforms={uniquePlatformsFromSelection}
+                  captions={platformCaptions}
+                  setCaptions={setPlatformCaptions}
+                  content={content}
+                  selectedAccounts={selectedAccounts}
+                />
               )}
             </div>
           )}
@@ -2490,46 +2184,8 @@ export function ImagePostForm({
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
-          autoRepost={
-            resurfaceVisible
-              ? {
-                  visible: true,
-                  enabled: !!resurfaceConfig,
-                  onToggle: () => {
-                    if (resurfaceConfig) {
-                      setResurfaceConfig(null);
-                    } else {
-                      configBeforeResurfaceRef.current = resurfaceConfig;
-                      setResurfaceModalOpen(true);
-                    }
-                  },
-                  onOpenSettings: () => {
-                    configBeforeResurfaceRef.current = resurfaceConfig;
-                    setResurfaceModalOpen(true);
-                  },
-                }
-              : null
-          }
-          autoPlug={
-            autoPlugVisible
-              ? {
-                  visible: true,
-                  enabled: !!autoPlugConfig,
-                  onToggle: () => {
-                    if (autoPlugConfig) {
-                      setAutoPlugConfig(null);
-                    } else {
-                      configBeforeAutoPlugRef.current = autoPlugConfig;
-                      setAutoplugModalOpen(true);
-                    }
-                  },
-                  onOpenSettings: () => {
-                    configBeforeAutoPlugRef.current = autoPlugConfig;
-                    setAutoplugModalOpen(true);
-                  },
-                }
-              : null
-          }
+          autoRepost={autoRepostSidebar}
+          autoPlug={autoPlugSidebar}
           allowAutoRepost={allowAutoRepost}
           allowAutoPlug={allowAutoPlug}
           rememberAutoFeatures={rememberAutoFeatures}
@@ -2790,35 +2446,7 @@ export function ImagePostForm({
           </div>
         </SchedulePostSidebar>
 
-        {resurfaceModalOpen && (
-          <AutoResurfaceSettingsModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts}
-            initialConfig={resurfaceConfig}
-            onChange={setResurfaceConfig}
-            onDone={() => setResurfaceModalOpen(false)}
-            onCancel={() => {
-              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
-              setResurfaceModalOpen(false);
-            }}
-            use24HourTimeFormat={use24HourTimeFormat}
-          />
-        )}
-        {autoplugModalOpen && (
-          <AutoPlugSettingsModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts as ConnectedAccount[]}
-            initialConfig={autoPlugConfig}
-            onChange={setAutoPlugConfig}
-            onDone={() => setAutoplugModalOpen(false)}
-            onCancel={() => {
-              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
-              setAutoplugModalOpen(false);
-            }}
-          />
-        )}
+        {autoFeatureModals}
       </form>
     </>
   );

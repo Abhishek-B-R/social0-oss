@@ -13,6 +13,10 @@ import { decryptToken } from "@social0/shared";
 import { logCronSkipped } from "@social0/shared";
 import { getPlanLimits, type SubscriptionTier } from "@social0/shared";
 import { env } from "../lib/env.js";
+import {
+  claimCronWork,
+  resurfaceEventClaimKey,
+} from "../lib/claim-cron-work.js";
 
 export async function runRepostCron() {
   const now = new Date();
@@ -115,6 +119,16 @@ export async function runRepostCron() {
           .innerJoin(
             connectedAccounts,
             eq(postPublications.connectedAccountId, connectedAccounts.id),
+          )
+          // Join back to posts on the owner too: a connection can change hands
+          // (Teams workspace move), and a repost must never run on an account
+          // the post's owner no longer holds.
+          .innerJoin(
+            posts,
+            and(
+              eq(postPublications.postId, posts.id),
+              eq(connectedAccounts.userId, posts.userId),
+            ),
           )
           .where(
             and(
@@ -256,6 +270,17 @@ export async function runRepostCron() {
           .update(resurfaceEvents)
           .set({ status: "failed" })
           .where(eq(resurfaceEvents.id, ev.eventId));
+        continue;
+      }
+
+      // Last gate before anything reaches X. Everything above is a read or an
+      // idempotent terminal mark, so claiming here keeps the exclusive window
+      // as small as the work that actually cannot be repeated.
+      if (!(await claimCronWork(resurfaceEventClaimKey(ev.eventId)))) {
+        console.info(
+          "[cron/resurface] event already claimed by another run",
+          ev.eventId,
+        );
         continue;
       }
 

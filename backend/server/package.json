@@ -32,7 +32,7 @@
     "oauth-1.0a": "^2.2.6",
     "pg": "^8.18.0",
     "resend": "^6.9.3",
-    "sharp": "^0.33.5",
+    "sharp": "^0.35.4",
     "standardwebhooks": "^1.0.0",
     "twitter-api-v2": "^1.29.0",
     "zod": "^3.23.8"

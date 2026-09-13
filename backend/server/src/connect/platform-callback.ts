@@ -53,6 +53,49 @@ function isValidProfileImageUrl(url: unknown): url is string {
   return u.startsWith("http://") || u.startsWith("https://");
 }
 
+/**
+ * Read a failed token-exchange body as JSON, falling back to the raw text.
+ *
+ * A redirect thrown from inside the framework surfaces here as an exception
+ * from `JSON.parse`'s callback frame, so it must be rethrown rather than
+ * swallowed into an error payload — otherwise a redirect turns into a generic
+ * "token exchange failed" and the real destination is lost.
+ */
+type TokenErrorBody = {
+  error?: string | { message?: string };
+  error_description?: string;
+  raw?: string;
+};
+
+/**
+ * Best message from a failed token exchange: the provider's own description
+ * where there is one, then whatever it put in `error`. Null when the body says
+ * nothing useful, so each caller keeps its own fallback.
+ */
+function tokenErrorMessage(body: TokenErrorBody): string | null {
+  const err = body.error;
+  if (typeof err === "object" && err?.message) return err.message;
+  if (body.error_description) return body.error_description;
+  if (typeof err === "string" && err) return err;
+  return null;
+}
+
+function parseTokenErrorBody(errorText: string): TokenErrorBody {
+  try {
+    return JSON.parse(errorText);
+  } catch (parseErr) {
+    if (
+      (parseErr as { digest?: string })?.digest?.startsWith("ROUTE_REDIRECT")
+    ) {
+      throw parseErr;
+    }
+    if (parseErr instanceof Error && parseErr.message === "ROUTE_REDIRECT") {
+      throw parseErr;
+    }
+    return { raw: errorText };
+  }
+}
+
 export async function platformCallback(
   req: AppRequest,
   { params }: { params: Promise<{ platform: string }> },
@@ -373,10 +416,16 @@ export async function platformCallback(
       );
     }
 
-    // TikTok: Retrieve verifier from DB using stateId
+    // TikTok: Retrieve verifier from DB using stateId.
+    // The identifier is part of the lookup on purpose: `verification` also
+    // holds OTPs, connect bindings and webhook idempotency rows, and a row id
+    // alone does not say which of those it is.
     if (platform === "tiktok" && decrypted.stateId) {
       const verifierRecord = await db.query.verification.findFirst({
-        where: eq(verification.id, decrypted.stateId),
+        where: and(
+          eq(verification.id, decrypted.stateId),
+          eq(verification.identifier, `pkce_${userId}_${platform}`),
+        ),
       });
 
       if (!verifierRecord || new Date(verifierRecord.expiresAt) < new Date()) {
@@ -494,35 +543,14 @@ export async function platformCallback(
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        let errorJson;
-        try {
-          errorJson = JSON.parse(errorText);
-        } catch (parseErr) {
-          if (
-            (parseErr as { digest?: string })?.digest?.startsWith(
-              "ROUTE_REDIRECT",
-            )
-          ) {
-            throw parseErr;
-          }
-          if (
-            parseErr instanceof Error &&
-            parseErr.message === "ROUTE_REDIRECT"
-          ) {
-            throw parseErr;
-          }
-          errorJson = { raw: errorText };
-        }
+        const errorJson = parseTokenErrorBody(errorText);
         console.error(`${platform} token exchange failed:`, {
           status: tokenResponse.status,
           statusText: tokenResponse.statusText,
           error: errorJson,
           tokenUrl,
         });
-        const errMsg =
-          errorJson.error?.message ??
-          errorJson.error_description ??
-          String(errorJson.error ?? errorText);
+        const errMsg = tokenErrorMessage(errorJson) ?? String(errorText);
         throw new Error(`Token exchange failed: ${errMsg}`);
       }
 
@@ -620,30 +648,9 @@ export async function platformCallback(
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        let errorJson;
-        try {
-          errorJson = JSON.parse(errorText);
-        } catch (parseErr) {
-          if (
-            (parseErr as { digest?: string })?.digest?.startsWith(
-              "ROUTE_REDIRECT",
-            )
-          ) {
-            throw parseErr;
-          }
-          if (
-            parseErr instanceof Error &&
-            parseErr.message === "ROUTE_REDIRECT"
-          ) {
-            throw parseErr;
-          }
-          errorJson = { raw: errorText };
-        }
+        const errorJson = parseTokenErrorBody(errorText);
 
-        const errMsg =
-          errorJson.error_description ??
-          errorJson.error ??
-          "Token exchange failed";
+        const errMsg = tokenErrorMessage(errorJson) ?? "Token exchange failed";
         console.error(
           "TikTok token exchange failed:",
           tokenResponse.status,

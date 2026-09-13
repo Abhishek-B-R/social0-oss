@@ -13,6 +13,10 @@ import {
   recordLegalAcceptances,
   validateSignupLegalConsent,
 } from "../../lib/legal.js";
+import {
+  isTurnstileConfigured,
+  verifyTurnstileToken,
+} from "../../lib/turnstile.js";
 import { db } from "../../db/index.js";
 import { user } from "../../db/schema.js";
 import { eq, sql } from "drizzle-orm";
@@ -33,8 +37,16 @@ async function findUserIdByNormalizedEmail(normalizedEmail: string) {
 
 /**
  * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email.
+ *
+ * `requireCaptcha` is set by `POST /api/auth/sign-up-with-turnstile`, whose name
+ * is a promise to the caller. The plain `/api/auth/sign-up` route also verifies
+ * a token when one is supplied and the server has a Turnstile secret, so the SPA
+ * can start sending one without a second route.
  */
-export async function signUpDev(request: Request) {
+export async function signUpDev(
+  request: Request,
+  opts: { requireCaptcha?: boolean } = {},
+) {
   const ipRate = await enforceRateLimit(signUpIpLimiter, `sign_up:${clientIp(request)}`);
   if (!ipRate.allowed) {
     return RouteResponse.json(
@@ -47,15 +59,39 @@ export async function signUpDev(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { name, email, password, acceptTerms, acceptPrivacy, marketingOptIn } =
-    body as {
-      name?: string;
-      email?: string;
-      password?: string;
-      acceptTerms?: boolean;
-      acceptPrivacy?: boolean;
-      marketingOptIn?: boolean;
-    };
+  const {
+    name,
+    email,
+    password,
+    acceptTerms,
+    acceptPrivacy,
+    marketingOptIn,
+    turnstileToken,
+  } = body as {
+    name?: string;
+    email?: string;
+    password?: string;
+    acceptTerms?: boolean;
+    acceptPrivacy?: boolean;
+    marketingOptIn?: boolean;
+    turnstileToken?: string;
+  };
+
+  const captchaRequired =
+    opts.requireCaptcha === true ||
+    (isTurnstileConfigured() && typeof turnstileToken === "string");
+  if (captchaRequired) {
+    const captcha = await verifyTurnstileToken(
+      turnstileToken,
+      clientIp(request),
+    );
+    if (!captcha.ok) {
+      return RouteResponse.json(
+        { error: captcha.error, code: "turnstile_failed" },
+        { status: captcha.status },
+      );
+    }
+  }
 
   const consentError = validateSignupLegalConsent({ acceptTerms, acceptPrivacy });
   if (consentError) {
@@ -144,4 +180,9 @@ export async function signUpDev(request: Request) {
     const mapped = mapSignUpError(e);
     return RouteResponse.json(mapped, { status });
   }
+}
+
+/** `POST /api/auth/sign-up-with-turnstile` — the captcha is never optional here. */
+export function signUpWithTurnstile(request: Request) {
+  return signUpDev(request, { requireCaptcha: true });
 }

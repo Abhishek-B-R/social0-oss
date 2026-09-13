@@ -85,6 +85,18 @@ function sha256Base64Url(value: string): string {
   return createHash("sha256").update(value).digest("base64url");
 }
 
+/** Client secrets are bearer credentials — never compare them with `!==`. */
+function matchesClientSecret(
+  provided: string | undefined,
+  expected: string,
+): boolean {
+  if (typeof provided !== "string") return false;
+  const a = Buffer.from(provided, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
 function verifyPkce(codeVerifier: string | undefined, codeChallenge: string): boolean {
   if (!codeVerifier) return false;
   const computed = sha256Base64Url(codeVerifier);
@@ -390,12 +402,18 @@ export async function exchangeMcpAuthorizationCode(input: {
   }
 
   if (client.client_secret) {
-    if (!input.clientSecret || input.clientSecret !== client.client_secret) {
+    if (!matchesClientSecret(input.clientSecret, client.client_secret)) {
       throw new Error("invalid_client");
     }
   }
 
-  const stored = await store.get<StoredAuthCode>(codeKey(input.code));
+  // Claim the code before validating the rest of the request. Read-then-delete
+  // let two concurrent exchanges both pass their checks and each walk away with
+  // a token pair; an authorization code is single-use (RFC 6749 §4.1.2), and
+  // GETDEL is the only way to say that atomically. The client has already
+  // proved its identity above, so a failed attempt burning the code is the
+  // intended outcome rather than something an outsider can trigger.
+  const stored = await store.getdel<StoredAuthCode>(codeKey(input.code));
   if (!stored) {
     throw new Error("invalid_grant");
   }
@@ -408,8 +426,6 @@ export async function exchangeMcpAuthorizationCode(input: {
   if (!verifyPkce(input.codeVerifier, stored.codeChallenge)) {
     throw new Error("invalid_grant");
   }
-
-  await store.del(codeKey(input.code));
 
   const accessToken = randomBytes(32).toString("base64url");
   const refreshToken = randomBytes(32).toString("base64url");
@@ -460,7 +476,10 @@ export async function refreshMcpAccessToken(input: {
   const store = requireRedis();
   const client = await getMcpOAuthClient(input.clientId);
   if (!client) throw new Error("invalid_client");
-  if (client.client_secret && input.clientSecret !== client.client_secret) {
+  if (
+    client.client_secret &&
+    !matchesClientSecret(input.clientSecret, client.client_secret)
+  ) {
     throw new Error("invalid_client");
   }
 
@@ -526,7 +545,7 @@ export async function revokeMcpToken(input: {
     const client = await getMcpOAuthClient(input.clientId);
     if (!client) return;
     if (client.client_secret) {
-      if (!input.clientSecret || input.clientSecret !== client.client_secret) {
+      if (!matchesClientSecret(input.clientSecret, client.client_secret)) {
         throw new Error("invalid_client");
       }
     }

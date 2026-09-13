@@ -5,7 +5,7 @@ import {
   type PublishPlatformJob,
 } from "@social0/shared";
 import { db } from "../db/index.js";
-import { posts, queuedPosts } from "../db/schema.js";
+import { postPublications, posts, queuedPosts } from "../db/schema.js";
 import { loadPublicationTargets } from "../lib/publish-load-targets.js";
 import { initScheduledPublishTracking } from "./init-scheduled-tracking.js";
 import {
@@ -24,6 +24,84 @@ async function enqueueTarget(
   cfClient: CfClient,
 ): Promise<void> {
   await cfEnqueuePlatformJob(job, "scheduled", cfClient);
+}
+
+type EnqueueTarget = Awaited<ReturnType<typeof loadPublicationTargets>>[number];
+
+/**
+ * Dispatch every target, and leave the post in a state the system can still
+ * act on if that fails part way.
+ *
+ * Claiming flips the post to `publishing`, and the scan only ever selects
+ * `scheduled` — so a dispatch that threw (the publish worker down, a network
+ * blip, a rejected signature) left the post there with nothing queued and
+ * nothing to retry it. The stale-`publishing` sweeper at the top of the scan
+ * eventually marked it failed, an hour later, for a blip that a retry one
+ * minute later would have ridden out.
+ *
+ * Which recovery is right depends on how far the fan-out got:
+ *
+ * - Nothing dispatched: hand the post back as `scheduled` so the next tick
+ *   retries it cleanly. `scheduled_at` is untouched and already past, so it is
+ *   picked up immediately.
+ * - Something dispatched: those platforms are in flight and re-running the
+ *   post would double-publish them. Fail the publications that never left
+ *   instead, so the post can finalize as failed/partial — with the failure
+ *   email and webhook that implies — rather than sitting in `publishing`
+ *   waiting on a job that does not exist.
+ */
+async function enqueueAllTargets(
+  postId: string,
+  userId: string,
+  targets: EnqueueTarget[],
+  trackingId: string | undefined,
+  cfClient: CfClient,
+): Promise<void> {
+  let dispatched = 0;
+  try {
+    for (const t of targets) {
+      await enqueueTarget(
+        {
+          postId,
+          userId,
+          publicationId: t.publicationId,
+          connectedAccountId: t.connectedAccountId,
+          platform: t.platform,
+          ...(trackingId ? { trackingId } : {}),
+        },
+        cfClient,
+      );
+      dispatched += 1;
+    }
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Could not queue this platform";
+
+    if (dispatched === 0) {
+      await db
+        .update(posts)
+        .set({ status: "scheduled", updatedAt: new Date() })
+        .where(
+          and(
+            eq(posts.id, postId),
+            eq(posts.userId, userId),
+            eq(posts.status, "publishing"),
+          ),
+        );
+    } else {
+      for (const t of targets.slice(dispatched)) {
+        await db
+          .update(postPublications)
+          .set({
+            status: "failed",
+            lastError: message,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, t.publicationId));
+      }
+    }
+    throw err;
+  }
 }
 
 async function claimAndEnqueuePost(
@@ -61,19 +139,7 @@ async function claimAndEnqueuePost(
     total: targets.length,
   });
 
-  for (const t of targets) {
-    await enqueueTarget(
-      {
-        postId,
-        userId,
-        publicationId: t.publicationId,
-        connectedAccountId: t.connectedAccountId,
-        platform: t.platform,
-        ...(trackingId ? { trackingId } : {}),
-      },
-      cfClient,
-    );
-  }
+  await enqueueAllTargets(postId, userId, targets, trackingId, cfClient);
   return true;
 }
 
@@ -122,19 +188,7 @@ async function claimAndEnqueueQueued(
     total: targets.length,
   });
 
-  for (const t of targets) {
-    await enqueueTarget(
-      {
-        postId,
-        userId,
-        publicationId: t.publicationId,
-        connectedAccountId: t.connectedAccountId,
-        platform: t.platform,
-        ...(trackingId ? { trackingId } : {}),
-      },
-      cfClient,
-    );
-  }
+  await enqueueAllTargets(postId, userId, targets, trackingId, cfClient);
   return true;
 }
 
@@ -188,17 +242,23 @@ export async function runPublishScheduledCron(): Promise<{
     if (!post.scheduledAt) continue;
     const due = post.scheduledAt.getTime() <= now.getTime();
     if (due) {
-      const ok = await claimAndEnqueuePost(post.id, post.userId, cfClient);
-      if (ok) {
-        processed.push(post.id);
-        if (post.scheduledAt.getTime() < recoveryCutoff.getTime()) {
-          recovered += 1;
-          console.info(
-            "[publish-scheduled] recovered overdue post",
-            post.id,
-            post.scheduledAt.toISOString(),
-          );
+      // Isolate per post: a single CF enqueue failure used to abort the whole
+      // scan, leaving every later due post unpublished until the next tick.
+      try {
+        const ok = await claimAndEnqueuePost(post.id, post.userId, cfClient);
+        if (ok) {
+          processed.push(post.id);
+          if (post.scheduledAt.getTime() < recoveryCutoff.getTime()) {
+            recovered += 1;
+            console.info(
+              "[publish-scheduled] recovered overdue post",
+              post.id,
+              post.scheduledAt.toISOString(),
+            );
+          }
         }
+      } catch (err) {
+        console.error("[publish-scheduled] post enqueue failed", post.id, err);
       }
       continue;
     }
@@ -229,22 +289,30 @@ export async function runPublishScheduledCron(): Promise<{
     if (!q.scheduledFor) continue;
     const due = q.scheduledFor.getTime() <= now.getTime();
     if (due) {
-      const ok = await claimAndEnqueueQueued(
-        q.id,
-        q.postId,
-        q.userId,
-        cfClient,
-      );
-      if (ok) {
-        queuedProcessed.push(q.postId);
-        if (q.scheduledFor.getTime() < recoveryCutoff.getTime()) {
-          recovered += 1;
-          console.info(
-            "[publish-scheduled] recovered overdue queued slot",
-            q.id,
-            q.scheduledFor.toISOString(),
-          );
+      try {
+        const ok = await claimAndEnqueueQueued(
+          q.id,
+          q.postId,
+          q.userId,
+          cfClient,
+        );
+        if (ok) {
+          queuedProcessed.push(q.postId);
+          if (q.scheduledFor.getTime() < recoveryCutoff.getTime()) {
+            recovered += 1;
+            console.info(
+              "[publish-scheduled] recovered overdue queued slot",
+              q.id,
+              q.scheduledFor.toISOString(),
+            );
+          }
         }
+      } catch (err) {
+        console.error(
+          "[publish-scheduled] queued slot enqueue failed",
+          q.id,
+          err,
+        );
       }
       continue;
     }

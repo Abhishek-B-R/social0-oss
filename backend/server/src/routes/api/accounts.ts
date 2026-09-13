@@ -1,21 +1,21 @@
 import type { FastifyInstance } from "fastify";
 import { and, count, eq } from "drizzle-orm";
-import { requireUserId, unauthorized } from "../../middleware/auth.js";
+import { resolveRequestActor, unauthorized } from "../../middleware/auth.js";
 import { db } from "../../db/index.js";
 import { connectedAccounts, postPublications } from "../../db/schema.js";
 import { decryptToken } from "@social0/shared";
 import { revokeTokenOnPlatform } from "../../lib/revoke-token.js";
 import type { Platform } from "../../lib/platforms.js";
-import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
+import { requireWorkspacePermissionForActor } from "../../lib/workspace/session.js";
 import { connectionScopeCondition } from "../../lib/workspace/context.js";
 
 export async function registerAccountsRoutes(app: FastifyInstance) {
   app.get("/accounts", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
 
-    const ws = await requireWorkspacePermissionForUser(
-      userId,
+    const ws = await requireWorkspacePermissionForActor(
+      actor,
       "view_connections",
     );
     if (!ws.ok) {
@@ -41,12 +41,12 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
   });
 
   app.get("/accounts/:id", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
     const { id: accountId } = request.params as { id: string };
 
-    const ws = await requireWorkspacePermissionForUser(
-      userId,
+    const ws = await requireWorkspacePermissionForActor(
+      actor,
       "view_connections",
     );
     if (!ws.ok) {
@@ -84,12 +84,12 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
   });
 
   app.delete("/accounts/:id", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
     const { id: accountId } = request.params as { id: string };
 
-    const ws = await requireWorkspacePermissionForUser(
-      userId,
+    const ws = await requireWorkspacePermissionForActor(
+      actor,
       "manage_connections",
     );
     if (!ws.ok) {
@@ -129,8 +129,8 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
   });
 
   app.post("/accounts/refresh-premium", async (request, reply) => {
-    const userId = await requireUserId(request);
-    if (!userId) return reply.status(401).send(unauthorized());
+    const actor = await resolveRequestActor(request);
+    if (!actor) return reply.status(401).send(unauthorized());
     const { refreshTwitterPremium } = await import(
       "../../connect/refresh-twitter-premium.js"
     );

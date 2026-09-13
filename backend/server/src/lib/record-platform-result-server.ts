@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
-import type { JobProgressPhase, PublishPlatformJob } from "@social0/shared";
+import {
+  publishJobOutcome,
+  type JobProgressPhase,
+  type PublishPlatformJob,
+} from "@social0/shared";
 import { db } from "../db/index.js";
 import {
   postPublications,
@@ -33,16 +37,22 @@ export async function trackPlatformPhaseServer(
     message,
   });
 
+  // Same ownership rule as `recordPlatformResultServer`: the hooked store has
+  // already written this event, so only the app-less store leaves it to us.
+  const storeAlreadyPersisted = Boolean(app?.jobProgress);
+
   await safeDbPublishTracking(async () => {
-    await db.insert(publishJobEvents).values({
-      trackingId: job.trackingId!,
-      postId: job.postId,
-      userId: job.userId,
-      phase,
-      platform: job.platform,
-      connectedAccountId: job.connectedAccountId,
-      message,
-    });
+    if (!storeAlreadyPersisted) {
+      await db.insert(publishJobEvents).values({
+        trackingId: job.trackingId!,
+        postId: job.postId,
+        userId: job.userId,
+        phase,
+        platform: job.platform,
+        connectedAccountId: job.connectedAccountId,
+        message,
+      });
+    }
 
     await db
       .update(publishJobs)
@@ -73,9 +83,10 @@ export async function recordPlatformResultServer(
     .from(postPublications)
     .where(eq(postPublications.postId, job.postId));
 
+  const published = pubs.filter((p) => p.status === "published").length;
+  const failed = pubs.filter((p) => p.status === "failed").length;
+
   if (pubs.length > 0) {
-    const published = pubs.filter((p) => p.status === "published").length;
-    const failed = pubs.filter((p) => p.status === "failed").length;
     if (published + failed >= pubs.length) {
       const postStatus =
         published === 0 ? "failed" : failed === 0 ? "published" : "partial";
@@ -121,63 +132,66 @@ export async function recordPlatformResultServer(
     message,
   });
 
+  // `app.jobProgress` is the store built with the persist hooks, so it has
+  // already written this event and the job counters. Only the app-less store
+  // (`getRedisOnlyJobProgress`) leaves that to us — writing them unconditionally
+  // is what put two rows in `publish_job_events` for every phase.
+  const storeAlreadyPersisted = Boolean(app?.jobProgress);
+
   await safeDbPublishTracking(async () => {
     const [row] = await db
-      .select({
-        total: publishJobs.total,
-        completed: publishJobs.completed,
-        failed: publishJobs.failed,
-      })
+      .select({ total: publishJobs.total })
       .from(publishJobs)
       .where(eq(publishJobs.trackingId, job.trackingId!))
       .limit(1);
 
     if (!row) return;
 
-    const completed = row.completed + (success ? 1 : 0);
-    const failed = row.failed + (success ? 0 : 1);
+    // Count the publications rather than incrementing the stored counters.
+    // Incrementing double-counted whatever the progress store had already
+    // added — a single-platform failure ended up `failed = 2` against
+    // `total = 1`, so `failed === total` was false and the job's terminal
+    // event read "All platforms published" for a publish that published
+    // nothing. It also mis-counted on every BullMQ retry of the same job.
+    // The publication rows are the source of truth and are already updated
+    // above, so deriving from them is both correct and idempotent.
+    const completed = published;
+    const failedCount = failed;
     const total = row.total;
-    const progress = { completed, failed, total };
-    await db.insert(publishJobEvents).values({
-      trackingId: job.trackingId!,
-      postId: job.postId,
-      userId: job.userId,
-      phase,
-      platform: job.platform,
-      connectedAccountId: job.connectedAccountId,
-      message,
-      progress,
-    });
+    const progress = { completed, failed: failedCount, total };
 
-    const allDone = completed + failed >= total && total > 0;
-    const status = allDone
-      ? failed === total
-        ? "failed"
-        : "completed"
-      : "processing";
-
-    await db
-      .update(publishJobs)
-      .set({
-        status,
-        completed,
-        failed,
-        updatedAt: new Date(),
-      })
-      .where(eq(publishJobs.trackingId, job.trackingId!));
-
-    if (allDone) {
+    if (!storeAlreadyPersisted) {
       await db.insert(publishJobEvents).values({
         trackingId: job.trackingId!,
         postId: job.postId,
         userId: job.userId,
-        phase: status,
-        message:
-          failed === total
-            ? "Publish finished with failures"
-            : completed > 0 && failed > 0
-              ? `Published to ${completed}/${total} platforms (${failed} failed)`
-              : "All platforms published",
+        phase,
+        platform: job.platform,
+        connectedAccountId: job.connectedAccountId,
+        message,
+        progress,
+      });
+    }
+
+    const outcome = publishJobOutcome(completed, failedCount, total);
+
+    await db
+      .update(publishJobs)
+      .set({
+        status: outcome.status,
+        completed,
+        failed: failedCount,
+        updatedAt: new Date(),
+      })
+      .where(eq(publishJobs.trackingId, job.trackingId!));
+
+    if (outcome.allDone && !storeAlreadyPersisted) {
+      await db.insert(publishJobEvents).values({
+        trackingId: job.trackingId!,
+        postId: job.postId,
+        userId: job.userId,
+        phase: outcome.status,
+        message: outcome.message,
         progress,
       });
     }
