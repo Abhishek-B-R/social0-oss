@@ -85,7 +85,7 @@ export const PLATFORM_OAUTH_CONFIG: Record<
     clientSecretEnv: "FACEBOOK_CLIENT_SECRET",
     authUrl: "https://www.facebook.com/dialog/oauth",
     tokenUrl: "https://graph.facebook.com/v21.0/oauth/access_token",
-    // Publish + insights. Do not request pages_manage_engagement (pulls pages_read_user_content).
+    // Publish + insights + Page comments (pages_manage_engagement).
     scope: FACEBOOK_PAGE_SCOPES,
   },
 };

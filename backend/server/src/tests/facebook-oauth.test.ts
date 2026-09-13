@@ -27,13 +27,12 @@ stubServerEnv();
 const { buildFacebookOAuthUrl } = await import("../lib/facebook-oauth.js");
 
 describe("Facebook Page scopes", () => {
-  it("never includes Messenger or pages_read_user_content", () => {
+  it("never includes Messenger or business_management", () => {
     expect(FACEBOOK_PAGE_SCOPES).not.toContain("pages_messaging");
-    expect(FACEBOOK_PAGE_SCOPES).not.toContain("pages_read_user_content");
-    expect(FACEBOOK_PAGE_SCOPES).not.toContain("pages_manage_engagement");
+    expect(FACEBOOK_PAGE_SCOPES).toContain("pages_read_user_content");
+    expect(FACEBOOK_PAGE_SCOPES).toContain("pages_manage_engagement");
     expect(FACEBOOK_PAGE_SCOPES).toContain("read_insights");
     expect(FACEBOOK_PAGE_SCOPES).not.toContain("business_management");
-    expect(FACEBOOK_INSTAGRAM_PAGE_SCOPES).not.toContain("pages_manage_engagement");
     expect(FACEBOOK_INSTAGRAM_PAGE_SCOPES).toBe(FACEBOOK_PAGE_SCOPES);
     expect(PLATFORM_OAUTH_CONFIG.facebook?.scope).toBe(FACEBOOK_PAGE_SCOPES);
   });
@@ -41,14 +40,14 @@ describe("Facebook Page scopes", () => {
   it("strips blocked permissions from a stale scope string", () => {
     expect(
       sanitizeFacebookScopes(
-        `${FACEBOOK_PAGE_SCOPES},pages_messaging,pages_manage_engagement,pages_read_user_content,read_insights,business_management`,
+        `${FACEBOOK_PAGE_SCOPES},pages_messaging,business_management`,
       ),
     ).toBe(FACEBOOK_PAGE_SCOPES);
   });
 
-  it("allowlist is publish plus read_insights for analytics", () => {
+  it("allowlist is publish plus insights and Page comments", () => {
     expect(FACEBOOK_PAGE_SCOPES).toBe(
-      "pages_show_list,pages_read_engagement,pages_manage_posts,read_insights",
+      "pages_show_list,pages_read_engagement,pages_manage_posts,read_insights,pages_read_user_content,pages_manage_engagement",
     );
   });
 });
@@ -66,7 +65,7 @@ describe("buildFacebookOAuthUrl", () => {
     );
     expect(url.searchParams.get("scope")).toBe(FACEBOOK_PAGE_SCOPES);
     expect(url.searchParams.get("config_id")).toBeNull();
-    expect(url.searchParams.get("scope")).not.toContain("pages_read_user_content");
+    expect(url.searchParams.get("scope")).toContain("pages_manage_engagement");
   });
 
   it("drops pages_messaging even if a caller passes it", () => {

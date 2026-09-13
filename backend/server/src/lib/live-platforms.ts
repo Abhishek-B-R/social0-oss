@@ -15,10 +15,11 @@ export const LIVE_PLATFORMS: Record<
   Partial<Record<Platform, boolean>>
 > = {
   analytics: {
-    // Meta App Review still pending
+    // Instagram insights still rejected — keep gated until App Review passes
     instagram: false,
-    facebook: false,
-    threads: false,
+    // Meta App Review approved (read_insights / threads_manage_insights)
+    facebook: true,
+    threads: true,
     // Google OAuth verified
     youtube: true,
     twitter_x: true,
@@ -31,10 +32,11 @@ export const LIVE_PLATFORMS: Record<
     pinterest: true,
   },
   inboxComments: {
-    // Meta App Review still pending
+    // Instagram comments still rejected — keep gated until App Review passes
     instagram: false,
-    facebook: false,
-    threads: false,
+    // Meta App Review approved (pages_manage_engagement; Threads replies already on connect)
+    facebook: true,
+    threads: true,
     // youtube.force-ssl verified
     youtube: true,
     twitter_x: true,

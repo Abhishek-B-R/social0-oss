@@ -1,17 +1,16 @@
 /**
  * Facebook Page OAuth scopes.
  *
- * Connect requests everything the app uses except permissions Meta blocks
- * until a prerequisite is on the app:
- * - pages_manage_engagement requires pages_read_user_content (add both in App
- *   Review first, then uncomment ENGAGEMENT below).
+ * pages_manage_engagement requires pages_read_user_content — both are Advanced
+ * Access after App Review. Do not add pages_messaging (wrong product).
  */
 export const FACEBOOK_ALLOWED_SCOPES = [
   "pages_show_list",
   "pages_read_engagement",
   "pages_manage_posts",
-  "read_insights", // Analytics: Page/post insights
-  // "pages_manage_engagement", // Inbox comments — enable after pages_read_user_content is on the app
+  "read_insights",
+  "pages_read_user_content",
+  "pages_manage_engagement",
 ] as const;
 
 const FACEBOOK_ALLOWED_SCOPE_SET = new Set<string>(FACEBOOK_ALLOWED_SCOPES);
@@ -21,8 +20,6 @@ export const FACEBOOK_BLOCKED_SCOPES = [
   "pages_messaging",
   "pages_messaging_subscriptions",
   "pages_messaging_phone_number",
-  "pages_read_user_content",
-  "pages_manage_engagement",
   "business_management",
 ] as const;
 

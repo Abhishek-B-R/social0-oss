@@ -22,7 +22,7 @@ export type BuildFacebookOAuthUrlParams = {
 
 /**
  * Build Meta OAuth dialog URL with an explicit scope list only.
- * Never send config_id; never request Messenger or pages_read_user_content.
+ * Never send config_id; never request Messenger.
  */
 export function buildFacebookOAuthUrl({
   clientId,
