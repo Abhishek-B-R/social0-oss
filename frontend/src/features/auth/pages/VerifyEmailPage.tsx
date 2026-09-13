@@ -1,6 +1,8 @@
 
 import { useSearchParams } from "react-router-dom";
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { OtpInputs } from "@/components/ui/OtpInputs";
+import { OTP_LENGTH } from "@/lib/otp";
+import { useState, useEffect, Suspense } from "react";
 import Link from "@/components/AppLink";
 import { authClient } from "@/lib/auth-client";
 import { friendlyAuthError } from "@/lib/auth-errors";
@@ -8,7 +10,6 @@ import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 
 const RESEND_COOLDOWN_SEC = 30;
-const OTP_LENGTH = 6;
 
 function VerifyEmailContent() {
   const [searchParams] = useSearchParams();
@@ -21,16 +22,6 @@ function VerifyEmailContent() {
 
   const otpString = otp.join("");
 
-  const setOtpFromString = useCallback((s: string) => {
-    const digits = s.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
-    setOtp((prev) => {
-      const next = [...prev];
-      digits.forEach((d, i) => {
-        next[i] = d;
-      });
-      return next;
-    });
-  }, []);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -101,52 +92,6 @@ function VerifyEmailContent() {
     );
   }
 
-  const inputs = otp.map((digit, i) => (
-    <input
-      key={i}
-      type="text"
-      inputMode="numeric"
-      autoComplete="one-time-code"
-      maxLength={1}
-      value={digit}
-      onChange={(e) => {
-        const v = e.target.value.replace(/\D/g, "");
-        if (v.length <= 1) {
-          setOtp((prev) => {
-            const next = [...prev];
-            next[i] = v;
-            return next;
-          });
-          if (v && i < OTP_LENGTH - 1) {
-            const nextEl = e.target
-              .nextElementSibling as HTMLInputElement | null;
-            nextEl?.focus();
-          }
-        }
-      }}
-      onPaste={(e) => {
-        e.preventDefault();
-        const pasted = e.clipboardData
-          .getData("text")
-          .replace(/\D/g, "")
-          .slice(0, OTP_LENGTH);
-        setOtpFromString(pasted);
-        const firstEmpty = Math.min(pasted.length, OTP_LENGTH - 1);
-        const el =
-          e.currentTarget.parentElement?.querySelectorAll("input")[firstEmpty];
-        el?.focus();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Backspace" && !otp[i] && i > 0) {
-          const prev = e.currentTarget
-            .previousElementSibling as HTMLInputElement | null;
-          prev?.focus();
-        }
-      }}
-      className="w-11 h-12 text-center text-lg font-semibold rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-      aria-label={`Digit ${i + 1} of ${OTP_LENGTH}`}
-    />
-  ));
 
   return (
     <div className="landing landing-page flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
@@ -172,7 +117,11 @@ function VerifyEmailContent() {
                   role="group"
                   aria-label="Verification code"
                 >
-                  {inputs}
+                  <OtpInputs
+                    digits={otp}
+                    onChange={setOtp}
+                    inputClassName={"w-11 h-12 text-center text-lg font-semibold rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"}
+                  />
                 </div>
                 <button
                   type="submit"

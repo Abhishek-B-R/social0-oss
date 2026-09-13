@@ -1,10 +1,11 @@
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { OtpInputs } from "@/components/ui/OtpInputs";
+import { OTP_LENGTH, otpDigitsOf } from "@/lib/otp";
 import { fetchApi } from "@/lib/fetch-api";
 
 import {
   useRef,
   useState,
-  useCallback,
   useEffect,
   useTransition,
 } from "react";
@@ -323,7 +324,6 @@ function ChangePasswordForm({
   );
 }
 
-const OTP_LENGTH = 6;
 const CHANGE_EMAIL_SEND_FORM_ID = "change-email-send-form";
 const CHANGE_EMAIL_VERIFY_FORM_ID = "change-email-verify-form";
 
@@ -356,13 +356,6 @@ function ChangeEmailForm({
   onResend?: () => void;
 }) {
   const invalidateQueries = useInvalidateQueries();
-  const setOtpFromString = useCallback(
-    (s: string) => {
-      const digits = s.replace(/\D/g, "").slice(0, OTP_LENGTH).split("");
-      onOtpChange(digits.join(""));
-    },
-    [onOtpChange],
-  );
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -466,54 +459,7 @@ function ChangeEmailForm({
     );
   }
 
-  const otpDigits = otp
-    .split("")
-    .concat(Array(OTP_LENGTH).fill(""))
-    .slice(0, OTP_LENGTH);
-  const otpInputs = otpDigits.map((digit, i) => (
-    <input
-      key={i}
-      type="text"
-      inputMode="numeric"
-      autoComplete="one-time-code"
-      maxLength={1}
-      value={digit}
-      onChange={(e) => {
-        const v = e.target.value.replace(/\D/g, "");
-        if (v.length <= 1) {
-          const next = otpDigits.slice();
-          next[i] = v;
-          onOtpChange(next.join(""));
-          if (v && i < OTP_LENGTH - 1) {
-            const nextEl = e.target
-              .nextElementSibling as HTMLInputElement | null;
-            nextEl?.focus();
-          }
-        }
-      }}
-      onPaste={(e) => {
-        e.preventDefault();
-        const pasted = e.clipboardData
-          .getData("text")
-          .replace(/\D/g, "")
-          .slice(0, OTP_LENGTH);
-        setOtpFromString(pasted);
-        const firstEmpty = Math.min(pasted.length, OTP_LENGTH - 1);
-        const el =
-          e.currentTarget.parentElement?.querySelectorAll("input")[firstEmpty];
-        el?.focus();
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Backspace" && !otpDigits[i] && i > 0) {
-          const prev = e.currentTarget
-            .previousElementSibling as HTMLInputElement | null;
-          prev?.focus();
-        }
-      }}
-      className="w-11 h-12 text-center text-lg font-semibold rounded-lg border border-input bg-bg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
-      aria-label={`Digit ${i + 1} of ${OTP_LENGTH}`}
-    />
-  ));
+  const otpDigits = otpDigitsOf(otp);
 
   return (
     <form
@@ -532,7 +478,11 @@ function ChangeEmailForm({
           role="group"
           aria-label="Verification code"
         >
-          {otpInputs}
+          <OtpInputs
+            digits={otpDigits}
+            onChange={(next) => onOtpChange(next.join(""))}
+            inputClassName={"w-11 h-12 text-center text-lg font-semibold rounded-lg border border-input bg-bg text-foreground focus:outline-none focus:ring-2 focus:ring-accent"}
+          />
         </div>
       </div>
       {onResend != null && (
