@@ -23,20 +23,3 @@ export function clientIp(
 
   return "anonymous";
 }
-
-/** Fastify request helper (uses request.ip when proxy headers are not trusted). */
-export function clientIpFromFastify(request: {
-  headers: Record<string, unknown>;
-  ip?: string;
-}): string {
-  const headers = new Headers();
-  for (const [key, value] of Object.entries(request.headers)) {
-    if (value === undefined) continue;
-    if (Array.isArray(value)) {
-      for (const v of value) headers.append(key, String(v));
-    } else {
-      headers.set(key, String(value));
-    }
-  }
-  return clientIp({ headers } as Request, { socketIp: request.ip });
-}

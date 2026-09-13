@@ -15,8 +15,6 @@ export const API_OAUTH_SCOPES = {
   "social0:write": "Umbrella write access across Social0 (MCP default).",
 } as const;
 
-export type ApiOAuthScope = keyof typeof API_OAUTH_SCOPES;
-
 export function getApiProtectedResourceMetadata(apiBaseUrl: string) {
   const resource = apiBaseUrl.replace(/\/$/, "");
   return {

@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
   connectedAccounts,
@@ -338,27 +338,4 @@ export async function setActiveWorkspace(
     });
 
   return resolveWorkspaceContext(actorUserId);
-}
-
-export async function countConnectionsInWorkspace(
-  workspaceId: string,
-): Promise<number> {
-  const [row] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(connectedAccounts)
-    .where(eq(connectedAccounts.workspaceId, workspaceId));
-  return row?.count ?? 0;
-}
-
-export async function requireWorkspacePermission(
-  actorUserId: string,
-  permission: WorkspacePermission,
-): Promise<WorkspaceContext> {
-  const ctx = await resolveWorkspaceContext(actorUserId);
-  if (!ctx.permissions.has(permission)) {
-    const err = new Error("Forbidden");
-    (err as Error & { statusCode: number }).statusCode = 403;
-    throw err;
-  }
-  return ctx;
 }

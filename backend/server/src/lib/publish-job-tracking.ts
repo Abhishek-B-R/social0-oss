@@ -5,7 +5,7 @@ import {
   type JobProgressStore,
 } from "@social0/shared";
 import { db } from "../db/index.js";
-import { publishJobEvents, publishJobs } from "../db/schema.js";
+import { publishJobs } from "../db/schema.js";
 
 /** Postgres undefined_table */
 export function isMissingRelationError(err: unknown): boolean {
@@ -49,12 +49,6 @@ export function getRedisOnlyJobProgress(): JobProgressStore {
   return redisOnlyProgress;
 }
 
-export function jobProgressForStandalone(
-  app: FastifyInstance | null | undefined,
-): JobProgressStore | null {
-  return app?.jobProgress ?? null;
-}
-
 export async function resolveJobProgressStore(
   app: FastifyInstance | null | undefined,
 ): Promise<JobProgressStore> {
@@ -81,10 +75,4 @@ export async function safeDbPublishTracking<T>(
     }
     throw err;
   }
-}
-
-export async function safeDbPublishEvent(
-  values: typeof publishJobEvents.$inferInsert,
-): Promise<void> {
-  await safeDbPublishTracking(() => db.insert(publishJobEvents).values(values));
 }

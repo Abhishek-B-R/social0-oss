@@ -158,17 +158,6 @@ export function hasPermission(
   return granted.has(permission);
 }
 
-export function assertPermission(
-  granted: Set<WorkspacePermission>,
-  permission: WorkspacePermission,
-): void {
-  if (!hasPermission(granted, permission)) {
-    const err = new Error("Forbidden");
-    (err as Error & { statusCode: number }).statusCode = 403;
-    throw err;
-  }
-}
-
 export function toPermissionsDto(
   granted: Set<WorkspacePermission>,
 ): TeamPermissionsDto {

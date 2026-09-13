@@ -54,6 +54,10 @@
       "types": "./dist/lib/ratelimit.d.ts",
       "import": "./dist/lib/ratelimit.js"
     },
+    "./lib/billing-zombie": {
+      "types": "./dist/lib/billing-zombie.d.ts",
+      "import": "./dist/lib/billing-zombie.js"
+    },
     "./lib/subscription": {
       "types": "./dist/lib/subscription.d.ts",
       "import": "./dist/lib/subscription.js"

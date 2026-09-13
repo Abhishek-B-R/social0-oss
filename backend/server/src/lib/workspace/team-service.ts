@@ -1575,18 +1575,6 @@ export async function createTeamForUser(
   return { teamId: createdTeam.id, workspaceId: createdWs.id };
 }
 
-/** @deprecated prefer createTeamForUser */
-export async function createWorkspaceForUser(
-  actorUserId: string,
-  nameRaw: unknown,
-  workspaceNameRaw?: unknown,
-): Promise<{ workspaceId: string }> {
-  const result = await createTeamForUser(actorUserId, nameRaw, workspaceNameRaw, {
-    isCollaborative: false,
-  });
-  return { workspaceId: result.workspaceId };
-}
-
 export async function createWorkspaceInTeam(
   actorUserId: string,
   teamId: string,
@@ -1992,14 +1980,6 @@ export async function deleteTeamForUser(
   await db.delete(teams).where(eq(teams.id, teamId));
   await invalidateTeamRoomCache(teamId, wsIds);
   return result;
-}
-
-/** @deprecated use deleteTeamForUser or deleteWorkspaceInTeam */
-export async function deleteWorkspaceForUser(
-  actorUserId: string,
-  workspaceId: string,
-): Promise<void> {
-  await deleteWorkspaceInTeam(actorUserId, workspaceId);
 }
 
 export async function switchWorkspaceForUser(
