@@ -56,6 +56,7 @@ import type {
   PlatformResult,
   PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { AccountTabs } from "@/components/AccountTabs";
 import { ConfigPanelChip } from "@/features/dashboard/create/forms/ConfigPanelChip";
 import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
 import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
@@ -1055,7 +1056,6 @@ export function ImagePostForm({
     e.preventDefault();
     toast.dismiss();
     if (isGuest) {
-      // eslint-disable-next-line react-hooks/immutability
       window.location.href = signInUrl(
         window.location.pathname + window.location.search,
       );
@@ -2041,24 +2041,11 @@ export function ImagePostForm({
                 >
                   {tiktokAccounts.length > 1 ? (
                     <>
-                      <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
-                        {tiktokAccounts.map((acc, idx) => (
-                          <button
-                            key={acc.id}
-                            type="button"
-                            onClick={() => setSelectedTiktokAccountIndex(idx)}
-                            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                              selectedTiktokAccountIndex === idx
-                                ? "bg-bg-elevated text-text shadow-sm"
-                                : "text-text-muted hover:text-text"
-                            }`}
-                          >
-                            {acc.platformUsername?.trim()
-                              ? `@${acc.platformUsername}`
-                              : `Account ${idx + 1}`}
-                          </button>
-                        ))}
-                      </div>
+                      <AccountTabs
+                        accounts={tiktokAccounts}
+                        selectedIndex={selectedTiktokAccountIndex}
+                        onSelect={setSelectedTiktokAccountIndex}
+                      />
                       <TikTokSettings
                         accountId={
                           tiktokAccounts[selectedTiktokAccountIndex]?.id ?? ""
