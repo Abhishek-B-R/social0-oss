@@ -1,5 +1,6 @@
 
 import { db } from "@/db";
+import { coerceDate } from "@/lib/coerce-date.js";
 import {
   posts,
   postPublications,
@@ -107,18 +108,6 @@ function toSafeClientError(e: unknown, fallback: string): string {
 }
 
 /** RPC/JSON may pass ISO strings instead of Date instances. */
-function coerceDate(value: unknown): Date | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  return null;
-}
-
 function validateScheduledAtWindow(scheduledAt: unknown): string | null {
   const date = coerceDate(scheduledAt);
   if (!date) return "Please pick a date and time to schedule";

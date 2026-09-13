@@ -1,4 +1,5 @@
 import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
+import { coerceDate } from "@/lib/coerce-date.js";
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import {
@@ -19,18 +20,6 @@ import {
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SCHEDULE_FUTURE_GRACE_MS = 120_000;
-
-function coerceDate(value: unknown): Date | null {
-  if (value == null) return null;
-  if (value instanceof Date) {
-    return Number.isNaN(value.getTime()) ? null : value;
-  }
-  if (typeof value === "string" || typeof value === "number") {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  return null;
-}
 
 function validateScheduledAt(scheduledAt: unknown): string | null {
   const date = coerceDate(scheduledAt);

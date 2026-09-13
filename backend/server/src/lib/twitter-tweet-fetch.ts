@@ -2,9 +2,8 @@
  * X/Twitter v2 create tweet via fetch + OAuth 1.0a.
  * CF Workers cannot use twitter-api-v2 (Node https.request / unenv).
  */
-import crypto from "crypto";
-import OAuth from "oauth-1.0a";
 import { parseTwitterError } from "./twitter-errors.js";
+import { twitterOAuthHeader } from "./twitter-oauth1.js";
 
 const TWEETS_URL = "https://api.twitter.com/2/tweets";
 
@@ -20,21 +19,6 @@ export type CreateTwitterTweetResult = {
   data: { id: string; text?: string };
 };
 
-function getOAuth(): OAuth {
-  const consumerKey = process.env.TWITTER_CONSUMER_KEY;
-  const consumerSecret = process.env.TWITTER_CONSUMER_SECRET;
-  if (!consumerKey || !consumerSecret) {
-    throw new Error("Twitter consumer key/secret not configured");
-  }
-  return new OAuth({
-    consumer: { key: consumerKey, secret: consumerSecret },
-    signature_method: "HMAC-SHA1",
-    hash_function(base: string, key: string) {
-      return crypto.createHmac("sha1", key).update(base).digest("base64");
-    },
-  });
-}
-
 /**
  * Create a tweet (or reply) with OAuth 1.0a user context.
  * Worker-safe: uses fetch, not Node https.request.
@@ -44,13 +28,12 @@ export async function createTwitterTweetFetch(
   accessToken: string,
   accessSecret: string,
 ): Promise<CreateTwitterTweetResult> {
-  const oauth = getOAuth();
-  const authHeader = oauth.toHeader(
-    oauth.authorize(
-      { url: TWEETS_URL, method: "POST" },
-      { key: accessToken, secret: accessSecret },
-    ),
-  ) as unknown as Record<string, string>;
+  const authHeader = twitterOAuthHeader({
+    url: TWEETS_URL,
+    method: "POST",
+    accessToken,
+    accessSecret,
+  });
 
   const res = await fetch(TWEETS_URL, {
     method: "POST",

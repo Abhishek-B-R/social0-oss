@@ -1,3 +1,4 @@
+import { sleep } from "./sleep.js";
 /**
  * Lightweight token health check: cheapest API call per platform to validate "am I authenticated?".
  * Used by cron and on-demand when user opens Connections page.
@@ -43,10 +44,6 @@ export type AccountForHealthCheck = {
   tokenStatus: string | null;
   platformMetadata?: Record<string, unknown> | null;
 };
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 /** Instagram via Facebook Page stores a Page token, not an Instagram Login token. */
 export function isInstagramFacebookPageAccount(

@@ -1,3 +1,4 @@
+import { sleep } from "./sleep.js";
 import { randomUUID } from "node:crypto";
 import { redis } from "./redis.js";
 import { withRedisTimeout } from "./redis-safe.js";
@@ -29,10 +30,6 @@ const UNAVAILABLE = Symbol("redis-unavailable");
 
 function lockKey(accountId: string): string {
   return `token-refresh:lock:${accountId}`;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 type AcquireResult = "acquired" | "held" | "unavailable";

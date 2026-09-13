@@ -1,3 +1,4 @@
+import { escapeHtml } from "@social0/shared";
 import { db } from "@/db";
 import { user, userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
@@ -39,14 +40,6 @@ function accountLabel(platform: string, platformUsername?: string | null): strin
     return `${name} (${formatted})`;
   }
   return name;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 function buildPostFailureEmailHtml(input: {
