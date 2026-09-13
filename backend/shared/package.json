@@ -17,6 +17,34 @@
     "./db/client": {
       "types": "./dist/db/client.d.ts",
       "import": "./dist/db/client.js"
+    },
+    "./lib/redis": {
+      "types": "./dist/lib/redis.d.ts",
+      "import": "./dist/lib/redis.js"
+    },
+    "./lib/redis-safe": {
+      "types": "./dist/lib/redis-safe.d.ts",
+      "import": "./dist/lib/redis-safe.js"
+    },
+    "./lib/token-refresh-lock": {
+      "types": "./dist/lib/token-refresh-lock.d.ts",
+      "import": "./dist/lib/token-refresh-lock.js"
+    },
+    "./lib/token-refresh": {
+      "types": "./dist/lib/token-refresh.d.ts",
+      "import": "./dist/lib/token-refresh.js"
+    },
+    "./lib/youtube-token": {
+      "types": "./dist/lib/youtube-token.d.ts",
+      "import": "./dist/lib/youtube-token.js"
+    },
+    "./lib/tiktok-token": {
+      "types": "./dist/lib/tiktok-token.d.ts",
+      "import": "./dist/lib/tiktok-token.js"
+    },
+    "./lib/token-health": {
+      "types": "./dist/lib/token-health.d.ts",
+      "import": "./dist/lib/token-health.js"
     }
   },
   "scripts": {
@@ -28,7 +56,9 @@
     "ioredis": "^5.4.2",
     "zod": "^3.23.8",
     "drizzle-orm": "^0.45.1",
-    "pg": "^8.18.0"
+    "pg": "^8.18.0",
+    "@upstash/redis": "^1.36.3",
+    "oauth-1.0a": "^2.2.6"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

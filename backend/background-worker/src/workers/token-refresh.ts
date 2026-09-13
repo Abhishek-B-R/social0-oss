@@ -7,7 +7,7 @@ import {
   BATCH_SIZE,
   filterAccountsNeedingHealthCheck,
   runTokenHealthCheck,
-} from "../lib/token-health.js";
+} from "@social0/shared/lib/token-health";
 
 /** Proactive token validation sweep - only job on the token queue. */
 export function startTokenWorker(

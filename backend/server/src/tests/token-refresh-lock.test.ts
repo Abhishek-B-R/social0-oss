@@ -9,7 +9,9 @@ const { mockRedis } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("../lib/redis.js", () => ({ redis: mockRedis }));
+// The lock lives in @social0/shared so the background worker runs the same
+// single-flight guard; mock the module it actually imports.
+vi.mock("@social0/shared/lib/redis", () => ({ redis: mockRedis }));
 
 import { withTokenRefreshLock } from "../lib/token-refresh-lock.js";
 

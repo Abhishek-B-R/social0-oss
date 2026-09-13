@@ -1,8 +1,7 @@
-import { db } from "../db/index.js";
+import { db } from "../db/instance.js";
 import { connectedAccounts } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import { decryptToken, encryptToken } from "@social0/shared";
-import { env } from "./env.js";
+import { decryptToken, encryptToken } from "./encryption.js";
 
 export const YOUTUBE_UPLOAD_SCOPE =
   "https://www.googleapis.com/auth/youtube.upload";
@@ -38,6 +37,7 @@ export function tokenInfoHasYouTubeUploadScope(
   return scope.split(/\s+/).filter(Boolean).includes(YOUTUBE_UPLOAD_SCOPE);
 }
 
+/** True when Google recognizes the token and it includes youtube.upload. */
 export async function isYouTubeAccessTokenUsable(
   accessToken: string,
 ): Promise<boolean> {
@@ -62,7 +62,7 @@ async function refreshYouTubeToken(
       "No refresh token available. Please reconnect your YouTube account from Connections.",
     );
   }
-  if (!env.YOUTUBE_CLIENT_ID || !env.YOUTUBE_CLIENT_SECRET) {
+  if (!process.env.YOUTUBE_CLIENT_ID || !process.env.YOUTUBE_CLIENT_SECRET) {
     throw new Error("YouTube OAuth credentials not configured");
   }
 
@@ -74,8 +74,8 @@ async function refreshYouTubeToken(
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
-      client_id: env.YOUTUBE_CLIENT_ID,
-      client_secret: env.YOUTUBE_CLIENT_SECRET,
+      client_id: process.env.YOUTUBE_CLIENT_ID,
+      client_secret: process.env.YOUTUBE_CLIENT_SECRET,
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
@@ -114,7 +114,9 @@ async function refreshYouTubeToken(
         : {}),
       tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
       tokenStatus: "active",
-      isActive: true,
+      // `isActive` is the plan's connection cap, not a token fact — see
+      // persistTokens in token-refresh.ts. Refreshing must not re-enable an
+      // account that syncConnectedAccountsToLimit turned off.
       updatedAt: new Date(),
     })
     .where(eq(connectedAccounts.id, account.id));
@@ -153,6 +155,7 @@ export async function getValidYouTubeToken(
   return token;
 }
 
+/** Keep stored refresh token when Google omits a new one on reconnect. */
 export function resolveEncryptedRefreshToken(
   accountId: string,
   existingEncrypted: string | null,

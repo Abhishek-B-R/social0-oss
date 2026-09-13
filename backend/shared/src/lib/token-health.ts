@@ -4,10 +4,10 @@
  * For refreshable platforms near expiry (or after 401), attempts silent refresh first.
  */
 
-import { db } from "../db/index.js";
+import { db } from "../db/instance.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq, or, lt, isNull, inArray } from "drizzle-orm";
-import { decryptToken } from "@social0/shared";
+import { decryptToken } from "./encryption.js";
 import OAuth from "oauth-1.0a";
 import crypto from "crypto";
 
@@ -30,7 +30,7 @@ const PLATFORMS_WITH_EXPIRING_TOKENS = new Set([
 ]);
 
 /** Never show "expired" in UI for these platforms (BYOK + Twitter app passwords). */
-export { NEVER_EXPIRES_PLATFORMS } from "@social0/shared";
+export { NEVER_EXPIRES_PLATFORMS } from "../constants/platforms.js";
 
 export type AccountForHealthCheck = {
   id: string;

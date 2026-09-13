@@ -1,9 +1,10 @@
-import { db } from "../db/index.js";
+import { db } from "../db/instance.js";
 import { connectedAccounts } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import { decryptToken, encryptToken } from "@social0/shared";
-import { env } from "./env.js";
+import { decryptToken, encryptToken } from "./encryption.js";
 import { getValidYouTubeToken } from "./youtube-token.js";
+import { parseTikTokTokenResponse } from "./tiktok-token.js";
+import { withTokenRefreshLock } from "./token-refresh-lock.js";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -20,29 +21,6 @@ export const REFRESHABLE_PLATFORMS = new Set([
   "facebook",
   "pinterest",
 ]);
-
-/** Tolerate flat (current TikTok) or nested `data` token JSON. */
-function parseTikTokTokenResponse(raw: unknown): {
-  access_token: string;
-  refresh_token: string | null;
-  expires_in: number;
-} | null {
-  if (!raw || typeof raw !== "object") return null;
-  const root = raw as Record<string, unknown>;
-  const data = (root.data ?? root) as Record<string, unknown>;
-  const accessToken =
-    typeof data.access_token === "string" ? data.access_token.trim() : "";
-  if (!accessToken) return null;
-  return {
-    access_token: accessToken,
-    refresh_token:
-      typeof data.refresh_token === "string" ? data.refresh_token : null,
-    expires_in:
-      typeof data.expires_in === "number" && data.expires_in > 0
-        ? data.expires_in
-        : 86400,
-  };
-}
 
 function refreshBufferMs(platform: string): number {
   switch (platform) {
@@ -61,6 +39,14 @@ function refreshBufferMs(platform: string): number {
   }
 }
 
+/**
+ * Persist a refreshed token pair.
+ *
+ * Deliberately does NOT touch `isActive`. The only thing that clears that flag
+ * is `syncConnectedAccountsToLimit` (accounts over the plan's connection cap),
+ * so setting it back to true here silently undid plan enforcement whenever a
+ * token happened to refresh. Reconnecting through OAuth sets it explicitly.
+ */
 async function persistTokens(
   accountId: string,
   accessToken: string,
@@ -71,14 +57,12 @@ async function persistTokens(
     encryptedAccessToken: string;
     tokenExpiresAt: Date;
     tokenStatus: "active";
-    isActive: true;
     updatedAt: Date;
     encryptedRefreshToken?: string;
   } = {
     encryptedAccessToken: encryptToken(accessToken, accountId),
     tokenExpiresAt: new Date(Date.now() + expiresIn * 1000),
     tokenStatus: "active",
-    isActive: true,
     updatedAt: new Date(),
   };
   if (refreshToken) {
@@ -95,6 +79,25 @@ async function persistTokens(
  * null tokenExpiresAt is treated as still-valid (e.g. Facebook page tokens).
  */
 export async function getValidToken(
+  accountId: string,
+  platform: string,
+  options?: { forceRefresh?: boolean },
+): Promise<string> {
+  const outcome = await withTokenRefreshLock(accountId, () =>
+    refreshTokenUnlocked(accountId, platform, options),
+  );
+  if (outcome.refreshed) return outcome.value;
+
+  // Another caller just refreshed this account. Read what they stored rather
+  // than calling the provider again with a refresh token they may have rotated.
+  const account = await db.query.connectedAccounts.findFirst({
+    where: eq(connectedAccounts.id, accountId),
+  });
+  if (!account) throw new Error("Account not found");
+  return decryptToken(account.encryptedAccessToken, account.id);
+}
+
+async function refreshTokenUnlocked(
   accountId: string,
   platform: string,
   options?: { forceRefresh?: boolean },
@@ -168,6 +171,8 @@ export async function getValidToken(
   }
 
   if (platform === "facebook") {
+    // Page tokens from long-lived user tokens typically don't expire.
+    // If we have an expiry clock and hit the buffer, try Meta's refresh endpoint.
     const url = `https://graph.facebook.com/refresh_access_token?grant_type=fb_refresh_token&access_token=${encodeURIComponent(accessToken)}`;
     const response = await fetch(url, { method: "GET" });
     if (!response.ok) {
@@ -190,6 +195,7 @@ export async function getValidToken(
 
   if (platform === "tiktok") {
     if (!account.encryptedRefreshToken) {
+      // Access token still live — don't demand a refresh token we never got.
       if (expiresAt && new Date(expiresAt) > new Date()) {
         return accessToken;
       }
@@ -197,7 +203,7 @@ export async function getValidToken(
         "No refresh token available. Please reconnect your account.",
       );
     }
-    if (!env.TIKTOK_CLIENT_ID || !env.TIKTOK_CLIENT_SECRET) {
+    if (!process.env.TIKTOK_CLIENT_ID || !process.env.TIKTOK_CLIENT_SECRET) {
       throw new Error("TikTok OAuth credentials not configured");
     }
     const refreshToken = decryptToken(
@@ -210,14 +216,15 @@ export async function getValidToken(
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_key: env.TIKTOK_CLIENT_ID,
-          client_secret: env.TIKTOK_CLIENT_SECRET,
+          client_key: process.env.TIKTOK_CLIENT_ID,
+          client_secret: process.env.TIKTOK_CLIENT_SECRET,
           grant_type: "refresh_token",
           refresh_token: refreshToken,
         }),
       },
     );
     const raw = await response.json().catch(() => ({}));
+    // TikTok returns flat JSON or nested under data — tolerate both.
     const parsed = parseTikTokTokenResponse(raw);
     if (!response.ok || !parsed) {
       console.error("TikTok token refresh failed:", {
@@ -246,7 +253,7 @@ export async function getValidToken(
         "No refresh token available. Please reconnect your account.",
       );
     }
-    if (!env.LINKEDIN_CLIENT_ID || !env.LINKEDIN_CLIENT_SECRET) {
+    if (!process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET) {
       throw new Error("LinkedIn OAuth credentials not configured");
     }
     const refreshToken = decryptToken(
@@ -259,8 +266,8 @@ export async function getValidToken(
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_id: env.LINKEDIN_CLIENT_ID,
-          client_secret: env.LINKEDIN_CLIENT_SECRET,
+          client_id: process.env.LINKEDIN_CLIENT_ID,
+          client_secret: process.env.LINKEDIN_CLIENT_SECRET,
           refresh_token: refreshToken,
           grant_type: "refresh_token",
         }),
@@ -279,6 +286,7 @@ export async function getValidToken(
     const data = await response.json();
     const newAccessToken = data.access_token as string;
     const expiresIn = (data.expires_in as number) || 3600;
+    // LinkedIn may rotate refresh_token — persist when present
     const newRefresh =
       typeof data.refresh_token === "string" ? data.refresh_token : null;
     await persistTokens(account.id, newAccessToken, expiresIn, newRefresh);
@@ -295,7 +303,7 @@ export async function getValidToken(
         "No refresh token available. Please reconnect your account.",
       );
     }
-    if (!env.PINTEREST_CLIENT_ID || !env.PINTEREST_CLIENT_SECRET) {
+    if (!process.env.PINTEREST_CLIENT_ID || !process.env.PINTEREST_CLIENT_SECRET) {
       throw new Error("Pinterest OAuth credentials not configured");
     }
     const refreshToken = decryptToken(
@@ -303,7 +311,7 @@ export async function getValidToken(
       account.id,
     );
     const basic = Buffer.from(
-      `${env.PINTEREST_CLIENT_ID}:${env.PINTEREST_CLIENT_SECRET}`,
+      `${process.env.PINTEREST_CLIENT_ID}:${process.env.PINTEREST_CLIENT_SECRET}`,
     ).toString("base64");
     const response = await fetch("https://api.pinterest.com/v5/oauth/token", {
       method: "POST",
@@ -329,11 +337,14 @@ export async function getValidToken(
     const newAccessToken = data.access_token as string;
     const expiresIn = (data.expires_in as number) || 30 * 24 * 60 * 60;
     const newRefresh =
-      typeof data.refresh_token === "string" ? data.refresh_token : refreshToken;
+      typeof data.refresh_token === "string"
+        ? data.refresh_token
+        : refreshToken;
     await persistTokens(account.id, newAccessToken, expiresIn, newRefresh);
     console.log(`✅ Refreshed Pinterest token for account ${accountId}`);
     return newAccessToken;
   }
 
+  // Unknown / non-refreshable: return stored token
   return accessToken;
 }
