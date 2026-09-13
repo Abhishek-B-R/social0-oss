@@ -1,1 +1,1 @@
-export { redis, upstashConfig } from "@social0/shared/lib/redis";
+export * from "@social0/shared/lib/redis";

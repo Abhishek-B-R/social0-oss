@@ -45,6 +45,26 @@
     "./lib/token-health": {
       "types": "./dist/lib/token-health.d.ts",
       "import": "./dist/lib/token-health.js"
+    },
+    "./lib/validation": {
+      "types": "./dist/lib/validation.d.ts",
+      "import": "./dist/lib/validation.js"
+    },
+    "./lib/ratelimit": {
+      "types": "./dist/lib/ratelimit.d.ts",
+      "import": "./dist/lib/ratelimit.js"
+    },
+    "./lib/subscription": {
+      "types": "./dist/lib/subscription.d.ts",
+      "import": "./dist/lib/subscription.js"
+    },
+    "./lib/plan-limits": {
+      "types": "./dist/lib/plan-limits.d.ts",
+      "import": "./dist/lib/plan-limits.js"
+    },
+    "./db/instance": {
+      "types": "./dist/db/instance.d.ts",
+      "import": "./dist/db/instance.js"
     }
   },
   "scripts": {
@@ -58,7 +78,8 @@
     "drizzle-orm": "^0.45.1",
     "pg": "^8.18.0",
     "@upstash/redis": "^1.36.3",
-    "oauth-1.0a": "^2.2.6"
+    "oauth-1.0a": "^2.2.6",
+    "@upstash/ratelimit": "^2.0.8"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

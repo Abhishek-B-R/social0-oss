@@ -1,5 +1,6 @@
 import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "./redis.js";
+import { withRedisTimeout } from "./redis-safe.js";
 
 export { redis };
 
@@ -13,8 +14,20 @@ export function isRateLimitingRequired(): boolean {
 }
 
 export type RateLimitResult =
-  | { allowed: true }
-  | { allowed: false; status: 429 | 503; error: string };
+  | {
+      allowed: true;
+      limit?: number;
+      remaining?: number;
+      reset?: number;
+    }
+  | {
+      allowed: false;
+      status: 429 | 503;
+      error: string;
+      limit?: number;
+      remaining?: number;
+      reset?: number;
+    };
 
 export async function enforceRateLimit(
   limiter: Ratelimit | null,
@@ -33,15 +46,38 @@ export async function enforceRateLimit(
     return { allowed: true };
   }
 
-  const { success } = await limiter.limit(key, options);
-  if (!success) {
+  // ponytail: Redis down must fail closed in production; dev may skip limits.
+  const result = await withRedisTimeout(
+    `ratelimit:${key}`,
+    () => limiter.limit(key, options),
+    undefined,
+  );
+  if (result === undefined) {
+    if (failClosed && isRateLimitingRequired()) {
+      return {
+        allowed: false,
+        status: 503,
+        error: "Rate limiting is unavailable. Try again later.",
+      };
+    }
+    return { allowed: true };
+  }
+  if (!result.success) {
     return {
       allowed: false,
       status: 429,
       error: "Too many requests. Try again later.",
+      limit: result.limit,
+      remaining: result.remaining,
+      reset: result.reset,
     };
   }
-  return { allowed: true };
+  return {
+    allowed: true,
+    limit: result.limit,
+    remaining: result.remaining,
+    reset: result.reset,
+  };
 }
 
 // 400 uploads/hour per user (supports bulk sessions: ~50 images × 8 sessions)
@@ -174,5 +210,44 @@ export const billingSyncLimiter = redis
       redis,
       limiter: Ratelimit.slidingWindow(5, "1 m"),
       prefix: "rl:billing_sync",
+    })
+  : null;
+
+// MCP dynamic client registration is unauthenticated (RFC 7591) — cap per IP.
+export const mcpRegisterLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(20, "1 h"),
+      prefix: "rl:mcp_register",
+    })
+  : null;
+
+/** General RPC calls per authenticated user. */
+export const rpcLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(120, "1 m"),
+      prefix: "rl:rpc",
+    })
+  : null;
+
+/** Expensive RPC mutations (publish, post writes). */
+export const rpcMutationLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, "1 m"),
+      prefix: "rl:rpc_mut",
+    })
+  : null;
+
+/**
+ * Live platform reads (inbox + analytics). Separate from general RPC so a
+ * chatty dashboard cannot burn platform egress via list/refetch storms.
+ */
+export const rpcLiveReadLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(20, "1 m"),
+      prefix: "rl:rpc_live",
     })
   : null;

@@ -4,8 +4,8 @@ import { userSettings } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { allPlanProductIds } from "@social0/shared";
 import { env } from "./env.js";
-import { setSubscription } from "./subscription.js";
-import { syncConnectedAccountsToLimit } from "./plan-limits.js";
+import { setSubscription } from "@social0/shared/lib/subscription";
+import { syncConnectedAccountsToLimit } from "@social0/shared/lib/plan-limits";
 
 export const ZOMBIE_DODO_STATUSES = ["on_hold", "pending", "failed"] as const;
 export type ZombieDodoStatus = (typeof ZOMBIE_DODO_STATUSES)[number];

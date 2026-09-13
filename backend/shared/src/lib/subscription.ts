@@ -1,11 +1,14 @@
-import { db } from "../db/index.js";
+
+import { db } from "../db/instance.js";
 import { userSettings } from "../db/schema.js";
 import { eq, sql } from "drizzle-orm";
 import {
+  getPlanLimits,
   isActiveTier,
+  type BillingInterval,
   type PaidPlanTier,
   type SubscriptionTier,
-} from "@social0/shared";
+} from "./plans.js";
 
 export type SubscriptionState = {
   tier: SubscriptionTier;
@@ -18,6 +21,8 @@ export type SubscriptionState = {
   pendingPlanTier: PaidPlanTier | null;
   /** True when user cancelled at period end; access until expiresAt. */
   cancelAtPeriodEnd: boolean;
+  /** Billing interval of the active Dodo product, when known. */
+  interval?: BillingInterval | null;
 };
 
 export async function getSubscriptionForUser(
@@ -58,6 +63,20 @@ export async function getSubscriptionForUser(
       subscriptionId: null,
       customerId: null,
     });
+    // This branch is the safety net for a Dodo webhook we never received — the
+    // webhook path syncs connections itself. Without this, a lapsed subscriber
+    // keeps every connection above the free cap active indefinitely.
+    // Fire-and-forget + dynamic import: this is a hot read path, and
+    // plan-limits imports this module.
+    void import("./plan-limits.js")
+      .then((m) => m.syncConnectedAccountsToLimit(userId))
+      .catch((err) =>
+        console.error(
+          "[subscription] connection sync after expiry failed",
+          userId,
+          err,
+        ),
+      );
     return {
       tier: "free",
       expiresAt: null,
@@ -137,6 +156,7 @@ export async function setSubscription(
     conflictPatch.subscriptionCancelAtPeriodEnd = false;
   }
 
+  // Single UPSERT - replaces a SELECT + conditional INSERT/UPDATE (was 2 queries)
   await db
     .insert(userSettings)
     .values({
@@ -153,4 +173,22 @@ export async function setSubscription(
       target: userSettings.userId,
       set: conflictPatch,
     });
+
+  // Teams plans need an owner workspace for invitations. Workspace
+  // provisioning lives in the API, so it registers itself here rather than
+  // this module reaching into a package it does not belong to. The background
+  // worker leaves it unset — it only ever writes the free tier, from zombie
+  // cleanup — so nothing fires there.
+  if (getPlanLimits(data.tier).allowTeams) {
+    await paidPlanActivatedHook?.(userId);
+  }
+}
+
+type PaidPlanActivatedHook = (userId: string) => Promise<void>;
+
+let paidPlanActivatedHook: PaidPlanActivatedHook | null = null;
+
+/** Called after a subscription lands on a tier whose plan allows Teams. */
+export function onPaidPlanActivated(hook: PaidPlanActivatedHook): void {
+  paidPlanActivatedHook = hook;
 }

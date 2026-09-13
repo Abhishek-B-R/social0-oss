@@ -1,6 +1,18 @@
 /**
  * UUID validation regex (RFC 4122)
  */
+import { z } from "zod";
+
+/** ISO 8601 datetime — UTC (`Z`) or explicit offset (`+05:30`). */
+export const isoDateTimeSchema = z.string().datetime({ offset: true });
+
+/** scheduledAt on schedule endpoints — parsed by resolveScheduledAt (supports +default). */
+export const scheduledAtInputSchema = z.string().min(1);
+
+export const scheduleTimezoneSchema = z
+  .union([z.literal("default"), z.string().min(1)])
+  .optional();
+
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 

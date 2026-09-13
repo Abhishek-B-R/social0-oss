@@ -10,11 +10,13 @@ const { mockDb, mockGetSubscriptionForUser } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock("../db/index.js", () => ({ db: mockDb }));
-vi.mock("../lib/subscription.js", () => ({
+// plan-limits lives in @social0/shared so the worker shares it; mock the
+// modules it actually imports.
+vi.mock("@social0/shared/db/instance", () => ({ db: mockDb }));
+vi.mock("@social0/shared/lib/subscription", () => ({
   getSubscriptionForUser: mockGetSubscriptionForUser,
 }));
-vi.mock("../lib/ratelimit.js", () => ({
+vi.mock("@social0/shared/lib/ratelimit", () => ({
   twitterPublishLimiter: null,
   enforceRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
 }));
