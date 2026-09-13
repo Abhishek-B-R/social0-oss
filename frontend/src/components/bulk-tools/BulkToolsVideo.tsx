@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "@/components/AppLink";
-import { AccountBubbleSelector } from "@/components/AccountBubbleSelector";
+import { BulkAccountPicker } from "@/components/bulk-tools/BulkAccountPicker";
 import { PLATFORMS } from "@/lib/platforms";
 import {
   useRememberedAccounts,
@@ -48,12 +48,12 @@ import {
 } from "@/lib/pinterest-board-validation";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
 import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
-import { PinterestConfigInline } from "@/components/PinterestConfigInline";
-import type { PinterestPostSettings } from "@/lib/pinterest-settings";
 import {
-  XPostSettingsInline,
-  type XPostSettings,
-} from "@/components/XPostSettingsInline";
+  BulkPinterestModal,
+  BulkXModal,
+} from "@/components/bulk-tools/BulkScheduleModals";
+import type { PinterestPostSettings } from "@/lib/pinterest-settings";
+import type { XPostSettings } from "@/components/XPostSettingsInline";
 
 const MAX_VIDEO_BATCH = 40;
 const YOUTUBE_TITLE_MAX = 100;
@@ -687,71 +687,20 @@ export function BulkToolsVideo({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left column */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-              <p className="block text-sm font-semibold text-foreground mb-3">
-                Post to
-              </p>
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-between">
-                <div className="flex items-center gap-4 sm:gap-5">
-                  <button
-                    type="button"
-                    onClick={selectAll}
-                    className="inline-flex shrink-0 items-center justify-center rounded-full border border-border bg-bg-elevated px-3 py-1 text-xs font-medium text-muted-foreground transition-colors touch-manipulation hover:bg-muted touch:min-h-9"
-                  >
-                    {selectableAccounts.length > 0 &&
-                    selectableAccounts.every((a) => selectedIds.has(a.id))
-                      ? "Deselect all"
-                      : "Select all"}
-                  </button>
-                  <label className="flex shrink-0 items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={remember}
-                      onChange={(e) => handleRememberChange(e.target.checked)}
-                      className="rounded border-input bg-bg text-accent focus:ring-accent"
-                    />
-                    <span className="text-sm text-foreground">Remember</span>
-                  </label>
-                </div>
-                <div className="w-full [&_input]:h-9 sm:min-w-0 sm:flex-1 sm:max-w-[280px]">
-                  <input
-                    type="search"
-                    placeholder="Search accounts..."
-                    value={accountSearch}
-                    onChange={(e) => setAccountSearch(e.target.value)}
-                    className="h-9 w-full rounded border border-input bg-bg px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20"
-                  />
-                </div>
-              </div>
-              <div className="mt-4">
-                {accountsLoading ? (
-                  <div className="flex flex-wrap items-center gap-4">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="flex flex-col items-center"
-                        aria-hidden
-                      >
-                        <div className="h-12 w-12 shrink-0 rounded-full bg-bg-muted animate-pulse border-2 border-transparent" />
-                        <div className="mt-1.5 h-3 w-14 rounded bg-bg-muted animate-pulse" />
-                        <div className="mt-1 h-3 w-10 rounded bg-bg-muted animate-pulse" />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <AccountBubbleSelector
-                    accounts={filteredAccounts}
-                    selectedIds={selectedIds}
-                    onToggleAccount={toggleAccount}
-                    selectAll={selectAll}
-                    platformName={platformName}
-                    compact
-                    hideSelectAll
-                    supportedPlatforms={supportedPlatforms}
-                  />
-                )}
-              </div>
-            </div>
+            <BulkAccountPicker
+              selectableAccounts={selectableAccounts}
+              filteredAccounts={filteredAccounts}
+              selectedIds={selectedIds}
+              toggleAccount={toggleAccount}
+              selectAll={selectAll}
+              remember={remember}
+              onRememberChange={handleRememberChange}
+              accountSearch={accountSearch}
+              setAccountSearch={setAccountSearch}
+              accountsLoading={accountsLoading}
+              platformName={platformName}
+              supportedPlatforms={supportedPlatforms}
+            />
 
             <BulkUploadZone
               accept={VIDEO_ACCEPT}
@@ -877,188 +826,41 @@ export function BulkToolsVideo({
       )}
 
       {showPinterestModal && (
-        <div className="sheet-scrim bg-black/50">
-          <div
-            className="sheet-panel max-w-2xl border border-border bg-card p-5 shadow-xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bulk-pinterest-settings-title"
-          >
-            <h3
-              id="bulk-pinterest-settings-title"
-              className="text-lg font-semibold text-foreground"
-            >
-              Pinterest Settings
-            </h3>
-            <div className="mt-4">
-              {pinterestAccounts.length > 1 ? (
-                <>
-                  <div className="mb-4 flex rounded-lg border border-border bg-bg-muted/30 p-0.5">
-                    {pinterestAccounts.map((acc, idx) => (
-                      <button
-                        key={acc.id}
-                        type="button"
-                        onClick={() => setSelectedPinterestAccountIndex(idx)}
-                        className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                          selectedPinterestAccountIndex === idx
-                            ? "bg-bg-elevated text-text shadow-sm"
-                            : "text-text-muted hover:text-text"
-                        }`}
-                      >
-                        {acc.platformUsername?.trim()
-                          ? `@${acc.platformUsername}`
-                          : `Account ${idx + 1}`}
-                      </button>
-                    ))}
-                  </div>
-                  <PinterestConfigInline
-                    accountId={
-                      pinterestAccounts[selectedPinterestAccountIndex]?.id ?? ""
-                    }
-                    value={
-                      pinterestSettingsByAccount[
-                        pinterestAccounts[selectedPinterestAccountIndex]?.id ??
-                          ""
-                      ] ?? {
-                        boardId: "",
-                        title: "",
-                        link: "",
-                        rememberBoard: false,
-                        rememberLink: false,
-                      }
-                    }
-                    onChange={(s) => {
-                      const id =
-                        pinterestAccounts[selectedPinterestAccountIndex]?.id;
-                      if (id) {
-                        setPinterestSettingsByAccount((prev) => ({
-                          ...prev,
-                          [id]: s,
-                        }));
-                      }
-                    }}
-                    isVisible={true}
-                  />
-                </>
-              ) : (
-                <PinterestConfigInline
-                  accountId={pinterestAccounts[0]?.id ?? ""}
-                  value={
-                    pinterestSettingsByAccount[
-                      pinterestAccounts[0]?.id ?? ""
-                    ] ?? {
-                      boardId: "",
-                      title: "",
-                      link: "",
-                      rememberBoard: false,
-                      rememberLink: false,
-                    }
-                  }
-                  onChange={(s) => {
-                    const id = pinterestAccounts[0]?.id;
-                    if (id) {
-                      setPinterestSettingsByAccount((prev) => ({
-                        ...prev,
-                        [id]: s,
-                      }));
-                    }
-                  }}
-                  isVisible={true}
-                />
-              )}
-              {pinterestError && (
-                <p className="mt-3 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
-                  {pinterestError}
-                </p>
-              )}
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle"
-                onClick={() => {
-                  setShowPinterestModal(false);
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                onClick={async () => {
-                  const boardMessage = getPinterestBoardRequiredMessage(
-                    pinterestAccounts,
-                    pinterestSettingsByAccount,
-                    "schedule",
-                  );
-                  if (boardMessage) {
-                    setPinterestError(boardMessage);
-                    toast.error(boardMessage);
-                    return;
-                  }
-                  setPinterestError(null);
-                  setShowPinterestModal(false);
+        <BulkPinterestModal
+          accounts={pinterestAccounts}
+          settingsByAccount={pinterestSettingsByAccount}
+          setSettingsByAccount={setPinterestSettingsByAccount}
+          selectedAccountIndex={selectedPinterestAccountIndex}
+          setSelectedAccountIndex={setSelectedPinterestAccountIndex}
+          error={pinterestError}
+          setError={setPinterestError}
+          onCancel={() => setShowPinterestModal(false)}
+          onContinue={() => {
+            setShowPinterestModal(false);
                   if (hasXSelected) {
                     setShowXModal(true);
                   } else if (hasYouTubeSelected) {
                     openYoutubeModalForSchedule();
                   } else {
-                    await runScheduleAll();
+                    void runScheduleAll();
                   }
-                }}
-              >
-                Continue &amp; Schedule
-              </button>
-            </div>
-          </div>
-        </div>
+          }}
+        />
       )}
       {showXModal && (
-        <div className="sheet-scrim bg-black/50">
-          <div
-            className="sheet-panel max-w-xl border border-border bg-card p-5 shadow-xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="bulk-x-settings-title"
-          >
-            <h3
-              id="bulk-x-settings-title"
-              className="text-lg font-semibold text-foreground"
-            >
-              X Settings
-            </h3>
-            <div className="mt-4">
-              <XPostSettingsInline
-                value={xPostSettings}
-                onChange={setXPostSettings}
-                isVisible={true}
-              />
-            </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                className="rounded-lg border border-border bg-bg-elevated px-4 py-2 text-sm font-medium text-text hover:bg-bg-subtle"
-                onClick={() => setShowXModal(false)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
-                onClick={() => {
-                  setShowXModal(false);
+        <BulkXModal
+          value={xPostSettings}
+          onChange={setXPostSettings}
+          onCancel={() => setShowXModal(false)}
+          onContinue={() => {
+            setShowXModal(false);
                   if (hasYouTubeSelected) {
                     openYoutubeModalForSchedule();
                   } else {
                     void runScheduleAll();
                   }
-                }}
-              >
-                Continue &amp; Schedule
-              </button>
-            </div>
-          </div>
-        </div>
+          }}
+        />
       )}
 
       {showYoutubeModal && (
