@@ -79,7 +79,6 @@ import {
 import {
   getAccountsOverVideoLimit,
   type VideoLimitWarning,
-  getLimitForAccount,
 } from "@/lib/platform-limits";
 import {
   ChevronDown,
@@ -98,6 +97,7 @@ import {
 } from "@/lib/composer-bridge";
 import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
+import { PlatformCaptionsPanel } from "../PlatformCaptionsPanel";
 import { CaptionCounter } from "@/components/caption-counter";
 import { toast } from "sonner";
 import {
@@ -282,27 +282,6 @@ export function VideoPostForm({
     [selectedAccounts],
   );
   const showPlatformCaptionsSection = selectedIds.size >= 2;
-  const platformDisplayName = (platformId: string) =>
-    PLATFORMS.find((p) => p.id === platformId)?.name ?? platformId;
-  const getPlatformCaptionPreview = (
-    platformId: string,
-    rawCaption: string,
-  ) => {
-    const trimmed = rawCaption.trim();
-    if (!trimmed) return "";
-    const platformAccounts = selectedAccounts.filter(
-      (account) => account.platform === platformId,
-    );
-    const limit =
-      platformAccounts.length > 0
-        ? Math.min(
-            ...platformAccounts.map((account) => getLimitForAccount(account)),
-          )
-        : getLimitForAccount({ platform: platformId, isTwitterPremium: false });
-    if (trimmed.length <= limit) return trimmed;
-    if (limit <= 3) return "...";
-    return `${trimmed.slice(0, limit - 3)}...`;
-  };
 
   const hasXForResurface =
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
@@ -2495,110 +2474,13 @@ export function VideoPostForm({
               )}
 
               {activeConfigPanel === "platform-captions" && (
-                <div className="mt-2 border-t border-border pt-4 space-y-4">
-                  {uniquePlatformsFromSelection.map((platformId) => {
-                    const state =
-                      platformCaptions[platformId] ??
-                      ({
-                        overridden: false,
-                        value: "",
-                      } as PlatformCaptionState);
-                    const displayName = platformDisplayName(platformId);
-                    const effectiveCaption = state.overridden
-                      ? state.value
-                      : content;
-                    const previewCaption = getPlatformCaptionPreview(
-                      platformId,
-                      effectiveCaption,
-                    );
-                    return (
-                      <div
-                        key={platformId}
-                        className="rounded-xl border border-border bg-bg p-4"
-                      >
-                        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                          <span className="text-sm font-medium text-text">
-                            {displayName}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            {state.overridden ? (
-                              <>
-                                <span className="rounded bg-accent/20 px-2 py-0.5 text-xs font-medium text-accent">
-                                  Edited caption
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setPlatformCaptions((prev) => ({
-                                      ...prev,
-                                      [platformId]: {
-                                        overridden: false,
-                                        value: "",
-                                      },
-                                    }))
-                                  }
-                                  className="text-xs font-medium text-accent hover:text-accent-hover"
-                                >
-                                  Clear
-                                </button>
-                              </>
-                            ) : (
-                              <>
-                                <span className="text-xs text-text-muted">
-                                  Using main caption
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setPlatformCaptions((prev) => ({
-                                      ...prev,
-                                      [platformId]: {
-                                        overridden: true,
-                                        value: content.trim(),
-                                      },
-                                    }))
-                                  }
-                                  className="text-xs font-medium text-accent hover:text-accent-hover"
-                                >
-                                  Edit
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <AutoResizeTextarea
-                          rows={3}
-                          placeholder={
-                            state.overridden
-                              ? undefined
-                              : content || "Main caption..."
-                          }
-                          value={state.overridden ? state.value : ""}
-                          readOnly={!state.overridden}
-                          onChange={(e) =>
-                            state.overridden &&
-                            setPlatformCaptions((prev) => ({
-                              ...prev,
-                              [platformId]: {
-                                ...(prev[platformId] ?? {
-                                  overridden: false,
-                                  value: "",
-                                }),
-                                overridden: true,
-                                value: e.target.value,
-                              },
-                            }))
-                          }
-                          className="w-full rounded-lg border border-input bg-bg px-3 py-2 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/20 disabled:opacity-70"
-                          maxHeight={160}
-                        />
-                        <p className="mt-2 text-xs text-text-muted">
-                          Preview: {previewCaption || "No caption"}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
+                <PlatformCaptionsPanel
+                  platforms={uniquePlatformsFromSelection}
+                  captions={platformCaptions}
+                  setCaptions={setPlatformCaptions}
+                  content={content}
+                  selectedAccounts={selectedAccounts}
+                />
               )}
             </div>
           )}
