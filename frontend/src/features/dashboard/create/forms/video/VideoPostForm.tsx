@@ -46,7 +46,7 @@ import {
   type TikTokPostSettings,
 } from "@/components/tiktok-post-settings";
 import type { PinterestPostSettings } from "@/lib/pinterest-settings";
-import { PinterestConfigInline } from "@/components/PinterestConfigInline";
+import { PinterestAccountSettings } from "@/components/PinterestAccountSettings";
 import {
   XPostSettingsInline,
   type XPostSettings,
@@ -2082,83 +2082,13 @@ export function VideoPostForm({
 
               {activeConfigPanel === "pinterest" && (
                 <div className="mt-2 border-t border-border pt-4">
-                  {pinterestAccounts.length > 1 ? (
-                    <>
-                      <div className="flex rounded-lg border border-border bg-bg-muted/30 p-0.5 mb-4">
-                        {pinterestAccounts.map((acc, idx) => (
-                          <button
-                            key={acc.id}
-                            type="button"
-                            onClick={() =>
-                              setSelectedPinterestAccountIndex(idx)
-                            }
-                            className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                              selectedPinterestAccountIndex === idx
-                                ? "bg-bg-elevated text-text shadow-sm"
-                                : "text-text-muted hover:text-text"
-                            }`}
-                          >
-                            {acc.platformUsername?.trim()
-                              ? `@${acc.platformUsername}`
-                              : `Account ${idx + 1}`}
-                          </button>
-                        ))}
-                      </div>
-                      <PinterestConfigInline
-                        accountId={
-                          pinterestAccounts[selectedPinterestAccountIndex]
-                            ?.id ?? ""
-                        }
-                        value={
-                          pinterestSettingsByAccount[
-                            pinterestAccounts[selectedPinterestAccountIndex]
-                              ?.id ?? ""
-                          ] ?? {
-                            boardId: "",
-                            title: "",
-                            link: "",
-                            rememberBoard: false,
-                            rememberLink: false,
-                          }
-                        }
-                        onChange={(s) => {
-                          const id =
-                            pinterestAccounts[selectedPinterestAccountIndex]
-                              ?.id;
-                          if (id)
-                            setPinterestSettingsByAccount((prev) => ({
-                              ...prev,
-                              [id]: s,
-                            }));
-                        }}
-                        isVisible={true}
-                      />
-                    </>
-                  ) : (
-                    <PinterestConfigInline
-                      accountId={pinterestAccounts[0]?.id ?? ""}
-                      value={
-                        pinterestSettingsByAccount[
-                          pinterestAccounts[0]?.id ?? ""
-                        ] ?? {
-                          boardId: "",
-                          title: "",
-                          link: "",
-                          rememberBoard: false,
-                          rememberLink: false,
-                        }
-                      }
-                      onChange={(s) => {
-                        const id = pinterestAccounts[0]?.id;
-                        if (id)
-                          setPinterestSettingsByAccount((prev) => ({
-                            ...prev,
-                            [id]: s,
-                          }));
-                      }}
-                      isVisible={true}
-                    />
-                  )}
+                  <PinterestAccountSettings
+                    accounts={pinterestAccounts}
+                    settingsByAccount={pinterestSettingsByAccount}
+                    setSettingsByAccount={setPinterestSettingsByAccount}
+                    selectedAccountIndex={selectedPinterestAccountIndex}
+                    setSelectedAccountIndex={setSelectedPinterestAccountIndex}
+                  />
                   {pinterestError && (
                     <div
                       className="relative mt-3 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 pr-9 text-sm text-destructive font-medium"

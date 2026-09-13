@@ -1,20 +1,13 @@
 import type { ReactNode } from "react";
 import { toast } from "sonner";
-import { PinterestConfigInline } from "@/components/PinterestConfigInline";
+import {
+  PinterestAccountSettings,
+  type PinterestSettingsAccount,
+} from "@/components/PinterestAccountSettings";
 import { XPostSettingsInline } from "@/components/XPostSettingsInline";
 import type { XPostSettings } from "@/components/XPostSettingsInline";
 import type { PinterestPostSettings } from "@/lib/pinterest-settings";
 import { getPinterestBoardRequiredMessage } from "@/lib/pinterest-board-validation";
-
-const EMPTY_PINTEREST_SETTINGS: PinterestPostSettings = {
-  boardId: "",
-  title: "",
-  link: "",
-  rememberBoard: false,
-  rememberLink: false,
-};
-
-type PinterestAccount = { id: string; platformUsername?: string | null };
 
 /**
  * The dialog chrome both bulk-schedule settings steps use: scrim, panel,
@@ -72,7 +65,7 @@ function BulkSettingsModal(props: {
  * field the API rejects a pin without.
  */
 export function BulkPinterestModal(props: {
-  accounts: PinterestAccount[];
+  accounts: PinterestSettingsAccount[];
   settingsByAccount: Record<string, PinterestPostSettings>;
   setSettingsByAccount: React.Dispatch<
     React.SetStateAction<Record<string, PinterestPostSettings>>
@@ -84,12 +77,6 @@ export function BulkPinterestModal(props: {
   onCancel: () => void;
   onContinue: () => void;
 }) {
-  const activeId = props.accounts[props.selectedAccountIndex]?.id ?? "";
-  const setFor = (id: string | undefined, settings: PinterestPostSettings) => {
-    if (!id) return;
-    props.setSettingsByAccount((prev) => ({ ...prev, [id]: settings }));
-  };
-
   return (
     <BulkSettingsModal
       titleId="bulk-pinterest-settings-title"
@@ -111,44 +98,13 @@ export function BulkPinterestModal(props: {
         props.onContinue();
       }}
     >
-      {props.accounts.length > 1 ? (
-        <>
-          <div className="mb-4 flex rounded-lg border border-border bg-bg-muted/30 p-0.5">
-            {props.accounts.map((acc, idx) => (
-              <button
-                key={acc.id}
-                type="button"
-                onClick={() => props.setSelectedAccountIndex(idx)}
-                className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                  props.selectedAccountIndex === idx
-                    ? "bg-bg-elevated text-text shadow-sm"
-                    : "text-text-muted hover:text-text"
-                }`}
-              >
-                {acc.platformUsername?.trim()
-                  ? `@${acc.platformUsername}`
-                  : `Account ${idx + 1}`}
-              </button>
-            ))}
-          </div>
-          <PinterestConfigInline
-            accountId={activeId}
-            value={props.settingsByAccount[activeId] ?? EMPTY_PINTEREST_SETTINGS}
-            onChange={(s) => setFor(activeId, s)}
-            isVisible={true}
-          />
-        </>
-      ) : (
-        <PinterestConfigInline
-          accountId={props.accounts[0]?.id ?? ""}
-          value={
-            props.settingsByAccount[props.accounts[0]?.id ?? ""] ??
-            EMPTY_PINTEREST_SETTINGS
-          }
-          onChange={(s) => setFor(props.accounts[0]?.id, s)}
-          isVisible={true}
-        />
-      )}
+      <PinterestAccountSettings
+        accounts={props.accounts}
+        settingsByAccount={props.settingsByAccount}
+        setSettingsByAccount={props.setSettingsByAccount}
+        selectedAccountIndex={props.selectedAccountIndex}
+        setSelectedAccountIndex={props.setSelectedAccountIndex}
+      />
       {props.error && (
         <p className="mt-3 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
           {props.error}
