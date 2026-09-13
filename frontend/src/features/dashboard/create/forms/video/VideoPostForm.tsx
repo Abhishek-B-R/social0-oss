@@ -1,7 +1,11 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable react-hooks/refs */
 
-import type { PlatformCaptionState, Account } from "./types";
+import type {
+  PlatformCaptionState,
+  PostFormAccount as Account,
+  PostFormProps,
+} from "../types";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { usePostHog } from "@posthog/react";
@@ -13,7 +17,6 @@ import {
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
-import type { SubscriptionTier } from "@/lib/plans";
 import { signInUrl } from "@/lib/sign-in-url";
 import { createPost, type PublishMode } from "@/api/posts";
 import { getPostPublicationList } from "@/api/publish";
@@ -53,6 +56,7 @@ import type {
   PlatformStatus,
 } from "@/components/UploadPublishOverlay";
 import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
+import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import {
@@ -137,22 +141,7 @@ export function VideoPostForm({
   subscriptionTier = "free",
   freePostsUsed = 0,
   isGuest = false,
-}: {
-  accounts: Account[];
-  accountsLoading?: boolean;
-  use24HourTimeFormat?: boolean;
-  dateFormat?: string | null;
-  timezone?: string | null;
-  draftId?: string;
-  scheduledId?: string;
-  editId?: string;
-  allowAutoRepost?: boolean;
-  allowAutoPlug?: boolean;
-  supportedPlatforms?: string[];
-  subscriptionTier?: SubscriptionTier;
-  freePostsUsed?: number;
-  isGuest?: boolean;
-}) {
+}: PostFormProps<Account>) {
   const navigate = useNavigate();
   const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
@@ -1595,32 +1584,7 @@ export function VideoPostForm({
       if (result.queued) {
         await pollPublicationProgressUntilDone(result.postId, (rows) => {
           setPlatformStatuses((prev) =>
-            prev.map((p) => {
-              const row = rows.find(
-                (r) => r.connectedAccountId === p.accountId,
-              );
-              if (!row) return p;
-              const status: PlatformStatus =
-                row.publicationStatus === "published"
-                  ? "published"
-                  : row.publicationStatus === "failed"
-                    ? "failed"
-                    : row.publicationStatus === "publishing"
-                      ? "processing"
-                      : p.status;
-              return {
-                ...p,
-                status,
-                error:
-                  row.publicationStatus === "failed"
-                    ? (row.lastError ?? undefined)
-                    : undefined,
-                postUrl:
-                  row.publicationStatus === "published"
-                    ? (row.platformPostUrl ?? undefined)
-                    : undefined,
-              };
-            }),
+            applyPublicationProgress(prev, rows),
           );
         });
       } else {
@@ -1629,32 +1593,7 @@ export function VideoPostForm({
           publishOptions,
           (rows) => {
             setPlatformStatuses((prev) =>
-              prev.map((p) => {
-                const row = rows.find(
-                  (r) => r.connectedAccountId === p.accountId,
-                );
-                if (!row) return p;
-                const status: PlatformStatus =
-                  row.publicationStatus === "published"
-                    ? "published"
-                    : row.publicationStatus === "failed"
-                      ? "failed"
-                      : row.publicationStatus === "publishing"
-                        ? "processing"
-                        : p.status;
-                return {
-                  ...p,
-                  status,
-                  error:
-                    row.publicationStatus === "failed"
-                      ? (row.lastError ?? undefined)
-                      : undefined,
-                  postUrl:
-                    row.publicationStatus === "published"
-                      ? (row.platformPostUrl ?? undefined)
-                      : undefined,
-                };
-              }),
+              applyPublicationProgress(prev, rows),
             );
           },
         );

@@ -1,3 +1,8 @@
+import type {
+  PlatformCaptionState,
+  PostFormAccount as Account,
+  PostFormProps,
+} from "./types";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
@@ -9,7 +14,6 @@ import {
   getFreePostsRemaining,
   isFreePublishBlocked,
 } from "@/lib/free-tier-publish";
-import type { SubscriptionTier } from "@/lib/plans";
 import { signInUrl } from "@/lib/sign-in-url";
 import {
   createPost,
@@ -50,6 +54,7 @@ import type {
   PlatformStatus,
 } from "@/components/UploadPublishOverlay";
 import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
+import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
 import {
   consumeComposerPayload,
   clearComposerPayload,
@@ -67,21 +72,6 @@ import { ChevronDown, ChevronUp, Check, Circle } from "lucide-react";
 
 const TWITTER_THREAD_SEP = "---";
 
-type AccountCaptionState = {
-  overridden: boolean;
-  value: string;
-};
-
-type Account = {
-  id: string;
-  platform: string;
-  platformUsername: string | null;
-  profileImageUrl: string | null;
-  isActive: boolean | null;
-  isTwitterPremium?: boolean;
-  tokenExpired?: boolean;
-};
-
 export function TextPostForm({
   accounts,
   accountsLoading = false,
@@ -97,22 +87,7 @@ export function TextPostForm({
   subscriptionTier = "free",
   freePostsUsed = 0,
   isGuest = false,
-}: {
-  accounts: Account[];
-  accountsLoading?: boolean;
-  use24HourTimeFormat?: boolean;
-  dateFormat?: string | null;
-  timezone?: string | null;
-  draftId?: string;
-  scheduledId?: string;
-  editId?: string;
-  allowAutoRepost?: boolean;
-  allowAutoPlug?: boolean;
-  supportedPlatforms?: string[];
-  subscriptionTier?: SubscriptionTier;
-  freePostsUsed?: number;
-  isGuest?: boolean;
-}) {
+}: PostFormProps<Account>) {
   const navigate = useNavigate();
   const dash = useDashboardPath();
   const invalidateQueries = useInvalidateQueries();
@@ -173,7 +148,7 @@ export function TextPostForm({
   type ConfigPanel = "platform-captions" | "x" | null;
   const [activeConfigPanel, setActiveConfigPanel] = useState<ConfigPanel>(null);
   const [accountCaptionsState, setAccountCaptionsState] = useState<
-    Record<string, AccountCaptionState>
+    Record<string, PlatformCaptionState>
   >({});
   const [searchParams] = useSearchParams();
 
@@ -693,32 +668,7 @@ export function TextPostForm({
           undefined,
           (rows) => {
             setPlatformStatuses((prev) =>
-              prev.map((p) => {
-                const row = rows.find(
-                  (r) => r.connectedAccountId === p.accountId,
-                );
-                if (!row) return p;
-                const status: PlatformStatus =
-                  row.publicationStatus === "published"
-                    ? "published"
-                    : row.publicationStatus === "failed"
-                      ? "failed"
-                      : row.publicationStatus === "publishing"
-                        ? "processing"
-                        : p.status;
-                return {
-                  ...p,
-                  status,
-                  error:
-                    row.publicationStatus === "failed"
-                      ? (row.lastError ?? undefined)
-                      : undefined,
-                  postUrl:
-                    row.publicationStatus === "published"
-                      ? (row.platformPostUrl ?? undefined)
-                      : undefined,
-                };
-              }),
+              applyPublicationProgress(prev, rows),
             );
           },
         );
@@ -842,32 +792,7 @@ export function TextPostForm({
           undefined,
           (rows) => {
             setPlatformStatuses((prev) =>
-              prev.map((p) => {
-                const row = rows.find(
-                  (r) => r.connectedAccountId === p.accountId,
-                );
-                if (!row) return p;
-                const status: PlatformStatus =
-                  row.publicationStatus === "published"
-                    ? "published"
-                    : row.publicationStatus === "failed"
-                      ? "failed"
-                      : row.publicationStatus === "publishing"
-                        ? "processing"
-                        : p.status;
-                return {
-                  ...p,
-                  status,
-                  error:
-                    row.publicationStatus === "failed"
-                      ? (row.lastError ?? undefined)
-                      : undefined,
-                  postUrl:
-                    row.publicationStatus === "published"
-                      ? (row.platformPostUrl ?? undefined)
-                      : undefined,
-                };
-              }),
+              applyPublicationProgress(prev, rows),
             );
           },
         );
@@ -1130,7 +1055,7 @@ export function TextPostForm({
                       ({
                         overridden: false,
                         value: "",
-                      } as AccountCaptionState);
+                      } as PlatformCaptionState);
                     const username = account.platformUsername?.trim()
                       ? `@${account.platformUsername}`
                       : account.platform;
