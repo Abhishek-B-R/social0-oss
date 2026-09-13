@@ -6,6 +6,58 @@ import { getValidToken } from "../../lib/token-refresh.js";
 import { headers } from "../../lib/http/request-cookies.js";
 import { AppRequest } from "../../lib/http/http.js";
 
+
+/**
+ * Resolve a Pinterest account the caller is allowed to act on, or the response
+ * that says why not.
+ *
+ * Both handlers below did this, and it is the whole authorization story for
+ * these routes: the workspace permission check and, just as importantly,
+ * `connectionScopeCondition`, which keeps the lookup inside the caller's
+ * workspace so an account id from another team resolves to nothing rather than
+ * to someone else's Pinterest connection.
+ */
+async function resolvePinterestAccount(
+  userId: string,
+  accountId: string,
+  permission: "view_connections" | "manage_connections",
+): Promise<
+  { account: { id: string; platform: string } } | { error: Response }
+> {
+  const { requireWorkspacePermissionForUser } = await import(
+    "../../lib/workspace/session.js"
+  );
+  const { connectionScopeCondition } = await import(
+    "../../lib/workspace/context.js"
+  );
+
+  const ws = await requireWorkspacePermissionForUser(userId, permission);
+  if (!ws.ok) {
+    return {
+      error: Response.json({ error: ws.error }, { status: ws.statusCode }),
+    };
+  }
+
+  const [account] = await db
+    .select({ id: connectedAccounts.id, platform: connectedAccounts.platform })
+    .from(connectedAccounts)
+    .where(
+      and(eq(connectedAccounts.id, accountId), connectionScopeCondition(ws.ctx)),
+    )
+    .limit(1);
+
+  if (!account || account.platform !== "pinterest") {
+    return {
+      error: Response.json(
+        { error: "Account not found or not Pinterest" },
+        { status: 404 },
+      ),
+    };
+  }
+
+  return { account };
+}
+
 /** GET ?accountId=xxx – returns boards for the given Pinterest account (must be owned by current user). */
 export async function listPinterestBoards(req: AppRequest) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -17,34 +69,13 @@ export async function listPinterestBoards(req: AppRequest) {
     return Response.json({ error: "accountId is required" }, { status: 400 });
   }
 
-  const { requireWorkspacePermissionForUser } = await import(
-    "../../lib/workspace/session.js"
-  );
-  const { connectionScopeCondition } = await import(
-    "../../lib/workspace/context.js"
-  );
-  const ws = await requireWorkspacePermissionForUser(
+  const resolved = await resolvePinterestAccount(
     session.user.id,
+    accountId,
     "view_connections",
   );
-  if (!ws.ok) {
-    return Response.json({ error: ws.error }, { status: ws.statusCode });
-  }
-
-  const [account] = await db
-    .select({ id: connectedAccounts.id, platform: connectedAccounts.platform })
-    .from(connectedAccounts)
-    .where(
-      and(
-        eq(connectedAccounts.id, accountId),
-        connectionScopeCondition(ws.ctx),
-      ),
-    )
-    .limit(1);
-
-  if (!account || account.platform !== "pinterest") {
-    return Response.json({ error: "Account not found or not Pinterest" }, { status: 404 });
-  }
+  if ("error" in resolved) return resolved.error;
+  const { account } = resolved;
 
   try {
     const accessToken = await getValidToken(account.id, "pinterest");
@@ -96,34 +127,13 @@ export async function savePinterestBoard(req: AppRequest) {
     );
   }
 
-  const { requireWorkspacePermissionForUser } = await import(
-    "../../lib/workspace/session.js"
-  );
-  const { connectionScopeCondition } = await import(
-    "../../lib/workspace/context.js"
-  );
-  const ws = await requireWorkspacePermissionForUser(
+  const resolved = await resolvePinterestAccount(
     session.user.id,
+    accountId,
     "manage_connections",
   );
-  if (!ws.ok) {
-    return Response.json({ error: ws.error }, { status: ws.statusCode });
-  }
-
-  const [account] = await db
-    .select({ id: connectedAccounts.id, platform: connectedAccounts.platform })
-    .from(connectedAccounts)
-    .where(
-      and(
-        eq(connectedAccounts.id, accountId),
-        connectionScopeCondition(ws.ctx),
-      ),
-    )
-    .limit(1);
-
-  if (!account || account.platform !== "pinterest") {
-    return Response.json({ error: "Account not found or not Pinterest" }, { status: 404 });
-  }
+  if ("error" in resolved) return resolved.error;
+  const { account } = resolved;
 
   try {
     const accessToken = await getValidToken(account.id, "pinterest");
