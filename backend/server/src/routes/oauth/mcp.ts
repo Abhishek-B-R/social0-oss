@@ -17,11 +17,6 @@ import {
   verifyMcpIntrospectSecret,
 } from "../../lib/mcp-oauth.js";
 import { requireSessionUserId } from "../../middleware/auth.js";
-import { clientIpFromFastify } from "../../lib/client-ip.js";
-import {
-  enforceRateLimit,
-  mcpRegisterLimiter,
-} from "../../lib/ratelimit.js";
 import { getAuthApiBaseUrl } from "../../lib/env.js";
 import { getApiProtectedResourceMetadata } from "../../lib/api-scopes.js";
 
@@ -131,23 +126,11 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
     }
   });
 
-  // Dynamic client registration is unauthenticated by design (RFC 7591), so it
-  // is the one MCP endpoint anyone on the internet can write to. Cap it per IP
-  // so it cannot be used to fill the Redis client namespace.
+  // Dynamic client registration is unauthenticated by design (RFC 7591). It is
+  // deliberately not capped per IP: connectors reach it through the mcp-worker
+  // proxy, which does not forward the client address, so every registration
+  // would share the worker's bucket and a few connects would lock out everyone.
   app.post("/oauth/register", async (request, reply) => {
-    const rate = await enforceRateLimit(
-      mcpRegisterLimiter,
-      `mcp:register:${clientIpFromFastify(request)}`,
-    );
-    if (!rate.allowed) {
-      return oauthError(
-        reply,
-        "temporarily_unavailable",
-        rate.error,
-        rate.status,
-      );
-    }
-
     const body = request.body as {
       redirect_uris?: string[];
       client_name?: string;

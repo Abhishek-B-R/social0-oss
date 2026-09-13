@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, lte } from "drizzle-orm";
 import { Queue } from "bullmq";
 import type { FastifyInstance } from "fastify";
 import {
@@ -73,19 +73,35 @@ async function recoverFromFanOutFailure(
   message: string,
 ): Promise<void> {
   if (dispatched === 0) {
+    const restored = (previousStatus as "draft" | "scheduled" | null) ?? "draft";
+    const stillPublishing = and(
+      eq(posts.id, postId),
+      eq(posts.userId, userId),
+      eq(posts.status, "publishing"),
+    );
+
+    // A `scheduled` post whose time has passed — every "Publish now" and "Post
+    // again" is created that way — is what the scheduled cron claims on its
+    // next tick. The caller rethrows and the user is told to try again, so
+    // handing it back would publish it minutes later anyway and the retry would
+    // post it twice. Fail it instead, as the stale-`publishing` sweeper did.
+    if (restored === "scheduled") {
+      const [failed] = await db
+        .update(posts)
+        .set({
+          status: "failed",
+          failureReason: "Couldn't reach the publishing service. Please try again.",
+          updatedAt: new Date(),
+        })
+        .where(and(stillPublishing, lte(posts.scheduledAt, new Date())))
+        .returning({ id: posts.id });
+      if (failed) return;
+    }
+
     await db
       .update(posts)
-      .set({
-        status: (previousStatus as "draft" | "scheduled" | null) ?? "draft",
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(posts.id, postId),
-          eq(posts.userId, userId),
-          eq(posts.status, "publishing"),
-        ),
-      );
+      .set({ status: restored, updatedAt: new Date() })
+      .where(stillPublishing);
     return;
   }
 
