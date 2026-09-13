@@ -1,8 +1,16 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    // Must match the server's module resolution. drizzle-orm ships separate
+    // `index.d.ts` and `index.d.cts` declarations, and their generics are
+    // nominally distinct: when this package emitted under NodeNext while the
+    // server compiled under Bundler, the two picked different declaration
+    // files, so every table type crossing the package boundary stopped
+    // matching. `db.query` silently inferred `{}` and 2,373 errors fell out of
+    // the server. Source files still write explicit `.js` specifiers, so the
+    // emitted ESM resolves under plain Node either way.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",

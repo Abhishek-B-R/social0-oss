@@ -26,7 +26,7 @@ function migrationDatabaseUrl(): string {
 }
 
 export default defineConfig({
-  schema: "./server/src/db/schema.ts",
+  schema: "./shared/src/db/schema.ts",
   out: "./migrations",
   dialect: "postgresql",
   dbCredentials: {
