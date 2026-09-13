@@ -59,12 +59,6 @@ export const CONTENT_TYPES = [
   },
 ] as const;
 
-export type ContentTypeId = (typeof CONTENT_TYPES)[number]["id"];
-export type ContentTypeSlug = (typeof CONTENT_TYPES)[number]["slug"];
-
-export const CONTENT_TYPE_SLUGS: ContentTypeSlug[] = CONTENT_TYPES.map(
-  (c) => c.slug,
-);
 
 export function getContentTypeBySlug(
   slug: string,

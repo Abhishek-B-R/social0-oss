@@ -118,16 +118,6 @@ export function teamWorkspaceLsKey(teamId: string) {
   return `social0.teamWorkspaceId:${teamId}`;
 }
 
-export function readPersonalWorkspaceId(): string | null {
-  try {
-    const raw = localStorage.getItem(PERSONAL_WORKSPACE_LS_KEY);
-    if (raw === null || raw === "" || raw === "null") return null;
-    return raw;
-  } catch {
-    return null;
-  }
-}
-
 export function writePersonalWorkspaceId(workspaceId: string | null) {
   try {
     if (workspaceId === null) {

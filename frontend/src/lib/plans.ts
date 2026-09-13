@@ -6,65 +6,9 @@
  *   Max $599 (list $999).
  */
 
-import { getDodoProductId } from "./env";
-
 export type SubscriptionTier = "free" | "starter" | "growth" | "pro" | "max";
 export type BillingInterval = "monthly" | "yearly";
 export type PaidPlanTier = "starter" | "growth" | "pro" | "max";
-
-const monthlyIds = {
-  starter: getDodoProductId("starter", "monthly"),
-  growth: getDodoProductId("growth", "monthly"),
-  pro: getDodoProductId("pro", "monthly"),
-  max: getDodoProductId("max", "monthly"),
-} as const;
-
-const yearlyIds = {
-  starter: getDodoProductId("starter", "yearly"),
-  growth: getDodoProductId("growth", "yearly"),
-  pro: getDodoProductId("pro", "yearly"),
-  max: getDodoProductId("max", "yearly"),
-} as const;
-
-/** Monthly product IDs (backward-compatible flat shape). */
-export const PLAN_IDS = {
-  starter: monthlyIds.starter,
-  growth: monthlyIds.growth,
-  pro: monthlyIds.pro,
-  max: monthlyIds.max,
-  monthly: monthlyIds,
-  yearly: yearlyIds,
-} as const;
-
-export function getProductId(
-  tier: PaidPlanTier,
-  interval: BillingInterval = "monthly",
-): string {
-  return interval === "yearly" ? yearlyIds[tier] : monthlyIds[tier];
-}
-
-export function getIntervalFromProductId(
-  productId: string,
-): BillingInterval | null {
-  if (!productId) return null;
-  if (
-    productId === yearlyIds.starter ||
-    productId === yearlyIds.growth ||
-    productId === yearlyIds.pro ||
-    productId === yearlyIds.max
-  ) {
-    return "yearly";
-  }
-  if (
-    productId === monthlyIds.starter ||
-    productId === monthlyIds.growth ||
-    productId === monthlyIds.pro ||
-    productId === monthlyIds.max
-  ) {
-    return "monthly";
-  }
-  return null;
-}
 
 export interface PlanLimits {
   maxConnectedAccounts: number;
@@ -143,37 +87,4 @@ export function getPlanLimits(
 ): PlanLimits {
   if (!tier || tier === "free") return FREE_LIMITS;
   return LIMITS_BY_TIER[tier] ?? FREE_LIMITS;
-}
-
-export function getTierFromProductId(productId: string): SubscriptionTier {
-  if (
-    productId === monthlyIds.starter ||
-    productId === yearlyIds.starter
-  ) {
-    return "starter";
-  }
-  if (
-    productId === monthlyIds.growth ||
-    productId === yearlyIds.growth
-  ) {
-    return "growth";
-  }
-  if (productId === monthlyIds.pro || productId === yearlyIds.pro) {
-    return "pro";
-  }
-  if (productId === monthlyIds.max || productId === yearlyIds.max) {
-    return "max";
-  }
-  return "free";
-}
-
-export function isActiveTier(
-  tier: SubscriptionTier | null | undefined,
-): tier is PaidPlanTier {
-  return (
-    tier === "starter" ||
-    tier === "growth" ||
-    tier === "pro" ||
-    tier === "max"
-  );
 }

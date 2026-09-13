@@ -901,8 +901,6 @@ export const TOOLS: ToolPage[] = [
   */
 ];
 
-export const TOOL_SLUGS = TOOLS.map((t) => t.slug);
-
 export function getTool(slug: string): ToolPage | undefined {
   return TOOLS.find((t) => t.slug === slug);
 }

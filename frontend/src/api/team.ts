@@ -65,16 +65,6 @@ export type TeamGetResponse = {
   isOwner: boolean;
 };
 
-export type TeamContextResponse = {
-  role: WorkspaceRole | null;
-  permissions: TeamPermissions | null;
-  resourceOwnerId: string | null;
-  teamsEnabled: boolean;
-  workspaceId: string | null;
-  teamId: string | null;
-  isOwner: boolean;
-};
-
 export type TeamInvitationsResponse = {
   invitations: TeamInvitation[];
 };
@@ -84,14 +74,6 @@ async function parseError(res: Response, fallback: string): Promise<string> {
   return typeof data.error === "string" && data.error.trim()
     ? data.error
     : fallback;
-}
-
-export async function getTeam(): Promise<TeamGetResponse> {
-  const res = await fetchApi("/api/team");
-  if (!res.ok) {
-    throw new Error(await parseError(res, "Failed to load team"));
-  }
-  return res.json() as Promise<TeamGetResponse>;
 }
 
 export async function getTeamById(teamId: string): Promise<TeamGetResponse> {
@@ -112,14 +94,6 @@ export async function getTeamInvitations(
     throw new Error(await parseError(res, "Failed to load invitations"));
   }
   return res.json() as Promise<TeamInvitationsResponse>;
-}
-
-export async function getTeamContext(): Promise<TeamContextResponse> {
-  const res = await fetchApi("/api/team/context");
-  if (!res.ok) {
-    throw new Error(await parseError(res, "Failed to load team context"));
-  }
-  return res.json() as Promise<TeamContextResponse>;
 }
 
 export async function inviteTeamMember(body: {
@@ -356,14 +330,6 @@ export async function createTeam(
   return res.json() as Promise<{ teamId: string; workspaceId: string }>;
 }
 
-/** @deprecated prefer createTeam */
-export async function createWorkspace(
-  name: string,
-  workspaceName?: string,
-): Promise<{ workspaceId: string; teamId?: string }> {
-  return createTeam(name, workspaceName);
-}
-
 export async function createWorkspaceInTeam(
   teamId: string,
   name: string,
@@ -461,16 +427,5 @@ export async function leaveTeam(teamId: string): Promise<void> {
   });
   if (!res.ok) {
     throw new Error(await parseError(res, "Failed to leave team"));
-  }
-}
-
-export async function leaveWorkspace(workspaceId: string): Promise<void> {
-  const res = await fetchApi("/api/team/leave", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ workspaceId }),
-  });
-  if (!res.ok) {
-    throw new Error(await parseError(res, "Failed to leave workspace"));
   }
 }

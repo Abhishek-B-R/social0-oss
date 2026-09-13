@@ -8,18 +8,6 @@
 export const CLIENT_MAX_VIDEO_UPLOAD_BYTES = 500 * 1024 * 1024; // 500MB
 export const CLIENT_MAX_VIDEO_UPLOAD_LABEL = "500MB";
 
-export const IMAGE_LIMITS: Record<string, number> = {
-  twitter_x: 5 * 1024 * 1024, // 5MB (web)
-  instagram: 8 * 1024 * 1024,
-  facebook: 30 * 1024 * 1024,
-  linkedin: 8 * 1024 * 1024,
-  tiktok: 8 * 1024 * 1024,
-  pinterest: 20 * 1024 * 1024,
-  bluesky: 30 * 1024 * 1024, // no client block; server compresses for API limit
-  threads: 8 * 1024 * 1024,
-  youtube: 2 * 1024 * 1024, // thumbnails only
-};
-
 export const VIDEO_LIMITS: Record<string, number> = {
   twitter_x: 512 * 1024 * 1024, // 512MB (free tier)
   instagram: 1 * 1024 * 1024 * 1024, // 1GB API
@@ -49,20 +37,6 @@ export function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024 * 1024)
     return `${(bytes / (1024 * 1024)).toFixed(0)}MB`;
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`;
-}
-
-export function getStrictestLimit(
-  platforms: string[],
-  limits: Record<string, number>,
-): { limit: number; platform: string } {
-  let strictest = { limit: Infinity, platform: "" };
-  for (const p of platforms) {
-    const limit = limits[p];
-    if (limit != null && limit < strictest.limit) {
-      strictest = { limit, platform: p };
-    }
-  }
-  return strictest;
 }
 
 export function getPlatformDisplayName(platformId: string): string {

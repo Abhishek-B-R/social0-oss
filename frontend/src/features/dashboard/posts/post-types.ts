@@ -22,22 +22,6 @@ export type PostMediaRow = {
   thumbnailUrl: string | null;
 };
 
-export type PostDetailRow = {
-  id: string;
-  originalContent: string | null;
-  status: string | null;
-  scheduledAt: Date | null;
-  createdAt: Date | null;
-  mediaIds: string[] | null;
-  metadata: Record<string, unknown> | null;
-  failureReason: string | null;
-};
-
-export type QueuedSlotInfo = {
-  slotId: string;
-  scheduledFor: Date;
-};
-
 export type ResurfaceDetail = {
   id: string;
   isActive: boolean;
@@ -53,12 +37,4 @@ export type AutoPlugDetail = {
   metricType: string;
   metricThreshold: number;
   plugComment: string;
-};
-
-export type PostDetailResult = {
-  post: PostDetailRow;
-  publications: import("./posts-list-types").PublicationRow[];
-  queuedSlot: QueuedSlotInfo | null;
-  autoPlug: AutoPlugDetail | null;
-  resurface: ResurfaceDetail | null;
 };

@@ -7,13 +7,6 @@ interface ImportMetaEnv {
   readonly VITE_DOCS_URL?: string;
   readonly VITE_TURNSTILE_SITE_KEY?: string;
   readonly VITE_CANNY_BOARD_TOKEN?: string;
-  readonly VITE_DODO_PAYMENTS_STARTER_PRODUCT_ID?: string;
-  readonly VITE_DODO_PAYMENTS_GROWTH_PRODUCT_ID?: string;
-  readonly VITE_DODO_PAYMENTS_PRO_PRODUCT_ID?: string;
-  readonly VITE_DODO_PAYMENTS_STARTER_YEARLY_PRODUCT_ID?: string;
-  readonly VITE_DODO_PAYMENTS_LITE_YEARLY_PRODUCT_ID?: string;
-  readonly VITE_DODO_PAYMENTS_GROWTH_YEARLY_PRODUCT_ID?: string;
-  readonly VITE_DODO_PAYMENTS_PRO_YEARLY_PRODUCT_ID?: string;
   readonly VITE_APP_BUILD_ID?: string;
   readonly VITE_VEMETRIC_TOKEN?: string;
 }

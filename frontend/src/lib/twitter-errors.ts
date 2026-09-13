@@ -201,20 +201,6 @@ export function extractTwitterApiErrorMessage(
   return appendTwitter403DuplicateHint(best, httpStatus);
 }
 
-/** Best message for tweet create/update failures (publish flow). */
-export function getTwitterErrorMessage(e: unknown): string {
-  return extractTwitterApiErrorMessage(e, "Failed to post tweet");
-}
-
-/**
- * Media upload errors: prefix with context (e.g. "Twitter image upload").
- */
-export function formatTwitterMediaError(e: unknown, context: string): string {
-  const inner = extractTwitterApiErrorMessage(e, "Unknown error");
-  if (inner.startsWith(`${context}:`)) return inner;
-  return `${context}: ${inner}`;
-}
-
 /** Matches `connectedAccounts.platform` for X/Twitter in this app. */
 export function isTwitterPlatformId(
   platform: string | null | undefined,

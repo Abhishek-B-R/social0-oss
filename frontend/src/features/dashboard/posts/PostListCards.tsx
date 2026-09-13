@@ -549,8 +549,6 @@ export type ResurfaceForPost = {
   plugComment: string | null;
 };
 
-export type AutoPlugForPost = { status: string };
-
 export function PostListCards({
   userPosts,
   publicationsByPostId,
