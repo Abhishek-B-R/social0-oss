@@ -239,6 +239,33 @@ export async function executePublish(
   }
 
   const results: PublishResult["results"] = [];
+
+  /**
+   * Mark one platform's publication failed and record it in this run's results.
+   *
+   * Fifteen call sites wrote this out, so how a failed publication is persisted
+   * was fifteen decisions instead of one. The caller still controls what
+   * happens next — most return, some fall through to the next platform.
+   */
+  async function failPublication(
+    pub: {
+      publicationId: string;
+      platform: string;
+      connectedAccountId: string;
+    },
+    error: string,
+  ): Promise<void> {
+    await db
+      .update(postPublications)
+      .set({ status: "failed", lastError: error, updatedAt: new Date() })
+      .where(eq(postPublications.id, pub.publicationId));
+    results.push({
+      platform: pub.platform,
+      connectedAccountId: pub.connectedAccountId,
+      status: "failed",
+      error,
+    });
+  }
   // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish.
   // Never demote an already published/partial post - follow-up calls on finished publications
   // (per-platform progress, safety-net republish) would otherwise erase the status that
@@ -366,20 +393,7 @@ export async function executePublish(
     ) {
       const tokenExpiredMsg =
         "Token expired - user must reconnect this account";
-      await db
-        .update(postPublications)
-        .set({
-          status: "failed",
-          lastError: tokenExpiredMsg,
-          updatedAt: new Date(),
-        })
-        .where(eq(postPublications.id, pub.publicationId));
-      results.push({
-        platform: pub.platform,
-        connectedAccountId: pub.connectedAccountId,
-        status: "failed",
-        error: tokenExpiredMsg,
-      });
+      await failPublication(pub, tokenExpiredMsg);
       return;
     }
 
@@ -391,20 +405,7 @@ export async function executePublish(
     ) {
       const tokenExpiredMsg =
         "Token expired - user must reconnect this account";
-      await db
-        .update(postPublications)
-        .set({
-          status: "failed",
-          lastError: tokenExpiredMsg,
-          updatedAt: new Date(),
-        })
-        .where(eq(postPublications.id, pub.publicationId));
-      results.push({
-        platform: pub.platform,
-        connectedAccountId: pub.connectedAccountId,
-        status: "failed",
-        error: tokenExpiredMsg,
-      });
+      await failPublication(pub, tokenExpiredMsg);
       return;
     }
 
@@ -416,20 +417,7 @@ export async function executePublish(
     } catch (e) {
       publishLog.error("[executePublish] Decrypt token failed:", e);
       const err = e instanceof Error ? e.message : "Failed to decrypt token";
-      await db
-        .update(postPublications)
-        .set({
-          status: "failed",
-          lastError: err,
-          updatedAt: new Date(),
-        })
-        .where(eq(postPublications.id, pub.publicationId));
-      results.push({
-        platform: pub.platform,
-        connectedAccountId: pub.connectedAccountId,
-        status: "failed",
-        error: err,
-      });
+      await failPublication(pub, err);
       return;
     }
 
@@ -464,20 +452,7 @@ export async function executePublish(
         publishLog.error("[executePublish] Decrypt Twitter secret failed:", e);
         const err =
           e instanceof Error ? e.message : "Failed to decrypt Twitter secret";
-        await db
-          .update(postPublications)
-          .set({
-            status: "failed",
-            lastError: err,
-            updatedAt: new Date(),
-          })
-          .where(eq(postPublications.id, pub.publicationId));
-        results.push({
-          platform: pub.platform,
-          connectedAccountId: pub.connectedAccountId,
-          status: "failed",
-          error: err,
-        });
+        await failPublication(pub, err);
         return;
       }
     }
@@ -508,20 +483,7 @@ export async function executePublish(
         publishLog.error("[executePublish] LinkedIn getValidToken failed:", err);
         const errorMsg =
           err instanceof Error ? err.message : "Failed to get valid token";
-        await db
-          .update(postPublications)
-          .set({
-            status: "failed",
-            lastError: errorMsg,
-            updatedAt: new Date(),
-          })
-          .where(eq(postPublications.id, pub.publicationId));
-        results.push({
-          platform: pub.platform,
-          connectedAccountId: pub.connectedAccountId,
-          status: "failed",
-          error: errorMsg,
-        });
+        await failPublication(pub, errorMsg);
         return;
       }
 
@@ -698,20 +660,7 @@ export async function executePublish(
 
       if (!linkedInRes.ok) {
         const errMessage = parseLinkedInError(responseData, linkedInRes.status);
-        await db
-          .update(postPublications)
-          .set({
-            status: "failed",
-            lastError: errMessage,
-            updatedAt: new Date(),
-          })
-          .where(eq(postPublications.id, pub.publicationId));
-        results.push({
-          platform: pub.platform,
-          connectedAccountId: pub.connectedAccountId,
-          status: "failed",
-          error: errMessage,
-        });
+        await failPublication(pub, errMessage);
         return;
       }
 
@@ -840,20 +789,7 @@ export async function executePublish(
         );
         if (emptyPart !== -1) {
           const msg = `Twitter: Part ${emptyPart + 1} is empty. Add text or media to publish.`;
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: msg,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: msg,
-          });
+          await failPublication(pub, msg);
           return;
         }
 
@@ -895,20 +831,7 @@ export async function executePublish(
         if (missingMediaId) {
           const msg =
             "One or more media files are missing. Re-upload and try again.";
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: msg,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: msg,
-          });
+          await failPublication(pub, msg);
           return;
         }
 
@@ -918,20 +841,7 @@ export async function executePublish(
         });
         if (missingUrlId) {
           const msg = "Media has no URL. Re-upload the media and try again.";
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: msg,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: msg,
-          });
+          await failPublication(pub, msg);
           return;
         }
 
@@ -1062,20 +972,7 @@ export async function executePublish(
             errorMessage,
             e,
           );
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: errorMessage,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: errorMessage,
-          });
+          await failPublication(pub, errorMessage);
         }
 
         return;
@@ -1113,20 +1010,7 @@ export async function executePublish(
             publishLog.error("[executePublish] Twitter media upload failed:", e);
             const err =
               e instanceof Error ? e.message : "Failed to upload media";
-            await db
-              .update(postPublications)
-              .set({
-                status: "failed",
-                lastError: err,
-                updatedAt: new Date(),
-              })
-              .where(eq(postPublications.id, pub.publicationId));
-            results.push({
-              platform: pub.platform,
-              connectedAccountId: pub.connectedAccountId,
-              status: "failed",
-              error: err,
-            });
+            await failPublication(pub, err);
             twitterUploadFailed = true;
             break;
           }
@@ -1257,20 +1141,7 @@ export async function executePublish(
       } catch (e) {
         const errorMessage = getTwitterErrorMessage(e);
         publishLog.error("[executePublish] Twitter post failed:", errorMessage, e);
-        await db
-          .update(postPublications)
-          .set({
-            status: "failed",
-            lastError: errorMessage,
-            updatedAt: new Date(),
-          })
-          .where(eq(postPublications.id, pub.publicationId));
-        results.push({
-          platform: pub.platform,
-          connectedAccountId: pub.connectedAccountId,
-          status: "failed",
-          error: errorMessage,
-        });
+        await failPublication(pub, errorMessage);
       }
       return;
     } else if (
@@ -1298,20 +1169,7 @@ export async function executePublish(
             e instanceof Error
               ? e.message
               : "Failed to decrypt Bluesky app password";
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: err,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: err,
-          });
+          await failPublication(pub, err);
           return;
         }
       }
@@ -1338,20 +1196,7 @@ export async function executePublish(
           );
           const errorMsg =
             err instanceof Error ? err.message : "Failed to get valid token";
-          await db
-            .update(postPublications)
-            .set({
-              status: "failed",
-              lastError: errorMsg,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "failed",
-            error: errorMsg,
-          });
+          await failPublication(pub, errorMsg);
           return;
         }
       }
@@ -1514,20 +1359,7 @@ export async function executePublish(
         publishLog.error("[executePublish] publishToPlatform threw:", e);
         const err =
           e instanceof Error ? e.message : "Publish to platform failed";
-        await db
-          .update(postPublications)
-          .set({
-            status: "failed",
-            lastError: err,
-            updatedAt: new Date(),
-          })
-          .where(eq(postPublications.id, pub.publicationId));
-        results.push({
-          platform: pub.platform,
-          connectedAccountId: pub.connectedAccountId,
-          status: "failed",
-          error: err,
-        });
+        await failPublication(pub, err);
       }
       return;
     }
