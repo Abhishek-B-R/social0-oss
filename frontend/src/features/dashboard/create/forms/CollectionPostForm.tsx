@@ -56,6 +56,7 @@ import type {
   PlatformResult,
   PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { ConfigPanelChip } from "@/features/dashboard/create/forms/ConfigPanelChip";
 import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
 import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
@@ -1932,27 +1933,14 @@ export function CollectionPostForm({
                 Post configurations & tools
               </p>
               <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-[44px] sm:min-h-0 -mx-1 px-1 scrollbar-thin">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setActiveConfigPanel((p) =>
-                      p === "tiktok" ? null : "tiktok",
-                    )
-                  }
-                  className={`flex items-center gap-2 rounded-full border px-3 py-2 sm:py-1.5 text-sm font-medium transition-colors shrink-0 min-h-[44px] sm:min-h-0 touch-manipulation ${
-                    activeConfigPanel === "tiktok"
-                      ? "border-accent bg-accent/10 text-accent"
-                      : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                  }`}
-                >
-                  <Circle className="h-3.5 w-3.5 text-text-muted shrink-0" />
-                  <span>TikTok Config</span>
-                  {activeConfigPanel === "tiktok" ? (
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  )}
-                </button>
+                <ConfigPanelChip
+                  panel="tiktok"
+                  activePanel={activeConfigPanel}
+                  setActivePanel={setActiveConfigPanel}
+                  label="TikTok Config"
+                  largeTouchTarget
+                  icon={<Circle className="h-3.5 w-3.5 text-text-muted shrink-0" />}
+                />
                 {hasXSelected && (
                   <button
                     type="button"

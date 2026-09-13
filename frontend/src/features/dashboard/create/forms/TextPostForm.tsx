@@ -53,6 +53,7 @@ import type {
   PlatformResult,
   PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { ConfigPanelChip } from "@/features/dashboard/create/forms/ConfigPanelChip";
 import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
 import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
 import {
@@ -1002,27 +1003,13 @@ export function TextPostForm({
               </p>
               <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-11 sm:min-h-0 -mx-1 px-1 scrollbar-thin">
                 {showCustomCaptionsSection && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "platform-captions" ? null : "platform-captions",
-                      )
-                    }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                      activeConfigPanel === "platform-captions"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    <Circle className="h-3.5 w-3.5 text-text-muted" />
-                    <span>Platform Captions</span>
-                    {activeConfigPanel === "platform-captions" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  <ConfigPanelChip
+                    panel="platform-captions"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="Platform Captions"
+                    icon={<Circle className="h-3.5 w-3.5 text-text-muted" />}
+                  />
                 )}
                 {hasXSelected && (
                   <button

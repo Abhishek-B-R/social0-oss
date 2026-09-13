@@ -55,6 +55,7 @@ import type {
   PlatformResult,
   PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { ConfigPanelChip } from "@/features/dashboard/create/forms/ConfigPanelChip";
 import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
 import { applyPublicationProgress } from "@/features/dashboard/create/forms/platform-status-progress";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
@@ -1923,84 +1924,47 @@ export function VideoPostForm({
               </p>
               <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 min-h-[44px] sm:min-h-0 -mx-1 px-1 scrollbar-thin">
                 {showPlatformCaptionsSection && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "platform-captions" ? null : "platform-captions",
-                      )
-                    }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                      activeConfigPanel === "platform-captions"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    <Circle className="h-3.5 w-3.5 text-text-muted" />
-                    <span>Platform Captions</span>
-                    {activeConfigPanel === "platform-captions" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  <ConfigPanelChip
+                    panel="platform-captions"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="Platform Captions"
+                    icon={<Circle className="h-3.5 w-3.5 text-text-muted" />}
+                  />
                 )}
                 {hasPinterestSelected && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "pinterest" ? null : "pinterest",
+                  <ConfigPanelChip
+                    panel="pinterest"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="Pinterest Config"
+                    icon={
+                      pinterestAccounts.some(
+                        (acc) =>
+                          !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
+                      ) ? (
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                       )
                     }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                      activeConfigPanel === "pinterest"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    {pinterestAccounts.some(
-                      (acc) =>
-                        !pinterestSettingsByAccount[acc.id]?.boardId?.trim(),
-                    ) ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    ) : (
-                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                    )}
-                    <span>Pinterest Config</span>
-                    {activeConfigPanel === "pinterest" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  />
                 )}
                 {hasTikTokSelected && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "tiktok" ? null : "tiktok",
+                  <ConfigPanelChip
+                    panel="tiktok"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="TikTok Config"
+                    largeTouchTarget
+                    icon={
+                      tiktokSettingsIncomplete ? (
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5 text-text-muted shrink-0" />
                       )
                     }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-2 sm:py-1.5 text-sm font-medium transition-colors shrink-0 min-h-[44px] sm:min-h-0 touch-manipulation ${
-                      activeConfigPanel === "tiktok"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    {tiktokSettingsIncomplete ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                    ) : (
-                      <Circle className="h-3.5 w-3.5 text-text-muted shrink-0" />
-                    )}
-                    <span>TikTok Config</span>
-                    {activeConfigPanel === "tiktok" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  />
                 )}
                 {hasXSelected && (
                   <button
@@ -2024,59 +1988,35 @@ export function VideoPostForm({
                   </button>
                 )}
                 {hasYouTubeSelected && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "youtube" ? null : "youtube",
+                  <ConfigPanelChip
+                    panel="youtube"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="YouTube Title"
+                    icon={
+                      !youtubeTitle.trim() ? (
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                       )
                     }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                      activeConfigPanel === "youtube"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    {!youtubeTitle.trim() ? (
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-                    ) : (
-                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                    )}
-                    <span>YouTube Title</span>
-                    {activeConfigPanel === "youtube" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  />
                 )}
                 {hasInstagramSelected && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setActiveConfigPanel((p) =>
-                        p === "instagram" ? null : "instagram",
+                  <ConfigPanelChip
+                    panel="instagram"
+                    activePanel={activeConfigPanel}
+                    setActivePanel={setActiveConfigPanel}
+                    label="Instagram Config"
+                    icon={
+                      instagramConfig.coverImageUrl ||
+                      instagramConfig.isTrialReel ? (
+                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+                      ) : (
+                        <Circle className="h-3.5 w-3.5 text-text-muted" />
                       )
                     }
-                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors shrink-0 ${
-                      activeConfigPanel === "instagram"
-                        ? "border-accent bg-accent/10 text-accent"
-                        : "border-border bg-bg-muted/50 text-text hover:bg-bg-subtle"
-                    }`}
-                  >
-                    {instagramConfig.coverImageUrl ||
-                    instagramConfig.isTrialReel ? (
-                      <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                    ) : (
-                      <Circle className="h-3.5 w-3.5 text-text-muted" />
-                    )}
-                    <span>Instagram Config</span>
-                    {activeConfigPanel === "instagram" ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
+                  />
                 )}
               </div>
 
