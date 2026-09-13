@@ -22,7 +22,7 @@ vi.mock("@social0/shared/lib/youtube-token", () => ({
 }));
 
 import { encryptToken } from "@social0/shared";
-import { withTokenRefreshLock } from "../lib/token-refresh-lock.js";
+import { withTokenRefreshLock } from "@social0/shared/lib/token-refresh-lock";
 import { getValidToken } from "../lib/token-refresh.js";
 
 function wireRedis() {
