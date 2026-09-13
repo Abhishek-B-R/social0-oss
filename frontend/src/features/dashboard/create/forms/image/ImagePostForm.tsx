@@ -31,12 +31,8 @@ import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-aut
 import { PostFormOptions } from "../../PostFormOptions";
 import { getResurfacePlatforms } from "@/lib/resurface-utils";
 import type { AutoResurfaceConfig } from "@/components/repost/AutoResurfacePanel";
-import type {
-  AutoPlugConfig,
-  ConnectedAccount,
-} from "@/components/autoplug/AutoPlugPanel";
-import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
-import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
+import type { AutoPlugConfig } from "@/components/autoplug/AutoPlugPanel";
+import { useAutoFeatureModals } from "@/features/dashboard/create/forms/use-auto-feature-modals";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { MdClose } from "react-icons/md";
 import { TikTokSettings } from "@/components/TikTokSettings";
@@ -52,11 +48,11 @@ import {
 } from "@/components/XPostSettingsInline";
 
 const PREVIEW_MEDIA_MAX_H = 196;
-import {
-  UploadPublishOverlay,
-  type PlatformResult,
-  type PlatformStatus,
+import type {
+  PlatformResult,
+  PlatformStatus,
 } from "@/components/UploadPublishOverlay";
+import { PublishResultOverlay } from "@/features/dashboard/create/forms/PublishResultOverlay";
 import { applyBulkAutoFeaturesToScheduledMetadata } from "@/lib/bulk-auto-features-metadata";
 import { PLATFORMS } from "@/lib/platforms";
 import {
@@ -191,8 +187,6 @@ export function ImagePostForm({
   const [autoPlugConfig, setAutoPlugConfig] = useState<AutoPlugConfig | null>(
     null,
   );
-  const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
-  const [autoplugModalOpen, setAutoplugModalOpen] = useState(false);
   const [pinterestSettingsByAccount, setPinterestSettingsByAccount] = useState<
     Record<string, PinterestPostSettings>
   >({});
@@ -271,8 +265,6 @@ export function ImagePostForm({
     useState(0);
   const [selectedTiktokAccountIndex, setSelectedTiktokAccountIndex] =
     useState(0);
-  const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
-  const configBeforeAutoPlugRef = useRef<AutoPlugConfig | null>(null);
   const hasRestoredAutoFeaturesRef = useRef(false);
   const {
     remember: rememberAutoFeatures,
@@ -727,6 +719,23 @@ export function ImagePostForm({
     getResurfacePlatforms(selectedAccountIds, accounts).length > 0;
   const resurfaceVisible = hasXForResurface; // publishedAt undefined for new posts
   const autoPlugVisible = hasXForResurface; // publishedAt undefined for new posts
+
+  const {
+    autoRepost: autoRepostSidebar,
+    autoPlug: autoPlugSidebar,
+    modals: autoFeatureModals,
+  } = useAutoFeatureModals({
+    selectedAccountIds,
+    accounts,
+    use24HourTimeFormat,
+    resurfaceVisible,
+    resurfaceConfig,
+    setResurfaceConfig,
+    autoPlugVisible,
+    autoPlugConfig,
+    setAutoPlugConfig,
+  });
+
 
   // Restore Auto-Repost & Auto-Plug from localStorage when Twitter is selected
   useEffect(() => {
@@ -1670,77 +1679,34 @@ export function ImagePostForm({
 
   return (
     <>
-      {overlayPhase !== "idle" && (
-        <UploadPublishOverlay
-          phase={
-            overlayPhase === "uploading"
-              ? "uploading"
-              : overlayPhase === "saving"
-                ? "saving"
-                : overlayPhase === "publishing"
-                  ? "publishing"
-                  : "publishing"
-          }
-          uploadProgress={uploadProgress}
-          uploadPercent={
-            fileProgresses.length > 0
-              ? Math.round(
-                  fileProgresses.reduce((a, b) => a + b, 0) /
-                    fileProgresses.length,
-                )
-              : null
-          }
-          onCancelUpload={
-            overlayPhase === "uploading"
-              ? () => imageUploadAbortRef.current?.abort()
-              : undefined
-          }
-          mediaType="image"
-          isScheduling={mode === "scheduled"}
-          showLinks={overlayPhase === "done"}
-          draftSuccess={!!draftSavedPostId}
-          draftPostId={draftSavedPostId}
-          scheduleSuccess={!!scheduledPostId}
-          publishedPostId={scheduledPostId ?? publishedPostId}
-          publishedToX={selectedAccounts.some(
-            (a) => a.platform === "twitter_x",
-          )}
-          resurfacePreFill={
-            overlayPhase === "done" &&
-            resurfaceConfig &&
-            !scheduledPostId &&
-            !draftSavedPostId
-              ? {
-                  intervalHours: resurfaceConfig.intervalHours,
-                  maxResurfaces: resurfaceConfig.maxResurfaces,
-                  plugComment: resurfaceConfig.plugComment ?? "",
-                }
-              : null
-          }
-          platformStatuses={platformStatuses}
-          allDone={
-            platformStatuses.length > 0 &&
-            platformStatuses.every(
-              (p) => p.status === "published" || p.status === "failed",
-            )
-          }
-          onClose={() => {
-            const allFailed =
-              platformStatuses.length > 0 &&
-              platformStatuses.every((p) => p.status === "failed");
-            if (allFailed && publishedPostId) {
-              navigate(dash(`posts/${publishedPostId}`), {
-                replace: true,
-              });
-              invalidateQueries();
-            } else {
-              setScheduledPostId(null);
-              setDraftSavedPostId(null);
-              setOverlayPhase("idle");
-            }
-          }}
-        />
-      )}
+      <PublishResultOverlay
+        overlayPhase={overlayPhase}
+        uploadProgress={uploadProgress}
+        uploadPercent={
+          fileProgresses.length > 0
+            ? Math.round(
+                fileProgresses.reduce((a, b) => a + b, 0) /
+                fileProgresses.length,
+              )
+            : null
+        }
+        onCancelUpload={
+          overlayPhase === "uploading"
+            ? () => imageUploadAbortRef.current?.abort()
+            : undefined
+        }
+        mediaType="image"
+        isScheduling={mode === "scheduled"}
+        draftSavedPostId={draftSavedPostId}
+        scheduledPostId={scheduledPostId}
+        publishedPostId={publishedPostId}
+        selectedAccounts={selectedAccounts}
+        resurfaceConfig={resurfaceConfig}
+        platformStatuses={platformStatuses}
+        setScheduledPostId={setScheduledPostId}
+        setDraftSavedPostId={setDraftSavedPostId}
+        setOverlayPhase={setOverlayPhase}
+      />
       <form
         ref={formRef}
         onSubmit={handleSubmit}
@@ -2490,46 +2456,8 @@ export function ImagePostForm({
           formRef={formRef}
           draftId={initialDraftId ?? null}
           onDeleteDraft={initialDraftId ? handleDeleteDraft : undefined}
-          autoRepost={
-            resurfaceVisible
-              ? {
-                  visible: true,
-                  enabled: !!resurfaceConfig,
-                  onToggle: () => {
-                    if (resurfaceConfig) {
-                      setResurfaceConfig(null);
-                    } else {
-                      configBeforeResurfaceRef.current = resurfaceConfig;
-                      setResurfaceModalOpen(true);
-                    }
-                  },
-                  onOpenSettings: () => {
-                    configBeforeResurfaceRef.current = resurfaceConfig;
-                    setResurfaceModalOpen(true);
-                  },
-                }
-              : null
-          }
-          autoPlug={
-            autoPlugVisible
-              ? {
-                  visible: true,
-                  enabled: !!autoPlugConfig,
-                  onToggle: () => {
-                    if (autoPlugConfig) {
-                      setAutoPlugConfig(null);
-                    } else {
-                      configBeforeAutoPlugRef.current = autoPlugConfig;
-                      setAutoplugModalOpen(true);
-                    }
-                  },
-                  onOpenSettings: () => {
-                    configBeforeAutoPlugRef.current = autoPlugConfig;
-                    setAutoplugModalOpen(true);
-                  },
-                }
-              : null
-          }
+          autoRepost={autoRepostSidebar}
+          autoPlug={autoPlugSidebar}
           allowAutoRepost={allowAutoRepost}
           allowAutoPlug={allowAutoPlug}
           rememberAutoFeatures={rememberAutoFeatures}
@@ -2790,35 +2718,7 @@ export function ImagePostForm({
           </div>
         </SchedulePostSidebar>
 
-        {resurfaceModalOpen && (
-          <AutoResurfaceSettingsModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts}
-            initialConfig={resurfaceConfig}
-            onChange={setResurfaceConfig}
-            onDone={() => setResurfaceModalOpen(false)}
-            onCancel={() => {
-              setResurfaceConfig(configBeforeResurfaceRef.current ?? null);
-              setResurfaceModalOpen(false);
-            }}
-            use24HourTimeFormat={use24HourTimeFormat}
-          />
-        )}
-        {autoplugModalOpen && (
-          <AutoPlugSettingsModal
-            isOpen={true}
-            selectedAccountIds={selectedAccountIds}
-            allAccounts={accounts as ConnectedAccount[]}
-            initialConfig={autoPlugConfig}
-            onChange={setAutoPlugConfig}
-            onDone={() => setAutoplugModalOpen(false)}
-            onCancel={() => {
-              setAutoPlugConfig(configBeforeAutoPlugRef.current ?? null);
-              setAutoplugModalOpen(false);
-            }}
-          />
-        )}
+        {autoFeatureModals}
       </form>
     </>
   );
