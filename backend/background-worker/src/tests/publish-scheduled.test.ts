@@ -141,13 +141,25 @@ describe("runPublishScheduledCron", () => {
       { id: "slot-row-1", postId: POST_ID, userId: USER_ID, scheduledFor: due },
     ];
 
+    /**
+     * The slot row has to leave `pending` *before* the dispatch, not after:
+     * `finalize-post` settles `processing` rows, and a server-side platform job
+     * can finish before the next statement here runs. Marking it afterwards
+     * lets the row miss its own finalize and sit in `processing` forever —
+     * which is exactly what a live run did before this was reordered.
+     */
+    const statusesAtDispatch: unknown[] = [];
+    dispatch.mockImplementation(async () => {
+      statusesAtDispatch.push(...statuses());
+      return "cloudflare";
+    });
+
     const result = await runPublishScheduledCron();
 
     expect(dispatch).toHaveBeenCalledTimes(1);
     expect(result.processed).toEqual([POST_ID]);
     expect(result.queuedProcessed).toEqual([]);
-    // The slot row still leaves `pending` so it is not rescanned forever.
-    expect(statuses()).toContain("processing");
+    expect(statusesAtDispatch).toContain("processing");
   });
 
   it("leaves an upcoming post alone and arms it instead", async () => {
@@ -174,10 +186,10 @@ describe("runPublishScheduledCron", () => {
     const result = await runPublishScheduledCron();
 
     expect(result.processed).toEqual([]);
-    // Claimed, then handed back — and never written off with a reason.
-    // (`statuses()` also carries the stale-`publishing` sweep that opens
-    // every scan, so assert on the post's own trail rather than the whole list.)
-    expect(statuses().slice(-2)).toEqual(["publishing", "scheduled"]);
+    // Claimed, then handed back — and never written off with a reason, so the
+    // next tick picks it straight back up.
+    expect(statuses()).toContain("publishing");
+    expect(statuses().at(-1)).toBe("scheduled");
     expect(updates.some((u) => u.failureReason)).toBe(false);
   });
 
@@ -201,7 +213,10 @@ describe("runPublishScheduledCron", () => {
     expect(statuses()).not.toContain("scheduled");
     const failure = updates.find((u) => u.failureReason);
     expect(failure?.status).toBe("failed");
-    expect(failure?.failureReason).toMatch(/403/);
+    // Named platform, not a bare undici "fetch failed" — this lands on the post.
+    expect(failure?.failureReason).toMatch(
+      /Could not queue twitter_x for publishing: .*403/,
+    );
   });
 
   /**

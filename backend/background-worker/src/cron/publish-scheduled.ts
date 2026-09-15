@@ -106,6 +106,7 @@ async function enqueueAllTargets(
   dueSince: Date,
 ): Promise<void> {
   let dispatched = 0;
+  let failing: string | null = null;
   try {
     for (const t of targets) {
       const job: PublishPlatformJob = {
@@ -116,12 +117,19 @@ async function enqueueAllTargets(
         platform: t.platform,
         ...(trackingId ? { trackingId } : {}),
       };
+      failing = t.platform;
       await dispatchScheduledTarget(job);
       dispatched += 1;
     }
   } catch (err) {
-    const message =
+    // `posts.failure_reason` is shown to the user on the post, and a bare
+    // "fetch failed" from undici tells them nothing. Name the platform that
+    // could not be queued and keep the cause behind it.
+    const cause =
       err instanceof Error ? err.message : "Could not queue this platform";
+    const message = failing
+      ? `Could not queue ${failing} for publishing: ${cause}`
+      : cause;
 
     if (dispatched === 0) {
       const overdueMs = Date.now() - dueSince.getTime();
@@ -186,11 +194,37 @@ async function claimDuePost(postId: string, userId: string): Promise<boolean> {
   return Boolean(claimed);
 }
 
+/**
+ * Move this post's slot row out of `pending` as part of the claim.
+ *
+ * This has to happen *before* anything dispatches. `finalize-post` settles
+ * `processing` rows when the publish finishes, and a server-side platform job
+ * can finish before the next statement here runs — so a row marked `processing`
+ * after dispatch misses its own finalize and sits there forever. A live run
+ * did exactly that.
+ */
+async function claimSlotRowsForPost(
+  postId: string,
+  userId: string,
+): Promise<void> {
+  await db
+    .update(queuedPosts)
+    .set({ status: "processing" })
+    .where(
+      and(
+        eq(queuedPosts.postId, postId),
+        eq(queuedPosts.userId, userId),
+        eq(queuedPosts.status, "pending"),
+      ),
+    );
+}
+
 async function enqueueClaimedPost(
   postId: string,
   userId: string,
   dueSince: Date,
 ): Promise<boolean> {
+  await claimSlotRowsForPost(postId, userId);
   const targets = await loadPublicationTargets({ postId, userId });
   if (targets.length === 0) {
     await db
@@ -358,8 +392,6 @@ export async function runPublishScheduledCron(): Promise<{
 
   /** Posts this scan has taken responsibility for; the queued scan skips them. */
   const handledByPostScan = new Set<string>();
-  /** Of those, the ones that actually fanned out. */
-  const dispatchedByPostScan = new Set<string>();
 
   for (const post of inWindow) {
     const scheduledAt = post.scheduledAt;
@@ -372,7 +404,6 @@ export async function runPublishScheduledCron(): Promise<{
       try {
         const ok = await claimAndEnqueuePost(post.id, post.userId, scheduledAt);
         if (ok) {
-          dispatchedByPostScan.add(post.id);
           processed.push(post.id);
           if (scheduledAt.getTime() < recoveryCutoff.getTime()) {
             recovered += 1;
@@ -416,22 +447,10 @@ export async function runPublishScheduledCron(): Promise<{
     if (!scheduledFor) continue;
     const due = scheduledFor.getTime() <= now.getTime();
     if (due) {
-      // The posts scan owns this post for this tick. If it fanned out, move the
-      // slot row out of `pending` so it is not rescanned — `finalize-post`
-      // settles it to done/failed when the publish finishes. If it failed to
-      // dispatch, leave the row `pending`: the post went back to `scheduled`
-      // and the next tick retries the pair together.
-      if (handledByPostScan.has(q.postId)) {
-        if (dispatchedByPostScan.has(q.postId)) {
-          await db
-            .update(queuedPosts)
-            .set({ status: "processing" })
-            .where(
-              and(eq(queuedPosts.id, q.id), eq(queuedPosts.status, "pending")),
-            );
-        }
-        continue;
-      }
+      // The posts scan owns this post for this tick — it claimed the slot row
+      // alongside the post, so there is nothing left to do here and a second
+      // fan-out would race the first to publish the same text.
+      if (handledByPostScan.has(q.postId)) continue;
       try {
         const ok = await claimAndEnqueueQueued(
           q.id,
