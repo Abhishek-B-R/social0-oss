@@ -9,6 +9,7 @@ import {
   createPublishTrackingId,
   enqueuePublishPost,
   queueNameForJob,
+  useCloudflarePublishDispatch,
 } from "../../services/enqueue.js";
 import { openJobSseStream } from "../../lib/job-sse-stream.js";
 import { resolveJobSnapshot } from "../../lib/resolve-job-snapshot.js";
@@ -66,7 +67,7 @@ export async function registerPublishRoutes(app: FastifyInstance) {
     }
 
     const [owned] = await db
-      .select({ id: posts.id })
+      .select({ id: posts.id, status: posts.status })
       .from(posts)
       .where(
         and(eq(posts.id, body.data.postId), postScopeCondition(ws.ctx)),
@@ -90,24 +91,39 @@ export async function registerPublishRoutes(app: FastifyInstance) {
         return reply.status(400).send({ error: resolved.error });
       }
       const scheduledAt = resolved.utc.toISOString();
-      const delay = Math.max(0, resolved.utc.getTime() - Date.now());
 
-      const dispatched = await enqueuePublishPost(
-        app,
-        {
-          postId: body.data.postId,
-          userId,
-          connectedAccountIds: body.data.connectedAccountIds,
-        },
-        { delay },
-      );
+      // Same rule as `v1SchedulePost`: only work that has not gone out yet can
+      // be given a time. Without it this route could drag a published post back
+      // to `scheduled` and have the cron publish it a second time.
+      if (owned.status !== "draft" && owned.status !== "scheduled") {
+        return reply.status(400).send({
+          error: "Only draft or scheduled posts can be scheduled",
+        });
+      }
+
+      // Scheduling is a DB write, not an enqueue: `publish-scheduled` scans
+      // `posts.scheduled_at` every 5 minutes and dispatches from there.
+      //
+      // This used to hand the delay to `enqueuePublishPost`, which throws on
+      // the Cloudflare backend by contract ("Delayed publish on Cloudflare uses
+      // scheduled posts + cron; do not pass delay") — so every scheduled
+      // request through this route 500'd in production, and on the BullMQ
+      // backend it flipped the post to `publishing` immediately and left the
+      // cron with nothing to find.
+      await db
+        .update(posts)
+        .set({
+          status: "scheduled",
+          scheduledAt: resolved.utc,
+          updatedAt: new Date(),
+        })
+        .where(and(eq(posts.id, body.data.postId), postScopeCondition(ws.ctx)));
 
       return reply.status(200).send({
         status: "scheduled",
         postId: body.data.postId,
         scheduledAt,
-        jobId: dispatched.id,
-        backend: dispatched.backend,
+        backend: useCloudflarePublishDispatch() ? "cloudflare" : "bullmq",
         message: "Post scheduled successfully",
       });
     }

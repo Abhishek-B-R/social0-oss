@@ -54,6 +54,7 @@ Layout is whatever `ls` shows; ownership is not:
 - Browser → API: session cookies; `POST /api/rpc`, REST `/api/*`. Dev: Vite proxies `/api` + `/v1` to `VITE_API_PROXY_TARGET` (default `:3001`). Leave `VITE_API_URL` empty in local proxy mode.
 - Publish (default `PUBLISH_DISPATCH=cloudflare`): API writes `publish_jobs` / `post_publications` → HMAC enqueue to CF → Queues `social0-publish-now` / `social0-publish-scheduled` (DLQ `social0-publish-dlq`) → worker (Hyperdrive + R2) → platform APIs → finalize + job events. Publish-now progress: SSE `GET /api/jobs/:id/stream`.
 - **X and TikTok stay on the API by default** (`SERVER_SIDE_PUBLISH_PLATFORMS` in `backend/shared/src/constants/server-side-publish.ts`) — chunked X video + TikTok 64-bit permalinks. Opt into CF with `TWITTER_PUBLISH_ON_CF=1` / `TIKTOK_PUBLISH_ON_CF=1` after the worker is current.
+  This holds on **both** entry points. Publish-now branches in `services/publish-enqueue.ts` (`runPlatformJobOnServer`); the scheduled cron branches in `background-worker/src/cron/dispatch-scheduled-target.ts` and hands those jobs to `POST /api/cron/publish-platform` (needs `CRON_SECRET` + `INTERNAL_API_BASE_URL`/`AUTH_API_URL` in `backend/.env`). Add a platform to one branch and you must add it to the other, or the same post publishes two different ways depending on which button created it.
 - Fallback: `PUBLISH_DISPATCH=bullmq` runs platform work on the droplet via shared queues.
 - Cron: CF cron-worker → `POST /api/cron/{job}` + `CRON_SECRET` → enqueue → background-worker.
 - Redis (Upstash): BullMQ, rate limits, auth secondary storage, job progress. Optional local Redis via `backend/docker-compose.yml`.
@@ -303,7 +304,7 @@ Publish worker: see `cloudflare/publish-worker/README.md`.
 ## 14. Known caveats
 
 - LinkedIn + X publish logic not fully extracted into `publish-platforms/`.
-- X + TikTok publish on the API by default (not CF). See `server-side-publish.ts`.
+- X + TikTok publish on the API by default (not CF), from both the composer and the cron. See `server-side-publish.ts` and `background-worker/src/cron/dispatch-scheduled-target.ts`.
 - `background-worker` schema is duplicated — update both when schema changes (only with explicit permission).
 - Older docs may still say `react-frontend/` — treat **`frontend/`** as the live SPA.
 - Failure-email claim (`posts.metadata._failureEmailSentAt`) is one-shot; stuck claims from old bugs won’t re-send until cleared.
