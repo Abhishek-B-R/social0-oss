@@ -6,8 +6,8 @@ Fastify API + slim background-worker for long-running crons. Platform publish ru
 
 ```
 backend/
-├── server/              Fastify API — auth, HTTP, RPC services, enqueue
-├── background-worker/   BullMQ — scheduled posts, repost, autoplug, token health only
+├── server/              Fastify API: auth, HTTP, RPC services, enqueue
+├── background-worker/   BullMQ: scheduled posts, repost, autoplug, token health only
 ├── shared/              Queues, job types, CF publish client
 └── docker-compose.yml   Optional local Redis (Upstash in prod)
 ```
@@ -16,7 +16,7 @@ backend/
 
 | Component             | Responsibility                                                   |
 | --------------------- | ---------------------------------------------------------------- |
-| **server**            | User HTTP — fast responses; cron routes return `202` immediately |
+| **server**            | User HTTP: fast responses; cron routes return `202` immediately |
 | **background-worker** | Heavy cron jobs in a separate process (no user traffic)          |
 | **CF publish worker** | Platform posting (`PUBLISH_DISPATCH=cloudflare`)                 |
 
@@ -27,7 +27,7 @@ Publish now → server → CF publish worker
 Scheduled posts → cron → background-worker → CF scheduled queue
 ```
 
-**Production:** something must hit `/api/cron/*` on a schedule. Deploy `cloudflare/cron-worker` (every 5 min) or use system crontab — see `cloudflare/cron-worker/README.md`. Without it, scheduled posts never publish.
+**Production:** something must hit `/api/cron/*` on a schedule. Deploy `cloudflare/cron-worker` (every 5 min) or use system crontab: see `cloudflare/cron-worker/README.md`. Without it, scheduled posts never publish.
 
 ## Quick start
 

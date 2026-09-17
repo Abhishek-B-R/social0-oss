@@ -1,6 +1,6 @@
 # Social0 React Frontend
 
-**Production UI** for Social0 — React + Vite SPA. All server logic lives in `backend/server`.
+**Production UI** for Social0: React + Vite SPA. All server logic lives in `backend/server`.
 
 ## Setup
 

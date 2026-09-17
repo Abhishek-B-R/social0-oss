@@ -28,7 +28,7 @@ metadata:
 
 # Social0 Social Media Skill
 
-Autonomously manage social posting via [Social0](https://social0.app) — draft, publish, and schedule to **9 platforms** from chat or the terminal.
+Autonomously manage social posting via [Social0](https://social0.app): draft, publish, and schedule to **9 platforms** from chat or the terminal.
 
 **Prefer the `social0` CLI** whenever the agent has a shell (`npx social0` or a global `social0` install). Use **MCP** only when the host has no reliable shell (e.g. Claude.ai / ChatGPT connectors). Use the **REST API** only if both CLI and MCP are unavailable.
 
@@ -53,7 +53,7 @@ Autonomously manage social posting via [Social0](https://social0.app) — draft,
 2. Connect social accounts in [Dashboard → Connections](https://social0.app/dashboard/connections)
 3. Authenticate with the **CLI** (preferred) or connect **MCP** (fallback)
 
-### A — CLI (preferred)
+### A: CLI (preferred)
 
 Needs [Node.js 20+](https://nodejs.org/) and a key from [Dashboard → API keys](https://social0.app/dashboard/api-keys) (`sk_live_…`):
 
@@ -68,7 +68,7 @@ social0 accounts
 
 For CI / headless: set `SOCIAL0_API_KEY` in the environment (not written to disk).
 
-### B — Remote MCP (when no shell)
+### B: Remote MCP (when no shell)
 
 Works with Claude.ai, ChatGPT, and any host that accepts a remote MCP connector.
 
@@ -90,7 +90,7 @@ User clicks **Connect** and authorizes on social0.app (OAuth PKCE). No Node.js, 
 }
 ```
 
-### C — Local MCP npx (stdio hosts)
+### C: Local MCP npx (stdio hosts)
 
 ```json
 {
@@ -114,10 +114,10 @@ User clicks **Connect** and authorizes on social0.app (OAuth PKCE). No Node.js, 
 
 ### Handling missing auth
 
-1. **CLI**: `social0 login` with a key from https://social0.app/dashboard/api-keys — or set `SOCIAL0_API_KEY`
+1. **CLI**: `social0 login` with a key from https://social0.app/dashboard/api-keys, or set `SOCIAL0_API_KEY`
 2. **Hosted MCP**: reconnect at `https://mcp.social0.app/mcp` and complete OAuth
 3. **Local MCP**: put the key in the MCP `env` block, then reload MCP
-4. **Stop** — do not invent keys or search keychains for secrets
+4. **Stop**: do not invent keys or search keychains for secrets
 5. OAuth creates a connector API key (UI may show “Claude MCP Connector”); revoke anytime in Dashboard → API keys
 
 ## Auth (REST fallback)
@@ -168,7 +168,7 @@ Use when the host exposes Social0 as MCP tools and shell/CLI is not available.
 | `list_accounts` | Connected accounts (`id`, `platform`, `username`, status). **Call first** when accounts are ambiguous |
 | `create_draft` | Create an **unpublished draft** (does not post live) |
 | `update_draft` | Update a draft / scheduled post (not live published posts) |
-| `delete_draft` | Delete an unpublished draft/schedule only — **cannot** delete live network posts |
+| `delete_draft` | Delete an unpublished draft/schedule only: **cannot** delete live network posts |
 | `list_posts` | List posts (`status`, `platform`, search, limit) |
 | `get_post` | Full post + per-platform publication rows |
 | `upload_media` | Upload via `url`, base64 `data`, or local `file_path` → media ID |
@@ -202,7 +202,7 @@ After publish (CLI `social0 status` or MCP `get_publish_status`), **always poll*
 | `queued` / `processing` | Still running |
 | `completed` | All targets succeeded |
 | `failed` | All failed |
-| `partial` | Some succeeded, some failed — read `errors` / `platform_statuses` |
+| `partial` | Some succeeded, some failed: read `errors` / `platform_statuses` |
 
 ## Recommended agent workflow
 
@@ -214,7 +214,7 @@ After publish (CLI `social0 status` or MCP `get_publish_status`), **always poll*
 6. After publish → return `tracking_id` and poll status to terminal
 7. On `partial` → summarize which platforms failed and why
 8. Never invent account UUIDs or tracking IDs
-9. Never claim CLI/MCP can connect Instagram/Facebook/etc. — send users to the dashboard
+9. Never claim CLI/MCP can connect Instagram/Facebook/etc.: send users to the dashboard
 10. Schedules: confirm timezone; CLI accepts natural language (`tomorrow 9am`); MCP expects UTC ISO-8601
 11. **Publishing confirmation**: unless the user clearly says “post now” / “publish immediately”, confirm before live publish. Drafts are safe; live posts are not.
 
@@ -231,11 +231,11 @@ Aliases: `x` / `twitter` → `twitter_x`; `ig` → `instagram`; `fb` → `facebo
 ## Platform gotchas
 
 - **Each platform posts independently.** One failure does not roll back others. Always check publish status.
-- **Ambiguous accounts** return an error listing IDs — list accounts and retry with IDs.
-- **Media must be Social0 media IDs** on posts — upload first; do not paste Drive/Dropbox share links as `media`.
-- **Non-direct URLs fail quietly** for MCP `upload_media` `url` — need a direct file URL the server can download.
-- **X/Twitter captions are short** — keep within ~280 characters when targeting `twitter_x`.
-- **Connecting accounts is dashboard-only** — CLI/MCP cannot complete platform OAuth (CLI can open the connect URL via `social0 accounts connect`).
+- **Ambiguous accounts** return an error listing IDs: list accounts and retry with IDs.
+- **Media must be Social0 media IDs** on posts: upload first; do not paste Drive/Dropbox share links as `media`.
+- **Non-direct URLs fail quietly** for MCP `upload_media` `url`: need a direct file URL the server can download.
+- **X/Twitter captions are short**: keep within ~280 characters when targeting `twitter_x`.
+- **Connecting accounts is dashboard-only**: CLI/MCP cannot complete platform OAuth (CLI can open the connect URL via `social0 accounts connect`).
 
 ## Out of scope
 

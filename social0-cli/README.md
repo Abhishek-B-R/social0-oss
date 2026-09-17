@@ -1,6 +1,6 @@
 # social0
 
-The official CLI for [Social0](https://social0.app) — manage social media from your terminal.
+The official CLI for [Social0](https://social0.app): manage social media from your terminal.
 
 <p align="center">
   <img src="https://img.shields.io/npm/v/social0?style=flat-square" alt="npm version" />
@@ -69,7 +69,7 @@ Get your API key from [social0.app/dashboard/api-keys](https://social0.app/dashb
 social0 login
 # Enter your API key (sk_live_...) via masked prompt
 
-# Non-interactive (stdin — avoids shell history / process listings)
+# Non-interactive (stdin: avoids shell history / process listings)
 echo "sk_live_..." | social0 login
 
 social0 whoami
@@ -100,7 +100,7 @@ social0 passphrase remove
 
 ### Accounts
 
-Connected accounts use **human-friendly numeric IDs** — no UUIDs to memorize.
+Connected accounts use **human-friendly numeric IDs**: no UUIDs to memorize.
 
 ```bash
 social0 accounts
@@ -228,7 +228,7 @@ social0 analytics --json | jq '.totals'
 
 Totals cover the most recent publications in the window, not your lifetime
 numbers. When the response is capped the CLI prints a `Showing the latest N
-publications` warning — respect it before quoting the figure anywhere.
+publications` warning: respect it before quoting the figure anywhere.
 
 ### Inbox
 
@@ -242,7 +242,7 @@ social0 inbox --unanswered                      # only threads you haven't answe
 social0 inbox --platform bluesky --range 28d
 social0 inbox --before <next_before>            # page older publications
 
-# Reply / moderate — both ids come from the list above
+# Reply / moderate: both ids come from the list above
 social0 inbox reply <comment-id> --publication <publication-id> --text "Thanks!"
 social0 inbox like <comment-id> --publication <publication-id>
 social0 inbox unlike <comment-id> --publication <publication-id>
@@ -348,7 +348,7 @@ social0 completion powershell >> $PROFILE
 
 ## Architecture
 
-The CLI contains **zero business logic** — it is a thin, polished client for the Social0 REST API (`/v1/*`).
+The CLI contains **zero business logic**: it is a thin, polished client for the Social0 REST API (`/v1/*`).
 
 ```
 src/

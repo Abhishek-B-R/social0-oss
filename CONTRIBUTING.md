@@ -2,7 +2,7 @@
 
 ## Setup
 
-Frontend and backend install separately — Cloudflare Pages deploys `frontend/` alone and must not depend on `backend/shared`.
+Frontend and backend install separately: Cloudflare Pages deploys `frontend/` alone and must not depend on `backend/shared`.
 
 ```bash
 cp backend/.env.example backend/.env

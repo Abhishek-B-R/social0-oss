@@ -1,4 +1,4 @@
-# Social0 — monorepo guide for AI agents
+# Social0: monorepo guide for AI agents
 
 **Read this first.** Package-specific notes: [`frontend/claude.md`](frontend/claude.md), [`backend/claude.md`](backend/claude.md). Product surface: [`FEATURES.md`](FEATURES.md). Human setup: [`README.md`](README.md), [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
@@ -6,19 +6,19 @@ Production stack in one line:
 
 > `frontend/` (Cloudflare Pages SPA) → `backend/server` (Fastify + Better Auth + RPC) → `cloudflare/publish-worker` (Hyperdrive + R2 + Queues) + `backend/background-worker` (Upstash BullMQ cron) + `cloudflare/cron-worker`; public `social0-cli` / `social0-mcp` use `/v1` API keys.
 
-**Package name vs folder:** the SPA lives in **`frontend/`** (npm name `react-frontend`). There is **no** `react-frontend/` directory. Older docs that call `frontend/` “legacy Next.js” are wrong — ignore that.
+**Package name vs folder:** the SPA lives in **`frontend/`** (npm name `react-frontend`). There is **no** `react-frontend/` directory. Older docs that call `frontend/` “legacy Next.js” are wrong: ignore that.
 
 ---
 
 ## 0. Hard rules for agents
 
-1. **Separate packages** — Pages builds `frontend/` alone. Do **not** import `@social0/shared` (or anything under `backend/`) into the SPA.
+1. **Separate packages**: Pages builds `frontend/` alone. Do **not** import `@social0/shared` (or anything under `backend/`) into the SPA.
 2. **No DB migrations / schema edits** unless the user **explicitly** asks. Schema source of truth: `backend/server/src/db/schema.ts`. Keep `background-worker` schema copy in sync when schema *is* changed.
-3. **Never await platform *publish* APIs inside HTTP handlers** — enqueue / CF dispatch; return fast (`202` / `200`). Analytics/inbox RPC reads *do* hit platform APIs in-request (timeouts + `RPC_LIVE_READ_HANDLERS` budget).
+3. **Never await platform *publish* APIs inside HTTP handlers**: enqueue / CF dispatch; return fast (`202` / `200`). Analytics/inbox RPC reads *do* hit platform APIs in-request (timeouts + `RPC_LIVE_READ_HANDLERS` budget).
 4. **No Next.js patterns** in the SPA (`"use server"`, App Router, `middleware.ts`). Vite + React Router only.
 5. Prefer **deletion / smallest change**. New networks → `backend/server/src/lib/publish-platforms/` (+ `index.ts`). New RPC → `services/` + `routes/api/rpc.ts` + `frontend/src/api/` wrapper.
 6. Do not invent env values; copy names from `backend/.env.example` / `frontend/.env.example` / worker READMEs.
-7. **`LIVE_PLATFORMS` is backend-only** — `backend/server/src/lib/live-platforms.ts`. SPA account chips come from `analytics.listAccounts` / `inbox.listAccounts`. Do **not** duplicate this map in `frontend/`.
+7. **`LIVE_PLATFORMS` is backend-only**: `backend/server/src/lib/live-platforms.ts`. SPA account chips come from `analytics.listAccounts` / `inbox.listAccounts`. Do **not** duplicate this map in `frontend/`.
 
 ---
 
@@ -53,7 +53,7 @@ Layout is whatever `ls` shows; ownership is not:
 
 - Browser → API: session cookies; `POST /api/rpc`, REST `/api/*`. Dev: Vite proxies `/api` + `/v1` to `VITE_API_PROXY_TARGET` (default `:3001`). Leave `VITE_API_URL` empty in local proxy mode.
 - Publish (default `PUBLISH_DISPATCH=cloudflare`): API writes `publish_jobs` / `post_publications` → HMAC enqueue to CF → Queues `social0-publish-now` / `social0-publish-scheduled` (DLQ `social0-publish-dlq`) → worker (Hyperdrive + R2) → platform APIs → finalize + job events. Publish-now progress: SSE `GET /api/jobs/:id/stream`.
-- **X and TikTok stay on the API by default** (`SERVER_SIDE_PUBLISH_PLATFORMS` in `backend/shared/src/constants/server-side-publish.ts`) — chunked X video + TikTok 64-bit permalinks. Opt into CF with `TWITTER_PUBLISH_ON_CF=1` / `TIKTOK_PUBLISH_ON_CF=1` after the worker is current.
+- **X and TikTok stay on the API by default** (`SERVER_SIDE_PUBLISH_PLATFORMS` in `backend/shared/src/constants/server-side-publish.ts`): chunked X video + TikTok 64-bit permalinks. Opt into CF with `TWITTER_PUBLISH_ON_CF=1` / `TIKTOK_PUBLISH_ON_CF=1` after the worker is current.
   This holds on **both** entry points. Publish-now branches in `services/publish-enqueue.ts` (`runPlatformJobOnServer`); the scheduled cron branches in `background-worker/src/cron/dispatch-scheduled-target.ts` and hands those jobs to `POST /api/cron/publish-platform` (needs `CRON_SECRET` + `INTERNAL_API_BASE_URL`/`AUTH_API_URL` in `backend/.env`). Add a platform to one branch and you must add it to the other, or the same post publishes two different ways depending on which button created it.
 - Fallback: `PUBLISH_DISPATCH=bullmq` runs platform work on the droplet via shared queues.
 - Cron: CF cron-worker → `POST /api/cron/{job}` + `CRON_SECRET` → enqueue → background-worker.
@@ -103,8 +103,8 @@ UI / RPC publish.* / POST /api/publish
   → platform APIs
   → publish/finalize-post.ts (maybeFinalizePostPublish)
        ├─ aggregate post status
-       ├─ maybeSendPostFailureEmail (Resend; await — never void on CF)
-       └─ user webhooks (`deliverUserWebhookEvent`; await — never void on CF)
+       ├─ maybeSendPostFailureEmail (Resend; await, never void on CF)
+       └─ user webhooks (`deliverUserWebhookEvent`; await, never void on CF)
 ```
 
 | File | Role |
@@ -118,25 +118,25 @@ UI / RPC publish.* / POST /api/publish
 | `backend/shared/src/lib/cf-publish-client.ts` | HMAC enqueue to CF |
 | `cloudflare/publish-worker/src/process-platform.ts` | Edge job runner (imports server publish modules) |
 
-**Platforms (9):** LinkedIn, Instagram, YouTube, Pinterest, TikTok, X (`twitter_x`), Threads, Bluesky, Facebook Pages. LinkedIn + X still partly inline in `execute-publish.ts` — new networks go in `publish-platforms/`. X + TikTok default to the API process, not the CF worker (see §2).
+**Platforms (9):** LinkedIn, Instagram, YouTube, Pinterest, TikTok, X (`twitter_x`), Threads, Bluesky, Facebook Pages. LinkedIn + X still partly inline in `execute-publish.ts`: new networks go in `publish-platforms/`. X + TikTok default to the API process, not the CF worker (see §2).
 
-**Content types:** text, image, video, threads, collection — composer + `/dashboard/create/:type`.
+**Content types:** text, image, video, threads, collection. Built in the composer and `/dashboard/create/:type`.
 
 **Failure emails:** only from awaited `maybeFinalizePostPublish`. Settings: `automationEmails` + `emailOnPostFailed` (default on). Publish-worker needs `RESEND_API_KEY`.
 
-**User webhooks (`post.published` / `post.failed`):** also only from awaited `maybeFinalizePostPublish`. `backend/server/src/lib/user-webhook-delivery.ts` owns delivery — 3 attempts (retry on 5xx/408/425/429/network, never on other 4xx), SSRF-checked on every redirect hop, and every outcome written to `webhook_deliveries` plus `user_webhook_subscriptions.last_delivery_*`. Emission is claimed once per post via `posts.metadata._publishWebhookSentAt` because platform jobs finalize concurrently. Debug surfaces: `GET /v1/webhooks/:id`, `GET /v1/webhooks/:id/deliveries`, `POST /v1/webhooks/:id/test` (and the `/api/webhooks/subscriptions/*` twins the dashboard uses).
+**User webhooks (`post.published` / `post.failed`):** also only from awaited `maybeFinalizePostPublish`. `backend/server/src/lib/user-webhook-delivery.ts` owns delivery: 3 attempts (retry on 5xx/408/425/429/network, never on other 4xx), SSRF-checked on every redirect hop, and every outcome written to `webhook_deliveries` plus `user_webhook_subscriptions.last_delivery_*`. Emission is claimed once per post via `posts.metadata._publishWebhookSentAt` because platform jobs finalize concurrently. Debug surfaces: `GET /v1/webhooks/:id`, `GET /v1/webhooks/:id/deliveries`, `POST /v1/webhooks/:id/test` (and the `/api/webhooks/subscriptions/*` twins the dashboard uses).
 
 ---
 
 ## 5. Frontend (`frontend/`)
 
-Stack, `src/` layout, route table, theming tokens and data-access rules: **[`frontend/claude.md`](frontend/claude.md)** — it loads automatically when you work under `frontend/`. Routes are defined in `frontend/src/routes/router.tsx`.
+Stack, `src/` layout, route table, theming tokens and data-access rules: **[`frontend/claude.md`](frontend/claude.md)**: it loads automatically when you work under `frontend/`. Routes are defined in `frontend/src/routes/router.tsx`.
 
 ---
 
 ## 6. Backend (`backend/`)
 
-Layout, RPC BFF surface, REST groups, cron workers and `@social0/shared` contents: **[`backend/claude.md`](backend/claude.md)** — it loads automatically when you work under `backend/`. Schema source of truth stays `backend/server/src/db/schema.ts`.
+Layout, RPC BFF surface, REST groups, cron workers and `@social0/shared` contents: **[`backend/claude.md`](backend/claude.md)**: it loads automatically when you work under `backend/`. Schema source of truth stays `backend/server/src/db/schema.ts`.
 
 ---
 
@@ -146,7 +146,7 @@ Layout, RPC BFF surface, REST groups, cron workers and `@social0/shared` content
 
 - Bootstraps env (`src/runtime/bootstrap.ts`) then dynamic-imports server publish modules.
 - Secrets: `PUBLISH_HMAC_SECRET`, `ENCRYPTION_KEY`, `RESEND_*`, R2, platform OAuth; Hyperdrive binding.
-- Must **await** finalize (failure email) — never fire-and-forget Resend on Workers.
+- Must **await** finalize (failure email), never fire-and-forget Resend on Workers.
 
 ### cron-worker
 
@@ -163,7 +163,7 @@ Layout, RPC BFF surface, REST groups, cron workers and `@social0/shared` content
 | Area | Backend | Frontend |
 | ---- | ------- | -------- |
 | Teams / workspaces | `lib/workspace/*`, `routes/api/team.ts`, schema `teams` / `teamMembers` / `workspaces` | `features/dashboard/teams`, `workspaces`, `api/team.ts`, `TeamAppLayout` |
-| Team roles | `lib/workspace/permissions.ts` — admin, member, community, analyst | Analyst: analytics only. Community: inbox + reply, cannot publish. Member/Admin: both |
+| Team roles | `lib/workspace/permissions.ts`: admin, member, community, analyst | Analyst: analytics only. Community: inbox + reply, cannot publish. Member/Admin: both |
 | Billing | `handlers/billing/*`, `/api/billing/*`, Dodo webhook | `features/dashboard/billing`, plans in `lib/plans.ts` |
 | Media | R2 presign/confirm `/api/media/*` | upload helpers in create/composer |
 | API keys / webhooks | `/api/api-keys`, `/v1/webhooks` | `/dashboard/api-keys` |
@@ -206,7 +206,7 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 | `social0-cli/` | npm CLI `social0` → `/v1` with `SOCIAL0_API_KEY` |
 | `social0-mcp/` | `@social0/mcp` stdio tools → same `/v1` (also bundled by `cloudflare/mcp-worker`) |
 
-`/v1` routes are **implemented** (`me`, `accounts`, `posts`, `media`, `jobs`, `webhooks`, `analytics`, `inbox`) — not stubs. Auth: Bearer API key (`sk_live_…` / legacy `s0_live_`).
+`/v1` routes are **implemented** (`me`, `accounts`, `posts`, `media`, `jobs`, `webhooks`, `analytics`, `inbox`), not stubs. Auth: Bearer API key (`sk_live_…` / legacy `s0_live_`).
 
 ### Analytics + inbox on `/v1`
 
@@ -218,7 +218,7 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 | `POST /v1/inbox/comments/:commentId/{reply,like,hide}` | Body carries `publication_id` |
 | `POST /v1/inbox/dms/:conversationId/reply` | Body carries `account_id` |
 
-- Services: `services/v1-analytics.ts`, `services/v1-inbox.ts` — thin snake_case
+- Services: `services/v1-analytics.ts`, `services/v1-inbox.ts`: thin snake_case
   DTO mappers over the **same cores** the dashboard RPC uses
   (`*ForScope(ctx, input)` in `services/analytics.ts` / `services/inbox.ts`).
   Add behavior to the core, never to one caller.
@@ -229,7 +229,7 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
   `rpcLiveReadLimiter` / `rpcMutationLimiter` budgets (route-level
   `middleware/v1-live-limits.ts`, keys namespaced `v1:`), on top of the
   hourly tier limit from `requireV1ApiKey`.
-- Keep `backend/server/openapi/openapi.json` in step — `src/tests/v1-analytics-inbox-contract.test.ts` fails if a route or scope drifts.
+- Keep `backend/server/openapi/openapi.json` in step: `src/tests/v1-analytics-inbox-contract.test.ts` fails if a route or scope drifts.
 - CLI: `social0 analytics …`, `social0 inbox …`.
   MCP: `get_analytics`, `get_post_analytics`, `list_inbox_comments`,
   `reply_to_comment`, `moderate_comment`, `list_inbox_dms`,
@@ -244,7 +244,7 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 - Hosting: Neon Postgres
 - **AI: never migrate / alter schema without an explicit user command.**
 
-Notable domains: users/sessions (Better Auth), `user_settings` (onboarding flags, email prefs, plan tier), `legal_acceptances`, `connected_accounts`, `posts` / `post_publications` / media, `publish_jobs` / events, teams/workspaces, queue slots, resurface/autoplug, API keys, webhooks. Analytics and inbox are live platform fetches — no dedicated tables (analytics may persist a resolved TikTok public video id onto `post_publications`).
+Notable domains: users/sessions (Better Auth), `user_settings` (onboarding flags, email prefs, plan tier), `legal_acceptances`, `connected_accounts`, `posts` / `post_publications` / media, `publish_jobs` / events, teams/workspaces, queue slots, resurface/autoplug, API keys, webhooks. Analytics and inbox are live platform fetches, no dedicated tables (analytics may persist a resolved TikTok public video id onto `post_publications`).
 
 ---
 
@@ -272,7 +272,7 @@ npm run install:all
 
 Everything else (`dev`, `build`, `typecheck`, `db:*`) is in root `package.json` scripts.
 
-Backend workspace: `cd backend && bun install` (or npm), then `bun run build` — build order matters: **shared → background-worker → server**. Do not `npm run build` inside `server/` without installing at `backend/` first.
+Backend workspace: `cd backend && bun install` (or npm), then `bun run build`. Build order matters: **shared → background-worker → server**. Do not `npm run build` inside `server/` without installing at `backend/` first.
 
 Publish worker: see `cloudflare/publish-worker/README.md`.
 
@@ -297,7 +297,7 @@ Publish worker: see `cloudflare/publish-worker/README.md`.
 
 - Keep `main` deployable; backend changes on `main` auto-deploy via workflow when `backend/**` changes.
 - When fixing CF worker email/send paths: **await** work before the isolate returns.
-- Same rule for user webhooks: publish paths call `deliverUserWebhookEvent` (awaited). `emitUserWebhookEvent` is fire-and-forget and is only safe inside Fastify handlers on the API droplet — on Workers the isolate is torn down and the request never leaves.
+- Same rule for user webhooks: publish paths call `deliverUserWebhookEvent` (awaited). `emitUserWebhookEvent` is fire-and-forget and is only safe inside Fastify handlers on the API droplet: on Workers the isolate is torn down and the request never leaves.
 
 ---
 
@@ -305,8 +305,8 @@ Publish worker: see `cloudflare/publish-worker/README.md`.
 
 - LinkedIn + X publish logic not fully extracted into `publish-platforms/`.
 - X + TikTok publish on the API by default (not CF), from both the composer and the cron. See `server-side-publish.ts` and `background-worker/src/cron/dispatch-scheduled-target.ts`.
-- `background-worker` schema is duplicated — update both when schema changes (only with explicit permission).
-- Older docs may still say `react-frontend/` — treat **`frontend/`** as the live SPA.
+- `background-worker` schema is duplicated: update both when schema changes (only with explicit permission).
+- Older docs may still say `react-frontend/`: treat **`frontend/`** as the live SPA.
 - Failure-email claim (`posts.metadata._failureEmailSentAt`) is one-shot; stuck claims from old bugs won’t re-send until cleared.
 - `LIVE_PLATFORMS` false ≠ “platform unsupported forever”; it means skip live fetch until App Review. Do not copy it into the SPA.
 

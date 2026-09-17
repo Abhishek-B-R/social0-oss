@@ -1,4 +1,4 @@
-# Social0 — Product features
+# Social0: Product features
 
 Complete list of what Social0 offers today, based on the live app (`react-frontend/`) and API (`backend/server/`).  
 Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
@@ -7,11 +7,11 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 
 ## Core value
 
-- **Multi-platform scheduler** — compose once, publish or schedule to many networks from one dashboard
-- **Parallel publishing** — all selected accounts receive a post at the same time; one platform failing does not block the others
-- **Live publish progress** — “Publish now” shows per-platform status (SSE) until complete
-- **One calendar** — scheduled, queued, draft, and published posts across all connected accounts
-- **Official OAuth** — connect platforms via each network’s supported auth flow (encrypted tokens at rest)
+- **Multi-platform scheduler**: compose once, publish or schedule to many networks from one dashboard
+- **Parallel publishing**: all selected accounts receive a post at the same time; one platform failing does not block the others
+- **Live publish progress**: “Publish now” shows per-platform status (SSE) until complete
+- **One calendar**: scheduled, queued, draft, and published posts across all connected accounts
+- **Official OAuth**: connect platforms via each network’s supported auth flow (encrypted tokens at rest)
 
 ---
 
@@ -43,35 +43,35 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 
 ### Composer & create flows
 
-- **Composer** — quick text-first flow with optional media; supports thread-style multi-post drafts
-- **Manual create** — per-type forms (`/dashboard/create/:type`) with full platform-specific options
-- **Per-platform captions** — one base caption, customize per account/platform where needed
-- **Carousel / multi-image** — image collections and Instagram-style carousels (Starter+)
-- **Aspect-ratio guidance** — video dimension hints before upload
-- **Drag-and-drop media** — images and videos in composer and create forms
-- **Drafts** — save work in progress; edit later from Posts → Drafts
-- **Edit scheduled posts** — update content, accounts, or schedule before publish time
-- **Post again** — republish or retry from post detail
-- **Publish now or schedule** — immediate publish with live progress, or pick date/time
+- **Composer**: quick text-first flow with optional media; supports thread-style multi-post drafts
+- **Manual create**: per-type forms (`/dashboard/create/:type`) with full platform-specific options
+- **Per-platform captions**: one base caption, customize per account/platform where needed
+- **Carousel / multi-image**: image collections and Instagram-style carousels (Starter+)
+- **Aspect-ratio guidance**: video dimension hints before upload
+- **Drag-and-drop media**: images and videos in composer and create forms
+- **Drafts**: save work in progress; edit later from Posts → Drafts
+- **Edit scheduled posts**: update content, accounts, or schedule before publish time
+- **Post again**: republish or retry from post detail
+- **Publish now or schedule**: immediate publish with live progress, or pick date/time
 
 ---
 
 ## Scheduling & organization
 
-- **Schedule for later** — date/time in user’s timezone
-- **Content calendar** — month/week view of scheduled and published posts (`/dashboard/calendar`)
-- **Analytics** — live metrics for posts you published through Social0 (`/dashboard/analytics`). Flask in the sidebar = early access, not a separate product. See [Analytics](#analytics)
-- **Inbox** — comments on Social0-published posts, plus DMs where the platform allows it (`/dashboard/inbox`). Same flask. See [Inbox](#inbox)
-- **Posts list** — all posts with filters (platform, account, time, sort); views for drafts, scheduled, posted
-- **Posting queue** — recurring weekly time slots (Settings → Queue); assign posts to “next queue slot”
-- **Timezone** — user timezone drives schedule display and queue slots (Settings)
-- **Bulk scheduling** — upload many images or videos and schedule across days (Growth+; `/dashboard/bulk-tools`)
+- **Schedule for later**: date/time in user’s timezone
+- **Content calendar**: month/week view of scheduled and published posts (`/dashboard/calendar`)
+- **Analytics**: live metrics for posts you published through Social0 (`/dashboard/analytics`). Flask in the sidebar = early access, not a separate product. See [Analytics](#analytics)
+- **Inbox**: comments on Social0-published posts, plus DMs where the platform allows it (`/dashboard/inbox`). Same flask. See [Inbox](#inbox)
+- **Posts list**: all posts with filters (platform, account, time, sort); views for drafts, scheduled, posted
+- **Posting queue**: recurring weekly time slots (Settings → Queue); assign posts to “next queue slot”
+- **Timezone**: user timezone drives schedule display and queue slots (Settings)
+- **Bulk scheduling**: upload many images or videos and schedule across days (Growth+; `/dashboard/bulk-tools`)
 
 ---
 
 ## Analytics
 
-Route: `/dashboard/analytics` (also under `/dashboard/teams/:teamId/analytics`). Not plan-gated. Flask icon in the sidebar (no “Experimental” label there). The page title shows a flask + **Experimental** — early access, not a separate product.
+Route: `/dashboard/analytics` (also under `/dashboard/teams/:teamId/analytics`). Not plan-gated. Flask icon in the sidebar (no “Experimental” label there). The page title shows a flask + **Experimental**: early access, not a separate product.
 
 Live metrics come from **connected, active accounts** that are rolled out. Metrics are for **posts you published through Social0**, not the rest of the account.
 
@@ -86,7 +86,7 @@ What you see: Views, Likes, Comments, Engagement; Views & engagement trend; **By
 
 ### Live vs not yet (today)
 
-Rolling out as App Review lands. `LIVE_PLATFORMS.analytics` — keep frontend and backend maps in sync. **False = hide chip, skip live fetch, skip reconnect nag.**
+Rolling out as App Review lands. `LIVE_PLATFORMS.analytics`: keep frontend and backend maps in sync. **False = hide chip, skip live fetch, skip reconnect nag.**
 
 | Platform | Analytics today |
 | -------- | --------------- |
@@ -102,8 +102,8 @@ Also available outside the dashboard: `social0 analytics` (CLI), `get_analytics`
 
 Route: `/dashboard/inbox` (also `/dashboard/teams/:teamId/inbox`). Not plan-gated. Same flask as Analytics.
 
-- **Comments** (default) — comments on posts **published through Social0**
-- **DMs** — conversations on platforms that allow it
+- **Comments** (default): comments on posts **published through Social0**
+- **DMs**: conversations on platforms that allow it
 
 Same date ranges as Analytics (`7D` / `2W` / `4W` / `3M` / `1Y` + custom). Account chips: active connections on **live** platforms for that tab. Inline images/videos in threads; reply in-app. Scroll the comments or DMs list to load older threads.
 
@@ -149,7 +149,7 @@ Route: `/dashboard/posts/:id`. Two columns.
 2. **Media** (if any)
 3. Under Media:
    - If **X is not** on the post: full-width **Post analytics** card (published / partial only)
-   - If **X is** on the post: that row splits — **Post analytics** \| **Auto-Plug & Auto-Repost** (Growth+; X-only). Scheduled X posts can show Auto-Plug / Auto-Repost without the analytics card
+   - If **X is** on the post: that row splits: **Post analytics** \| **Auto-Plug & Auto-Repost** (Growth+; X-only). Scheduled X posts can show Auto-Plug / Auto-Repost without the analytics card
 
 **Post analytics** starts **collapsed**. Clicking **Show analytics** is what fetches metrics. They do not load on page open. **Hide analytics** / **Refresh** after open. Live-platform filter still applies: platforms with `LIVE_PLATFORMS.analytics` false are skipped.
 
@@ -157,16 +157,16 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 
 **Right**
 
-1. **Status card** — type badge (Text / Image / Video / Thread / Collection), Posted / Scheduled / Queued / Publishing / Partial / Failed / Draft, then **Post again** / **Edit and post** (and publish/retry/delete when relevant), then Created / Scheduled or Queued / Posted timestamps
-2. **Publish status** — per-platform publish log
-3. **Platforms** — account rows + **View** on the network when published (Retry if that account failed)
+1. **Status card**: type badge (Text / Image / Video / Thread / Collection), Posted / Scheduled / Queued / Publishing / Partial / Failed / Draft, then **Post again** / **Edit and post** (and publish/retry/delete when relevant), then Created / Scheduled or Queued / Posted timestamps
+2. **Publish status**: per-platform publish log
+3. **Platforms**: account rows + **View** on the network when published (Retry if that account failed)
 
 ---
 
 ## Growth automation (Growth & Pro)
 
-- **Auto-repost / resurface** — automatically repost evergreen content on an interval with optional max resurfaces and plug comment
-- **Auto-plug** — add a call-to-action reply when a post hits a performance threshold (e.g. retweets/likes on X)
+- **Auto-repost / resurface**: automatically repost evergreen content on an interval with optional max resurfaces and plug comment
+- **Auto-plug**: add a call-to-action reply when a post hits a performance threshold (e.g. retweets/likes on X)
 - Configurable per post at schedule time or on post detail for eligible posts
 - **X-only** today. On post detail they share a row with Post analytics when X is on the post (see [Post details](#post-details))
 
@@ -174,37 +174,37 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 
 ## Connections & accounts
 
-- **Connections hub** — connect, disconnect, and refresh tokens (`/dashboard/connections`)
-- **Multiple accounts per platform** — when plan limits allow
-- **Account pickers** — Facebook Page select, Instagram select, LinkedIn company/page select, Instagram-via-Facebook flow
-- **Token health** — background validation and refresh; reconnect prompts when auth expires
-- **X Premium detection** — extended character limit when Premium is active on the connected account
-- **Pinterest default board** — set a default; override per post in composer
+- **Connections hub**: connect, disconnect, and refresh tokens (`/dashboard/connections`)
+- **Multiple accounts per platform**: when plan limits allow
+- **Account pickers**: Facebook Page select, Instagram select, LinkedIn company/page select, Instagram-via-Facebook flow
+- **Token health**: background validation and refresh; reconnect prompts when auth expires
+- **X Premium detection**: extended character limit when Premium is active on the connected account
+- **Pinterest default board**: set a default; override per post in composer
 
 ---
 
 ## Dashboard & app experience
 
-- **Marketing site** — landing, pricing, FAQ, features/alternatives SEO pages (`/`, `/features`, `/alternatives`)
-- **Auth** — email sign-up/sign-in, Google OAuth, email verification, forgot/reset password
-- **Guest dashboard** — browse dashboard UI without signing in (test mode; cannot post)
-- **Onboarding** — guided setup after sign-up (goal → connect → optional plan → first post)
-- **Billing** — Stripe/Dodo checkout, plan change, cancel, portal
-- **Settings** — display name, avatar, timezone, platform preferences, automation emails, post-failure emails, sign out all devices
-- **Feedback** — embedded Canny board (`/dashboard/feedback`)
-- **Documentation links** — in-app links to [docs.social0.app](https://docs.social0.app)
-- **Dark / light theme** — toggle on marketing and auth pages
-- **Mobile-friendly dashboard** — bottom nav on small screens; responsive layouts
+- **Marketing site**: landing, pricing, FAQ, features/alternatives SEO pages (`/`, `/features`, `/alternatives`)
+- **Auth**: email sign-up/sign-in, Google OAuth, email verification, forgot/reset password
+- **Guest dashboard**: browse dashboard UI without signing in (test mode; cannot post)
+- **Onboarding**: guided setup after sign-up (goal → connect → optional plan → first post)
+- **Billing**: Stripe/Dodo checkout, plan change, cancel, portal
+- **Settings**: display name, avatar, timezone, platform preferences, automation emails, post-failure emails, sign out all devices
+- **Feedback**: embedded Canny board (`/dashboard/feedback`)
+- **Documentation links**: in-app links to [docs.social0.app](https://docs.social0.app)
+- **Dark / light theme**: toggle on marketing and auth pages
+- **Mobile-friendly dashboard**: bottom nav on small screens; responsive layouts
 
 ---
 
 ## Reliability & notifications
 
-- **Per-platform publish status** — success/failure per account on each post
-- **Failure reasons** — stored and shown when a platform publish fails
-- **Email on post failure** — optional notification (Settings)
-- **Payment-failed banner** — prompt to update payment when billing fails and publish is blocked
-- **Free-tier post allowance** — limited lifetime posts on Free before upgrade required
+- **Per-platform publish status**: success/failure per account on each post
+- **Failure reasons**: stored and shown when a platform publish fails
+- **Email on post failure**: optional notification (Settings)
+- **Payment-failed banner**: prompt to update payment when billing fails and publish is blocked
+- **Free-tier post allowance**: limited lifetime posts on Free before upgrade required
 
 ---
 
@@ -232,11 +232,11 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 
 ## Security & compliance
 
-- **Encrypted OAuth tokens** — HKDF per connected account
-- **Better Auth** — session cookies; optional API key auth (`s0_live_*`) on backend
-- **Turnstile** — bot protection on sign-up (production)
-- **Legal consent** — terms and privacy acceptance on registration
-- **Privacy & terms pages** — `/privacy`, `/terms`, data deletion instructions
+- **Encrypted OAuth tokens**: HKDF per connected account
+- **Better Auth**: session cookies; optional API key auth (`s0_live_*`) on backend
+- **Turnstile**: bot protection on sign-up (production)
+- **Legal consent**: terms and privacy acceptance on registration
+- **Privacy & terms pages**: `/privacy`, `/terms`, data deletion instructions
 
 ---
 
@@ -258,7 +258,7 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 | Teams (`/dashboard/teams`) | ✓ Invite teammates as Admin, Member, Community, or Analyst (Pro-gated) |
 
 `/v1` analytics and inbox reuse the same cores as the dashboard, but API keys
-address the **personal (main) pool** only — workspace-scoped accounts stay in the
+address the **personal (main) pool** only: workspace-scoped accounts stay in the
 dashboard. Live reads are subject to the same `LIVE_PLATFORMS` gate, cache, and
 per-platform outbound limits, so totals can come back `sampled` or `partial`;
 clients are expected to surface that rather than quote a partial total as final.

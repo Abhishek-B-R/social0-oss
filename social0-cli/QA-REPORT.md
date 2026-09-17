@@ -3,7 +3,7 @@
 **Date:** 2026-07-14  
 **CLI version:** `social0` v0.1.2 (`social0` on PATH)  
 **Account:** Abhishek BR (`abhishekbr989@gmail.com`) · plan `growth`  
-**Facebook target:** account ID **1** · `facebook` · **Social0** (active) — IDs reorder over time  
+**Facebook target:** account ID **1** · `facebook` · **Social0** (active): IDs reorder over time  
 **API:** `https://api.social0.app/v1`
 
 > **Retest (v0.1.2):** Prior failures from the first pass were re-checked. See [Retest of prior failures](#retest-of-prior-failures-v012) at the bottom.
@@ -14,7 +14,7 @@
 
 **Facebook posting works end-to-end.** Live publishes (text, image, markdown, stdin, drafts, multi-platform) all succeeded on the Social0 Facebook page.
 
-The CLI is usable for the happy path, but several UX bugs make follow-up commands (show / edit / schedule / drafts publish) painful — mainly **truncated post IDs** that the API does not accept.
+The CLI is usable for the happy path, but several UX bugs make follow-up commands (show / edit / schedule / drafts publish) painful: mainly **truncated post IDs** that the API does not accept.
 
 ---
 
@@ -33,7 +33,7 @@ The CLI is usable for the happy path, but several UX bugs make follow-up command
 | Completions | `bash` / `zsh` / `fish` / `powershell` | Scripts generated |
 | Post init | `social0 post init` | Sample JSON template |
 | Post list | `social0 post list` (+ `--status`) | Lists drafts/published/scheduled |
-| **Facebook live publish** | `post create --platform 7 --publish` | **success** — `Published to facebook` |
+| **Facebook live publish** | `post create --platform 7 --publish` | **success**: `Published to facebook` |
 | **Publish (flags)** | `publish -c "..." -p 7` | **success** |
 | **Publish (platform name)** | `--platform facebook` | **success** |
 | **Publish (stdin)** | `echo "..." \| social0 publish -p 7` | **success** |
@@ -60,7 +60,7 @@ The CLI is usable for the happy path, but several UX bugs make follow-up command
 | Export | `social0 export file.json` | Exported 100 posts with **full** UUIDs |
 | Import | `social0 import file.json` | Creates drafts |
 | Accounts connect | `accounts connect facebook` | Prints Facebook OAuth URL |
-| Unit tests | `npm test` | 16/17 pass (1 date parser fail — see bugs) |
+| Unit tests | `npm test` | 16/17 pass (1 date parser fail: see bugs) |
 
 ### Live Facebook posts created during this run (examples)
 
@@ -80,7 +80,7 @@ The CLI is usable for the happy path, but several UX bugs make follow-up command
 
 1. **Truncated post IDs break the main workflow**  
    - Tables, draft list, create success messages, and even `--json` list output show **only 8 chars** (e.g. `76fd5d64`).  
-   - Hint text tells you to run `social0 publish 76fd5d64` — that **always fails** (`Post not found` / `Invalid post ID`).  
+   - Hint text tells you to run `social0 publish 76fd5d64`: that **always fails** (`Post not found` / `Invalid post ID`).  
    - Full UUID is required (e.g. from `export`).  
    - Same pattern for media IDs in table mode (`ff3729d0-889...`); use `upload --json` for the real ID.
 
@@ -117,7 +117,7 @@ The CLI is usable for the happy path, but several UX bugs make follow-up command
 9. **`status` prints platform lines twice** in table mode (poll callback + final render).  
 10. **Invalid platform** (`--platform myspace`) → generic `Invalid request body` instead of “no matching accounts”.  
 11. **TikTok account** listed as `expired` (platform reconnect needed; not a CLI bug).  
-12. **`logout` / `passphrase set|remove` / `accounts disconnect`** — not executed (destructive); connect OAuth URL path verified only.
+12. **`logout` / `passphrase set|remove` / `accounts disconnect`**: not executed (destructive); connect OAuth URL path verified only.
 
 ---
 
@@ -153,7 +153,7 @@ The CLI is usable for the happy path, but several UX bugs make follow-up command
 ## How to re-verify Facebook quickly
 
 ```bash
-social0 accounts          # IDs reorder — prefer platform name
+social0 accounts          # IDs reorder: prefer platform name
 social0 publish --content "smoke test" --platform facebook
 ```
 
@@ -165,17 +165,17 @@ Re-ran only items that failed/broke in the first pass against built `social0` v0
 
 | Prior issue | Retest result |
 |-------------|-------------|
-| Truncated post IDs / short ID publish/show | **Fixed** — lists print full UUIDs; create hints use full UUID; short prefix resolves (`post show` / `publish` / `drafts schedule`) |
-| Media ID truncated in table | **Fixed** — full UUID in table |
-| Schedule wall-clock / timezone (`toISOString`) | **Fixed** — CLI sends `…T09:00:00+default`; API UTC matches IST wall clock; unit tests **19/19** |
-| Relative NL (`in 2 hours`, `in 2 days at 3pm`) | **Fixed** — schedules successfully |
-| `post create -c -p` hung on schedule prompt | **Fixed** — creates draft with no prompt |
+| Truncated post IDs / short ID publish/show | **Fixed**: lists print full UUIDs; create hints use full UUID; short prefix resolves (`post show` / `publish` / `drafts schedule`) |
+| Media ID truncated in table | **Fixed**: full UUID in table |
+| Schedule wall-clock / timezone (`toISOString`) | **Fixed**: CLI sends `…T09:00:00+default`; API UTC matches IST wall clock; unit tests **19/19** |
+| Relative NL (`in 2 hours`, `in 2 days at 3pm`) | **Fixed**: schedules successfully |
+| `post create -c -p` hung on schedule prompt | **Fixed**: creates draft with no prompt |
 | `schedule` single JSON object (`batch is not iterable`) | **Fixed** |
-| `import` ignored `schedule` | **Fixed** — creates scheduled post |
-| `social0 update` hard fail | **Improved** — handles unpublished package (`not published on npm yet`) |
-| AI suggest/improve/hashtags | **Still unavailable** (API missing) — now hidden from `--help`, clearer message, exit 1 |
-| `link` interactive-only hang | **Fixed** — `link --platform 1 --format json` works non-interactively |
-| Invalid platform unclear error | **Fixed** — `No matching accounts for: myspace…` |
-| `status` double-printed platforms | **Fixed** — one line per platform |
+| `import` ignored `schedule` | **Fixed**: creates scheduled post |
+| `social0 update` hard fail | **Improved**: handles unpublished package (`not published on npm yet`) |
+| AI suggest/improve/hashtags | **Still unavailable** (API missing), now hidden from `--help`, clearer message, exit 1 |
+| `link` interactive-only hang | **Fixed**: `link --platform 1 --format json` works non-interactively |
+| Invalid platform unclear error | **Fixed**: `No matching accounts for: myspace…` |
+| `status` double-printed platforms | **Fixed**: one line per platform |
 
 **Still not live product features:** AI endpoints (intentionally stubbed/hidden until API exists).

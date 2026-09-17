@@ -1,4 +1,4 @@
-# Analytics scopes — how to apply without breaking publish
+# Analytics scopes: how to apply without breaking publish
 
 Social0 analytics fetches **live** metrics from each platform when you open Analytics or click **Show analytics** on a post. No new database tables.
 
@@ -13,7 +13,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 
 ## Per-platform checklist
 
-### Meta — Facebook Pages
+### Meta: Facebook Pages
 
 | Item | Detail |
 | ---- | ------ |
@@ -24,7 +24,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | Use case copy | “Show Page post views and engagement in Social0 Analytics so creators can see how published posts perform.” |
 | Endpoints | `GET /{post-id}?fields=likes.summary,comments.summary,shares` + `GET /{post-id}/insights?metric=post_media_view,post_clicks` (`post_impressions*` deprecated Nov 2025) |
 
-### Meta — Instagram (Instagram Login)
+### Meta: Instagram (Instagram Login)
 
 | Item | Detail |
 | ---- | ------ |
@@ -34,7 +34,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | Use case | “Display media views, reach, and saves for posts published through Social0.” |
 | Endpoints | `GET /{media-id}?fields=like_count,comments_count` + `GET /{media-id}/insights` |
 
-### Meta — Threads
+### Meta: Threads
 
 | Item | Detail |
 | ---- | ------ |
@@ -43,7 +43,7 @@ Adding scopes is **additive**: existing connected accounts keep their old tokens
 | App Review | Threads API permissions in Meta dashboard |
 | Endpoints | `GET /{threads-media-id}/insights?metric=views,likes,replies,reposts,quotes` |
 
-### Google — YouTube
+### Google: YouTube
 
 | Item | Detail |
 | ---- | ------ |
@@ -116,11 +116,11 @@ Comments | DMs toggle on the same page. DMs are **account-level** (not limited t
 | Platform | API | Extra OAuth / setup |
 | -------- | --- | ------------------- |
 | Instagram | `/{ig-id}/conversations?platform=instagram` + `/{ig-id}/messages` | `instagram_business_manage_messages` (Instagram Login) |
-| X | v2 `dm_events` + `dm_conversations/with/:id/messages` | App permission **Direct Messages Read and Write** (OAuth 1.0a — no extra scope string). Reconnect after enabling it on the X developer app. |
+| X | v2 `dm_events` + `dm_conversations/with/:id/messages` | App permission **Direct Messages Read and Write** (OAuth 1.0a, no extra scope string). Reconnect after enabling it on the X developer app. |
 | Bluesky | `chat.bsky.convo.*` via `api.bsky.chat` + `Atproto-Proxy` | App password with **chat** enabled |
 | TikTok | Business Messaging `/business/message/*` | Separate TikTok for Business product (not Login Kit). Unavailable in US/EEA/UK. |
 
-**Not shipped** (no public comments API): TikTok, Pinterest. **Not shipped** for DMs/messaging: Facebook Pages, Threads, YouTube, LinkedIn (partner-only). Pinterest has no comments API — publish and analytics only.
+**Not shipped** (no public comments API): TikTok, Pinterest. **Not shipped** for DMs/messaging: Facebook Pages, Threads, YouTube, LinkedIn (partner-only). Pinterest has no comments API: publish and analytics only.
 
 ## What users see before App Review
 

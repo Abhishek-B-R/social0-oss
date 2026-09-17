@@ -1,10 +1,10 @@
-# Platform permissions — Social0 feature matrix
+# Platform permissions: Social0 feature matrix
 
 Complete checklist of OAuth scopes, app permissions, and setup steps so **publish**, **analytics**, **inbox comments**, and **inbox DMs** work on each network.
 
 **How Social0 applies scopes:** new permissions are **additive**. Existing connected accounts keep publishing until the user **Reconnects** on `/dashboard/connections`. The inbox shows a reconnect banner naming missing scopes.
 
-**Meta Login for Business:** connect sends explicit `FACEBOOK_PAGE_SCOPES` from code. Do **not** put `pages_messaging` in a Login configuration — that permission is invalid for our Page-publish use case and Meta shows "Invalid Scopes" to app developers.
+**Meta Login for Business:** connect sends explicit `FACEBOOK_PAGE_SCOPES` from code. Do **not** put `pages_messaging` in a Login configuration, that permission is invalid for our Page-publish use case and Meta shows "Invalid Scopes" to app developers.
 
 Source of truth in code: `backend/server/src/lib/platforms.ts`, `backend/shared/src/constants/facebook-scopes.ts`, `backend/server/src/lib/inbox/types.ts`.
 
@@ -49,7 +49,7 @@ Source of truth in code: `backend/server/src/lib/platforms.ts`, `backend/shared/
 ### Inbox behavior
 
 - **Comments:** only on posts **published through Social0** (we have `platform_post_id`).
-- **Replies:** always attach to the **top-level comment** (Instagram API — no nested reply-to-reply).
+- **Replies:** always attach to the **top-level comment** (Instagram API, no nested reply-to-reply).
 - **DM attachments:** image + video via Graph Messenger API.
 
 ### Reconnect when
@@ -104,7 +104,7 @@ Defined in `FACEBOOK_PAGE_SCOPES` (`backend/shared`).
 
 - Comments on Social0-published threads.
 - **Nested replies supported** in UI (reply to specific reply).
-- **No DMs** — Threads has no public messaging API for third parties.
+- **No DMs**: Threads has no public messaging API for third parties.
 
 ---
 
@@ -139,12 +139,12 @@ Defined in `FACEBOOK_PAGE_SCOPES` (`backend/shared`).
 
 OAuth **1.0a** (not scope strings). Requires app keys: `TWITTER_CONSUMER_KEY`, `TWITTER_CONSUMER_SECRET`.
 
-### Developer portal — enable these
+### Developer portal: enable these
 
 | Setting | Feature |
 | ------- | ------- |
 | Read and write (user context) | Publish tweets, upload media |
-| **Direct Messages — Read and Write** | **Inbox DMs** (no extra OAuth scope string — enable on app, then reconnect) |
+| **Direct Messages: Read and Write** | **Inbox DMs** (no extra OAuth scope string: enable on app, then reconnect) |
 | Elevated / Basic API access | Tweet lookup, metrics, DM endpoints |
 
 ### Inbox behavior
@@ -155,7 +155,7 @@ OAuth **1.0a** (not scope strings). Requires app keys: `TWITTER_CONSUMER_KEY`, `
 
 ### Reconnect when
 
-DM endpoints return 403 — enable “Direct Messages Read and Write” on the X developer app, then reconnect account.
+DM endpoints return 403: enable “Direct Messages Read and Write” on the X developer app, then reconnect account.
 
 ---
 
@@ -163,7 +163,7 @@ DM endpoints return 403 — enable “Direct Messages Read and Write” on the X
 
 ### Auth model
 
-**App password** (BYOK) — not OAuth scopes. User creates an app password in Bluesky settings with:
+**App password** (BYOK), not OAuth scopes. User creates an app password in Bluesky settings with:
 
 | Capability | Feature |
 | ---------- | ------- |
@@ -190,7 +190,7 @@ Stored as encrypted access + “secret” (app password) on the connected accoun
 | `openid`, `profile`, `email` | Sign-in identity |
 | `w_member_social` | Publish personal posts |
 
-### When Marketing Developer Platform (MDP) approved — add
+### When Marketing Developer Platform (MDP) approved: add
 
 | Scope | Feature |
 | ----- | ------- |
@@ -200,7 +200,7 @@ Stored as encrypted access + “secret” (app password) on the connected accoun
 
 ### Inbox behavior
 
-- **Comments:** best-effort read via Community Management APIs — often blocked without MDP.
+- **Comments:** best-effort read via Community Management APIs: often blocked without MDP.
 - **Replies:** not shipped (partner API required).
 - **DMs:** not available on public API.
 
@@ -208,7 +208,7 @@ Stored as encrypted access + “secret” (app password) on the connected accoun
 
 ## TikTok
 
-### OAuth scopes (Login Kit — publish + analytics)
+### OAuth scopes (Login Kit: publish + analytics)
 
 | Scope | Feature |
 | ----- | ------- |
@@ -217,7 +217,7 @@ Stored as encrypted access + “secret” (app password) on the connected accoun
 | `video.list` | List videos (Analytics) |
 | `user.info.stats` | Follower / aggregate stats |
 
-### Inbox DMs — Business Messaging API (separate product)
+### Inbox DMs: Business Messaging API (separate product)
 
 TikTok **does** have an official DM API: [Business Messaging](https://business-api.tiktok.com/portal/bm-api/education-hub) at `business-api.tiktok.com/open_api/v1.3`.
 
@@ -267,7 +267,7 @@ No public comments inbox on Login Kit. Business API has a comments product; not 
 
 ### Publishing (all platforms)
 
-Use each platform’s publish scopes in `PLATFORM_OAUTH_CONFIG` — no inbox scopes required.
+Use each platform’s publish scopes in `PLATFORM_OAUTH_CONFIG`: no inbox scopes required.
 
 ### Analytics (`/dashboard/analytics`)
 
@@ -343,6 +343,6 @@ See also [`docs/ANALYTICS_SCOPES.md`](./ANALYTICS_SCOPES.md).
 
 ## Related docs
 
-- [`docs/ANALYTICS_SCOPES.md`](./ANALYTICS_SCOPES.md) — analytics rollout + App Review copy
-- [`FEATURES.md`](../FEATURES.md) — product feature gates
-- [`CLAUDE.md`](../CLAUDE.md) — inbox architecture (live-fetch, no DB)
+- [`docs/ANALYTICS_SCOPES.md`](./ANALYTICS_SCOPES.md): analytics rollout + App Review copy
+- [`FEATURES.md`](../FEATURES.md): product feature gates
+- [`CLAUDE.md`](../CLAUDE.md): inbox architecture (live-fetch, no DB)

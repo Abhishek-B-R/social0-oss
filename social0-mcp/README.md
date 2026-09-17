@@ -1,6 +1,6 @@
 # Social0 MCP
 
-Post to **Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Pinterest, Threads, and Bluesky** from Claude, Cursor, ChatGPT, and other AI apps — in plain English.
+Post to **Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Pinterest, Threads, and Bluesky** from Claude, Cursor, ChatGPT, and other AI apps: in plain English.
 
 Prefer the **[`social0` CLI](https://www.npmjs.com/package/social0)** when you have a terminal or agent shell (`npx social0`). Use this MCP package when the AI host only supports MCP connectors.
 
@@ -8,7 +8,7 @@ Prefer the **[`social0` CLI](https://www.npmjs.com/package/social0)** when you h
 
 ---
 
-## Remote URL (recommended — no npx)
+## Remote URL (recommended, no npx)
 
 Works with **Claude.ai**, **ChatGPT**, and any AI that accepts a remote MCP connector.
 
@@ -101,11 +101,11 @@ Needs [Node.js 20+](https://nodejs.org/) and a `sk_live_` key from [API keys](ht
 - Read live metrics for a window or a single post (`get_analytics`, `get_post_analytics`)
 - Triage comments on posts you published, and reply, like, or hide them
   (`list_inbox_comments`, `reply_to_comment`, `moderate_comment`)
-- Read and answer DMs on networks that support them — X and Bluesky today
+- Read and answer DMs on networks that support them: X and Bluesky today
   (`list_inbox_dms`, `get_inbox_dm_thread`, `reply_to_dm`)
 
 Analytics and inbox read from each network at request time and cover posts
-published through Social0 (plus DMs on the connected account) — they are not a
+published through Social0 (plus DMs on the connected account), they are not a
 full social-listening feed. Replies and DMs go out publicly, so confirm the
 wording with the user before sending.
 
@@ -115,4 +115,4 @@ wording with the user before sending.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT: see [LICENSE](LICENSE).

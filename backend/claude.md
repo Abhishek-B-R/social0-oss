@@ -1,10 +1,10 @@
-# Social0 backend — AI guidance
+# Social0 backend: AI guidance
 
 API + workers for Social0. **Whole-system map:** root [`CLAUDE.md`](../CLAUDE.md). SPA lives in [`../frontend/`](../frontend/) (not a `react-frontend/` directory).
 
 **Audience:** edits under `backend/` or `cloudflare/publish-worker/` that share server publish modules.
 
-**Branch:** keep `main` deployable — `backend/**` changes auto-deploy via `.github/workflows/deploy-backend.yml`.
+**Branch:** keep `main` deployable: `backend/**` changes auto-deploy via `.github/workflows/deploy-backend.yml`.
 
 ---
 
@@ -12,9 +12,9 @@ API + workers for Social0. **Whole-system map:** root [`CLAUDE.md`](../CLAUDE.md
 
 ```
 backend/
-├── server/              # @social0/server — Fastify HTTP + RPC BFF + publish engine
-├── background-worker/   # @social0/background-worker — cron BullMQ only
-├── shared/              # @social0/shared — queues, CF client, types
+├── server/              # @social0/server: Fastify HTTP + RPC BFF + publish engine
+├── background-worker/   # @social0/background-worker: cron BullMQ only
+├── shared/              # @social0/shared: queues, CF client, types
 ├── migrations/
 ├── claude.md            # this file
 └── README.md
@@ -27,9 +27,9 @@ cloudflare/
 
 | Layer | Responsibility |
 | ----- | -------------- |
-| **frontend/** | UI — calls `/api/*` and `POST /api/rpc` |
+| **frontend/** | UI: calls `/api/*` and `POST /api/rpc` |
 | **server** | Auth, validation, RPC, enqueue, live analytics/inbox, fast `202`/`200` |
-| **CF publish worker** | Per-platform publish (1–2.5 min) — Hyperdrive + R2 → platforms |
+| **CF publish worker** | Per-platform publish (1–2.5 min): Hyperdrive + R2 → platforms |
 | **background-worker** | Cron: scheduled dispatch, repost, autoplug, token health, billing zombie |
 | **shared** | Queue names, job types, CF publish client, job progress |
 
@@ -64,7 +64,7 @@ frontend → POST /api/publish or RPC publish.*
 
 `PUBLISH_DISPATCH=bullmq` = droplet-side platform queues (legacy / local fallback).
 
-**X + TikTok stay on the API by default** (`shared/src/constants/server-side-publish.ts`) — not the CF worker. Kill switches: `TWITTER_PUBLISH_ON_CF=1`, `TIKTOK_PUBLISH_ON_CF=1` after the worker is current. Cron helper: `POST /api/cron/publish-platform`.
+**X + TikTok stay on the API by default** (`shared/src/constants/server-side-publish.ts`), not the CF worker. Kill switches: `TWITTER_PUBLISH_ON_CF=1`, `TIKTOK_PUBLISH_ON_CF=1` after the worker is current. Cron helper: `POST /api/cron/publish-platform`.
 
 **Failure emails:** only from awaited `maybeFinalizePostPublish`. Never `void` sendEmail on the CF path (isolate kills in-flight work).
 
@@ -125,7 +125,7 @@ Also: Better Auth `/api/auth/*`, billing `/api/billing/*`, connect, media, team,
 ```bash
 cd backend
 cp .env.example .env
-bun install          # or npm install — hoist to backend/node_modules
+bun install          # or npm install: hoist to backend/node_modules
 bun run build        # shared → background-worker → server
 
 bun run dev:server              # :3001
@@ -145,7 +145,7 @@ Do not run `npm run build` inside `server/` without installing at `backend/` fir
 | `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` / `AUTH_API_URL` | Auth API host |
 | `NEXT_PUBLIC_APP_URL` / `APP_URL` | SPA origin |
 | `TRUSTED_APP_ORIGINS` / `CORS_ORIGINS` | CORS |
-| `ENCRYPTION_KEY` | 64 hex — match API + publish-worker |
+| `ENCRYPTION_KEY` | 64 hex: match API + publish-worker |
 | `PUBLISH_DISPATCH` | `cloudflare` (default) or `bullmq` |
 | `CF_PUBLISH_WORKER_URL`, `CF_PUBLISH_HMAC_SECRET` | CF publish |
 | `TWITTER_PUBLISH_ON_CF`, `TIKTOK_PUBLISH_ON_CF` | `1` sends X / TikTok to CF; unset = API |
@@ -160,13 +160,12 @@ Full list: `.env.example`. SPA: `frontend/.env.example`.
 ## 7. Database
 
 Migrations: `backend/migrations/`. Schema: `server/src/db/schema.ts`.  
-`background-worker` has a **copy** — keep in sync when schema changes.
+`background-worker` has a **copy**: keep in sync when schema changes.
 
 **Migrations are hand-written.** There is no `db:generate` script and drizzle-kit
 generate must not be run here: `migrations/meta/` snapshots stop at `0018` while
 the journal runs through `0048`, so generate diffs against a stale baseline and
-emits phantom CREATEs plus a `platform_rate_limits` DROP. Drizzle has no codegen —
-app types come from `typeof table.$inferSelect` off `schema.ts`, so nothing is lost.
+emits phantom CREATEs plus a `platform_rate_limits` DROP. Drizzle has no codegen: app types come from `typeof table.$inferSelect` off `schema.ts`, so nothing is lost.
 
 To add one: write `migrations/00NN_<name>.sql`, append a `_journal.json` entry whose
 `when` is **greater than the previous entry's** (`drizzle-kit migrate` skips anything
@@ -179,7 +178,7 @@ not newer than the last applied `created_at`), then `npm run db:migrate`.
 ## 8. Conventions
 
 - Imports: `@social0/shared`, `.js` extensions where server tsconfig requires.
-- Heavy work: enqueue or CF — never await platform *publish* APIs in HTTP handlers. Analytics/inbox live reads are the exception (budgeted).
+- Heavy work: enqueue or CF, never await platform *publish* APIs in HTTP handlers. Analytics/inbox live reads are the exception (budgeted).
 - New RPC: `services/` + `rpc.ts` + `frontend/src/api/` wrapper.
 - New live analytics/inbox platform: implement fetch in `lib/analytics/` or `lib/inbox/`, then flip `lib/live-platforms.ts`. Never copy that map into `frontend/`.
 - New REST from old patterns: `handlers/` + `routes/api/`.
@@ -195,5 +194,5 @@ not newer than the last applied `created_at`), then `npm run db:migrate`.
 - Schema duplication server ↔ background-worker.
 - CF scheduled posts: cron + scheduled queue (not BullMQ `delay` on the API for the wake-up).
 - `PUBLISH_DISPATCH=bullmq` is higher ops cost on the droplet.
-- `LIVE_PLATFORMS` is the only live-feature gate — SPA lists come from `analytics.listAccounts` / `inbox.listAccounts`. Do not duplicate in `frontend/`.
+- `LIVE_PLATFORMS` is the only live-feature gate: SPA lists come from `analytics.listAccounts` / `inbox.listAccounts`. Do not duplicate in `frontend/`.
 - Inbox is live fetch (no inbox tables). Analytics may persist a resolved TikTok public video id onto `post_publications`.

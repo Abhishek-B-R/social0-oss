@@ -107,6 +107,6 @@ Direct API key auth also works for testing: `Authorization: Bearer sk_live_...`
 
 ## Notes
 
-- `upload_media` on hosted MCP accepts `url` or `data` (base64) (+ optional `filename`, `mime_type`) — not `file_path`.
+- `upload_media` on hosted MCP accepts `url` or `data` (base64) (+ optional `filename`, `mime_type`), not `file_path`.
 - Re-approving OAuth revokes the previous **Claude MCP Connector** API key and mints a new one; existing Claude sessions must reconnect.
 - Keep the stdio package for Cursor, Claude Desktop, VS Code, and local workflows.

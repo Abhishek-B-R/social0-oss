@@ -45,4 +45,4 @@ Requires **Node.js 20+** on the machine running ChatGPT Desktop.
 
 ## Media tip
 
-For remote ChatGPT, use `upload_media` with a public `url` or base64 `data` — local sandbox paths will not work on the hosted server.
+For remote ChatGPT, use `upload_media` with a public `url` or base64 `data`: local sandbox paths will not work on the hosted server.
