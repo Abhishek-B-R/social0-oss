@@ -1,6 +1,7 @@
 {
   "name": "social0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "description": "Orchestration scripts only — frontend and backend stay separate packages (Pages deploys frontend/ alone).",
   "scripts": {
     "install:all": "npm install --prefix frontend && npm install --prefix backend",
