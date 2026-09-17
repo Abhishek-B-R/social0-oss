@@ -214,7 +214,7 @@ export async function publishToFacebook(
       : `${pageId}_${rawPostId}`
     : null;
 
-  // Prefer Graph API `permalink_url`. Hand-built /posts/{id} paths often 404.
+  // Prefer Graph API `permalink_url` from create responses. Hand-built paths often 404 — fetch the real permalink.
   const handmadeFallback = postId
     ? isVideo
       ? `https://www.facebook.com/${pageId}/videos/${postId}/`

@@ -198,7 +198,7 @@ export function buildAlternativePage(def: CompetitorDef): AlternativePage {
   };
 }
 
-/** Competitors sourced from PostPlanify / PostSyncer / Postiz sitemap patterns. */
+/** Competitor list sourced from industry sitemap / SEO research. */
 export const COMPETITOR_CATALOG: CompetitorDef[] = [
   {
     slug: "agorapulse",

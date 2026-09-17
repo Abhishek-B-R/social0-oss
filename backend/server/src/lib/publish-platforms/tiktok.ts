@@ -88,9 +88,9 @@ function resolveTikTokHandle(pub: Pub, profileUrl: string | null): string | null
 }
 
 /**
- * On PUBLISH_COMPLETE use publicaly_available_post_id ->
- * https://www.tiktok.com/@{profile}/video/{id} (handle optional - /@/video/{id} works).
- * Inbox draft -> messages URL. Prefer profile over bare homepage when no video id.
+ * On PUBLISH_COMPLETE, use publicaly_available_post_id for the public video URL
+ * (https://www.tiktok.com/@{profile}/video/{id}; handle optional — /@/video/{id} works).
+ * Inbox draft → messages URL. Profile-only if id missing (prefer profile over bare homepage).
  */
 async function buildTikTokPublishedResult(
   pub: Pub,
