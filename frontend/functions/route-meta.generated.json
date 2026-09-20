@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-25T07:43:17.820Z",
+  "generatedAt": "2026-09-20T07:40:17.128Z",
   "static": {
     "/": {
       "title": "Social0 — AI Agents & Multi-Platform Social Scheduling",
@@ -20,6 +20,10 @@
     "/alternatives": {
       "title": "Social0 alternatives and comparisons",
       "description": "Compare Social0 with Buffer, Hootsuite, Later, Postiz, PostSyncer, Blotato, and 60+ other social media schedulers."
+    },
+    "/blog": {
+      "title": "Blog — Social0",
+      "description": "Platform specs, publishing strategy, and engineering notes on multi-platform social media publishing — character limits, video specs, posting APIs, and AI agent workflows."
     },
     "/tools": {
       "title": "Tools & Integrations | Social0",
@@ -431,6 +435,56 @@
     "openclaw": {
       "title": "Social0 OpenClaw Skill | Social0",
       "description": "Install the Social0 OpenClaw skill and let your agent publish across platforms."
+    }
+  },
+  "blog": {
+    "bluesky-and-threads-for-brands": {
+      "title": "Bluesky vs Threads in 2026: Which Is Worth Your Time?",
+      "description": "How Bluesky and Threads actually differ — feed mechanics, links, API access, and audience — plus how to run both alongside X without tripling your workload."
+    },
+    "social-media-automation-for-developers": {
+      "title": "Social Media Automation for Developers: CLI, CI, and Webhooks",
+      "description": "Automate posting from release pipelines, cron jobs, and your own apps — announce releases from CI, turn changelogs into threads, and wire publish events back into your systems."
+    },
+    "why-scheduled-posts-fail": {
+      "title": "Why Scheduled Social Posts Fail (and How to Build So They Don't)",
+      "description": "Expired tokens, ambiguous timeouts, duplicate posts, and partial failures — the real failure modes of scheduled publishing, and the idempotency and retry design that prevents them."
+    },
+    "instagram-api-rate-limits": {
+      "title": "Instagram API Rate Limits Explained (2026 Developer Guide)",
+      "description": "How Instagram's publishing cap, rolling 24-hour window, container limits, and hourly call quotas actually work — including error code 9 and how to design a publisher around them."
+    },
+    "social-media-posting-api-guide": {
+      "title": "Social Media Posting API: A Developer's Guide (2026)",
+      "description": "What it takes to publish programmatically to Instagram, X, LinkedIn, TikTok, and YouTube — auth models, app review, rate limits, and when to use a unified API instead of building nine integrations."
+    },
+    "social-media-content-calendar": {
+      "title": "How to Build a Social Media Content Calendar That You'll Actually Use",
+      "description": "A practical system for planning social content: choosing a cadence you can sustain, content pillars, batching, queue slots, and the failure modes that kill most calendars by week three."
+    },
+    "post-to-social-media-with-ai-agents": {
+      "title": "How to Post to Social Media from ChatGPT or Claude (MCP Guide)",
+      "description": "A practical guide to social media MCP servers: how the Model Context Protocol lets ChatGPT, Claude, and Cursor publish and schedule posts, what it can't do, and how to set it up safely."
+    },
+    "cross-posting-vs-repurposing": {
+      "title": "Cross-Posting vs Repurposing: How to Post Everywhere Without Looking Lazy",
+      "description": "When the same post works on every network and when it actively hurts you — the watermark penalty, the per-platform adjustments that matter, and a content mix that scales."
+    },
+    "best-time-to-post-on-social-media": {
+      "title": "Best Time to Post on Social Media in 2026 (Every Platform)",
+      "description": "Benchmark posting times for Instagram, LinkedIn, X, TikTok, Facebook, YouTube, Threads, Pinterest, and Bluesky — and the method for replacing them with your own audience data."
+    },
+    "social-media-image-sizes": {
+      "title": "Social Media Image Sizes 2026: Cheat Sheet for Every Platform",
+      "description": "Exact image dimensions for Instagram, X, LinkedIn, Facebook, Pinterest, TikTok, Threads, YouTube, and Bluesky — feed posts, stories, profile photos, and covers, in one table."
+    },
+    "social-media-video-specs": {
+      "title": "Social Media Video Specs 2026: Length, Size & Format by Platform",
+      "description": "Max video length, file size, aspect ratio, and accepted formats for TikTok, Reels, Shorts, X, LinkedIn, Facebook, Threads, Pinterest, and Bluesky — the limits that actually fail a publish."
+    },
+    "social-media-character-limits": {
+      "title": "Social Media Character Limits (2026): Every Platform in One Table",
+      "description": "Caption and character limits for X, LinkedIn, Instagram, TikTok, Threads, Bluesky, Pinterest, YouTube, and Facebook — plus what actually counts as a character on each network."
     }
   }
 }

@@ -198,6 +198,17 @@ function FooterColumn({
   );
 }
 
+/** Cornerstone guides linked site-wide from the footer. */
+const TOP_BLOG_LINKS: FooterLink[] = [
+  { href: "/blog/social-media-character-limits", label: "Character limits" },
+  { href: "/blog/social-media-image-sizes", label: "Image sizes" },
+  { href: "/blog/social-media-video-specs", label: "Video specs" },
+  {
+    href: "/blog/best-time-to-post-on-social-media",
+    label: "Best time to post",
+  },
+];
+
 export function LandingFooter() {
   const pathname = useLocation().pathname;
   const homeHref = pathname === "/home" ? "/home" : "/";
@@ -233,6 +244,8 @@ export function LandingFooter() {
   ];
 
   const resourceLinks: FooterLink[] = [
+    { href: "/blog", label: "Blog" },
+    ...TOP_BLOG_LINKS,
     { href: "/tools", label: "All tools" },
     { href: "/features", label: "All features" },
     { href: "/alternatives", label: "All comparisons" },

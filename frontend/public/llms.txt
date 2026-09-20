@@ -146,6 +146,22 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - OpenClaw skill: https://social0.app/tools/openclaw
 - All tools: https://social0.app/tools
 
+## Guides and reference
+
+- Bluesky vs Threads in 2026: Which Is Worth Your Time?: https://social0.app/blog/bluesky-and-threads-for-brands
+- Social Media Automation for Developers: CLI, CI, and Webhooks: https://social0.app/blog/social-media-automation-for-developers
+- Why Scheduled Social Posts Fail (and How to Build So They Don't): https://social0.app/blog/why-scheduled-posts-fail
+- Instagram API Rate Limits Explained (2026 Developer Guide): https://social0.app/blog/instagram-api-rate-limits
+- Social Media Posting API: A Developer's Guide (2026): https://social0.app/blog/social-media-posting-api-guide
+- How to Build a Social Media Content Calendar That You'll Actually Use: https://social0.app/blog/social-media-content-calendar
+- How to Post to Social Media from ChatGPT or Claude (MCP Guide): https://social0.app/blog/post-to-social-media-with-ai-agents
+- Cross-Posting vs Repurposing: How to Post Everywhere Without Looking Lazy: https://social0.app/blog/cross-posting-vs-repurposing
+- Best Time to Post on Social Media in 2026 (Every Platform): https://social0.app/blog/best-time-to-post-on-social-media
+- Social Media Image Sizes 2026: Cheat Sheet for Every Platform: https://social0.app/blog/social-media-image-sizes
+- Social Media Video Specs 2026: Length, Size & Format by Platform: https://social0.app/blog/social-media-video-specs
+- Social Media Character Limits (2026): Every Platform in One Table: https://social0.app/blog/social-media-character-limits
+- All guides: https://social0.app/blog
+
 ## Key differentiators
 
 - Content types: text, image, video, threads, collections

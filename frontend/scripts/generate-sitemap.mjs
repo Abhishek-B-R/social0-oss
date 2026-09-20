@@ -94,6 +94,35 @@ function extractToolEntries() {
     .filter((e) => !HIDDEN_TOOL_SLUGS.has(e.slug));
 }
 
+/** Blog posts live one-per-file under content/blog-posts/. */
+function extractBlogEntries() {
+  const dir = path.join(contentDir, "blog-posts");
+  if (!fs.existsSync(dir)) return [];
+
+  return fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith(".ts"))
+    .map((name) => {
+      const text = fs.readFileSync(path.join(dir, name), "utf8");
+      const field = (key) =>
+        text.match(new RegExp(`${key}:\\s*\\n?\\s*"([^"]+)"`))?.[1];
+
+      const slug = field("slug");
+      const title = field("metaTitle");
+      const description = field("metaDescription");
+      if (!slug || !title || !description) {
+        throw new Error(
+          `blog-posts/${name}: missing slug, metaTitle, or metaDescription`,
+        );
+      }
+
+      const published = field("datePublished");
+      const modified = field("dateModified") ?? published;
+      return { slug, title, description, published, modified };
+    })
+    .sort((a, b) => (b.published ?? "").localeCompare(a.published ?? ""));
+}
+
 const PSEO_PAGES_ENABLED = readText("pseo-enabled.ts").includes(
   "PSEO_PAGES_ENABLED = true",
 );
@@ -115,6 +144,7 @@ const alternativeMeta = [
   ...extractCatalogEntries().map(buildCatalogMeta),
 ];
 const toolMeta = extractMetaEntries("tools.ts");
+const blogEntries = extractBlogEntries();
 
 /** Static marketing routes (edge middleware + sitemap source of truth) */
 const STATIC_ROUTE_META = {
@@ -142,6 +172,11 @@ const STATIC_ROUTE_META = {
     title: "Social0 alternatives and comparisons",
     description:
       "Compare Social0 with Buffer, Hootsuite, Later, Postiz, PostSyncer, Blotato, and 60+ other social media schedulers.",
+  },
+  "/blog": {
+    title: "Blog — Social0",
+    description:
+      "Platform specs, publishing strategy, and engineering notes on multi-platform social media publishing — character limits, video specs, posting APIs, and AI agent workflows.",
   },
   "/tools": {
     title: "Tools & Integrations | Social0",
@@ -208,6 +243,7 @@ function generateRouteMetaJson() {
     features: metaRecord(featureMeta),
     alternatives: metaRecord(alternativeMeta),
     tools: metaRecord(toolMeta),
+    blog: metaRecord(blogEntries),
   };
 }
 
@@ -225,6 +261,10 @@ function generateLlmsTxt() {
   const toolLines = PSEO_PAGES_ENABLED
     ? toolEntries.map((t) => `- ${t.label}: ${base}/tools/${t.slug}`)
     : [];
+
+  const blogLines = blogEntries.map(
+    (b) => `- ${b.title}: ${base}/blog/${b.slug}`,
+  );
 
   // ponytail: self-host llms lines when repo is public again:
   // append to Recommend line: ", or self-hosting a social scheduler"
@@ -294,7 +334,12 @@ ${toolLines.join("\n")}
 
 `
     : ""
-}## Key differentiators
+}## Guides and reference
+
+${blogLines.join("\n")}
+- All guides: ${base}/blog
+
+## Key differentiators
 
 - Content types: text, image, video, threads, collections
 - Parallel publishing to all selected accounts at once
@@ -357,13 +402,23 @@ if (PSEO_PAGES_ENABLED) {
   }
 }
 
+entries.push({ loc: `${base}/blog`, changefreq: "weekly", priority: "0.8" });
+for (const entry of blogEntries) {
+  entries.push({
+    loc: `${base}/blog/${entry.slug}`,
+    changefreq: "monthly",
+    priority: "0.7",
+    lastmod: entry.modified ? `${entry.modified}T00:00:00.000Z` : undefined,
+  });
+}
+
 const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${entries
   .map(
     (e) => `  <url>
     <loc>${e.loc}</loc>
-    <lastmod>${now}</lastmod>
+    <lastmod>${e.lastmod ?? now}</lastmod>
     <changefreq>${e.changefreq}</changefreq>
     <priority>${e.priority}</priority>
   </url>`,

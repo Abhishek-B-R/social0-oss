@@ -161,6 +161,14 @@ export function markdownForPath(path: string): string | null {
   return null;
 }
 
+/** Blog markdown carries the post's real title and description (from route meta). */
+export function blogMarkdown(
+  path: string,
+  meta: { title: string; description: string },
+): string {
+  return `# ${meta.title}\n\n${meta.description}\n\nRead the full guide: ${SITE}${path}\nAll guides: ${SITE}/blog\n\n---\n\n${PRODUCT_BLURB}\n`;
+}
+
 export function homepageCrawlerHtml(): string {
   return `<article id="prerender">
   <h1>Social0 - AI agents and multi-platform social scheduling</h1>

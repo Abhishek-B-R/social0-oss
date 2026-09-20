@@ -13,6 +13,7 @@ import {
   markdownForPath,
   markdownResponse,
   AI_CATALOG,
+  blogMarkdown,
   API_CATALOG,
   discoveryLinkHeader,
   MCP_SERVER_CARD,
@@ -41,6 +42,7 @@ const STATIC_META = routeMetaBundle.static as Record<string, RouteMeta>;
 const FEATURE_META = routeMetaBundle.features as Record<string, RouteMeta>;
 const ALTERNATIVE_META = routeMetaBundle.alternatives as Record<string, RouteMeta>;
 const TOOL_META = routeMetaBundle.tools as Record<string, RouteMeta>;
+const BLOG_META = routeMetaBundle.blog as Record<string, RouteMeta>;
 
 function normalizePath(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith("/")) {
@@ -72,6 +74,11 @@ function resolveMeta(path: string): RouteMeta | null {
   const toolMatch = path.match(/^\/tools\/([^/]+)$/);
   if (toolMatch) {
     return TOOL_META[toolMatch[1]] ?? null;
+  }
+
+  const blogMatch = path.match(/^\/blog\/([^/]+)$/);
+  if (blogMatch) {
+    return BLOG_META[blogMatch[1]] ?? null;
   }
 
   return null;
@@ -128,6 +135,26 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string):
   };
 
   const graph: object[] = [webPage];
+
+  if (/^\/blog\/[^/]+$/.test(path)) {
+    graph.push({
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline: meta.title,
+      description: meta.description,
+      url,
+      mainEntityOfPage: { "@type": "WebPage", "@id": url },
+      image: OG_IMAGE,
+      inLanguage: "en",
+      author: { "@type": "Organization", name: "Social0", url: SITE },
+      publisher: {
+        "@type": "Organization",
+        name: "Social0",
+        url: SITE,
+        logo: { "@type": "ImageObject", url: OG_IMAGE },
+      },
+    });
+  }
 
   if (path === "/") {
     graph.push(
@@ -189,6 +216,12 @@ function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
   out = upsertMeta(out, "property", "og:title", meta.title);
   out = upsertMeta(out, "property", "og:description", meta.description);
   out = upsertMeta(out, "property", "og:url", url);
+  out = upsertMeta(
+    out,
+    "property",
+    "og:type",
+    /^\/blog\/[^/]+$/.test(path) ? "article" : "website",
+  );
   out = upsertMeta(out, "property", "og:image", OG_IMAGE);
   out = upsertMeta(out, "name", "twitter:title", meta.title);
   out = upsertMeta(out, "name", "twitter:description", meta.description);
@@ -309,12 +342,16 @@ export async function onRequest(context: PagesContext) {
     return markdownResponse(NOT_FOUND_MARKDOWN, 404);
   }
 
+  const meta = resolveMeta(path);
+
   if (prefersMarkdown(accept)) {
-    const markdown = markdownForPath(path);
+    const markdown =
+      meta && /^\/blog\/[^/]+$/.test(path)
+        ? blogMarkdown(path, meta)
+        : markdownForPath(path);
     if (markdown) return markdownResponse(markdown);
   }
 
-  const meta = resolveMeta(path);
   const response = await context.next();
 
   if (!meta) return response;

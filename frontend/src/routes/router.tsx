@@ -173,6 +173,14 @@ const DevelopersPage = lazy(
 const ToolsIndexPage = lazy(
   () => import("@/features/marketing/pages/ToolsIndexPage"),
 );
+const BlogIndexPage = lazy(
+  () => import("@/features/marketing/pages/BlogIndexPage"),
+);
+const BlogPostPage = lazy(() =>
+  import("@/pages/BlogPostPage").then((m) => ({
+    default: m.BlogPostPage,
+  })),
+);
 const ToolDetailPage = lazy(() =>
   import("@/pages/ToolDetailPage").then((m) => ({
     default: m.ToolDetailPage,
@@ -399,6 +407,22 @@ export function AppRouter() {
             element={
               <Lazy>
                 <ToolDetailPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="blog"
+            element={
+              <Lazy>
+                <BlogIndexPage />
+              </Lazy>
+            }
+          />
+          <Route
+            path="blog/:slug"
+            element={
+              <Lazy>
+                <BlogPostPage />
               </Lazy>
             }
           />

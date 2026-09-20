@@ -121,6 +121,75 @@ export function buildItemListJsonLd(
   };
 }
 
+export function buildBlogPostingJsonLd(input: {
+  title: string;
+  description: string;
+  path: string;
+  datePublished: string;
+  dateModified?: string;
+  keywords?: readonly string[];
+  /** Rounded reading time in minutes. */
+  readingMinutes?: number;
+}) {
+  const url = absoluteUrl(input.path);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: input.title,
+    description: input.description,
+    url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    datePublished: input.datePublished,
+    dateModified: input.dateModified ?? input.datePublished,
+    inLanguage: "en",
+    image: absoluteUrl("/og-image.jpg"),
+    keywords: input.keywords?.join(", "),
+    timeRequired: input.readingMinutes
+      ? `PT${input.readingMinutes}M`
+      : undefined,
+    author: {
+      "@type": "Organization",
+      name: "Social0",
+      url: siteUrl,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: "Social0",
+      url: siteUrl,
+      logo: {
+        "@type": "ImageObject",
+        url: absoluteUrl("/og-image.jpg"),
+      },
+    },
+  };
+}
+
+export function buildBlogJsonLd(
+  posts: readonly { title: string; description: string; path: string; datePublished: string }[],
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Blog",
+    name: "Social0 Blog",
+    url: absoluteUrl("/blog"),
+    description:
+      "Platform specs, publishing strategy, and engineering notes on multi-platform social media publishing.",
+    publisher: {
+      "@type": "Organization",
+      name: "Social0",
+      url: siteUrl,
+    },
+    blogPost: posts.map((post) => ({
+      "@type": "BlogPosting",
+      headline: post.title,
+      description: post.description,
+      url: absoluteUrl(post.path),
+      datePublished: post.datePublished,
+    })),
+  };
+}
+
 export function buildSoftwareApplicationJsonLd() {
   return {
     "@context": "https://schema.org",
