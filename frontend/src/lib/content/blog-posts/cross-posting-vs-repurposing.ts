@@ -116,7 +116,7 @@ export const crossPostingVsRepurposing: BlogPost = {
       ordered: true,
       items: [
         "**Caption length.** Trim to the binding limit for short-form networks, expand for LinkedIn. See [character limits](/blog/social-media-character-limits) for the exact ceilings.",
-        "**Hashtags.** Instagram and TikTok use them for discovery. LinkedIn tolerates three. X and Bluesky largely do not benefit. Strip them where they do not help rather than pasting the same block everywhere.",
+        "**Hashtags.** Instagram has capped posts and Reels at **five** since December 2025, so a pasted thirty-tag block is now rejected outright, not just ignored. TikTok still uses them for discovery, LinkedIn tolerates about three, and X and Bluesky barely benefit. This is the adjustment that has changed most recently.",
         "**Links.** LinkedIn and Facebook suppress posts with outbound links somewhat; X and Bluesky handle them fine. Consider putting the link in a first comment on the networks that penalise it.",
         "**Aspect ratio.** A 9:16 video on LinkedIn wastes most of the frame. A 1:1 on TikTok looks broken. Two exports cover it — see [image sizes](/blog/social-media-image-sizes).",
       ],
@@ -267,7 +267,7 @@ export const crossPostingVsRepurposing: BlogPost = {
     {
       question: "Should I use the same hashtags on every platform?",
       answer:
-        "No. Instagram and TikTok use hashtags for discovery and benefit from them. LinkedIn tolerates about three. X and Bluesky see little benefit. Pasting one hashtag block everywhere wastes caption length on the networks where it does nothing.",
+        "No — and since December 2025 you cannot. Instagram caps posts and Reels at five hashtags, so a pasted thirty-tag block will be rejected or trimmed. TikTok still uses them for discovery, LinkedIn tolerates about three, and X and Bluesky see little benefit, where the same block just wastes caption length.",
     },
   ],
   relatedPaths: [

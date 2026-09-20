@@ -1,5 +1,14 @@
 import type { BlogBlock, BlogPost, BlogCategory } from "./blog-types";
 import { slugifyHeading } from "@/lib/rich-text";
+import { connectSocialAccountsTroubleshooting } from "./blog-posts/connect-social-accounts-troubleshooting";
+import { instagramAlgorithmGuide } from "./blog-posts/instagram-algorithm-guide";
+import { tiktokAlgorithmGuide } from "./blog-posts/tiktok-algorithm-guide";
+import { xAlgorithmGuide } from "./blog-posts/x-algorithm-guide";
+import { instagramHashtagLimit } from "./blog-posts/instagram-hashtag-limit";
+import { linkedinAlgorithmGuide } from "./blog-posts/linkedin-algorithm-guide";
+import { managingMultipleSocialAccounts } from "./blog-posts/managing-multiple-social-accounts";
+import { reelsVsTiktokVsShorts } from "./blog-posts/reels-vs-tiktok-vs-shorts";
+import { socialMediaEngagementRate } from "./blog-posts/social-media-engagement-rate";
 import { bestTimeToPostOnSocialMedia } from "./blog-posts/best-time-to-post-on-social-media";
 import { blueskyAndThreadsForBrands } from "./blog-posts/bluesky-and-threads-for-brands";
 import { crossPostingVsRepurposing } from "./blog-posts/cross-posting-vs-repurposing";
@@ -15,6 +24,15 @@ import { whyScheduledPostsFail } from "./blog-posts/why-scheduled-posts-fail";
 
 /** Newest first. The index page and sitemap both read this order. */
 export const BLOG_POSTS: BlogPost[] = [
+  instagramHashtagLimit,
+  instagramAlgorithmGuide,
+  tiktokAlgorithmGuide,
+  xAlgorithmGuide,
+  linkedinAlgorithmGuide,
+  socialMediaEngagementRate,
+  reelsVsTiktokVsShorts,
+  managingMultipleSocialAccounts,
+  connectSocialAccountsTroubleshooting,
   blueskyAndThreadsForBrands,
   socialMediaAutomationForDevelopers,
   whyScheduledPostsFail,

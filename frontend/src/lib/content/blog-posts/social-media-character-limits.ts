@@ -119,7 +119,7 @@ export const socialMediaCharacterLimits: BlogPost = {
     },
     {
       type: "paragraph",
-      text: "They are ordinary characters everywhere. Instagram's 2,200 is the caption *including* the hashtag block, which is why a 30-tag dump can quietly eat a quarter of your caption. Instagram also caps you at 30 hashtags per post regardless of length.",
+      text: "They are ordinary characters everywhere, and they count against the caption limit. The bigger change is that **Instagram now caps posts and Reels at five hashtags**, down from thirty — announced in December 2025 and enforced at publish time, whether the tags sit in the caption or a first comment. The old thirty-tag dump is no longer a strategy you can execute even if you want to.",
     },
     {
       type: "heading",
@@ -205,7 +205,7 @@ export const socialMediaCharacterLimits: BlogPost = {
       type: "list",
       items: [
         "**Media counts.** Instagram carousels cap at 20 items; X allows 4 images per post; Bluesky allows 4.",
-        "**Hashtag counts.** Instagram caps at 30. Others have no hard cap but heavily discount them.",
+        "**Hashtag counts.** Instagram caps at 5 per post or Reel since December 2025. Others have no hard cap but heavily discount them.",
         "**Alt text.** X and Bluesky cap alt text around 1,000 and 2,000 characters respectively — generous, but it is a separate field with its own ceiling.",
         "**Video duration and file size.** The most common cause of a failed cross-post, and a much bigger spread than captions. We broke these out in [the video specs guide](/blog/social-media-video-specs).",
       ],
@@ -237,7 +237,7 @@ export const socialMediaCharacterLimits: BlogPost = {
     {
       question: "Do hashtags count toward the character limit?",
       answer:
-        "Yes, on every platform. Instagram's 2,200-character limit includes the hashtag block, and Instagram separately caps you at 30 hashtags per post.",
+        "Yes, on every platform. Instagram's 2,200-character limit includes the hashtag block, and since December 2025 Instagram separately caps posts and Reels at five hashtags, down from thirty.",
     },
     {
       question: "How many characters show before Instagram truncates a caption?",

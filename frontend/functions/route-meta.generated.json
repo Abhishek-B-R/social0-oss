@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-20T07:40:17.128Z",
+  "generatedAt": "2026-09-20T18:34:50.653Z",
   "static": {
     "/": {
       "title": "Social0 — AI Agents & Multi-Platform Social Scheduling",
@@ -438,6 +438,42 @@
     }
   },
   "blog": {
+    "connect-social-accounts-troubleshooting": {
+      "title": "Why Your Social Account Won't Connect to a Scheduler (And How to Fix It)",
+      "description": "Instagram needs a professional account, Facebook needs a Page, TikTok needs the right product — the account requirements and permission problems that block scheduling, and how to fix each one."
+    },
+    "instagram-algorithm-guide": {
+      "title": "How the Instagram Algorithm Works in 2026 (Feed, Reels, Explore)",
+      "description": "Instagram runs four different algorithms, not one. What Feed, Reels, Stories, and Explore each rank on, why sends beat likes, and the repost rule that can remove you from recommendations."
+    },
+    "instagram-hashtag-limit": {
+      "title": "Instagram's 5-Hashtag Limit: What Changed and What Works Now",
+      "description": "Instagram cut hashtags from 30 to 5 in December 2025. What the cap actually enforces, why the old block strategy is dead, and how to pick five tags that still earn discovery."
+    },
+    "linkedin-algorithm-guide": {
+      "title": "How the LinkedIn Algorithm Works in 2026 (And What Still Gets Reach)",
+      "description": "Dwell time, the first-hour test, why personal profiles beat company pages, which formats still work, and the tactics that stopped working — a practical guide to LinkedIn organic reach."
+    },
+    "managing-multiple-social-accounts": {
+      "title": "Managing Multiple Social Media Accounts: An Agency Workflow",
+      "description": "How to run social for several clients or brands without losing track — account structure, approval workflows, batching, permissions, and the mistakes that cause wrong-account posts."
+    },
+    "reels-vs-tiktok-vs-shorts": {
+      "title": "Reels vs TikTok vs Shorts: Where Short-Form Video Actually Works",
+      "description": "How Instagram Reels, TikTok, and YouTube Shorts differ in distribution, audience, discovery and monetisation — and how to post one video to all three without the watermark penalty."
+    },
+    "social-media-engagement-rate": {
+      "title": "Engagement Rate: Formulas, Benchmarks, and What to Actually Track",
+      "description": "The three engagement rate formulas, why they give wildly different numbers, 2026 benchmarks by platform, and how to pick one and report it consistently."
+    },
+    "tiktok-algorithm-guide": {
+      "title": "How the TikTok Algorithm Works in 2026 (For You Page Ranking)",
+      "description": "Watch time per impression is now the dominant signal, shares and saves outweigh likes, and the follower test phase still gates everything. How TikTok ranks video, and what that means for length."
+    },
+    "x-algorithm-guide": {
+      "title": "How the X (Twitter) Algorithm Works in 2026",
+      "description": "Replies are worth many times a like, the first 30 minutes decide most of your reach, links cost you distribution, and Premium changes the maths. How the For You feed actually ranks posts."
+    },
     "bluesky-and-threads-for-brands": {
       "title": "Bluesky vs Threads in 2026: Which Is Worth Your Time?",
       "description": "How Bluesky and Threads actually differ — feed mechanics, links, API access, and audience — plus how to run both alongside X without tripling your workload."

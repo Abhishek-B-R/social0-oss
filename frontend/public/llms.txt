@@ -148,6 +148,15 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 
 ## Guides and reference
 
+- Why Your Social Account Won't Connect to a Scheduler (And How to Fix It): https://social0.app/blog/connect-social-accounts-troubleshooting
+- How the Instagram Algorithm Works in 2026 (Feed, Reels, Explore): https://social0.app/blog/instagram-algorithm-guide
+- Instagram's 5-Hashtag Limit: What Changed and What Works Now: https://social0.app/blog/instagram-hashtag-limit
+- How the LinkedIn Algorithm Works in 2026 (And What Still Gets Reach): https://social0.app/blog/linkedin-algorithm-guide
+- Managing Multiple Social Media Accounts: An Agency Workflow: https://social0.app/blog/managing-multiple-social-accounts
+- Reels vs TikTok vs Shorts: Where Short-Form Video Actually Works: https://social0.app/blog/reels-vs-tiktok-vs-shorts
+- Engagement Rate: Formulas, Benchmarks, and What to Actually Track: https://social0.app/blog/social-media-engagement-rate
+- How the TikTok Algorithm Works in 2026 (For You Page Ranking): https://social0.app/blog/tiktok-algorithm-guide
+- How the X (Twitter) Algorithm Works in 2026: https://social0.app/blog/x-algorithm-guide
 - Bluesky vs Threads in 2026: Which Is Worth Your Time?: https://social0.app/blog/bluesky-and-threads-for-brands
 - Social Media Automation for Developers: CLI, CI, and Webhooks: https://social0.app/blog/social-media-automation-for-developers
 - Why Scheduled Social Posts Fail (and How to Build So They Don't): https://social0.app/blog/why-scheduled-posts-fail
