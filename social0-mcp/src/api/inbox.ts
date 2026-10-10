@@ -75,10 +75,11 @@ export async function listDms(
 
 export async function getDmThread(
   conversationId: string,
-  query: { account_id: string; peer_id?: string; fresh?: boolean },
+  query: { account_id: string; peer_id?: string; cursor?: string; fresh?: boolean },
 ): Promise<InboxDmThread> {
   const params = new URLSearchParams({ account_id: query.account_id });
   if (query.peer_id) params.set("peer_id", query.peer_id);
+  if (query.cursor) params.set("cursor", query.cursor);
   if (query.fresh) params.set("fresh", "1");
   return apiClient.get<InboxDmThread>(
     `/inbox/dms/${encodeURIComponent(conversationId)}?${params.toString()}`,

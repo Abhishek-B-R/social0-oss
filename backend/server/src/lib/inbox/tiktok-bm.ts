@@ -103,11 +103,18 @@ export function tiktokBmSentMessageId(
 
 const TIKTOK_BM_TIMEOUT_MS = 12_000;
 
+export type TikTokBmResponse = {
+  ok: boolean;
+  data: TikTokBmEnvelope;
+  status: number;
+  headers: Headers;
+};
+
 export async function tiktokBmGet(
   accessToken: string,
   path: string,
   query: Record<string, string>,
-): Promise<{ ok: boolean; data: TikTokBmEnvelope }> {
+): Promise<TikTokBmResponse> {
   const url = new URL(`${TIKTOK_BM_BASE}${path}`);
   for (const [k, v] of Object.entries(query)) url.searchParams.set(k, v);
   const res = await fetch(url, {
@@ -115,14 +122,19 @@ export async function tiktokBmGet(
     signal: AbortSignal.timeout(TIKTOK_BM_TIMEOUT_MS),
   });
   const data = (await res.json().catch(() => ({}))) as TikTokBmEnvelope;
-  return { ok: isTikTokBmOk(res.ok, data), data };
+  return {
+    ok: isTikTokBmOk(res.ok, data),
+    data,
+    status: res.status,
+    headers: res.headers,
+  };
 }
 
 export async function tiktokBmPost(
   accessToken: string,
   path: string,
   body: unknown,
-): Promise<{ ok: boolean; data: TikTokBmEnvelope }> {
+): Promise<TikTokBmResponse> {
   const res = await fetch(`${TIKTOK_BM_BASE}${path}`, {
     method: "POST",
     headers: {
@@ -133,7 +145,12 @@ export async function tiktokBmPost(
     signal: AbortSignal.timeout(TIKTOK_BM_TIMEOUT_MS),
   });
   const data = (await res.json().catch(() => ({}))) as TikTokBmEnvelope;
-  return { ok: isTikTokBmOk(res.ok, data), data };
+  return {
+    ok: isTikTokBmOk(res.ok, data),
+    data,
+    status: res.status,
+    headers: res.headers,
+  };
 }
 
 export async function tiktokBmUploadImage(

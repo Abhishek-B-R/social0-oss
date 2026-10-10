@@ -11,6 +11,7 @@ import {
   TOKEN_EXPIRED_MARKER,
 } from "../platform-auth-errors.js";
 import { jsonGet } from "../http-json.js";
+import { throwIfPlatformRateLimited } from "../platform-rate-limit.js";
 import type { InboxComment } from "./types.js";
 import {
   INBOX_REQUIRED_SCOPES,
@@ -138,7 +139,9 @@ async function fetchFacebook(
   const fields =
     "id,from,message,created_time,like_count,user_likes,attachment,comments.limit(25){id,from,message,created_time,like_count,user_likes,attachment}";
   const startUrl = `https://graph.facebook.com/v21.0/${id}/comments?fields=${fields}&limit=25&order=reverse_chronological&access_token=${token}`;
-  const { ok, data } = await jsonGet(startUrl);
+  const startRes = await jsonGet(startUrl);
+  throwIfPlatformRateLimited("facebook", startRes, { graph: true });
+  const { ok, data } = startRes;
   if (!ok) {
     const msg =
       (data as { error?: { message?: string } })?.error?.message ??
@@ -214,7 +217,9 @@ async function fetchInstagram(
   const id = encodeURIComponent(input.platformPostId);
   const sinceMs = input.since ? Date.parse(input.since) : null;
   const url = `https://graph.instagram.com/v21.0/${id}/comments?fields=id,text,username,timestamp,like_count,user_likes,replies.limit(50){id,text,username,timestamp,like_count,user_likes}&limit=50&access_token=${token}`;
-  const { ok, data } = await jsonGet(url);
+  const res = await jsonGet(url);
+  throwIfPlatformRateLimited("instagram", res, { graph: true });
+  const { ok, data } = res;
   if (!ok) {
     const msg =
       (data as { error?: { message?: string } })?.error?.message ??
@@ -283,10 +288,13 @@ async function fetchThreads(
   const id = encodeURIComponent(input.platformPostId);
   const token = encodeURIComponent(input.accessToken);
   const convoUrl = `https://graph.threads.net/v1.0/${id}/conversation?fields=id,text,username,timestamp,like_count,replied_to{id}&limit=50&access_token=${token}`;
-  let { ok, data } = await jsonGet(convoUrl);
+  const convoRes = await jsonGet(convoUrl);
+  throwIfPlatformRateLimited("threads", convoRes, { graph: true });
+  let { ok, data } = convoRes;
   if (!ok) {
     const fallback = `https://graph.threads.net/v1.0/${id}/replies?fields=id,text,username,timestamp,like_count,replied_to{id}&limit=25&access_token=${token}`;
     const retry = await jsonGet(fallback);
+    throwIfPlatformRateLimited("threads", retry, { graph: true });
     ok = retry.ok;
     data = retry.data;
   }
@@ -380,9 +388,12 @@ async function fetchYouTube(
     url.searchParams.set("maxResults", "100");
     url.searchParams.set("textFormat", "plainText");
     if (pageToken) url.searchParams.set("pageToken", pageToken);
-    const { ok, data, status } = await jsonGet(url.toString(), {
+    const ytRes = await jsonGet(url.toString(), {
       Authorization: `Bearer ${input.accessToken}`,
     });
+    // Only the first page decides the read; a quota hit mid-walk keeps what we have.
+    if (first) throwIfPlatformRateLimited("youtube", ytRes, { youtube: true });
+    const { ok, data, status } = ytRes;
     if (!ok) {
       const msg =
         (data as { error?: { message?: string } })?.error?.message ??
@@ -715,6 +726,7 @@ async function fetchTwitter(
     const results = await fetchTwitterCommentsBatch([input]);
     return results[input.publicationId] ?? err("X replies failed");
   } catch (e) {
+    if (extractHttpStatus(e) === 429) throw e;
     return err(e instanceof Error ? e.message : "X replies failed");
   }
 }
@@ -738,9 +750,11 @@ async function fetchBluesky(
   if (!session) {
     return err("Bluesky login failed. Reconnect the account.");
   }
-  let { ok, data, status } = await jsonGet(urlFor(input.platformPostId), {
+  const firstRead = await jsonGet(urlFor(input.platformPostId), {
     Authorization: `Bearer ${session.accessJwt}`,
   });
+  throwIfPlatformRateLimited("bluesky", firstRead);
+  let { ok, data, status } = firstRead;
   if (status === 401) {
     session = await blueskySessionAfter401(
       input.accountId,
@@ -751,6 +765,7 @@ async function fetchBluesky(
     const retry = await jsonGet(urlFor(input.platformPostId), {
       Authorization: `Bearer ${session.accessJwt}`,
     });
+    throwIfPlatformRateLimited("bluesky", retry);
     ok = retry.ok;
     data = retry.data;
     status = retry.status;
@@ -827,11 +842,13 @@ async function fetchLinkedIn(
     ? input.platformPostId
     : `urn:li:share:${input.platformPostId}`;
   const url = `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(urn)}/comments`;
-  const { ok, data, status } = await jsonGet(url, {
+  const liRes = await jsonGet(url, {
     Authorization: `Bearer ${input.accessToken}`,
     "LinkedIn-Version": "202411",
     "X-Restli-Protocol-Version": "2.0.0",
   });
+  throwIfPlatformRateLimited("linkedin", liRes);
+  const { ok, data, status } = liRes;
   if (!ok) {
     if (status === 403) {
       return {

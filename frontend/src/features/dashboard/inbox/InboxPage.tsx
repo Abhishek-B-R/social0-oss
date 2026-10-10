@@ -29,6 +29,8 @@ import {
   refreshInboxInfiniteFirstPage,
 } from "@/lib/inbox-infinite";
 import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
+import { InboxDmThreadLoadError } from "./dm-thread-layout";
+import { convoAccountFromParams, DM_CONVO_ACCOUNT_PARAM } from "./dm-identity";
 
 export function InboxPage() {
   const { data: session, isPending: sessionPending } = useSession();
@@ -63,6 +65,7 @@ export function InboxPage() {
         } else {
           nextParams.delete("tab");
           nextParams.delete("convo");
+          nextParams.delete(DM_CONVO_ACCOUNT_PARAM);
         }
         return nextParams;
       },
@@ -169,9 +172,11 @@ export function InboxPage() {
 
   return (
     // Mobile: an ordinary scrolling document (the conversation is its own
-    // fixed layer). lg: a fixed-height two-pane app view, so the grid below
-    // has a definite height for its internal scrollers to resolve against.
-    <div className="-mx-1 flex flex-col gap-3 sm:mx-0 sm:gap-4 lg:min-h-[calc(100dvh-10rem)]">
+    // fixed layer). lg: a viewport-height two-pane app view. It must be a real
+    // `height`, not `min-height`: with only a floor the grid grew to fit every
+    // message and the whole page scrolled instead of the panes. 4rem is the
+    // dashboard content's lg vertical padding.
+    <div className="-mx-1 flex flex-col gap-3 sm:mx-0 sm:gap-4 lg:h-[calc(100dvh-4rem)] lg:min-h-[34rem]">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <h1 className="flex flex-wrap items-center gap-2.5 dash-page-title">
@@ -212,27 +217,27 @@ export function InboxPage() {
                   }),
                 );
                 const convo = searchParams.get("convo");
-                const accountRaw = searchParams.get("account");
                 const dmAccount =
-                  accountRaw && accountRaw !== "all"
-                    ? accountRaw
-                    : accountId || undefined;
+                  convoAccountFromParams(searchParams, accountId) ?? undefined;
                 if (convo && dmAccount) {
-                  void qc.invalidateQueries({
-                    queryKey: ["inbox-dm-thread", workspaceId, dmAccount, convo],
-                  });
-                  void getInboxDmThread({
-                    accountId: dmAccount,
-                    conversationId: convo,
-                    fresh: force,
-                  }).then((result) => {
-                    if (!("error" in result)) {
-                      qc.setQueryData(
-                        ["inbox-dm-thread", workspaceId, dmAccount, convo],
-                        result,
-                      );
-                    }
-                  });
+                  // Replace only the newest page. Invalidating the paged
+                  // thread would re-read every "earlier messages" page the
+                  // user had loaded, one platform call each.
+                  void refreshInboxInfiniteFirstPage(
+                    qc,
+                    ["inbox-dm-thread", workspaceId, dmAccount, convo],
+                    async () => {
+                      const result = await getInboxDmThread({
+                        accountId: dmAccount,
+                        conversationId: convo,
+                        fresh: force,
+                      });
+                      if ("error" in result) {
+                        throw new InboxDmThreadLoadError(result);
+                      }
+                      return result;
+                    },
+                  );
                 }
               }
             }}

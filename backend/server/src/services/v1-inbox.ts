@@ -213,7 +213,13 @@ export async function v1ListInboxDms(userId: string, query: V1InboxListQuery) {
 
 export async function v1GetInboxDmThread(
   userId: string,
-  input: { account_id: string; conversation_id: string; peer_id?: string; fresh?: boolean },
+  input: {
+    account_id: string;
+    conversation_id: string;
+    peer_id?: string;
+    cursor?: string;
+    fresh?: boolean;
+  },
 ): Promise<
   | {
       ok: true;
@@ -221,19 +227,32 @@ export async function v1GetInboxDmThread(
         conversation_id: string;
         conversation: ReturnType<typeof dmThread>;
         messages: ReturnType<typeof dmMessage>[];
+        next_cursor: string | null;
+        has_more: boolean;
         fetched_at: string;
       };
     }
-  | { ok: false; error: string; code: InboxDmThreadErrorCode }
+  | {
+      ok: false;
+      error: string;
+      code: InboxDmThreadErrorCode;
+      retryAfterSec?: number;
+    }
 > {
   const result = await getInboxDmThreadForScope(scopeFor(userId), {
     accountId: input.account_id,
     conversationId: input.conversation_id,
     peerId: input.peer_id,
+    cursor: input.cursor,
     fresh: input.fresh,
   });
   if ("error" in result) {
-    return { ok: false, error: result.error, code: result.code };
+    return {
+      ok: false,
+      error: result.error,
+      code: result.code,
+      retryAfterSec: result.retryAfterSec,
+    };
   }
   return {
     ok: true,
@@ -241,6 +260,8 @@ export async function v1GetInboxDmThread(
       conversation_id: result.conversationId,
       conversation: dmThread(result.thread),
       messages: result.messages.map(dmMessage),
+      next_cursor: result.nextCursor,
+      has_more: result.hasMore,
       fetched_at: result.fetchedAt,
     },
   };

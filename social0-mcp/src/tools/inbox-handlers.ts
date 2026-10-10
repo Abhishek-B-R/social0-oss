@@ -418,6 +418,7 @@ export async function handleGetInboxDmThread(
     const data = await inboxApi.getDmThread(input.conversation_id, {
       account_id: account.id,
       ...(input.peer_id ? { peer_id: input.peer_id } : {}),
+      ...(input.cursor ? { cursor: input.cursor } : {}),
       ...(input.fresh !== undefined ? { fresh: input.fresh } : {}),
     });
     const peer = untrusted(
@@ -440,6 +441,12 @@ export async function handleGetInboxDmThread(
         return `${m.created_at ?? ""} ${who}: ${body}`.trim();
       }),
     ];
+    if (data.has_more && data.next_cursor) {
+      lines.push(
+        "",
+        `Older messages exist. Call get_inbox_dm_thread again with cursor "${data.next_cursor}" to read them.`,
+      );
+    }
     if (!data.conversation.can_reply) {
       lines.push("", "This conversation is read-only on the platform.");
     }

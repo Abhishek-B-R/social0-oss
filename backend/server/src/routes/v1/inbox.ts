@@ -45,6 +45,8 @@ const accountsQuerySchema = z.object({
 const dmThreadQuerySchema = z.object({
   account_id: z.string().uuid(),
   peer_id: z.string().optional(),
+  /** `next_cursor` from the previous page; omit for the newest messages. */
+  cursor: z.string().min(1).max(2048).optional(),
   fresh: boolish.optional(),
 });
 
@@ -189,11 +191,23 @@ export async function registerInboxRoutes(app: FastifyInstance) {
       account_id: query.data.account_id,
       conversation_id: conversationId,
       peer_id: query.data.peer_id,
+      cursor: query.data.cursor,
       fresh: query.data.fresh,
     });
     if (!result.ok) {
       if (result.code === "not_found") {
         return reply.status(404).send(apiError("not_found", result.error));
+      }
+      if (result.code === "rate_limited") {
+        const retryAfter = result.retryAfterSec ?? 60;
+        return reply
+          .status(429)
+          .header("Retry-After", String(retryAfter))
+          .send(
+            apiError("rate_limit_exceeded", result.error, {
+              retry_after_seconds: retryAfter,
+            }),
+          );
       }
       // Unsupported network, bad input, or the platform read failed - the
       // conversation may well exist, so do not report it as missing.

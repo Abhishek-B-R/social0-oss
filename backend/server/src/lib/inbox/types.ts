@@ -408,7 +408,11 @@ export type InboxDmListResult = {
 export type InboxDmThreadResult = {
   conversationId: string;
   thread: InboxDmThread;
+  /** One page of messages, oldest first. */
   messages: InboxDmMessage[];
+  /** Pass back as `cursor` to load the next older page; null at the start. */
+  nextCursor: string | null;
+  hasMore: boolean;
   fetchedAt: string;
 };
 

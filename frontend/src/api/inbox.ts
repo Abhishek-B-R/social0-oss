@@ -142,8 +142,26 @@ export type InboxAccount = {
 export type InboxDmThreadResult = {
   conversationId: string;
   thread: InboxDmThread;
+  /** One page of messages, oldest first. */
   messages: InboxDmMessage[];
+  /** Cursor for the next OLDER page; null at the start of the conversation. */
+  nextCursor: string | null;
+  hasMore: boolean;
   fetchedAt: string;
+};
+
+export type InboxDmThreadErrorCode =
+  | "invalid"
+  | "not_found"
+  | "unsupported"
+  | "fetch_failed"
+  | "rate_limited";
+
+export type InboxDmThreadError = {
+  error: string;
+  code: InboxDmThreadErrorCode;
+  /** With `rate_limited`: seconds until a retry can succeed. */
+  retryAfterSec?: number;
 };
 
 export function listInboxComments(input?: {
@@ -195,13 +213,15 @@ export function listInboxDms(input?: {
   return rpc<InboxDmListResult>("inbox.listDms", input ?? {});
 }
 
+/** One page of a DM conversation. Pass `cursor` (a previous `nextCursor`) for older messages. */
 export function getInboxDmThread(input: {
   accountId: string;
   conversationId: string;
   peerId?: string;
+  cursor?: string;
   fresh?: boolean;
-}): Promise<InboxDmThreadResult | { error: string }> {
-  return rpc<InboxDmThreadResult | { error: string }>("inbox.getDmThread", input);
+}): Promise<InboxDmThreadResult | InboxDmThreadError> {
+  return rpc<InboxDmThreadResult | InboxDmThreadError>("inbox.getDmThread", input);
 }
 
 export function listInboxAccounts(input?: {

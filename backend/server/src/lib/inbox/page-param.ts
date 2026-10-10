@@ -1,4 +1,4 @@
-import { calendarDayKey } from "../date-window.js";
+import { createHash } from "node:crypto";
 
 export type InboxPageCursor = {
   range: "custom";
@@ -84,23 +84,50 @@ export function olderThanDmCursor<T extends { lastMessageAt: string | null }>(
   });
 }
 
+/** Lookback every DM list read covers, whatever range the user picked. */
+export const DM_LIST_LOOKBACK_DAYS = 90;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+export type DmListFetchPlan = {
+  /** Oldest activity the platform fetch walks back to. */
+  fetchSince: Date;
+  /** Platform-read cache suffix for that fetch. */
+  suffix: string;
+};
+
 /**
- * Platform-read cache key for a DM list page.
+ * Platform fetch window + cache key for a DM list read.
  *
- * Must not carry a moving `until`: for a preset range `until` is `now`, so
- * keying on it made every request unique, the DM list never hit cache, and each
- * page load burned scarce X / Bluesky DM quota (`fresh` meant nothing either).
- * Page cursors are exact; the live head buckets by calendar day and relies on
- * the read TTL for freshness.
+ * Platform DM list APIs are newest-first and cannot start from an arbitrary
+ * `until`, so the fetch never depends on the requested range or the `before`
+ * cursor: one cached list per account covers the standard lookback, and range
+ * switches, "Load older" pages and reply verification are all filters over
+ * it. Keying the cache on range and cursor (as before) re-walked every
+ * platform's DM history on each of those actions.
+ *
+ * Only a window reaching past the lookback (e.g. 1Y) gets its own, wider read.
  */
-export function dmListCacheSuffix(opts: {
-  since: Date;
-  untilForFetch: Date;
-  hasCursor: boolean;
-  timeZone: string;
-}): string {
-  const tail = opts.hasCursor
-    ? `before:${opts.untilForFetch.toISOString()}`
-    : `live:${calendarDayKey(opts.untilForFetch, opts.timeZone)}`;
-  return `${opts.since.toISOString()}:${tail}`;
+export function dmListFetchPlan(opts: { since: Date; now?: Date }): DmListFetchPlan {
+  const now = opts.now ?? new Date();
+  const lookbackSince = new Date(now.getTime() - DM_LIST_LOOKBACK_DAYS * DAY_MS);
+  if (opts.since.getTime() >= lookbackSince.getTime()) {
+    return {
+      fetchSince: lookbackSince,
+      suffix: `lookback:${DM_LIST_LOOKBACK_DAYS}d`,
+    };
+  }
+  return { fetchSince: opts.since, suffix: `since:${opts.since.toISOString()}` };
+}
+
+/**
+ * Cache suffix for one page of a DM thread. The newest page keeps the bare
+ * conversation id so reply verification and post-send invalidation find it.
+ */
+export function dmThreadCacheSuffix(
+  conversationId: string,
+  cursor: string | null,
+): string {
+  if (!cursor) return conversationId;
+  const digest = createHash("sha1").update(cursor).digest("hex").slice(0, 16);
+  return `${conversationId}:c:${digest}`;
 }

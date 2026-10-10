@@ -6,13 +6,13 @@ export async function jsonGet(
   url: string,
   headers?: Record<string, string>,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-): Promise<{ ok: boolean; status: number; data: unknown }> {
+): Promise<{ ok: boolean; status: number; data: unknown; headers: Headers }> {
   const res = await fetch(url, {
     headers,
     signal: AbortSignal.timeout(timeoutMs),
   });
   const data = await res.json().catch(() => ({}));
-  return { ok: res.ok, status: res.status, data };
+  return { ok: res.ok, status: res.status, data, headers: res.headers };
 }
 
 export async function jsonPost(

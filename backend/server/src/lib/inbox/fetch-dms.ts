@@ -6,6 +6,8 @@
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
+import { extractHttpStatus } from "../twitter-errors.js";
+import { throwIfPlatformRateLimited } from "../platform-rate-limit.js";
 import { inDateWindow } from "../date-window.js";
 import {
   graphPictureUrl,
@@ -60,8 +62,14 @@ export type DmListFetchResult = {
 };
 
 export type DmThreadFetchResult = {
+  /** One page of messages, oldest first. */
   messages: InboxDmMessage[];
   thread?: InboxDmThread;
+  /**
+   * Opaque platform cursor for the next OLDER page, or null when this page
+   * reaches the start of the conversation.
+   */
+  nextCursor?: string | null;
   status: "ok" | "scope_missing" | "unsupported" | "error";
   error?: string;
   missingScopes?: string[];
@@ -215,6 +223,9 @@ function graphPeople(raw: unknown): GraphPerson[] {
   return [];
 }
 
+/** Messages per conversation page. One page is one platform call. */
+export const DM_THREAD_PAGE_SIZE = 50;
+
 function snippetOf(text: string | null | undefined): string {
   return (text ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
 }
@@ -238,20 +249,29 @@ export async function fetchAccountDms(
   }
 }
 
+/**
+ * One page of a DM conversation, newest page first. Pass the previous page's
+ * `nextCursor` to walk back in time. Loading a conversation used to walk its
+ * entire history (up to 5 X pages, 8 Bluesky pages, 10 TikTok pages plus a
+ * media call per message) on every open, which is what exhausted per-user
+ * platform quotas within a few clicks.
+ */
 export async function fetchDmMessages(
   account: DmAccount,
   conversationId: string,
   peerId: string,
+  cursor?: string | null,
 ): Promise<DmThreadFetchResult> {
+  const pageCursor = cursor?.trim() ? cursor.trim() : null;
   switch (account.platform) {
     case "instagram":
-      return fetchInstagramThread(account, conversationId);
+      return fetchInstagramThread(account, conversationId, pageCursor);
     case "twitter_x":
-      return fetchTwitterThread(account, conversationId, peerId);
+      return fetchTwitterThread(account, conversationId, peerId, pageCursor);
     case "bluesky":
-      return fetchBlueskyThread(account, conversationId);
+      return fetchBlueskyThread(account, conversationId, pageCursor);
     case "tiktok":
-      return fetchTikTokThread(account, conversationId);
+      return fetchTikTokThread(account, conversationId, pageCursor);
     default:
       return { messages: [], status: "unsupported" };
   }
@@ -300,7 +320,9 @@ async function fetchInstagramList(
   const fields =
     `id,updated_time,participants{id,username,name},messages.limit(1){message,created_time,from,${GRAPH_MSG_ATTACHMENT_FIELDS}}`;
   const url = `https://graph.instagram.com/v21.0/${id}/conversations?platform=instagram&fields=${encodeURIComponent(fields)}&limit=50&access_token=${encodeURIComponent(account.accessToken)}`;
-  const { ok, data } = await jsonGet(url);
+  const listRes = await jsonGet(url);
+  throwIfPlatformRateLimited("instagram", listRes, { graph: true });
+  const { ok, data } = listRes;
   if (!ok) {
     const msg =
       (data as { error?: { message?: string } })?.error?.message ??
@@ -437,14 +459,26 @@ function participantProfiles(participants: GraphPerson[]): Map<string, IgUserPro
   return map;
 }
 
+/** Graph `paging.cursors.after` when another (older) page exists. */
+function graphAfterCursor(page: unknown): string | null {
+  const paging = (page as { paging?: { next?: unknown; cursors?: { after?: unknown } } })
+    ?.paging;
+  if (!paging?.next) return null;
+  const after = paging.cursors?.after;
+  return typeof after === "string" && after ? after : null;
+}
+
 async function fetchInstagramThread(
   account: DmAccount,
   conversationId: string,
+  cursor: string | null,
 ): Promise<DmThreadFetchResult> {
   const token = encodeURIComponent(account.accessToken);
   const id = encodeURIComponent(conversationId);
   const url = `https://graph.instagram.com/v21.0/${id}?fields=id,updated_time,participants{id,username,name}&access_token=${token}`;
-  const { ok, data } = await jsonGet(url);
+  const convoRes = await jsonGet(url);
+  throwIfPlatformRateLimited("instagram", convoRes, { graph: true });
+  const { ok, data } = convoRes;
   if (!ok) {
     const msg =
       (data as { error?: { message?: string } })?.error?.message ??
@@ -468,8 +502,12 @@ async function fetchInstagramThread(
   } catch {
     // Profile enrichment is cosmetic.
   }
-  const msgUrl = `https://graph.instagram.com/v21.0/${id}/messages?fields=id,created_time,from{id,username,name},message,${GRAPH_MSG_ATTACHMENT_FIELDS}&limit=50&access_token=${token}`;
+  // Graph returns newest first; `after` walks back to older messages. The
+  // cursor goes in a query param - never hand the client a `paging.next` URL,
+  // it embeds the access token.
+  const msgUrl = `https://graph.instagram.com/v21.0/${id}/messages?fields=id,created_time,from{id,username,name},message,${GRAPH_MSG_ATTACHMENT_FIELDS}&limit=${DM_THREAD_PAGE_SIZE}${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}&access_token=${token}`;
   const msgRes = await jsonGet(msgUrl);
+  throwIfPlatformRateLimited("instagram", msgRes, { graph: true });
   if (!msgRes.ok) {
     const msg =
       (msgRes.data as { error?: { message?: string } })?.error?.message ??
@@ -481,12 +519,8 @@ async function fetchInstagramThread(
         : undefined,
     );
   }
-  const msgs = await restOfGraphPages(
-    msgRes.data as GraphPage,
-    new Date(0),
-    "created_time",
-    3,
-  );
+  const msgs = (msgRes.data as GraphPage).data ?? [];
+  const nextCursor = graphAfterCursor(msgRes.data);
   const messageFrom = msgs.map((row) => row.from as GraphPerson | undefined);
   const selfIgsid = instagramSelfIgsid(
     participants,
@@ -539,6 +573,7 @@ async function fetchInstagramThread(
     messages,
     status: "ok",
     thread: applyIgProfile(baseThread, peerProfile ?? null),
+    nextCursor,
   };
 }
 
@@ -613,6 +648,8 @@ function xPeerIdsFromEvents(
   }
   return [...ids];
 }
+
+const X_DM_LIST_PAGE_CAP = 2;
 
 const X_USER_CACHE_PREFIX = "x:user:profile:";
 const X_USER_CACHE_TTL_SEC = 24 * 60 * 60;
@@ -745,8 +782,10 @@ async function fetchTwitterList(
     const users = new Map<string, XUser>();
     const mediaByKey = new Map<string, XMedia>();
     let paginationToken: string | undefined;
-    // Cap pages — X DM read quota is scarce; identity is hydrated separately.
-    for (let page = 0; page < 3; page++) {
+    // Cap pages - X meters dm_events per user in 15-minute windows. The list
+    // is cached on a fixed lookback (shared with reply verification), so this
+    // walk runs at most once per cache TTL whatever range the user picks.
+    for (let page = 0; page < X_DM_LIST_PAGE_CAP; page++) {
       const raw = (await client.v2.get("dm_events", {
         max_results: 100,
         event_types: "MessageCreate",
@@ -822,6 +861,7 @@ async function fetchTwitterList(
     );
     return { threads, status: "ok" };
   } catch (e) {
+    if (extractHttpStatus(e) === 429) throw e;
     const msg = e instanceof Error ? e.message : "X DMs failed";
     return graphErr(
       msg,
@@ -834,45 +874,40 @@ async function fetchTwitterThread(
   account: DmAccount,
   conversationId: string,
   peerId: string,
+  cursor: string | null,
 ): Promise<DmThreadFetchResult> {
   const client = twitterClient(account);
   if (!client) {
     return graphMsg("X credentials incomplete. Reconnect the account.");
   }
   try {
-    const events: XDmEvent[] = [];
     const users = new Map<string, XUser>();
     const mediaByKey = new Map<string, XMedia>();
-    let paginationToken: string | undefined;
-    for (let page = 0; page < 5; page++) {
-      const raw = (await client.v2.get(
-        `dm_conversations/${encodeURIComponent(conversationId)}/dm_events`,
-        {
-          max_results: 100,
-          event_types: "MessageCreate",
-          "dm_event.fields":
-            "id,text,event_type,dm_conversation_id,created_at,sender_id,participant_ids,attachments",
-          expansions: "sender_id,participant_ids,attachments.media_keys",
-          "user.fields": "name,username,profile_image_url",
-          "media.fields": "url,preview_image_url,type,variants",
-          ...(paginationToken ? { pagination_token: paginationToken } : {}),
-        },
-      )) as {
-        data?: XDmEvent[];
-        includes?: { users?: XUser[]; media?: XMedia[] };
-        meta?: { next_token?: string };
-      };
-      const pageEvents = (raw.data ?? []).filter(
-        (e) => e.event_type === "MessageCreate" || !e.event_type,
-      );
-      events.push(...pageEvents);
-      for (const u of raw.includes?.users ?? []) users.set(u.id, u);
-      for (const m of raw.includes?.media ?? []) {
-        if (m.media_key) mediaByKey.set(m.media_key, m);
-      }
-      paginationToken = raw.meta?.next_token;
-      if (!paginationToken) break;
+    const raw = (await client.v2.get(
+      `dm_conversations/${encodeURIComponent(conversationId)}/dm_events`,
+      {
+        max_results: DM_THREAD_PAGE_SIZE,
+        event_types: "MessageCreate",
+        "dm_event.fields":
+          "id,text,event_type,dm_conversation_id,created_at,sender_id,participant_ids,attachments",
+        expansions: "sender_id,participant_ids,attachments.media_keys",
+        "user.fields": "name,username,profile_image_url",
+        "media.fields": "url,preview_image_url,type,variants",
+        ...(cursor ? { pagination_token: cursor } : {}),
+      },
+    )) as {
+      data?: XDmEvent[];
+      includes?: { users?: XUser[]; media?: XMedia[] };
+      meta?: { next_token?: string };
+    };
+    const events = (raw.data ?? []).filter(
+      (e) => e.event_type === "MessageCreate" || !e.event_type,
+    );
+    for (const u of raw.includes?.users ?? []) users.set(u.id, u);
+    for (const m of raw.includes?.media ?? []) {
+      if (m.media_key) mediaByKey.set(m.media_key, m);
     }
+    const nextCursor = raw.meta?.next_token ?? null;
     const unique = new Map<string, XDmEvent>();
     for (const ev of events) {
       if (ev.id) unique.set(ev.id, ev);
@@ -924,8 +959,10 @@ async function fetchTwitterThread(
         ),
         canReply: Boolean(conversationId),
       }),
+      nextCursor,
     };
   } catch (e) {
+    if (extractHttpStatus(e) === 429) throw e;
     const msg = e instanceof Error ? e.message : "X thread failed";
     return graphMsg(
       msg,
@@ -956,6 +993,10 @@ async function blueskyChat(
     signal: AbortSignal.timeout(12_000),
   });
   const data = await res.json().catch(() => ({}));
+  throwIfPlatformRateLimited("bluesky", {
+    status: res.status,
+    headers: res.headers,
+  });
   return { ok: res.ok, status: res.status, data };
 }
 
@@ -1084,70 +1125,48 @@ type BskyChatMessage = {
 async function fetchBlueskyThread(
   account: DmAccount,
   conversationId: string,
+  cursor: string | null,
 ): Promise<DmThreadFetchResult> {
   const handle = account.platformUsername;
   if (!handle || !account.accessSecret) {
     return graphMsg("Bluesky credentials incomplete. Reconnect the account.");
   }
-  const [msgsPages, convoRes] = await Promise.all([
-    (async () => {
-      const rows: BskyChatMessage[] = [];
-      const seen = new Set<string>();
-      let cursor: string | undefined;
-      let last: {
-        ok: boolean;
-        data: unknown;
-        session: { accessJwt: string; did: string } | null;
-      } | null = null;
-      for (let page = 0; page < 8; page++) {
-        last = await blueskyChatAuthed(
-          account,
-          handle,
-          "chat.bsky.convo.getMessages",
-          {
-            params: {
-              convoId: conversationId,
-              limit: "50",
-              ...(cursor ? { cursor } : {}),
-            },
-          },
-        );
-        if (!last.ok) {
-          if (rows.length) break;
-          return last;
-        }
-        const pageRows =
-          (last.data as { messages?: BskyChatMessage[] }).messages ?? [];
-        for (const m of pageRows) {
-          if (m.id && seen.has(m.id)) continue;
-          if (m.id) seen.add(m.id);
-          rows.push(m);
-        }
-        cursor =
-          typeof (last.data as { cursor?: string }).cursor === "string"
-            ? (last.data as { cursor: string }).cursor
-            : undefined;
-        if (!cursor) break;
-      }
-      return { ...last!, rows };
-    })(),
-    blueskyChatAuthed(account, handle, "chat.bsky.convo.getConvo", {
-      params: { convoId: conversationId },
+  // Older pages only need messages; peer identity comes from the first page.
+  const [msgsPage, convoRes] = await Promise.all([
+    blueskyChatAuthed(account, handle, "chat.bsky.convo.getMessages", {
+      params: {
+        convoId: conversationId,
+        limit: String(DM_THREAD_PAGE_SIZE),
+        ...(cursor ? { cursor } : {}),
+      },
     }),
+    cursor
+      ? Promise.resolve(null)
+      : blueskyChatAuthed(account, handle, "chat.bsky.convo.getConvo", {
+          params: { convoId: conversationId },
+        }),
   ]);
-  const session = msgsPages.session ?? convoRes.session;
+  const session = msgsPage.session ?? convoRes?.session ?? null;
   if (!session) {
     return graphMsg("Bluesky login failed. Reconnect the account.");
   }
-  if (!msgsPages.ok && !("rows" in msgsPages && msgsPages.rows.length)) {
+  if (!msgsPage.ok) {
     const msg =
-      (msgsPages.data as { message?: string })?.message ?? "Bluesky thread failed";
+      (msgsPage.data as { message?: string })?.message ?? "Bluesky thread failed";
     return graphMsg(msg);
   }
-  const rows =
-    "rows" in msgsPages ? msgsPages.rows : [];
+  const pageData = msgsPage.data as { messages?: BskyChatMessage[]; cursor?: unknown };
+  const seen = new Set<string>();
+  const rows = (pageData.messages ?? []).filter((m) => {
+    if (!m.id) return true;
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+  const nextCursor =
+    typeof pageData.cursor === "string" && pageData.cursor ? pageData.cursor : null;
   const peer = bskyPeer(
-    (convoRes.data as { convo?: BskyConvo })?.convo?.members,
+    (convoRes?.data as { convo?: BskyConvo } | undefined)?.convo?.members,
     session.did,
   );
   const messages: InboxDmMessage[] = rows
@@ -1187,8 +1206,11 @@ async function fetchBlueskyThread(
           canReply: true,
         })
       : undefined,
+    nextCursor,
   };
 }
+
+const TIKTOK_DM_LIST_HYDRATE_CAP = 30;
 
 type TtConversation = {
   conversation_id?: string;
@@ -1261,11 +1283,13 @@ async function listTikTokConversations(
       limit: "100",
     };
     if (cursor) query.cursor = cursor;
-    const { ok, data } = await tiktokBmGet(
+    const listRes = await tiktokBmGet(
       account.accessToken,
       "/business/message/conversation/list/",
       query,
     );
+    throwIfPlatformRateLimited("tiktok", listRes);
+    const { ok, data } = listRes;
     lastEnv = data;
     if (!ok) {
       if (rows.length) return { ok: true, rows, error: data };
@@ -1317,10 +1341,15 @@ async function fetchTikTokList(
   ) {
     return ttBmFail(lastErr ?? {}, "TikTok DMs failed");
   }
-  const inWindow = rows.filter((row) =>
-    inDateWindow(unixToIso(row.update_time), since, until, { keepUndated: false }),
-  );
-  const details = await mapPool(inWindow, 4, async (row) => {
+  // Each row needs a content/list call for peer + snippet. Hydrate only the
+  // most recent conversations so one list read stays a bounded number of calls.
+  const inWindow = rows
+    .filter((row) =>
+      inDateWindow(unixToIso(row.update_time), since, until, { keepUndated: false }),
+    )
+    .sort((a, b) => (b.update_time ?? 0) - (a.update_time ?? 0))
+    .slice(0, TIKTOK_DM_LIST_HYDRATE_CAP);
+  const details = await mapPool(inWindow, 3, async (row) => {
     const cid = row.conversation_id!;
     const detail = await tiktokBmGet(
       account.accessToken,
@@ -1388,48 +1417,37 @@ async function ttMediaUrl(
 async function fetchTikTokThread(
   account: DmAccount,
   conversationId: string,
+  cursor: string | null,
 ): Promise<DmThreadFetchResult> {
-  const rows: TtMessage[] = [];
+  const query: Record<string, string> = {
+    business_id: account.platformUserId,
+    conversation_id: conversationId,
+  };
+  if (cursor) query.cursor = cursor;
+  const pageRes = await tiktokBmGet(
+    account.accessToken,
+    "/business/message/content/list/",
+    query,
+  );
+  throwIfPlatformRateLimited("tiktok", pageRes);
+  if (!pageRes.ok) {
+    return ttBmMsgFail(pageRes.data, "TikTok conversation failed");
+  }
+  const inner = tiktokBmData(pageRes.data);
+  const participants = (inner.participants as TtParticipant[] | undefined) ?? [];
   const seen = new Set<string>();
-  let cursor: string | undefined;
-  let lastEnv: TikTokBmEnvelope | null = null;
-  let participants: TtParticipant[] = [];
-  for (let page = 0; page < 10; page++) {
-    const query: Record<string, string> = {
-      business_id: account.platformUserId,
-      conversation_id: conversationId,
-    };
-    if (cursor) query.cursor = cursor;
-    const { ok, data } = await tiktokBmGet(
-      account.accessToken,
-      "/business/message/content/list/",
-      query,
-    );
-    lastEnv = data;
-    if (!ok) {
-      if (rows.length) break;
-      return ttBmMsgFail(data, "TikTok conversation failed");
-    }
-    const inner = tiktokBmData(data);
-    if (page === 0) {
-      participants = (inner.participants as TtParticipant[] | undefined) ?? [];
-    }
-    for (const m of ttMessages(inner.messages)) {
-      const id = m.message_id;
-      if (id && seen.has(id)) continue;
-      if (id) seen.add(id);
-      rows.push(m);
-    }
-    const next = tiktokBmCursor(inner);
-    if (!next) break;
-    cursor = next;
-  }
-  if (!rows.length && lastEnv && lastEnv.code !== 0) {
-    return ttBmMsgFail(lastEnv, "TikTok conversation failed");
-  }
+  const rows = ttMessages(inner.messages).filter((m) => {
+    const id = m.message_id;
+    if (!id) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+  const nextCursor = tiktokBmCursor(inner);
   rows.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
   const peer = ttPeer(participants, account.platformUserId);
-  const attachments = await mapPool(rows, 4, (m) =>
+  // Media URLs need one call each; only this page's media is resolved.
+  const attachments = await mapPool(rows, 3, (m) =>
     ttMediaUrl(account, conversationId, m),
   );
   const messages: InboxDmMessage[] = rows.map((m, i) => {
@@ -1461,5 +1479,6 @@ async function fetchTikTokThread(
       snippet: snippetOf(last?.text || (last?.attachment ? `[${last.attachment.type}]` : "")),
       canReply: true,
     }),
+    nextCursor,
   };
 }

@@ -50,3 +50,20 @@ export function dmPeerHandleLabel(
   if (name && name === handle.toLowerCase()) return null;
   return handle;
 }
+
+/** URL param naming the account that owns `?convo=` (separate from the list filter). */
+export const DM_CONVO_ACCOUNT_PARAM = "convoAccount";
+
+/**
+ * Account for the conversation in the URL: the explicit `convoAccount`, else
+ * the list filter (older links and single-account views carried it there).
+ */
+export function convoAccountFromParams(
+  params: URLSearchParams,
+  fallback: string | null,
+): string | null {
+  const explicit = params.get(DM_CONVO_ACCOUNT_PARAM);
+  if (explicit) return explicit;
+  const filter = params.get("account");
+  return filter && filter !== "all" ? filter : fallback;
+}

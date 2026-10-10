@@ -46,13 +46,15 @@ import { verifyDmConversationOnAccount } from "../lib/inbox/verify-dm.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { inDateWindow, parseDateWindow } from "../lib/date-window.js";
 import {
-  dmListCacheSuffix,
+  dmListFetchPlan,
+  dmThreadCacheSuffix,
   olderThanDmCursor,
 } from "../lib/inbox/page-param.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
 import { noteFetchError, noteFetchNotice, isInboxFetchNotice } from "../lib/inbox/fetch-errors.js";
 import { createLiveRequestBudget, raceTimeout, LIVE_RPC_BUDGET_MS } from "../lib/live-request-budget.js";
 import {
+  invalidatePlatformRead,
   PlatformApiCooldownError,
   platformCommentPageRounds,
   platformFetchConcurrency,
@@ -596,8 +598,7 @@ export async function listInboxCommentsForScope(
           if (e instanceof PlatformApiCooldownError) {
             noteFetchNotice(notices, {
               platform: row.account.platform,
-              message:
-                "Platform rate limit reached - wait a few minutes before refreshing.",
+              message: e.message,
             });
             return;
           }
@@ -993,6 +994,8 @@ async function loadDmAccounts(
 }
 
 const DM_CONCURRENCY = 1;
+/** TikTok Business Messaging keeps 90 days of conversations. */
+const TIKTOK_DM_HISTORY_MS = 90 * 24 * 60 * 60 * 1000;
 const DM_SAMPLE_LIMIT = 8;
 
 export type InboxDmsInput = {
@@ -1025,17 +1028,9 @@ export async function listInboxDmsForScope(
       : undefined;
   const beforeMs = parseBefore(input.before)?.getTime();
   const limit = parsePageLimit(input.limit, DM_SAMPLE_LIMIT);
-  // When paging older DMs, we must constrain the platform fetchers by an
-  // effective `until` derived from `before`. Otherwise each "older page"
-  // re-fetches the same since..until set and the client-side slice quickly
-  // runs out.
-  const untilForFetch = beforeMs != null ? new Date(beforeMs) : until;
-  const dmCacheSuffix = dmListCacheSuffix({
-    since,
-    untilForFetch,
-    hasCursor: beforeMs != null,
-    timeZone,
-  });
+  // One cached platform read per account serves every range and every
+  // "Load older" page; both are filters applied below.
+  const fetchPlan = dmListFetchPlan({ since });
 
   const accounts = await loadDmAccounts(ctx, accountId);
   const dmAccounts = accountId ? accounts : accounts.slice(0, DM_SAMPLE_LIMIT);
@@ -1064,7 +1059,7 @@ export async function listInboxDmsForScope(
           platform: row.platform,
           accountId: row.id,
           kind: "inbox_dms",
-          suffix: dmCacheSuffix,
+          suffix: fetchPlan.suffix,
           fresh,
           fetch: () =>
             fetchAccountDms(
@@ -1078,8 +1073,8 @@ export async function listInboxDmsForScope(
                 accessToken,
                 accessSecret,
               },
-              since,
-              untilForFetch,
+              fetchPlan.fetchSince,
+              new Date(),
             ),
         });
         result = cached.data;
@@ -1091,16 +1086,25 @@ export async function listInboxDmsForScope(
         }
       } catch (e) {
         if (e instanceof PlatformApiCooldownError) {
-          noteFetchNotice(notices, {
-            platform: row.platform,
-            message:
-              "Platform rate limit reached - wait a few minutes before refreshing.",
-          });
+          noteFetchNotice(notices, { platform: row.platform, message: e.message });
           return;
         }
         throw e;
       }
-      threads.push(...result.threads);
+      threads.push(
+        ...result.threads.filter((t) =>
+          inDateWindow(t.lastMessageAt, since, until, { keepUndated: false }),
+        ),
+      );
+      if (
+        row.platform === "tiktok" &&
+        until.getTime() - since.getTime() > TIKTOK_DM_HISTORY_MS
+      ) {
+        noteFetchNotice(notices, {
+          platform: row.platform,
+          message: "TikTok DMs only go back 90 days.",
+        });
+      }
       const scopes = reconnectScopesFromFetch(result);
       if (scopes.length) {
         reconnect.set(row.id, {
@@ -1195,22 +1199,32 @@ export type InboxDmThreadInput = {
   accountId?: unknown;
   conversationId?: unknown;
   peerId?: unknown;
+  /** `nextCursor` from a previous page; omit for the newest page. */
+  cursor?: unknown;
   fresh?: unknown;
 };
 
+/** Platform cursors are opaque but short; anything longer is not one of ours. */
+const DM_CURSOR_MAX_LENGTH = 2048;
+
 /**
- * Why a DM thread read failed. `/v1` maps `not_found` to 404 and everything
- * else to 400 - a platform hiccup must not be reported as a missing thread.
+ * Why a DM thread read failed. `/v1` maps `not_found` to 404, `rate_limited`
+ * to 429 + Retry-After, and everything else to 400 - a platform hiccup must
+ * not be reported as a missing thread.
  */
 export type InboxDmThreadErrorCode =
   | "invalid"
   | "not_found"
   | "unsupported"
-  | "fetch_failed";
+  | "fetch_failed"
+  /** Platform (or Social0's pacing) is throttling this account; retry later. */
+  | "rate_limited";
 
 export type InboxDmThreadError = {
   error: string;
   code: InboxDmThreadErrorCode;
+  /** Present with `rate_limited`: seconds until a retry can succeed. */
+  retryAfterSec?: number;
 };
 
 export async function getInboxDmThread(
@@ -1231,6 +1245,16 @@ export async function getInboxDmThreadForScope(
   }
   const peerId = typeof input.peerId === "string" ? input.peerId : "";
   const fresh = input.fresh === true;
+  let cursor: string | null = null;
+  if (input.cursor != null && input.cursor !== "") {
+    if (
+      typeof input.cursor !== "string" ||
+      input.cursor.length > DM_CURSOR_MAX_LENGTH
+    ) {
+      return { error: "Invalid cursor", code: "invalid" };
+    }
+    cursor = input.cursor;
+  }
 
   const row = await loadDmAccount(ctx, input.accountId);
   if (!row) return { error: "Account not found", code: "not_found" };
@@ -1248,7 +1272,7 @@ export async function getInboxDmThreadForScope(
         platform: row.platform,
         accountId: row.id,
         kind: "inbox_dm_thread",
-        suffix: input.conversationId,
+        suffix: dmThreadCacheSuffix(input.conversationId, cursor),
         fresh,
         fetch: () =>
           fetchDmMessages(
@@ -1264,6 +1288,7 @@ export async function getInboxDmThreadForScope(
             },
             input.conversationId as string,
             peerId,
+            cursor,
           ),
       }),
       LIVE_RPC_BUDGET_MS,
@@ -1303,13 +1328,23 @@ export async function getInboxDmThreadForScope(
           inbound.authorAvatarUrl ?? thread.peerAvatarUrl ?? null;
       }
     }
+    const nextCursor = result.nextCursor ?? null;
     return {
       conversationId: input.conversationId,
       thread,
       messages: result.messages,
+      nextCursor,
+      hasMore: nextCursor != null,
       fetchedAt: new Date().toISOString(),
     };
   } catch (e) {
+    if (e instanceof PlatformApiCooldownError) {
+      return {
+        error: e.message,
+        code: "rate_limited",
+        retryAfterSec: e.retryAfterSec(),
+      };
+    }
     return {
       error: e instanceof Error ? e.message : "Failed to load conversation",
       code: "fetch_failed",
@@ -1389,7 +1424,7 @@ export async function replyToInboxDmForScope(
       mediaUrl = resolved.url;
       mediaMimeType = resolved.mimeType;
     }
-    return await replyToDmOnPlatform({
+    const sent = await replyToDmOnPlatform({
       platform: row.platform,
       conversationId: input.conversationId,
       peerId: sendPeerId.peerId,
@@ -1402,6 +1437,17 @@ export async function replyToInboxDmForScope(
       accountId: row.id,
       accountHandle: row.platformUsername,
     });
+    if (sent.ok) {
+      // The cached newest page predates this message; drop it so the next
+      // read (any client, any tab) shows what was actually sent.
+      await invalidatePlatformRead({
+        platform: row.platform,
+        accountId: row.id,
+        kind: "inbox_dm_thread",
+        suffix: dmThreadCacheSuffix(input.conversationId, null),
+      });
+    }
+    return sent;
   } catch (e) {
     return {
       ok: false,

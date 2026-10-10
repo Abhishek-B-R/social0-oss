@@ -6,7 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { mapPool } from "../lib/map-pool.js";
 import {
-  dmListCacheSuffix,
+  DM_LIST_LOOKBACK_DAYS,
+  dmListFetchPlan,
   olderThanDmCursor,
 } from "../lib/inbox/page-param.js";
 import { toInboxThreads, type InboxComment } from "../lib/inbox/types.js";
@@ -117,62 +118,33 @@ describe("analytics series day stepping", () => {
   });
 });
 
-describe("DM list cache key", () => {
-  const since = new Date("2026-03-01T05:00:00.000Z");
-  const tz = "America/New_York";
+describe("DM list fetch plan", () => {
+  const now = new Date("2026-03-04T14:00:00.000Z");
+  const day = 24 * 60 * 60 * 1000;
 
-  it("is stable while the live head clock moves", () => {
-    const a = dmListCacheSuffix({
-      since,
-      untilForFetch: new Date("2026-03-04T14:00:00.000Z"),
-      hasCursor: false,
-      timeZone: tz,
-    });
-    const b = dmListCacheSuffix({
-      since,
-      untilForFetch: new Date("2026-03-04T14:00:37.512Z"),
-      hasCursor: false,
-      timeZone: tz,
-    });
-    expect(a).toBe(b);
-  });
-
-  it("separates the live head from a cursor page", () => {
-    const until = new Date("2026-03-04T14:00:00.000Z");
-    expect(
-      dmListCacheSuffix({ since, untilForFetch: until, hasCursor: false, timeZone: tz }),
-    ).not.toBe(
-      dmListCacheSuffix({ since, untilForFetch: until, hasCursor: true, timeZone: tz }),
+  it("shares one cache entry across ranges inside the lookback", () => {
+    const week = dmListFetchPlan({ since: new Date(now.getTime() - 7 * day), now });
+    const month = dmListFetchPlan({ since: new Date(now.getTime() - 30 * day), now });
+    expect(week.suffix).toBe(month.suffix);
+    expect(week.fetchSince.getTime()).toBe(
+      now.getTime() - DM_LIST_LOOKBACK_DAYS * day,
     );
   });
 
-  it("keeps distinct cursor pages distinct", () => {
-    const a = dmListCacheSuffix({
-      since,
-      untilForFetch: new Date("2026-03-04T14:00:00.000Z"),
-      hasCursor: true,
-      timeZone: tz,
-    });
-    const b = dmListCacheSuffix({
-      since,
-      untilForFetch: new Date("2026-03-03T14:00:00.000Z"),
-      hasCursor: true,
-      timeZone: tz,
-    });
-    expect(a).not.toBe(b);
+  it("is stable while the clock moves", () => {
+    const since = new Date(now.getTime() - 7 * day);
+    const later = new Date(now.getTime() + 37_512);
+    expect(dmListFetchPlan({ since, now }).suffix).toBe(
+      dmListFetchPlan({ since, now: later }).suffix,
+    );
   });
 
-  it("separates windows with a different start", () => {
-    const until = new Date("2026-03-04T14:00:00.000Z");
-    expect(
-      dmListCacheSuffix({ since, untilForFetch: until, hasCursor: false, timeZone: tz }),
-    ).not.toBe(
-      dmListCacheSuffix({
-        since: new Date("2026-02-01T05:00:00.000Z"),
-        untilForFetch: until,
-        hasCursor: false,
-        timeZone: tz,
-      }),
+  it("widens the fetch for windows past the lookback", () => {
+    const since = new Date(now.getTime() - 365 * day);
+    const plan = dmListFetchPlan({ since, now });
+    expect(plan.fetchSince).toEqual(since);
+    expect(plan.suffix).not.toBe(
+      dmListFetchPlan({ since: new Date(now.getTime() - 7 * day), now }).suffix,
     );
   });
 });

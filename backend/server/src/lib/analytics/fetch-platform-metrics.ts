@@ -6,6 +6,8 @@
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
+import { extractHttpStatus } from "../twitter-errors.js";
+import { throwIfPlatformRateLimited } from "../platform-rate-limit.js";
 import { calendarDayKey } from "../date-window.js";
 import {
   expiredTokenMessage,
@@ -97,86 +99,287 @@ function errResult(message: string): PlatformFetchResult {
   return { metrics: {}, status: "error", error: message };
 }
 
-async function fetchTwitter(
-  input: PlatformFetchInput,
-): Promise<PlatformFetchResult> {
+/**
+ * Platforms whose metrics endpoint looks up many posts in one call. The
+ * analytics service routes these through `fetchPlatformPublicationMetricsBatch`
+ * so an account's whole page costs one platform request instead of one per post.
+ */
+export const BATCH_METRIC_PLATFORMS: ReadonlySet<string> = new Set([
+  "twitter_x",
+  "bluesky",
+  "youtube",
+]);
+
+/** Ids per request each batch endpoint accepts. */
+const X_TWEETS_LOOKUP_MAX = 100;
+const BLUESKY_GET_POSTS_MAX = 25;
+const YOUTUBE_VIDEOS_LIST_MAX = 50;
+
+export type PlatformBatchFetchInput = Omit<
+  PlatformFetchInput,
+  "platformPostId" | "publishedAt"
+>;
+
+function chunked<T>(items: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
+function fillAll(
+  out: Map<string, PlatformFetchResult>,
+  ids: string[],
+  result: PlatformFetchResult,
+): void {
+  for (const id of ids) out.set(id, result);
+}
+
+async function fetchTwitterBatch(
+  input: PlatformBatchFetchInput,
+  ids: string[],
+): Promise<Map<string, PlatformFetchResult>> {
+  const out = new Map<string, PlatformFetchResult>();
   const appKey = env.TWITTER_CONSUMER_KEY;
   const appSecret = env.TWITTER_CONSUMER_SECRET;
   if (!appKey || !appSecret || !input.accessSecret) {
-    return errResult("Twitter credentials incomplete. Reconnect the X account.");
-  }
-  try {
-    const client = new TwitterApi({
-      appKey,
-      appSecret,
-      accessToken: input.accessToken,
-      accessSecret: input.accessSecret,
-    });
-    const tweet = await raceTimeout(
-      client.v2.singleTweet(input.platformPostId, {
-        "tweet.fields": ["public_metrics"],
-      }),
-      PLATFORM_FETCH_TIMEOUT_MS,
-      "X metrics",
+    fillAll(
+      out,
+      ids,
+      errResult("Twitter credentials incomplete. Reconnect the X account."),
     );
-    const m = tweet.data?.public_metrics;
-    if (!m) return errResult("No public metrics returned for this tweet.");
-    return {
-      status: "ok",
-      metrics: {
-        likes: m.like_count,
-        reposts: m.retweet_count,
-        comments: m.reply_count,
-        quotes: m.quote_count,
-        impressions: m.impression_count,
-        views: m.impression_count,
-      },
-    };
-  } catch (e) {
-    if (isPlatformAuthError(e)) {
-      return scopeError([TOKEN_EXPIRED_MARKER], expiredTokenMessage("X"));
+    return out;
+  }
+  const client = new TwitterApi({
+    appKey,
+    appSecret,
+    accessToken: input.accessToken,
+    accessSecret: input.accessSecret,
+  });
+  for (const chunk of chunked(ids, X_TWEETS_LOOKUP_MAX)) {
+    try {
+      const res = await raceTimeout(
+        client.v2.tweets(chunk, { "tweet.fields": ["public_metrics"] }),
+        PLATFORM_FETCH_TIMEOUT_MS,
+        "X metrics",
+      );
+      const byId = new Map((res.data ?? []).map((t) => [t.id, t] as const));
+      for (const id of chunk) {
+        const m = byId.get(id)?.public_metrics;
+        out.set(
+          id,
+          m
+            ? {
+                status: "ok",
+                metrics: {
+                  likes: m.like_count,
+                  reposts: m.retweet_count,
+                  comments: m.reply_count,
+                  quotes: m.quote_count,
+                  impressions: m.impression_count,
+                  views: m.impression_count,
+                },
+              }
+            : errResult("Post not found or no longer visible on X."),
+        );
+      }
+    } catch (e) {
+      if (extractHttpStatus(e) === 429) throw e;
+      if (isPlatformAuthError(e)) {
+        fillAll(
+          out,
+          chunk,
+          scopeError([TOKEN_EXPIRED_MARKER], expiredTokenMessage("X")),
+        );
+        continue;
+      }
+      fillAll(
+        out,
+        chunk,
+        errResult(e instanceof Error ? e.message : "Twitter metrics failed"),
+      );
     }
-    return errResult(e instanceof Error ? e.message : "Twitter metrics failed");
+  }
+  return out;
+}
+
+async function fetchYouTubeBatch(
+  input: PlatformBatchFetchInput,
+  ids: string[],
+): Promise<Map<string, PlatformFetchResult>> {
+  const out = new Map<string, PlatformFetchResult>();
+  for (const chunk of chunked(ids, YOUTUBE_VIDEOS_LIST_MAX)) {
+    // youtube.readonly (already requested) is enough for video statistics.
+    const url = new URL("https://www.googleapis.com/youtube/v3/videos");
+    url.searchParams.set("part", "statistics");
+    url.searchParams.set("id", chunk.join(","));
+    url.searchParams.set("maxResults", String(chunk.length));
+    const ytRes = await jsonGet(url.toString(), {
+      Authorization: `Bearer ${input.accessToken}`,
+    });
+    throwIfPlatformRateLimited("youtube", ytRes, { youtube: true });
+    const { ok, status, data } = ytRes;
+    if (!ok) {
+      const msg =
+        (data as { error?: { message?: string } })?.error?.message ??
+        "YouTube videos.list failed";
+      let result: PlatformFetchResult;
+      if (/insufficient|scope|permission/i.test(msg)) {
+        result = scopeError(
+          ["https://www.googleapis.com/auth/youtube.readonly"],
+          msg,
+        );
+      } else if (isPlatformAuthError(msg, status)) {
+        result = scopeError([TOKEN_EXPIRED_MARKER], expiredTokenMessage("YouTube"));
+      } else {
+        result = errResult(msg);
+      }
+      fillAll(out, chunk, result);
+      continue;
+    }
+    const items =
+      (data as { items?: Array<{ id?: string; statistics?: Record<string, string> }> })
+        ?.items ?? [];
+    const byId = new Map(
+      items.filter((i) => i.id).map((i) => [i.id as string, i] as const),
+    );
+    for (const id of chunk) {
+      const s = byId.get(id)?.statistics;
+      out.set(
+        id,
+        s
+          ? {
+              status: "ok",
+              metrics: {
+                views: num(s.viewCount),
+                likes: num(s.likeCount),
+                comments: num(s.commentCount),
+              },
+            }
+          : errResult("Video not found or no statistics."),
+      );
+    }
+  }
+  return out;
+}
+
+type BskyPostView = {
+  uri?: string;
+  likeCount?: number;
+  repostCount?: number;
+  replyCount?: number;
+  quoteCount?: number;
+};
+
+async function fetchBlueskyBatch(
+  input: PlatformBatchFetchInput,
+  ids: string[],
+): Promise<Map<string, PlatformFetchResult>> {
+  const out = new Map<string, PlatformFetchResult>();
+  const handle = input.accountHandle?.replace(/^@/, "") ?? "";
+  if (!input.accountId || !handle || !input.accessSecret) {
+    fillAll(
+      out,
+      ids,
+      errResult("Bluesky credentials incomplete. Reconnect the account."),
+    );
+    return out;
+  }
+  let session = await blueskySession(input.accountId, handle, input.accessSecret);
+  if (!session) {
+    fillAll(out, ids, errResult("Bluesky login failed. Reconnect the account."));
+    return out;
+  }
+  for (const chunk of chunked(ids, BLUESKY_GET_POSTS_MAX)) {
+    const url = new URL("https://bsky.social/xrpc/app.bsky.feed.getPosts");
+    for (const uri of chunk) url.searchParams.append("uris", uri);
+    let read = await jsonGet(url.toString(), {
+      Authorization: `Bearer ${session.accessJwt}`,
+    });
+    throwIfPlatformRateLimited("bluesky", read);
+    if (read.status === 401) {
+      session = await blueskySessionAfter401(
+        input.accountId,
+        handle,
+        input.accessSecret,
+      );
+      if (!session) {
+        fillAll(
+          out,
+          ids.filter((id) => !out.has(id)),
+          errResult("Bluesky login failed. Reconnect the account."),
+        );
+        return out;
+      }
+      read = await jsonGet(url.toString(), {
+        Authorization: `Bearer ${session.accessJwt}`,
+      });
+      throwIfPlatformRateLimited("bluesky", read);
+    }
+    if (!read.ok) {
+      fillAll(
+        out,
+        chunk,
+        errResult(
+          (read.data as { message?: string })?.message ?? "Bluesky getPosts failed",
+        ),
+      );
+      continue;
+    }
+    const posts = (read.data as { posts?: BskyPostView[] })?.posts ?? [];
+    const byUri = new Map(
+      posts.filter((p) => p.uri).map((p) => [p.uri as string, p] as const),
+    );
+    for (const id of chunk) {
+      const post = byUri.get(id);
+      out.set(
+        id,
+        post
+          ? {
+              status: "ok",
+              metrics: {
+                likes: num(post.likeCount),
+                reposts: num(post.repostCount),
+                comments: num(post.replyCount),
+                quotes: num(post.quoteCount),
+              },
+            }
+          : errResult("Bluesky post not found."),
+      );
+    }
+  }
+  return out;
+}
+
+/**
+ * Metrics for many posts of ONE account in as few platform calls as the API
+ * allows. Returns an entry for every requested id. Throws on a platform 429
+ * so the cache layer can cool down and serve stale values.
+ */
+export async function fetchPlatformPublicationMetricsBatch(
+  input: PlatformBatchFetchInput,
+  platformPostIds: string[],
+): Promise<Map<string, PlatformFetchResult>> {
+  const ids = [...new Set(platformPostIds.filter(Boolean))];
+  if (!ids.length) return new Map();
+  switch (input.platform) {
+    case "twitter_x":
+      return fetchTwitterBatch(input, ids);
+    case "youtube":
+      return fetchYouTubeBatch(input, ids);
+    case "bluesky":
+      return fetchBlueskyBatch(input, ids);
+    default:
+      throw new Error(`Batch metrics not supported for ${input.platform}`);
   }
 }
 
-async function fetchYouTube(
+async function fetchViaBatch(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
-  // youtube.readonly (already requested) is enough for video statistics.
-  const url = new URL("https://www.googleapis.com/youtube/v3/videos");
-  url.searchParams.set("part", "statistics");
-  url.searchParams.set("id", input.platformPostId);
-  const { ok, status, data } = await jsonGet(url.toString(), {
-    Authorization: `Bearer ${input.accessToken}`,
-  });
-  if (!ok) {
-    const msg =
-      (data as { error?: { message?: string } })?.error?.message ??
-      "YouTube videos.list failed";
-    if (/insufficient|scope|permission/i.test(msg)) {
-      return scopeError(
-        ["https://www.googleapis.com/auth/youtube.readonly"],
-        msg,
-      );
-    }
-    if (isPlatformAuthError(msg, status)) {
-      return scopeError([TOKEN_EXPIRED_MARKER], expiredTokenMessage("YouTube"));
-    }
-    return errResult(msg);
-  }
-  const item = (data as { items?: Array<{ statistics?: Record<string, string> }> })
-    ?.items?.[0];
-  if (!item?.statistics) return errResult("Video not found or no statistics.");
-  const s = item.statistics;
-  return {
-    status: "ok",
-    metrics: {
-      views: num(s.viewCount),
-      likes: num(s.likeCount),
-      comments: num(s.commentCount),
-    },
-  };
+  const results = await fetchPlatformPublicationMetricsBatch(input, [
+    input.platformPostId,
+  ]);
+  return results.get(input.platformPostId) ?? errResult("Metrics fetch failed");
 }
 
 async function facebookInsightsId(
@@ -204,6 +407,7 @@ async function fetchFacebook(
   const base = `https://graph.facebook.com/v21.0/${id}`;
   const fieldsUrl = `${base}?fields=shares,likes.summary(true),comments.summary(true)&access_token=${encodeURIComponent(input.accessToken)}`;
   const fields = await jsonGet(fieldsUrl);
+  throwIfPlatformRateLimited("facebook", fields, { graph: true });
   const metrics: MetricMap = {};
   if (fields.ok) {
     const d = fields.data as {
@@ -269,6 +473,7 @@ async function fetchInstagram(
   const base = `https://graph.instagram.com/v21.0/${id}`;
   const mediaUrl = `${base}?fields=like_count,comments_count,media_type,timestamp&access_token=${encodeURIComponent(input.accessToken)}`;
   const media = await jsonGet(mediaUrl);
+  throwIfPlatformRateLimited("instagram", media, { graph: true });
   const metrics: MetricMap = {};
   if (media.ok) {
     const d = media.data as {
@@ -329,7 +534,9 @@ async function fetchThreads(
 ): Promise<PlatformFetchResult> {
   const id = encodeURIComponent(input.platformPostId);
   const url = `https://graph.threads.net/v1.0/${id}/insights?metric=views,likes,replies,reposts,quotes&access_token=${encodeURIComponent(input.accessToken)}`;
-  const { ok, data } = await jsonGet(url);
+  const threadsRes = await jsonGet(url);
+  throwIfPlatformRateLimited("threads", threadsRes, { graph: true });
+  const { ok, data } = threadsRes;
   if (!ok) {
     const msg =
       (data as { error?: { message?: string } })?.error?.message ??
@@ -524,6 +731,7 @@ async function fetchTikTok(
     }),
     signal: AbortSignal.timeout(PLATFORM_FETCH_TIMEOUT_MS),
   });
+  throwIfPlatformRateLimited("tiktok", res);
   const text = await res.text();
   let data: {
     error?: { code?: string; message?: string };
@@ -578,9 +786,11 @@ async function fetchPinterest(
     "metric_types",
     "IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE,TOTAL_COMMENTS,TOTAL_REACTIONS",
   );
-  const { ok, data, status } = await jsonGet(url.toString(), {
+  const pinRes = await jsonGet(url.toString(), {
     Authorization: `Bearer ${input.accessToken}`,
   });
+  throwIfPlatformRateLimited("pinterest", pinRes);
+  const { ok, data, status } = pinRes;
   if (!ok) {
     const msg =
       (data as { message?: string; error?: { message?: string } })?.message ??
@@ -618,11 +828,13 @@ async function fetchLinkedIn(
     : `urn:li:share:${input.platformPostId}`;
   const encoded = encodeURIComponent(urn);
   const url = `https://api.linkedin.com/rest/socialActions/${encoded}`;
-  const { ok, data, status } = await jsonGet(url, {
+  const liRes = await jsonGet(url, {
     Authorization: `Bearer ${input.accessToken}`,
     "LinkedIn-Version": "202411",
     "X-Restli-Protocol-Version": "2.0.0",
   });
+  throwIfPlatformRateLimited("linkedin", liRes);
+  const { ok, data, status } = liRes;
   if (!ok) {
     const msg =
       (data as { message?: string })?.message ??
@@ -655,69 +867,14 @@ async function fetchLinkedIn(
   };
 }
 
-async function fetchBluesky(
-  input: PlatformFetchInput,
-): Promise<PlatformFetchResult> {
-  const handle = input.accountHandle?.replace(/^@/, "") ?? "";
-  if (!input.accountId || !handle || !input.accessSecret) {
-    return errResult("Bluesky credentials incomplete. Reconnect the account.");
-  }
-  let session = await blueskySession(
-    input.accountId,
-    handle,
-    input.accessSecret,
-  );
-  if (!session) {
-    return errResult("Bluesky login failed. Reconnect the account.");
-  }
-  const url = new URL("https://bsky.social/xrpc/app.bsky.feed.getPosts");
-  url.searchParams.set("uris", input.platformPostId);
-  const firstRead = await jsonGet(url.toString(), {
-    Authorization: `Bearer ${session.accessJwt}`,
-  });
-  let { ok, data } = firstRead;
-  if (firstRead.status === 401) {
-    session = await blueskySessionAfter401(
-      input.accountId,
-      handle,
-      input.accessSecret,
-    );
-    if (!session) {
-      return errResult("Bluesky login failed. Reconnect the account.");
-    }
-    const retry = await jsonGet(url.toString(), {
-      Authorization: `Bearer ${session.accessJwt}`,
-    });
-    ok = retry.ok;
-    data = retry.data;
-  }
-  if (!ok) {
-    return errResult(
-      (data as { message?: string })?.message ?? "Bluesky getPosts failed",
-    );
-  }
-  const post = (data as { posts?: Array<{ likeCount?: number; repostCount?: number; replyCount?: number; quoteCount?: number }> })
-    ?.posts?.[0];
-  if (!post) return errResult("Bluesky post not found.");
-  return {
-    status: "ok",
-    metrics: {
-      likes: num(post.likeCount),
-      reposts: num(post.repostCount),
-      comments: num(post.replyCount),
-      quotes: num(post.quoteCount),
-    },
-  };
-}
-
 export async function fetchPlatformPublicationMetrics(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
   switch (input.platform) {
     case "twitter_x":
-      return fetchTwitter(input);
+      return fetchViaBatch(input);
     case "youtube":
-      return fetchYouTube(input);
+      return fetchViaBatch(input);
     case "facebook":
       return fetchFacebook(input);
     case "instagram":
@@ -731,7 +888,7 @@ export async function fetchPlatformPublicationMetrics(
     case "linkedin":
       return fetchLinkedIn(input);
     case "bluesky":
-      return fetchBluesky(input);
+      return fetchViaBatch(input);
     default:
       return {
         metrics: {},

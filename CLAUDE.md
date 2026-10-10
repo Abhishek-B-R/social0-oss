@@ -196,6 +196,18 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
   onto `post_publications` by `metricsForPub` - the same core `/v1` uses.
 - Comment pages are per publication, so `threads: []` with `hasMore: true` is
   normal (X pages once). CLI/MCP follow the cursor once, then say so.
+- Platform quota is the scarce resource. Every live read goes through
+  `withPlatformReadCache` / `withPlatformBatchReadCache`
+  (`lib/platform-api-cache.ts`); fetchers must **throw** on a platform 429
+  (`throwIfPlatformRateLimited` in `lib/platform-rate-limit.ts`, or rethrow the
+  twitter-api-v2 error) so the read cools down and serves stale data. A 429
+  folded into `status: "error"` is neither cached nor cooled down and gets
+  re-sent on every request.
+- One read ≈ one platform call: X / Bluesky / YouTube analytics are batched per
+  account; DM threads load one page (`cursor` → `nextCursor`, "Load earlier");
+  the DM list is cached on a fixed lookback (`dmListFetchPlan`) shared by every
+  range, "Load older" page and reply verification. Never invalidate a paged
+  thread query client-side (it re-reads every loaded page).
 
 ---
 
@@ -214,7 +226,7 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 | ----- | ----- |
 | `GET /v1/analytics/{accounts,overview,posts/:postId}` | Live metrics; `range`/`since`/`until`/`account_id`/`fresh` |
 | `GET /v1/inbox/{accounts,comments,dms}` | Live reads; `before`/`limit` paging via `next_before` |
-| `GET /v1/inbox/dms/:conversationId` | One DM thread (`account_id` required) |
+| `GET /v1/inbox/dms/:conversationId` | One DM thread page (`account_id` required; older pages via `cursor` = `next_cursor`; throttling is 429 + `Retry-After`) |
 | `POST /v1/inbox/comments/:commentId/{reply,like,hide}` | Body carries `publication_id` |
 | `POST /v1/inbox/dms/:conversationId/reply` | Body carries `account_id` |
 

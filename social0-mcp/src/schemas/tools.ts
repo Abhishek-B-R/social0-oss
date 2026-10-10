@@ -241,6 +241,12 @@ export const getInboxDmThreadInputSchema = z.object({
   conversation_id: z.string().min(1).describe("conversation_id from list_inbox_dms"),
   account: accountRefSchema.describe("Account that owns the conversation"),
   peer_id: z.string().optional().describe("Only needed when the platform omits it"),
+  cursor: z
+    .string()
+    .min(1)
+    .max(2048)
+    .optional()
+    .describe("next_cursor from a previous call, to read older messages"),
   fresh: freshSchema,
 });
 

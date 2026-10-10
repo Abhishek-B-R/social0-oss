@@ -17,7 +17,12 @@ import { rpcHttpError } from "../lib/rpc-http-error.js";
 import { resolveAccountAccess } from "../lib/account-access.js";
 import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
 import { mapPool } from "../lib/map-pool.js";
-import { fetchPlatformPublicationMetrics } from "../lib/analytics/fetch-platform-metrics.js";
+import {
+  BATCH_METRIC_PLATFORMS,
+  fetchPlatformPublicationMetrics,
+  fetchPlatformPublicationMetricsBatch,
+  type PlatformFetchResult,
+} from "../lib/analytics/fetch-platform-metrics.js";
 import { analyticsCoverage } from "../lib/analytics/coverage.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import {
@@ -47,6 +52,7 @@ import {
 import {
   PlatformApiCooldownError,
   platformFetchConcurrency,
+  withPlatformBatchReadCache,
   withPlatformReadCache,
 } from "../lib/platform-api-cache.js";
 
@@ -192,12 +198,10 @@ async function loadPublishedPubs(opts: {
   }));
 }
 
-async function metricsForPub(
-  row: PubRow,
-  window?: { since: Date; until: Date; timeZone?: string },
-  fresh = false,
-): Promise<PublicationMetrics> {
-  const base: PublicationMetrics = {
+type MetricsWindow = { since: Date; until: Date; timeZone?: string };
+
+function basePublicationMetrics(row: PubRow): PublicationMetrics {
+  return {
     publicationId: row.publicationId,
     postId: row.postId,
     platform: row.account?.platform ?? "unknown",
@@ -209,100 +213,285 @@ async function metricsForPub(
     metrics: {},
     status: "ok",
   };
+}
 
+function skippedPublicationMetrics(row: PubRow): PublicationMetrics {
+  return {
+    ...basePublicationMetrics(row),
+    status: "skipped",
+    error: "Request budget exceeded - refresh for more metrics.",
+  };
+}
+
+function cooldownPublicationMetrics(
+  row: PubRow,
+  e: PlatformApiCooldownError,
+  missing: string[],
+): PublicationMetrics {
+  return {
+    ...basePublicationMetrics(row),
+    status: "error",
+    error: e.message,
+    missingScopes: missing.length ? missing : undefined,
+  };
+}
+
+/** Pre-flight checks shared by the single and batched paths. */
+function unfetchablePublicationMetrics(row: PubRow): PublicationMetrics | null {
   if (!row.platformPostId) {
-    return { ...base, status: "no_platform_id", error: "Missing platform post id." };
+    return {
+      ...basePublicationMetrics(row),
+      status: "no_platform_id",
+      error: "Missing platform post id.",
+    };
   }
   if (!row.account) {
     return {
-      ...base,
+      ...basePublicationMetrics(row),
       status: "error",
       error: "Connected account was removed.",
     };
   }
+  return null;
+}
 
-  const missing = missingAnalyticsScopes(row.account.platform, row.account.scopes);
+/** Turn a platform result into the API row; persists a resolved TikTok id. */
+async function publicationMetricsFromResult(
+  row: PubRow,
+  result: PlatformFetchResult,
+  missing: string[],
+): Promise<PublicationMetrics> {
+  if (
+    result.resolvedPlatformPostId &&
+    result.resolvedPlatformPostId !== row.platformPostId
+  ) {
+    await db
+      .update(postPublications)
+      .set({
+        platformPostId: result.resolvedPlatformPostId,
+        updatedAt: new Date(),
+      })
+      .where(eq(postPublications.id, row.publicationId));
+    row.platformPostId = result.resolvedPlatformPostId;
+  }
+
+  const missingScopes = result.missingScopes?.length
+    ? result.missingScopes
+    : missing.length && result.status === "scope_missing"
+      ? missing
+      : result.missingScopes;
+
+  return {
+    ...basePublicationMetrics(row),
+    platformPostId: row.platformPostId,
+    metrics: result.metrics,
+    status: result.status,
+    error: result.error,
+    missingScopes,
+  };
+}
+
+async function metricsForPub(
+  row: PubRow,
+  window?: MetricsWindow,
+  fresh = false,
+): Promise<PublicationMetrics> {
+  const unfetchable = unfetchablePublicationMetrics(row);
+  if (unfetchable) return unfetchable;
+  const account = row.account!;
+  const platformPostId = row.platformPostId!;
+  const missing = missingAnalyticsScopes(account.platform, account.scopes);
 
   try {
-    const { accessToken, accessSecret } = await resolveAccountAccess(row.account);
-    let result;
+    const { accessToken, accessSecret } = await resolveAccountAccess(account);
+    let result: PlatformFetchResult;
     try {
       const cached = await withPlatformReadCache({
-        platform: row.account.platform,
-        accountId: row.account.id,
+        platform: account.platform,
+        accountId: account.id,
         kind: "analytics",
-        suffix: analyticsCacheSuffix(
-          row.account.platform,
-          row.platformPostId,
-          window,
-        ),
+        suffix: analyticsCacheSuffix(account.platform, platformPostId, window),
         fresh,
         fetch: () =>
           fetchPlatformPublicationMetrics({
-            platform: row.account!.platform,
-            platformPostId: row.platformPostId!,
-            platformUserId: row.account!.platformUserId,
+            platform: account.platform,
+            platformPostId,
+            platformUserId: account.platformUserId,
             accessToken,
             accessSecret,
-            scopes: row.account!.scopes,
-            platformAccountType: row.account!.platformAccountType,
+            scopes: account.scopes,
+            platformAccountType: account.platformAccountType,
             since: window?.since,
             until: window?.until,
             timeZone: window?.timeZone,
-            accountId: row.account!.id,
-            accountHandle: row.account!.platformUsername,
+            accountId: account.id,
+            accountHandle: account.platformUsername,
             publishedAt: row.publishedAt,
           }),
       });
       result = cached.data;
     } catch (e) {
       if (e instanceof PlatformApiCooldownError) {
-        return {
-          ...base,
-          status: "error",
-          error: "Platform rate limit reached - try again in a few minutes.",
-          missingScopes: missing.length ? missing : undefined,
-        };
+        return cooldownPublicationMetrics(row, e, missing);
       }
       throw e;
     }
-
-    if (
-      result.resolvedPlatformPostId &&
-      result.resolvedPlatformPostId !== row.platformPostId
-    ) {
-      await db
-        .update(postPublications)
-        .set({
-          platformPostId: result.resolvedPlatformPostId,
-          updatedAt: new Date(),
-        })
-        .where(eq(postPublications.id, row.publicationId));
-      row.platformPostId = result.resolvedPlatformPostId;
-    }
-
-    const missingScopes = result.missingScopes?.length
-      ? result.missingScopes
-      : missing.length && result.status === "scope_missing"
-        ? missing
-        : result.missingScopes;
-
-    return {
-      ...base,
-      platformPostId: row.platformPostId,
-      metrics: result.metrics,
-      status: result.status,
-      error: result.error,
-      missingScopes,
-    };
+    return await publicationMetricsFromResult(row, result, missing);
   } catch (e) {
     return {
-      ...base,
+      ...basePublicationMetrics(row),
       status: "error",
       error: e instanceof Error ? e.message : "Metrics fetch failed",
       missingScopes: missing.length ? missing : undefined,
     };
   }
+}
+
+/**
+ * Metrics for every publication of ONE account on a batchable platform, with
+ * one platform call for all cache misses (see `withPlatformBatchReadCache`).
+ */
+async function metricsForAccountBatch(
+  rows: PubRow[],
+  window: MetricsWindow,
+  fresh: boolean,
+): Promise<PublicationMetrics[]> {
+  const account = rows[0]!.account!;
+  const missing = missingAnalyticsScopes(account.platform, account.scopes);
+  const suffixOf = (row: PubRow) =>
+    analyticsCacheSuffix(account.platform, row.platformPostId!, window);
+  try {
+    const { accessToken, accessSecret } = await resolveAccountAccess(account);
+    const postIdBySuffix = new Map(
+      rows.map((row) => [suffixOf(row), row.platformPostId!] as const),
+    );
+    const reads = await withPlatformBatchReadCache<PlatformFetchResult>({
+      platform: account.platform,
+      accountId: account.id,
+      kind: "analytics",
+      suffixes: rows.map(suffixOf),
+      fresh,
+      fetchMany: async (suffixes) => {
+        const byPostId = await fetchPlatformPublicationMetricsBatch(
+          {
+            platform: account.platform,
+            platformUserId: account.platformUserId,
+            accessToken,
+            accessSecret,
+            scopes: account.scopes,
+            platformAccountType: account.platformAccountType,
+            since: window.since,
+            until: window.until,
+            timeZone: window.timeZone,
+            accountId: account.id,
+            accountHandle: account.platformUsername,
+          },
+          suffixes.map((suffix) => postIdBySuffix.get(suffix)!),
+        );
+        const bySuffix = new Map<string, PlatformFetchResult>();
+        for (const suffix of suffixes) {
+          const result = byPostId.get(postIdBySuffix.get(suffix)!);
+          if (result) bySuffix.set(suffix, result);
+        }
+        return bySuffix;
+      },
+    });
+    return await Promise.all(
+      rows.map(async (row) => {
+        const item = reads.get(suffixOf(row));
+        if (!item) {
+          return {
+            ...basePublicationMetrics(row),
+            status: "error" as const,
+            error: "Metrics fetch failed",
+            missingScopes: missing.length ? missing : undefined,
+          };
+        }
+        if (!item.ok) return cooldownPublicationMetrics(row, item.error, missing);
+        return publicationMetricsFromResult(row, item.read.data, missing);
+      }),
+    );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Metrics fetch failed";
+    return rows.map((row) => ({
+      ...basePublicationMetrics(row),
+      status: "error" as const,
+      error: message,
+      missingScopes: missing.length ? missing : undefined,
+    }));
+  }
+}
+
+/**
+ * Fetch metrics for a page of publications inside the live request budget.
+ * Batchable platforms (X, Bluesky, YouTube) are grouped per account into one
+ * lookup; everything else goes per publication with bounded concurrency.
+ * Result order matches `pubs`.
+ */
+async function collectPublicationMetrics(
+  pubs: PubRow[],
+  window: MetricsWindow,
+  fresh: boolean,
+  concurrency: number,
+): Promise<{ results: PublicationMetrics[]; partial: boolean }> {
+  const budget = createLiveRequestBudget();
+  let partial = false;
+  const results: Array<PublicationMetrics | undefined> = new Array(pubs.length);
+  const batches = new Map<string, number[]>();
+  const singles: number[] = [];
+
+  pubs.forEach((row, index) => {
+    const unfetchable = unfetchablePublicationMetrics(row);
+    if (unfetchable) {
+      results[index] = unfetchable;
+      return;
+    }
+    const platform = row.account!.platform;
+    if (
+      BATCH_METRIC_PLATFORMS.has(platform) &&
+      !WINDOWED_ANALYTICS_PLATFORMS.has(platform)
+    ) {
+      const list = batches.get(row.account!.id) ?? [];
+      list.push(index);
+      batches.set(row.account!.id, list);
+    } else {
+      singles.push(index);
+    }
+  });
+
+  for (const indexes of batches.values()) {
+    if (budget.isExpired()) {
+      partial = true;
+      break;
+    }
+    const rows = indexes.map((i) => pubs[i]!);
+    const metrics = await metricsForAccountBatch(rows, window, fresh);
+    indexes.forEach((pubIndex, i) => {
+      results[pubIndex] = metrics[i];
+    });
+  }
+
+  await mapPool(
+    singles,
+    concurrency,
+    async (pubIndex) => {
+      results[pubIndex] = await metricsForPub(pubs[pubIndex]!, window, fresh);
+    },
+    {
+      shouldContinue: () => {
+        if (budget.isExpired()) {
+          partial = true;
+          return false;
+        }
+        return true;
+      },
+    },
+  );
+
+  return {
+    results: pubs.map((row, i) => results[i] ?? skippedPublicationMetrics(row)),
+    partial,
+  };
 }
 
 function collectReconnectHints(
@@ -512,40 +701,17 @@ export async function analyticsOverviewForScope(
     limit: effectiveLimit,
   });
 
-  const budget = createLiveRequestBudget();
-  let partial = false;
   const overviewConcurrency = accountId
     ? platformFetchConcurrency(
         pubs[0]?.account?.platform ?? "default",
         CONCURRENCY,
       )
     : 1;
-  const results = await mapPool(
+  const { results, partial } = await collectPublicationMetrics(
     pubs,
+    { since, until, timeZone },
+    fresh,
     overviewConcurrency,
-    (row) => metricsForPub(row, { since, until, timeZone }, fresh),
-    {
-      shouldContinue: () => {
-        if (budget.isExpired()) {
-          partial = true;
-          return false;
-        }
-        return true;
-      },
-      onSkip: (row) => ({
-        publicationId: row.publicationId,
-        postId: row.postId,
-        platform: row.account?.platform ?? "unknown",
-        accountId: row.account?.id ?? row.connectedAccountId,
-        accountLabel: row.account?.platformUsername ?? null,
-        platformPostId: row.platformPostId,
-        platformPostUrl: row.platformPostUrl,
-        publishedAt: row.publishedAt?.toISOString() ?? null,
-        metrics: {},
-        status: "skipped" as const,
-        error: "Request budget exceeded - refresh for more metrics.",
-      }),
-    },
   );
   const contentByPost = new Map(
     pubs.map((p) => [p.postId, p.content] as const),
@@ -637,34 +803,11 @@ export async function postAnalyticsForScope(
     if (!post) throw rpcHttpError("Post not found", 404);
   }
 
-  const budget = createLiveRequestBudget();
-  let partial = false;
-  const results = await mapPool(
+  const { results, partial } = await collectPublicationMetrics(
     pubs,
+    { since, until, timeZone },
+    false,
     Math.min(CONCURRENCY, 2),
-    (row) => metricsForPub(row, { since, until, timeZone }, false),
-    {
-      shouldContinue: () => {
-        if (budget.isExpired()) {
-          partial = true;
-          return false;
-        }
-        return true;
-      },
-      onSkip: (row) => ({
-        publicationId: row.publicationId,
-        postId: row.postId,
-        platform: row.account?.platform ?? "unknown",
-        accountId: row.account?.id ?? row.connectedAccountId,
-        accountLabel: row.account?.platformUsername ?? null,
-        platformPostId: row.platformPostId,
-        platformPostUrl: row.platformPostUrl,
-        publishedAt: row.publishedAt?.toISOString() ?? null,
-        metrics: {},
-        status: "skipped" as const,
-        error: "Request budget exceeded - refresh for more metrics.",
-      }),
-    },
   );
   const okResults = results.filter((r) => r.status === "ok");
   const fetchOkAccounts = new Set(

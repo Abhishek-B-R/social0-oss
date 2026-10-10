@@ -549,7 +549,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "get_inbox_dm_thread",
     description:
-      "Read the messages in one DM conversation. Call list_inbox_dms first to get conversation_id.",
+      "Read the most recent messages in one DM conversation. Call list_inbox_dms first to get conversation_id. Pass the returned cursor to read older messages.",
     inputSchema: {
       type: "object",
       properties: {
@@ -559,6 +559,10 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
           description: "Connected account UUID or platform name that owns the conversation",
         },
         peer_id: { type: "string", description: "Only needed when the platform omits it" },
+        cursor: {
+          type: "string",
+          description: "Cursor from a previous call, to read older messages",
+        },
         fresh: { type: "boolean", default: false },
       },
       required: ["conversation_id", "account"],

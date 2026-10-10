@@ -1695,7 +1695,16 @@
                   "$ref": "#/components/schemas/InboxAttachment"
                 }
               }
-            }
+            },
+            "description": "One page of messages, oldest first."
+          },
+          "next_cursor": {
+            "type": "string",
+            "nullable": true,
+            "description": "Pass as `cursor` to load the next older page; null at the start of the conversation."
+          },
+          "has_more": {
+            "type": "boolean"
           },
           "fetched_at": {
             "type": "string",
@@ -3755,7 +3764,7 @@
       "post": {
         "operationId": "replyToInboxComment",
         "summary": "Reply to a comment",
-        "description": "Posts a reply on the originating network. The comment must belong to `publication_id` \u2014 Social0 verifies this against the live thread before sending.",
+        "description": "Posts a reply on the originating network. The comment must belong to `publication_id` — Social0 verifies this against the live thread before sending.",
         "tags": [
           "Inbox"
         ],
@@ -4123,6 +4132,16 @@
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "`next_cursor` from the previous page. Omit for the newest messages; each page is one platform read.",
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
             }
           },
           {

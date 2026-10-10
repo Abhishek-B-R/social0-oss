@@ -333,7 +333,11 @@ export interface InboxDmMessage {
 export interface InboxDmThread {
   conversation_id: string;
   conversation: InboxConversation;
+  /** One page, oldest first. */
   messages: InboxDmMessage[];
+  /** Cursor for the next OLDER page; absent on servers that predate paging. */
+  next_cursor?: string | null;
+  has_more?: boolean;
   fetched_at: string;
 }
 

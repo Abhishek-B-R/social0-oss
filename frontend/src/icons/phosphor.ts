@@ -35,6 +35,7 @@ export { Heart } from "@phosphor-icons/react/dist/csr/Heart";
 export { House } from "@phosphor-icons/react/dist/csr/House";
 export { Key } from "@phosphor-icons/react/dist/csr/Key";
 export { List } from "@phosphor-icons/react/dist/csr/List";
+export { MagnifyingGlass } from "@phosphor-icons/react/dist/csr/MagnifyingGlass";
 export { Megaphone } from "@phosphor-icons/react/dist/csr/Megaphone";
 export { Monitor } from "@phosphor-icons/react/dist/csr/Monitor";
 export { Moon } from "@phosphor-icons/react/dist/csr/Moon";
