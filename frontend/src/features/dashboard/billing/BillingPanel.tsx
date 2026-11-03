@@ -1,5 +1,6 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { databullAttribution } from "@/lib/databull";
 import { fetchApi } from "@/lib/fetch-api";
 
 import { useState, useEffect, useCallback, type ReactNode } from "react";
@@ -932,6 +933,7 @@ export function BillingPanel({
         interval: billingInterval,
         successUrl: "/dashboard/billing?success=1",
         forceNewSession: options?.forceNewSession === true,
+        ...databullAttribution(),
       }),
     });
     const data = await res.json().catch(() => ({}));

@@ -25,6 +25,32 @@ const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
 const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
 const client = new DodoPayments({ bearerToken: apiKey, environment });
 
+const ATTRIBUTION_ID = /^[A-Za-z0-9_.:-]{1,128}$/;
+
+/**
+ * DataBull visitor/session ids for revenue attribution. The SPA forwards them
+ * in the body (the API is on another subdomain and never gets DataBull's
+ * host-only cookies in prod); the cookie fallback covers same-origin dev.
+ */
+function databullMetadata(
+  body: Record<string, unknown>,
+  request: Request,
+): Record<string, string> {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const cookie = (name: string) =>
+    cookieHeader.match(new RegExp("(?:^|; )" + name + "=([^;]+)"))?.[1];
+  const pick = (value: unknown, cookieName: string) => {
+    const raw = typeof value === "string" ? value.trim() : cookie(cookieName);
+    return raw && ATTRIBUTION_ID.test(raw) ? raw : undefined;
+  };
+  const visitorId = pick(body.databullVisitorId, "datacheap_visitor_id");
+  const sessionId = pick(body.databullSessionId, "datacheap_session_id");
+  return {
+    ...(visitorId ? { databull_visitor_id: visitorId } : {}),
+    ...(sessionId ? { databull_session_id: sessionId } : {}),
+  };
+}
+
 export async function createCheckout(request: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) {
@@ -119,7 +145,10 @@ export async function createCheckout(request: Request) {
             name: session.user.name ?? undefined,
           },
           return_url: returnUrl,
-          metadata: { userId: session.user.id },
+          metadata: {
+            userId: session.user.id,
+            ...databullMetadata(body, request),
+          },
           subscription_data: {
             trial_period_days: eligibility.trialPeriodDays,
           },

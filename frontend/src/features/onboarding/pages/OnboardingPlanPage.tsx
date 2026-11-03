@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { databullAttribution } from "@/lib/databull";
 import { fetchApi } from "@/lib/fetch-api";
 import { useState, useEffect, useRef, Suspense } from "react";
 import { usePostHog } from "@posthog/react";
@@ -206,6 +207,7 @@ function OnboardingPlanContent() {
           interval,
           successUrl: ONBOARDING_CHECKOUT_SUCCESS,
           forceNewSession: options?.forceNewSession === true,
+          ...databullAttribution(),
         }),
       });
       const data = await res.json().catch(() => ({}));
