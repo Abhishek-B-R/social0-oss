@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef } from "react";
+import { Toggle } from "@/components/app/Toggle";
 import {
   getResurfacePlatforms,
   getResurfacePlatformLabels,
@@ -18,8 +19,6 @@ const INTERVAL_OPTIONS = [
 ];
 
 const MAX_OPTIONS = [1, 2, 3, 5, 10];
-
-const MAX_EXTRA_INTERVALS = 2; // 1 main + 2 extra = 3 total
 
 export type AutoResurfaceConfig = {
   intervalHours: number;
@@ -146,7 +145,6 @@ function AutoResurfacePanelInner({
   const [plugComment, setPlugComment] = useState(
     initialConfig?.plugComment ?? "",
   );
-  const [extraIntervalHours, setExtraIntervalHours] = useState<number[]>([]);
 
   const onChangeRef = useRef(onChange);
   useEffect(() => {
@@ -164,23 +162,6 @@ function AutoResurfacePanelInner({
       plugComment: plugComment.trim(),
     });
   }, [enabled, intervalHours, maxResurfaces, plugComment]);
-
-  const addExtraInterval = () => {
-    if (extraIntervalHours.length >= MAX_EXTRA_INTERVALS) return;
-    setExtraIntervalHours((prev) => [...prev, 6]);
-  };
-
-  const removeExtraInterval = (index: number) => {
-    setExtraIntervalHours((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const setExtraInterval = (index: number, value: number) => {
-    setExtraIntervalHours((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-  };
 
   const content = (
     <>
@@ -200,21 +181,12 @@ function AutoResurfacePanelInner({
               followers. Only supported on X for now.
             </p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            onClick={() => setEnabled((e) => !e)}
-            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-              enabled ? "bg-accent" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
-                enabled ? "translate-x-5" : "translate-x-0.5"
-              } mt-0.5`}
-            />
-          </button>
+          <Toggle
+            checked={enabled}
+            onCheckedChange={setEnabled}
+            aria-label="Auto-Repost"
+            className="shrink-0"
+          />
         </div>
       )}
       {(enabled || modalMode) && (
@@ -278,49 +250,6 @@ function AutoResurfacePanelInner({
             {subtitle ? ` for ${subtitle}` : ""}. If you posted to more than one
             X account, it still uses a single tweet to avoid spammy behaviour.
           </p>
-
-          {extraIntervalHours.length < MAX_EXTRA_INTERVALS && (
-            <button
-              type="button"
-              onClick={addExtraInterval}
-              className="flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-hover"
-            >
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-current">
-                +
-              </span>
-              Add another retweet interval
-            </button>
-          )}
-
-          {extraIntervalHours.map((hours, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground shrink-0">
-                Then after
-              </span>
-              <select
-                value={hours}
-                onChange={(e) =>
-                  setExtraInterval(index, Number(e.target.value))
-                }
-                className="rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground"
-              >
-                {INTERVAL_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-              <span className="text-xs text-muted-foreground">hours</span>
-              <button
-                type="button"
-                onClick={() => removeExtraInterval(index)}
-                className="rounded-md bg-red-600 px-2.5 py-1 text-sm font-medium text-white hover:bg-red-700 transition-colors"
-                aria-label="Remove interval"
-              >
-                Remove
-              </button>
-            </div>
-          ))}
         </div>
       )}
     </>

@@ -42,3 +42,19 @@ export async function rpc<T>(fn: string, ...args: unknown[]): Promise<T> {
   }
   return undefined as T;
 }
+
+/**
+ * Fire-and-forget RPC that survives the page being unloaded (`keepalive`).
+ * Use only from `pagehide` / unload paths where nobody is left to read the
+ * result; the body must stay under the browser's 64 KB keepalive limit.
+ */
+export function rpcKeepalive(fn: string, ...args: unknown[]): void {
+  void fetchApi("/api/rpc", {
+    method: "POST",
+    keepalive: true,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fn, args: args.map(serializeArg) }),
+  }).catch(() => {
+    // The page is going away; there is nothing to report the failure to.
+  });
+}

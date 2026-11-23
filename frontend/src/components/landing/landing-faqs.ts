@@ -43,7 +43,7 @@ export const landingFaqs: LandingFaq[] = [
   {
     question: "How many social accounts can I connect?",
     answer:
-      "Depends on your plan: Free 3, Starter 5, Growth 15, Pro 50. See Pricing for the full breakdown — you won't find a clearer price for what you get.",
+      "Free connects 3, Creator 15, and Agency 59, then $1/month per extra account with no cap. Each connected profile counts once. See Pricing for the full breakdown.",
   },
   {
     question: "What types of content can I post?",
@@ -53,7 +53,7 @@ export const landingFaqs: LandingFaq[] = [
   {
     question: "Can I manage multiple brands or workspaces?",
     answer:
-      "Yes on Starter and above. Create workspaces for separate brands or clients, connect accounts per workspace, and switch between them from the dashboard.",
+      "Yes on every paid plan. Create workspaces for separate brands or clients, connect accounts per workspace, and switch between them from the dashboard.",
   },
   {
     question: "Will my posts get less reach using Social0?",

@@ -75,6 +75,12 @@ export type AnalyticsOverview = {
   range: AnalyticsRange;
   since: string;
   until: string;
+  /**
+   * IANA zone `since` / `until` and the series days were resolved in: the
+   * resource owner's setting (the team owner's in a workspace), which can
+   * differ from the viewer's own.
+   */
+  timeZone: string;
   totals: MetricMap;
   byPlatform: PlatformBreakdownRow[];
   series: AnalyticsSeriesPoint[];

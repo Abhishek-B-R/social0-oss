@@ -160,6 +160,8 @@ export class Social0ApiClient {
         const headers: Record<string, string> = {
           Authorization: `Bearer ${this.apiKey}`,
           Accept: "application/json",
+          // Lets Social0 label posts this client creates ("CLI" source chip).
+          "X-Social0-Client": "cli",
           ...options.headers,
         };
 

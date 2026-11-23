@@ -1,8 +1,7 @@
-import { auth } from "../../lib/auth.js";
+import { getRouteSession } from "../../lib/session.js";
 import { db } from "../../db/index.js";
 import { connectedAccounts } from "../../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { headers } from "../../lib/http/request-cookies.js";
 import { AppRequest } from "../../lib/http/http.js";
 
 /**
@@ -11,7 +10,7 @@ import { AppRequest } from "../../lib/http/http.js";
  * board is pre-selected next time.
  */
 export async function setDefaultPinterestBoard(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

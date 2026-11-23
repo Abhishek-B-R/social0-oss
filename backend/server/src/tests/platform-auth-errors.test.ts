@@ -38,6 +38,23 @@ describe("isPlatformAuthError", () => {
     expect(isPlatformAuthError("Could not authenticate you")).toBe(true);
   });
 
+  it("recognizes Meta code 190 and TikTok access_token_invalid messages", () => {
+    expect(
+      isPlatformAuthError("Error validating access token: Session has expired on Tuesday."),
+    ).toBe(true);
+    expect(
+      isPlatformAuthError(
+        "Error validating access token: The session has been invalidated because the user changed their password.",
+      ),
+    ).toBe(true);
+    expect(
+      isPlatformAuthError("Invalid OAuth access token - Cannot parse access token"),
+    ).toBe(true);
+    expect(
+      isPlatformAuthError("The access token is invalid or not found in the request."),
+    ).toBe(true);
+  });
+
   it("leaves permission, rate-limit, and not-found alone", () => {
     expect(isPlatformAuthError({ code: 403 })).toBe(false);
     expect(isPlatformAuthError({ code: 429 })).toBe(false);

@@ -95,3 +95,20 @@ export function parseInstagramMeResponse(
     profileImageUrl,
   };
 }
+
+/**
+ * Every id `/me` returned for the account (`user_id` and app-scoped `id`).
+ * Rows connected before the callback preferred `user_id` stored the app-scoped
+ * id, so a reconnect must accept either as "the same account".
+ */
+export function instagramMeIdentityIds(raw: unknown): string[] {
+  const row = unwrapInstagramDataPayload(raw);
+  const ids: string[] = [];
+  for (const value of [row.user_id, row.id]) {
+    if (typeof value === "string" || typeof value === "number") {
+      const id = String(value).trim();
+      if (id && !ids.includes(id)) ids.push(id);
+    }
+  }
+  return ids;
+}

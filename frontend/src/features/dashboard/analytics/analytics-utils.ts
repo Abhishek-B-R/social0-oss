@@ -4,10 +4,20 @@ import { format } from "date-fns";
 import { formatInTimeZone } from "date-fns-tz";
 import type { MetricMap } from "@/api/analytics";
 
+const COMPACT_UNITS: readonly (readonly [number, string])[] = [
+  [1_000_000_000, "B"],
+  [1_000_000, "M"],
+  [1_000, "K"],
+];
+
 export function formatMetric(n: number | undefined | null): string {
   if (n == null || !Number.isFinite(n)) return "—";
-  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  const abs = Math.abs(n);
+  // Each unit takes over once the value would round to 1.0 of it, so
+  // 999,960 reads "1.0M" (not "1000.0K") and billions read "3.7B".
+  for (const [size, unit] of COMPACT_UNITS) {
+    if (abs >= size * 0.99995) return `${(n / size).toFixed(1)}${unit}`;
+  }
   return Math.round(n).toLocaleString();
 }
 

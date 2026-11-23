@@ -1,5 +1,7 @@
 /** Secrets / vars — set via `wrangler secret put` or `.dev.vars`. */
 interface Env {
+  /** Old ENCRYPTION_KEY values still accepted for decryption while rotating (comma-separated). */
+  ENCRYPTION_KEYS_PREVIOUS?: string;
   /** loadServerEnv() stubs — not used on the publish path */
   BETTER_AUTH_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;

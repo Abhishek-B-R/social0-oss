@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
+import { useSession } from "@/lib/auth-client";
 import {
   FacebookIcon,
   InstagramIcon,
@@ -67,9 +68,12 @@ const PLATFORM_LABELS: Record<string, string> = {
   "social-media-calendar": "Content calendar",
 };
 
-/** On /home, same-page anchors must use /home#id so they don't hit / and redirect logged-in users. */
-function landingNavHref(href: string, pathname: string | null) {
-  if (pathname === "/home" && href.startsWith("/#")) {
+/**
+ * Landing anchors ("/#faq") go through /home#… on /home and for signed-in
+ * visitors on any marketing page: "/" sends a session to the dashboard.
+ */
+function landingNavHref(href: string, homeAnchors: boolean) {
+  if (homeAnchors && href.startsWith("/#")) {
     return `/home${href.slice(1)}`;
   }
   return href;
@@ -77,10 +81,10 @@ function landingNavHref(href: string, pathname: string | null) {
 
 function FooterNavLink({
   link,
-  pathname,
+  homeAnchors,
 }: {
   link: FooterLink;
-  pathname: string;
+  homeAnchors: boolean;
 }) {
   const className =
     "text-[13px] text-muted-foreground transition-colors hover:text-foreground";
@@ -97,7 +101,7 @@ function FooterNavLink({
     );
   }
   return (
-    <Link href={landingNavHref(link.href, pathname)} className={className}>
+    <Link href={landingNavHref(link.href, homeAnchors)} className={className}>
       {link.label}
     </Link>
   );
@@ -141,10 +145,10 @@ function sortCompareLinks(links: FooterLink[]): FooterLink[] {
 
 function FooterCompareColumn({
   links,
-  pathname,
+  homeAnchors,
 }: {
   links: FooterLink[];
-  pathname: string;
+  homeAnchors: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const sorted = sortCompareLinks(links);
@@ -158,7 +162,7 @@ function FooterCompareColumn({
       <ul className="flex flex-col gap-2.5">
         {visible.map((link) => (
           <li key={`compare-${link.href}`}>
-            <FooterNavLink link={link} pathname={pathname} />
+            <FooterNavLink link={link} homeAnchors={homeAnchors} />
           </li>
         ))}
       </ul>
@@ -178,11 +182,11 @@ function FooterCompareColumn({
 function FooterColumn({
   title,
   links,
-  pathname,
+  homeAnchors,
 }: {
   title: string;
   links: FooterLink[];
-  pathname: string;
+  homeAnchors: boolean;
 }) {
   return (
     <div>
@@ -190,7 +194,7 @@ function FooterColumn({
       <ul className="flex flex-col gap-2.5">
         {links.map((link) => (
           <li key={`${title}-${link.href}-${link.label}`}>
-            <FooterNavLink link={link} pathname={pathname} />
+            <FooterNavLink link={link} homeAnchors={homeAnchors} />
           </li>
         ))}
       </ul>
@@ -212,6 +216,8 @@ const TOP_BLOG_LINKS: FooterLink[] = [
 export function LandingFooter() {
   const pathname = useLocation().pathname;
   const homeHref = pathname === "/home" ? "/home" : "/";
+  const { data: session } = useSession();
+  const homeAnchors = pathname === "/home" || !!session?.user;
 
   const platformLinks: FooterLink[] = FEATURES.map((f) => ({
     href: `/features/${f.slug}`,
@@ -321,19 +327,19 @@ export function LandingFooter() {
             <FooterColumn
               title="Platforms"
               links={platformLinks}
-              pathname={pathname}
+              homeAnchors={homeAnchors}
             />
-            <FooterCompareColumn links={compareLinks} pathname={pathname} />
-            <FooterColumn title="Tools" links={toolLinks} pathname={pathname} />
+            <FooterCompareColumn links={compareLinks} homeAnchors={homeAnchors} />
+            <FooterColumn title="Tools" links={toolLinks} homeAnchors={homeAnchors} />
             <FooterColumn
               title="Resources"
               links={resourceLinks}
-              pathname={pathname}
+              homeAnchors={homeAnchors}
             />
             <FooterColumn
               title="Company"
               links={companyLinks}
-              pathname={pathname}
+              homeAnchors={homeAnchors}
             />
           </div>
         </div>

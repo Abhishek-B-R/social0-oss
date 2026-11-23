@@ -18,6 +18,14 @@ export function cfPublishQueueName(priority: CfPublishPriority): string {
   return priority === "now" ? CF_PUBLISH_QUEUES.NOW : CF_PUBLISH_QUEUES.SCHEDULED;
 }
 
+/**
+ * How long to wait for the publish Worker to accept a job. `/enqueue` only puts
+ * the job on a Cloudflare Queue, so this bounds a hung Worker rather than a
+ * slow publish: without it undici waits five minutes, holding the publish-now
+ * request or the whole scheduled scan behind one job.
+ */
+export const CF_PUBLISH_ENQUEUE_TIMEOUT_MS = 15_000;
+
 /** POST one platform job to the Cloudflare publish Worker (HMAC-signed body). */
 export async function cfEnqueuePlatformJob(
   job: PublishPlatformJob,
@@ -39,6 +47,7 @@ export async function cfEnqueuePlatformJob(
       [CF_PUBLISH_SIGNATURE_HEADER]: signature,
     },
     body,
+    signal: AbortSignal.timeout(CF_PUBLISH_ENQUEUE_TIMEOUT_MS),
   });
 
   if (!res.ok) {
@@ -55,7 +64,8 @@ export function cfPublishClientFromEnv(): CfPublishClientConfig | null {
 }
 
 export function useCloudflarePublishFromEnv(): boolean {
-  if (process.env.PUBLISH_DISPATCH === "cloudflare") return true;
-  if (process.env.PUBLISH_DISPATCH === "bullmq") return false;
+  const mode = process.env.PUBLISH_DISPATCH?.trim();
+  if (mode === "cloudflare") return true;
+  if (mode === "server" || mode === "bullmq") return false;
   return Boolean(cfPublishClientFromEnv());
 }

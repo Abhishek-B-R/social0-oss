@@ -1,12 +1,13 @@
 import type { FastifyInstance } from "fastify";
 import { apiError } from "../../lib/api-errors.js";
-import { openJobSseStream } from "../../lib/job-sse-stream.js";
+import { admitJobStream, openJobSseStream } from "../../lib/job-sse-stream.js";
 import { resolveJobSnapshot } from "../../lib/resolve-job-snapshot.js";
 import {
   formatV1JobResponse,
   formatV1StreamEvent,
 } from "../../lib/v1-job-format.js";
 import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
+import { sendRateLimited } from "../../middleware/v1-live-limits.js";
 
 export async function registerJobsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireV1ApiKey);
@@ -38,6 +39,11 @@ export async function registerJobsRoutes(app: FastifyInstance) {
       return reply.status(403).send(apiError("forbidden", "Access denied."));
     }
 
+    // The hourly tier limit counts a 15-minute stream as one request; cap
+    // opens and concurrent streams like the dashboard does (keys `v1:`).
+    const admit = await admitJobStream(userId, `v1:jobstream:${userId}`);
+    if (!admit.allowed) return sendRateLimited(reply, admit);
+
     await openJobSseStream(
       request,
       reply,
@@ -47,6 +53,7 @@ export async function registerJobsRoutes(app: FastifyInstance) {
       {
         formatEvent: formatV1StreamEvent,
         formatDone: formatV1JobResponse,
+        release: admit.release,
       },
     );
   });

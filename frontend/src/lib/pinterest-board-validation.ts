@@ -36,13 +36,3 @@ export function getPinterestBoardRequiredMessage(
 
   return `Select a Pinterest board before ${verb}. Open Pinterest Config below to choose a board.`;
 }
-
-export function hasMissingPinterestBoard(
-  pinterestAccounts: PinterestAccountRef[],
-  settingsByAccount: Record<string, PinterestSettingsRef | undefined>,
-): boolean {
-  return (
-    getPinterestBoardRequiredMessage(pinterestAccounts, settingsByAccount) !==
-    null
-  );
-}

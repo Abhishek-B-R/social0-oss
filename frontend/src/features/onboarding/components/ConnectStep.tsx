@@ -1,74 +1,104 @@
-import { useNavigate } from "react-router-dom";
-import { fetchApi } from "@/lib/fetch-api";
-import { useState, useEffect, useRef } from "react";
-import { usePostHog } from "@posthog/react";
+import { useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import Link from "@/components/AppLink";
-import { PLATFORMS } from "@/lib/platforms";
-import { setOnboardingCompleted } from "@/api/onboarding";
+import { usePostHog } from "@posthog/react";
+import { toast } from "sonner";
+import { CheckCircle2 } from "lucide-react";
 import { getOnboardingStatus } from "@/api/onboarding";
-import { getPlatformIcon } from "@/lib/platform-icons";
-import { getPlanLimits } from "@/lib/plans";
+import { loadConnectionsPageData } from "@/api/dashboard-data";
 import { ConnectPlatformButton } from "@/components/dashboard/ConnectPlatformButton";
+import {
+  Banner,
+  ErrorState,
+  Meter,
+  NetworkIcon,
+  SkeletonCard,
+  networkLabel,
+} from "@/components/app";
+import { PLATFORMS } from "@/lib/platforms";
+import { getPlanLimits } from "@/lib/plans";
+import { DOCS_ONBOARDING_CONNECT_URL } from "@/lib/docs-url";
+import { cn } from "@/lib/utils";
 import { goalCopy } from "@/features/onboarding/lib/goals";
 import {
   ONBOARDING_CONNECT_RETURN,
   ONBOARDING_PATHS,
 } from "@/features/onboarding/lib/paths";
 import {
-  OnboardingDocsLink,
   OnboardingStepFrame,
   OnboardingStepHeader,
+} from "./onboarding-ui";
+import {
   onboardingGhostLinkClass,
   onboardingPrimaryCtaClass,
-  onboardingSecondaryCtaClass,
-} from "@/features/onboarding/components/onboarding-ui";
-import { DOCS_ONBOARDING_CONNECT_URL } from "@/lib/docs-url";
-import { cn } from "@/lib/utils";
+} from "./onboarding-styles";
+import { SeePlansLink } from "./PlansDialog";
 
-const PLATFORM_UI: Record<string, { name: string; color: string }> = {
-  linkedin: { name: "LinkedIn", color: "bg-[#0A66C2]" },
-  facebook: { name: "Facebook", color: "bg-[#1877F2]" },
-  bluesky: { name: "Bluesky", color: "bg-[#0085FF]" },
-  youtube: { name: "YouTube", color: "bg-[#FF0000]" },
-  pinterest: { name: "Pinterest", color: "bg-[#E60023]" },
-  instagram: {
-    name: "Instagram",
-    color: "bg-gradient-to-br from-[#F58529] via-[#DD2A7B] to-[#8134AF]",
-  },
-  tiktok: { name: "TikTok", color: "bg-[#000000]" },
-  twitter_x: { name: "X (Twitter)", color: "bg-[#000000]" },
-  threads: { name: "Threads", color: "bg-[#000000]" },
+/** Poll while nothing is connected: Bluesky connects in a modal, and people
+ * sometimes finish OAuth in another tab. */
+const POLL_INTERVAL_MS = 2_000;
+
+/** What kind of account each network takes, and what to know before connecting. */
+const NETWORK_NOTES: Record<string, string> = {
+  linkedin: "Profile or company page",
+  facebook: "Pages only",
+  bluesky: "Handle + app password",
+  youtube: "Channel (Shorts)",
+  pinterest: "Personal or business",
+  instagram: "Business or Creator",
+  tiktok: "Business or Creator",
+  twitter_x: "Any account",
+  threads: "Linked to Instagram",
 };
 
-const POLL_INTERVAL_MS = 2000;
+/** OAuth result params the connect flow can land back with. */
+const RESULT_PARAMS = ["connected", "success", "reauth", "error", "platform", "message"];
 
-type Account = {
-  id: string;
-  platform: string;
-  platformUsername: string | null;
-  profileImageUrl: string | null;
-  isActive: boolean | null;
-};
+const CONNECTIONS_QUERY_KEY = ["onboarding-connections"] as const;
 
-type ConnectStepProps = {
-  initialAccounts?: Account[];
-  limitTotal: number;
-  hasUsedTrial: boolean;
-};
+function platformName(id: string | null): string {
+  if (!id) return "the account";
+  return networkLabel(id) || id;
+}
 
-export function ConnectStep({
-  initialAccounts = [],
-  limitTotal,
-}: ConnectStepProps) {
+/** Toast what the OAuth round trip says, then drop the params. */
+function useConnectResultNotices() {
+  const [params, setParams] = useSearchParams();
+  const connected = params.get("connected") ?? params.get("success");
+  const error = params.get("error");
+  const platform = params.get("platform");
+  const message = params.get("message");
+
+  useEffect(() => {
+    if (!connected && !error) return;
+    if (error) {
+      toast.error(
+        message?.trim() ||
+          `Couldn't connect ${platformName(platform)}. Click Connect to try again.`,
+        { id: `onboarding-connect-error-${error}` },
+      );
+    } else if (connected) {
+      toast.success(`Connected ${platformName(connected)}.`, {
+        id: `onboarding-connected-${connected}`,
+      });
+    }
+    setParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        for (const k of RESULT_PARAMS) p.delete(k);
+        return p;
+      },
+      { replace: true },
+    );
+  }, [connected, error, platform, message, setParams]);
+}
+
+/** Step 2: connect at least one account. Explainers live in ConnectPlatformButton
+ * (Instagram's two methods, Bluesky app password, per-network requirements). */
+export function ConnectStep({ onOpenPlans }: { onOpenPlans: () => void }) {
   const navigate = useNavigate();
   const posthog = usePostHog();
-  const [skipping, setSkipping] = useState(false);
-  const [accounts, setAccounts] = useState<Account[]>(initialAccounts);
-  const pollStopped = useRef(initialAccounts.length >= 1);
-  const prevActiveCountRef = useRef(
-    initialAccounts.filter((a) => a.isActive !== false).length,
-  );
+  useConnectResultNotices();
 
   const { data: status } = useQuery({
     queryKey: ["onboarding-status"],
@@ -76,176 +106,145 @@ export function ConnectStep({
   });
   const hint = goalCopy(status?.onboardingGoal).connectHint;
 
-  const activeAccounts = accounts.filter((a) => a.isActive !== false);
-  const hasConnected = activeAccounts.length > 0;
-  const atLimit = activeAccounts.length >= limitTotal;
+  const connections = useQuery({
+    queryKey: CONNECTIONS_QUERY_KEY,
+    queryFn: () => loadConnectionsPageData(),
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => {
+      const result = query.state.data;
+      if (!result?.ok) return false;
+      const active = result.data.accounts.filter((a) => a.isActive !== false);
+      return active.length === 0 ? POLL_INTERVAL_MS : false;
+    },
+  });
 
+  const result = connections.data;
+  const accounts = result?.ok
+    ? result.data.accounts.filter((a) => a.isActive !== false)
+    : [];
+  const limitTotal = result?.ok ? (result.data.accountLimit?.limitTotal ?? 0) : 0;
+  const hasConnected = accounts.length > 0;
+  const atLimit = limitTotal > 0 && accounts.length >= limitTotal;
+
+  // Analytics: one `account_connected` per newly seen account.
+  const seenIds = useRef<Set<string> | null>(null);
   useEffect(() => {
-    async function fetchAccounts() {
-      try {
-        const res = await fetchApi("/api/accounts", { credentials: "include" });
-        if (!res.ok) return;
-        const data = await res.json();
-        if (Array.isArray(data)) setAccounts(data);
-      } catch {
-        // ignore
+    if (!result?.ok) return;
+    const ids = result.data.accounts
+      .filter((a) => a.isActive !== false)
+      .map((a) => ({ id: a.id, platform: a.platform }));
+    if (seenIds.current === null) {
+      seenIds.current = new Set(ids.map((a) => a.id));
+      return;
+    }
+    for (const a of ids) {
+      if (!seenIds.current.has(a.id)) {
+        seenIds.current.add(a.id);
+        posthog?.capture("account_connected", { platform: a.platform });
       }
     }
+  }, [result, posthog]);
 
-    fetchAccounts();
-    const interval = setInterval(() => {
-      if (pollStopped.current) {
-        clearInterval(interval);
-        return;
-      }
-      fetchAccounts();
-    }, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-    if (activeAccounts.length >= 1) pollStopped.current = true;
-  }, [activeAccounts.length]);
-
-  useEffect(() => {
-    const prev = prevActiveCountRef.current;
-    if (activeAccounts.length > prev) {
-      const newAccounts = activeAccounts.slice(prev);
-      newAccounts.forEach((account) => {
-        posthog?.capture("account_connected", { platform: account.platform });
-      });
-    }
-    prevActiveCountRef.current = activeAccounts.length;
-  }, [activeAccounts, posthog]);
-
-  async function handleSkipToDashboard() {
-    setSkipping(true);
-    posthog?.capture("onboarding_skipped", { at: "connect" });
-    try {
-      await setOnboardingCompleted();
-      navigate("/dashboard");
-    } finally {
-      setSkipping(false);
-    }
-  }
+  const freeLimits = getPlanLimits("free");
+  const loadFailed =
+    connections.isError || (result !== undefined && result.ok === false);
 
   return (
-    <OnboardingStepFrame>
-      <div className="relative w-full">
-        <OnboardingDocsLink href={DOCS_ONBOARDING_CONNECT_URL} />
+    <OnboardingStepFrame wide>
+      <OnboardingStepHeader
+        step={2}
+        back={ONBOARDING_PATHS.welcome}
+        docsHref={DOCS_ONBOARDING_CONNECT_URL}
+        title="Connect your accounts"
+        description={`${hint} Social0 only posts what you or your agent send it, and you can disconnect anytime.`}
+      />
 
-        <OnboardingStepHeader
-          eyebrow="Activation"
-          title={
-            <>
-              Connect{" "}
-              <em className="not-italic text-emerald-600 dark:text-emerald-400">
-                one
-              </em>{" "}
-              social account
-            </>
-          }
-          description={hint}
+      {loadFailed ? (
+        <ErrorState
+          message="Couldn't load your accounts."
+          detail="Check your connection, then try again."
+          onRetry={() => void connections.refetch()}
+          retrying={connections.isFetching}
         />
-
-        {limitTotal > 0 && limitTotal <= 3 ? (
-          <p className="mb-5 text-center text-[13px] text-muted-foreground">
-            Free plan includes up to {limitTotal} accounts ·{" "}
-            {getPlanLimits("free").maxFreePosts} posts
-          </p>
-        ) : null}
-
-        {limitTotal > 0 ? (
-          <div className="mb-5 flex items-center justify-center gap-3">
-            <div
-              className="h-1.5 w-32 overflow-hidden rounded-full bg-border/80 sm:w-40"
-              role="progressbar"
-              aria-valuenow={activeAccounts.length}
-              aria-valuemin={0}
-              aria-valuemax={limitTotal}
-              aria-label="Accounts connected"
-            >
-              <div
-                className="h-full rounded-full bg-emerald-500 transition-[width] duration-300"
-                style={{
-                  width: `${Math.min(100, (activeAccounts.length / limitTotal) * 100)}%`,
-                }}
+      ) : connections.isPending ? (
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+          {Array.from({ length: 9 }, (_, i) => (
+            <SkeletonCard key={i} lines={1} />
+          ))}
+        </div>
+      ) : (
+        <>
+          {limitTotal > 0 ? (
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <Meter
+                value={accounts.length}
+                max={limitTotal}
+                label={`${accounts.length} of ${limitTotal} accounts connected`}
+                className="sm:max-w-xs"
               />
+              {limitTotal <= freeLimits.maxConnectedAccounts ? (
+                <p className="text-[13px] text-muted-foreground">
+                  Free includes {freeLimits.maxConnectedAccounts} accounts and{" "}
+                  {freeLimits.maxFreePosts} posts.{" "}
+                  <SeePlansLink onOpen={onOpenPlans} />
+                </p>
+              ) : null}
             </div>
-            <span className="text-[13px] font-medium tabular-nums text-foreground">
-              {activeAccounts.length}/{limitTotal}
-            </span>
-          </div>
-        ) : null}
+          ) : null}
 
-        {atLimit ? (
-          <div className="mb-5 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center text-sm text-amber-900 dark:text-amber-100">
-            You&apos;ve reached your {limitTotal} account limit.{" "}
-            <Link
-              href={ONBOARDING_PATHS.plan}
-              className="font-semibold underline underline-offset-2 hover:no-underline"
+          {atLimit ? (
+            <Banner
+              tier="blocking"
+              title={`You've connected ${limitTotal} of ${limitTotal} accounts.`}
+              className="mb-4"
+              actions={<SeePlansLink onOpen={onOpenPlans}>See plans</SeePlansLink>}
             >
-              Upgrade your plan →
-            </Link>
-          </div>
-        ) : null}
+              Upgrade to connect more, or carry on with these.
+            </Banner>
+          ) : null}
 
-        <div className="mb-8 rounded-[22px] border border-border/70 bg-card/80 p-3 shadow-[0_1px_0_rgba(0,0,0,0.03)] backdrop-blur-sm sm:p-5">
-          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+          <ul
+            className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3"
+            aria-label="Networks"
+          >
             {PLATFORMS.map((platform) => {
-              const ui = PLATFORM_UI[platform.id] ?? {
-                name: platform.name,
-                color: "bg-gray-500",
-              };
-              const Icon = getPlatformIcon(platform.id);
-              const platformAccounts = activeAccounts.filter(
-                (a) => a.platform === platform.id,
-              );
-              const isConnected = platformAccounts.length > 0;
-              const firstAccount = platformAccounts[0];
-
+              const connected = accounts.filter((a) => a.platform === platform.id);
+              const isConnected = connected.length > 0;
+              const first = connected[0];
+              const name = networkLabel(platform.id) || platform.name;
               return (
-                <div
+                <li
                   key={platform.id}
                   className={cn(
-                    "flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 transition-colors",
+                    "flex items-center gap-3 rounded-2xl border px-3.5 py-3 transition-colors",
                     isConnected
-                      ? "border-emerald-500/40 bg-emerald-500/5"
-                      : "border-border/70 bg-background/50 hover:border-border hover:bg-muted/30",
+                      ? "border-ok-border bg-ok-soft"
+                      : "border-border bg-card/80",
                   )}
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <div
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-foreground">
+                    <NetworkIcon network={platform.id} size={18} label="" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold text-foreground">
+                      {name}
+                    </span>
+                    <span
                       className={cn(
-                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white",
-                        ui.color,
+                        "block text-xs text-muted-foreground",
+                        isConnected ? "truncate" : "line-clamp-2 leading-snug",
                       )}
                     >
-                      {Icon ? (
-                        <Icon className="h-5 w-5" />
-                      ) : (
-                        <span className="text-sm font-bold">
-                          {platform.name[0]}
-                        </span>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-foreground">
-                        {platform.name}
-                      </p>
-                      {isConnected && firstAccount ? (
-                        <p className="truncate text-xs text-muted-foreground">
-                          @{firstAccount.platformUsername ?? "connected"}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">
-                          Official OAuth
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                      {isConnected && first
+                        ? `@${first.platformUsername ?? first.platformDisplayName ?? "connected"}${
+                            connected.length > 1 ? ` +${connected.length - 1}` : ""
+                          }`
+                        : (NETWORK_NOTES[platform.id] ?? "Official sign-in")}
+                    </span>
+                  </span>
                   {isConnected ? (
-                    <span className="shrink-0 rounded-full bg-emerald-500/15 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                    <span className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-ok">
+                      <CheckCircle2 className="h-4 w-4" aria-hidden />
                       Connected
                     </span>
                   ) : (
@@ -254,64 +253,50 @@ export function ConnectStep({
                       size="default"
                       returnTo={ONBOARDING_CONNECT_RETURN}
                       disabled={atLimit}
+                      onDisabledClick={onOpenPlans}
                     />
                   )}
-                </div>
+                </li>
               );
             })}
-          </div>
+          </ul>
           {hasConnected ? (
-            <p className="mt-4 text-center text-xs text-muted-foreground">
-              Add more accounts later from{" "}
-              <Link
-                href="/dashboard/connections"
-                className="underline underline-offset-2 hover:text-foreground"
-              >
-                Connections
-              </Link>
+            <p className="mt-3 text-[13px] text-muted-foreground">
+              You can add more later from Accounts in the sidebar.
             </p>
           ) : null}
-        </div>
+        </>
+      )}
 
-        <div className="flex flex-col items-center justify-center gap-3">
-          {hasConnected ? (
-            <>
-              <Link
-                href={ONBOARDING_PATHS.plan}
-                className={cn(onboardingPrimaryCtaClass, "w-full sm:w-auto")}
-              >
-                Continue
-                <span aria-hidden>→</span>
-              </Link>
-              <p className="text-[13px] text-muted-foreground">
-                Next: optional upgrade — or stay on free
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="max-w-sm text-center text-[13px] text-muted-foreground">
-                Connecting unlocks scheduling. You can always do this later from
-                the dashboard.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate(ONBOARDING_PATHS.plan)}
-                className={cn(onboardingSecondaryCtaClass, "w-full sm:w-auto")}
-              >
-                Continue without connecting
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSkipToDashboard()}
-                disabled={skipping}
-                className={onboardingGhostLinkClass}
-              >
-                {skipping ? "Opening dashboard…" : "Skip setup — go to dashboard"}
-              </button>
-            </>
-          )}
-        </div>
+      <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
+        {hasConnected ? (
+          <span className="order-2 hidden sm:order-1 sm:block" />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              posthog?.capture("onboarding_connect_skipped");
+              navigate(ONBOARDING_PATHS.postMode);
+            }}
+            className={cn(onboardingGhostLinkClass, "order-2 sm:order-1")}
+          >
+            Skip for now
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => navigate(ONBOARDING_PATHS.postMode)}
+          disabled={!hasConnected}
+          className={cn(onboardingPrimaryCtaClass, "order-1 w-full sm:order-2 sm:w-auto")}
+        >
+          Continue
+        </button>
       </div>
+      {!hasConnected && !connections.isPending && !loadFailed ? (
+        <p className="mt-3 text-center text-[13px] text-muted-foreground sm:text-right">
+          Connect one account to continue. You can also do it later.
+        </p>
+      ) : null}
     </OnboardingStepFrame>
   );
 }

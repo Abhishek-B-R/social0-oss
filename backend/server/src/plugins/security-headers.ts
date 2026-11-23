@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
+import fp from "fastify-plugin";
 
-export async function registerSecurityHeadersPlugin(app: FastifyInstance) {
+async function securityHeadersPlugin(app: FastifyInstance) {
   app.addHook("onSend", async (_request, reply, payload) => {
     reply.header("X-Content-Type-Options", "nosniff");
     reply.header("X-Frame-Options", "DENY");
@@ -15,3 +16,12 @@ export async function registerSecurityHeadersPlugin(app: FastifyInstance) {
     return payload;
   });
 }
+
+/**
+ * fp breaks encapsulation so the onSend hook lands on the root instance and
+ * reaches every sibling route plugin (/api, /v1, /admin, docs, oauth). A plain
+ * `app.register(fn)` would scope it to routes declared inside this plugin: none.
+ */
+export const registerSecurityHeadersPlugin = fp(securityHeadersPlugin, {
+  name: "security-headers",
+});

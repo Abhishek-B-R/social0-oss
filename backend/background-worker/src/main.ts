@@ -14,8 +14,10 @@ const { startTokenWorker } = await import("./workers/token-refresh.js");
 const connection = createRedisConnection();
 
 const workers = [
-  // ponytail: concurrency 1 avoids overlapping publish-scheduled scans
-  startSchedulerWorker(connection, 1),
+  // One slot per cron, each cron single-flight (see workers/scheduler.ts):
+  // publish-scheduled never waits behind autoplug/repost, and never overlaps
+  // itself.
+  startSchedulerWorker(connection),
   startTokenWorker(connection, 5),
 ];
 

@@ -34,7 +34,10 @@ function generateOTP(): string {
  * Requires session. Stores OTP under identifier "change-email-otp-{newEmail}".
  */
 export async function sendChangeEmailOtp(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  });
   if (!session) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -1,6 +1,12 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Same `@/` alias as tsconfig "paths" (tsc-alias rewrites it in the build),
+  // so a test can load real modules that use it instead of mocking each one.
+  resolve: {
+    alias: [{ find: /^@\//, replacement: fileURLToPath(new URL("./src/", import.meta.url)) }],
+  },
   test: {
     env: {
       DATABASE_URL: "postgresql://test:test@localhost:5432/test",

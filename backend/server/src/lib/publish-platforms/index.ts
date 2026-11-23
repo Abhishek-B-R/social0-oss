@@ -3,10 +3,8 @@
  * Platform-specific logic lives beside this file (facebook.ts, etc.).
  */
 
-import {
-  validateContentLength,
-  validateMediaCount,
-} from "@/lib/publish-validation";
+import { validateContentLength } from "@/lib/publish-validation";
+import { validatePostMediaCounts } from "@/lib/post-media-refs";
 import { publishLog } from "@/lib/publish-log";
 import type {
   PlatformPublishOptions,
@@ -39,7 +37,12 @@ export async function publishToPlatform(
   accessSecret: string | null,
   platformOptions?: PlatformPublishOptions,
 ): Promise<PublishPlatformResult> {
-  const mediaCountErr = validateMediaCount(post.mediaIds ?? null);
+  // Abuse ceiling only, per list (thread parts are capped one by one): each
+  // publisher trims to its own network's cap, and TikTok takes up to 35.
+  const mediaCountErr = validatePostMediaCounts(
+    post.mediaIds ?? null,
+    post.metadata ?? null,
+  );
   if (mediaCountErr) {
     return { status: "failed", lastError: mediaCountErr, error: mediaCountErr };
   }

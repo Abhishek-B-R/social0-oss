@@ -20,6 +20,7 @@ import { registerDocsRoutes } from "./routes/docs.js";
 import { registerPublicAgentRoutes } from "./routes/public-agent.js";
 import { registerMcpOAuthPublicRoutes } from "./routes/oauth/mcp.js";
 import { getCorsOrigins } from "./lib/app-url.js";
+import { normalizeForwardedFor, trustProxySetting } from "./lib/client-ip.js";
 import { apiError, type ApiErrorCode } from "./lib/api-errors.js";
 import {
   allowsMissingCorsOrigin,
@@ -122,10 +123,14 @@ export async function buildApp() {
     requestIdHeader: "x-request-id",
     genReqId: (req) =>
       (req.headers["x-request-id"] as string | undefined) ?? randomUUID(),
-    trustProxy:
-      process.env.TRUST_PROXY === "true" ||
-      (process.env.TRUST_PROXY !== "false" &&
-        process.env.NODE_ENV === "production"),
+    trustProxy: trustProxySetting(),
+  });
+
+  // First hook on the root: every route (and Better Auth's limiter, which reads
+  // X-Forwarded-For) must see the proxy-resolved client address, never the
+  // client-written one.
+  app.addHook("onRequest", async (request) => {
+    normalizeForwardedFor(request);
   });
 
   if (process.env.SENTRY_DSN) {

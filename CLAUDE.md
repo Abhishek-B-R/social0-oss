@@ -53,9 +53,9 @@ Layout is whatever `ls` shows; ownership is not:
 
 - Browser → API: session cookies; `POST /api/rpc`, REST `/api/*`. Dev: Vite proxies `/api` + `/v1` to `VITE_API_PROXY_TARGET` (default `:3001`). Leave `VITE_API_URL` empty in local proxy mode.
 - Publish (default `PUBLISH_DISPATCH=cloudflare`): API writes `publish_jobs` / `post_publications` → HMAC enqueue to CF → Queues `social0-publish-now` / `social0-publish-scheduled` (DLQ `social0-publish-dlq`) → worker (Hyperdrive + R2) → platform APIs → finalize + job events. Publish-now progress: SSE `GET /api/jobs/:id/stream`.
-- **X and TikTok stay on the API by default** (`SERVER_SIDE_PUBLISH_PLATFORMS` in `backend/shared/src/constants/server-side-publish.ts`): chunked X video + TikTok 64-bit permalinks. Opt into CF with `TWITTER_PUBLISH_ON_CF=1` / `TIKTOK_PUBLISH_ON_CF=1` after the worker is current.
+- **X, TikTok and Bluesky stay on the API by default** (`SERVER_SIDE_PUBLISH_PLATFORMS` in `backend/shared/src/constants/server-side-publish.ts`): chunked X video, TikTok 64-bit permalinks, and Bluesky's 1 MB image cap (needs sharp, which the worker only stubs). Opt into CF with `TWITTER_PUBLISH_ON_CF=1` / `TIKTOK_PUBLISH_ON_CF=1` / `BLUESKY_PUBLISH_ON_CF=1` after the worker is current.
   This holds on **both** entry points. Publish-now branches in `services/publish-enqueue.ts` (`runPlatformJobOnServer`); the scheduled cron branches in `background-worker/src/cron/dispatch-scheduled-target.ts` and hands those jobs to `POST /api/cron/publish-platform` (needs `CRON_SECRET` + `INTERNAL_API_BASE_URL`/`AUTH_API_URL` in `backend/.env`). Add a platform to one branch and you must add it to the other, or the same post publishes two different ways depending on which button created it.
-- Fallback: `PUBLISH_DISPATCH=bullmq` runs platform work on the droplet via shared queues.
+- Fallback: `PUBLISH_DISPATCH=server` runs every platform on the API process (the X/TikTok path) from both entry points. `bullmq` is a deprecated alias; there are no BullMQ publish queues.
 - Cron: CF cron-worker → `POST /api/cron/{job}` + `CRON_SECRET` → enqueue → background-worker.
 - Redis (Upstash): BullMQ, rate limits, auth secondary storage, job progress. Optional local Redis via `backend/docker-compose.yml`.
 - R2: media. Hyperdrive: publish-worker DB. CLI/MCP: `Authorization: Bearer` API key → `/v1`.
@@ -99,7 +99,7 @@ UI / RPC publish.* / POST /api/publish
   → DB (publish_jobs, post_publications, events)
   → fan-out one job per platform
        ├─ CF publish-worker (prod default)
-       └─ or BullMQ → publish/execute-publish.ts
+       └─ or the API process (X/TikTok/Bluesky; every platform with PUBLISH_DISPATCH=server)
   → platform APIs
   → publish/finalize-post.ts (maybeFinalizePostPublish)
        ├─ aggregate post status
@@ -111,16 +111,25 @@ UI / RPC publish.* / POST /api/publish
 | ---- | ---- |
 | `backend/server/src/services/publish-dispatch.ts` | CF vs BullMQ |
 | `backend/server/src/services/publish-enqueue.ts` | Fan-out + job rows |
-| `backend/server/src/publish/execute-publish.ts` | Core publish / bullmq path |
+| `backend/server/src/publish/execute-publish.ts` | Core publish (every runner) |
 | `backend/server/src/publish/finalize-post.ts` | Aggregate status, email, webhooks |
 | `backend/server/src/lib/post-failure-email.ts` | Failure email + claim dedupe |
 | `backend/server/src/lib/publish-platforms/*` | Per-platform publishers (prefer here) |
 | `backend/shared/src/lib/cf-publish-client.ts` | HMAC enqueue to CF |
 | `cloudflare/publish-worker/src/process-platform.ts` | Edge job runner (imports server publish modules) |
 
-**Platforms (9):** LinkedIn, Instagram, YouTube, Pinterest, TikTok, X (`twitter_x`), Threads, Bluesky, Facebook Pages. LinkedIn + X still partly inline in `execute-publish.ts`: new networks go in `publish-platforms/`. X + TikTok default to the API process, not the CF worker (see §2).
+**Platforms (9):** LinkedIn, Instagram, YouTube, Pinterest, TikTok, X (`twitter_x`), Threads, Bluesky, Facebook Pages. LinkedIn + X still partly inline in `execute-publish.ts`: new networks go in `publish-platforms/`. X, TikTok and Bluesky default to the API process, not the CF worker (see §2).
 
 **Content types:** text, image, video, threads, collection. Built in the composer and `/dashboard/create/:type`.
+
+**Never post twice (do not regress):**
+
+- A create is never auto-retried once it may have reached the platform: `fetchWithRetry` retries a POST only when the connection never opened.
+- `updated_at` is the lease on a `publishing` row; the owning run renews it every minute (`lib/publication-lease.ts`). A row idle 15 minutes is treated as dead.
+- A dead row is only re-sent by a person retrying that delivery from the dashboard (`PublishControl.takeOverInterrupted`, set in `services/publish.ts`). Every other caller marks it `INTERRUPTED_PUBLISH_ERROR` (`@social0/shared`), which automatic claims skip, and so does the 1 hour stale sweep.
+- The CF worker retries only explicit 429 answers (`lib/publish-retry.ts`), never a 5xx or a lost connection: Graph can return a 500 after `media_publish` / `/feed` already made the post. A retried row goes back to `pending` so finalize waits for it.
+- `Idempotency-Key` is bound to a hash of the body (422 `idempotency_key_reused` on mismatch) on publish, draft and schedule creates. MCP tools always send one (`social0-mcp/src/lib/idempotency.ts`).
+- Platform slots: `cloudflare/publish-worker/src/publish-concurrency.ts`, one Lua script, per platform and per account; a full cap requeues with a delay.
 
 **Failure emails:** only from awaited `maybeFinalizePostPublish`. Settings: `automationEmails` + `emailOnPostFailed` (default on). Publish-worker needs `RESEND_API_KEY`.
 
@@ -166,7 +175,7 @@ Layout, RPC BFF surface, REST groups, cron workers and `@social0/shared` content
 | Team roles | `lib/workspace/permissions.ts`: admin, member, community, analyst | Analyst: analytics only. Community: inbox + reply, cannot publish. Member/Admin: both |
 | Billing | `handlers/billing/*`, `/api/billing/*`, Dodo webhook | `features/dashboard/billing`, plans in `lib/plans.ts` |
 | Media | R2 presign/confirm `/api/media/*` | upload helpers in create/composer |
-| API keys / webhooks | `/api/api-keys`, `/v1/webhooks` | `/dashboard/api-keys` |
+| API keys / webhooks | `/api/api-keys`, `/v1/webhooks` | AI agents page `/dashboard/agents` (tabs Agents · API keys · Webhooks; `/dashboard/api-keys` redirects to `?tab=keys`) |
 | Feedback | Canny SSO | `/dashboard/feedback` |
 | Analytics | `services/analytics.ts`, `lib/analytics/*`, `lib/live-platforms.ts` | `features/dashboard/analytics`, `api/analytics.ts` |
 | Inbox | `services/inbox.ts`, `lib/inbox/*` (live fetch; no inbox tables) | `features/dashboard/inbox`, `api/inbox.ts` |
@@ -175,7 +184,7 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 
 **Analytics / inbox (do not regress):**
 
-- Not plan-gated. Flask in sidebar = early access.
+- Not plan-gated. Both carry the flask "Experimental" badge (`components/dashboard/ExperimentalBadge.tsx`) in the sidebar and page title while they still have known bugs; remove it from both places once they're solid.
 - Metrics and threads are for **posts published through Social0**, fetched live from platform APIs (gated by `LIVE_PLATFORMS`).
 - Flip a platform in `live-platforms.ts` when App Review lands. `false` = hide chip, skip fetch, skip reconnect nag.
 - Inbox DMs today: Instagram, X, Bluesky, TikTok (TikTok needs Business Messaging; Login Kit tokens fail until a BM app is connected).
@@ -242,6 +251,15 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
   `middleware/v1-live-limits.ts`, keys namespaced `v1:`), on top of the
   hourly tier limit from `requireV1ApiKey`.
 - Keep `backend/server/openapi/openapi.json` in step: `src/tests/v1-analytics-inbox-contract.test.ts` fails if a route or scope drifts.
+- OAuth scopes are enforced on `/v1` from `lib/v1-scopes.ts` (any of the operation's scopes in the spec). `src/tests/v1-scopes.test.ts` checks it against the spec, the registered routes and the mcp-worker's list. API keys keep full access.
+
+### Hosted MCP auth
+
+- Redis holds no raw API key or token: MCP OAuth records are keyed by `sha256(token)` and point at the connector key by id (`lib/mcp-oauth.ts`).
+- Introspection returns no credential. The mcp-worker forwards the caller's own bearer token to `/v1` with `x-social0-mcp-proxy` (HMAC of the token hash under `MCP_OAUTH_INTROSPECT_SECRET`); `/v1` accepts an OAuth token only with it (`middleware/api-auth.ts`).
+- Access tokens live 1 hour; the `resource` (RFC 8707) is validated and bound to the grant.
+- `ENCRYPTION_KEY` rotates via `ENCRYPTION_KEYS_PREVIOUS` (decrypt only), on the API and the publish worker.
+- Rate limiters are built with `slidingWindowLimiter`, so they keep limiting from memory when Redis is down instead of failing closed.
 - CLI: `social0 analytics …`, `social0 inbox …`.
   MCP: `get_analytics`, `get_post_analytics`, `list_inbox_comments`,
   `reply_to_comment`, `moderate_comment`, `list_inbox_dms`,
@@ -264,7 +282,7 @@ Notable domains: users/sessions (Better Auth), `user_settings` (onboarding flags
 
 | Surface | Examples |
 | ------- | -------- |
-| API | `DATABASE_URL`, Upstash Redis, `BETTER_AUTH_*`, `AUTH_API_URL`, `APP_URL` / `NEXT_PUBLIC_APP_URL`, `ENCRYPTION_KEY`, `PUBLISH_DISPATCH`, `CF_PUBLISH_*`, `TWITTER_PUBLISH_ON_CF`, `TIKTOK_PUBLISH_ON_CF`, `CRON_SECRET`, `ADMIN_API_KEY`, `RESEND_*`, Turnstile, `R2_*`, platform `*_CLIENT_*`, `DODO_PAYMENTS_*`, `MCP_*` |
+| API | `DATABASE_URL`, Upstash Redis, `BETTER_AUTH_*`, `AUTH_API_URL`, `APP_URL` / `NEXT_PUBLIC_APP_URL`, `ENCRYPTION_KEY`, `PUBLISH_DISPATCH`, `CF_PUBLISH_*`, `TWITTER_PUBLISH_ON_CF`, `TIKTOK_PUBLISH_ON_CF`, `BLUESKY_PUBLISH_ON_CF`, `CRON_SECRET`, `ADMIN_API_KEY`, `RESEND_*`, Turnstile, `R2_*`, platform `*_CLIENT_*`, `DODO_PAYMENTS_*`, `MCP_*` |
 | SPA | `VITE_API_URL`, `VITE_API_PROXY_TARGET`, `VITE_APP_URL`, Turnstile, PostHog, Vemetric (`VITE_VEMETRIC_TOKEN`), optional Dodo product IDs |
 | Publish worker | HMAC, encryption, Resend, R2, OAuth, Hyperdrive |
 | Cron worker | `CRON_SECRET`, `API_BASE_URL` |
@@ -316,7 +334,7 @@ Publish worker: see `cloudflare/publish-worker/README.md`.
 ## 14. Known caveats
 
 - LinkedIn + X publish logic not fully extracted into `publish-platforms/`.
-- X + TikTok publish on the API by default (not CF), from both the composer and the cron. See `server-side-publish.ts` and `background-worker/src/cron/dispatch-scheduled-target.ts`.
+- X, TikTok and Bluesky publish on the API by default (not CF), from both the composer and the cron. See `server-side-publish.ts` and `background-worker/src/cron/dispatch-scheduled-target.ts`.
 - `background-worker` schema is duplicated: update both when schema changes (only with explicit permission).
 - Older docs may still say `react-frontend/`: treat **`frontend/`** as the live SPA.
 - Failure-email claim (`posts.metadata._failureEmailSentAt`) is one-shot; stuck claims from old bugs won’t re-send until cleared.

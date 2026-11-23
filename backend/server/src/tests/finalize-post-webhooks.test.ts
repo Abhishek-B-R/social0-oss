@@ -10,21 +10,29 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockDb, mockDeliver, mockHasSubscriber, mockFailureEmail } = vi.hoisted(
-  () => ({
-    mockDb: {
-      select: vi.fn(),
-      update: vi.fn(),
-    },
-    mockDeliver: vi.fn(),
-    mockHasSubscriber: vi.fn(),
-    mockFailureEmail: vi.fn(),
-  }),
-);
+const {
+  mockDb,
+  mockDeliver,
+  mockHasSubscriber,
+  mockFailureEmail,
+  mockBulkSetup,
+} = vi.hoisted(() => ({
+  mockDb: {
+    select: vi.fn(),
+    update: vi.fn(),
+  },
+  mockDeliver: vi.fn(),
+  mockHasSubscriber: vi.fn(),
+  mockFailureEmail: vi.fn(),
+  mockBulkSetup: vi.fn(),
+}));
 
 vi.mock("../db/index.js", () => ({ db: mockDb }));
 vi.mock("../lib/post-failure-email.js", () => ({
   maybeSendPostFailureEmail: mockFailureEmail,
+}));
+vi.mock("../publish/bulk-auto-features.js", () => ({
+  setupBulkAutoFeaturesAfterPublish: mockBulkSetup,
 }));
 vi.mock("../lib/user-webhook-delivery.js", () => ({
   deliverUserWebhookEvent: mockDeliver,
@@ -77,6 +85,7 @@ beforeEach(() => {
   mockDeliver.mockResolvedValue([]);
   mockHasSubscriber.mockResolvedValue(true);
   mockFailureEmail.mockResolvedValue(undefined);
+  mockBulkSetup.mockResolvedValue(undefined);
 });
 
 describe("emitPublishWebhooksForPost", () => {
@@ -180,5 +189,47 @@ describe("emitPublishWebhooksForPost", () => {
 
     // claim + release
     expect(mockDb.update).toHaveBeenCalledTimes(2);
+  });
+});
+
+/**
+ * Auto-Repost / Auto-Plug saved with a scheduled post are set up here, because
+ * finalize is the one step every publish path runs — including the
+ * per-platform jobs a scheduled post is published by.
+ */
+describe("maybeFinalizePostPublish auto features", () => {
+  it("awaits the setup with this post's deliveries once every row is terminal", async () => {
+    const pubs = [pub("published", "twitter_x"), pub("failed", "linkedin")];
+    mockDb.select.mockImplementationOnce(() => chain(pubs));
+    let settled = false;
+    mockBulkSetup.mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      settled = true;
+    });
+
+    const { maybeFinalizePostPublish } = await import(
+      "../publish/finalize-post.js"
+    );
+    await maybeFinalizePostPublish(POST_ID, USER_ID);
+
+    expect(settled).toBe(true);
+    expect(mockBulkSetup).toHaveBeenCalledWith({
+      postId: POST_ID,
+      userId: USER_ID,
+      publications: pubs,
+    });
+  });
+
+  it("waits while a delivery is still publishing", async () => {
+    mockDb.select.mockImplementationOnce(() =>
+      chain([pub("published", "twitter_x"), pub("publishing", "linkedin")]),
+    );
+
+    const { maybeFinalizePostPublish } = await import(
+      "../publish/finalize-post.js"
+    );
+    await maybeFinalizePostPublish(POST_ID, USER_ID);
+
+    expect(mockBulkSetup).not.toHaveBeenCalled();
   });
 });

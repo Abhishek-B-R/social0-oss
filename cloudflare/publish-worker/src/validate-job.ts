@@ -1,5 +1,6 @@
 import { SUPPORTED_PLATFORMS } from "@social0/shared";
 import type { PublishPlatformJob } from "./types";
+import { withSql, type Sql } from "./db";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -62,14 +63,9 @@ export function parsePublishPlatformJob(
 export async function assertPublishJobAuthorized(
   env: Env,
   job: PublishPlatformJob,
+  sqlClient?: Sql,
 ): Promise<string | null> {
-  const { default: postgres } = await import("postgres");
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 1,
-    fetch_types: false,
-  });
-
-  try {
+  return withSql(env, sqlClient, async (sql) => {
     const [row] = await sql<{ ok: number }[]>`
       SELECT 1 AS ok
       FROM posts p
@@ -98,7 +94,5 @@ export async function assertPublishJobAuthorized(
     }
 
     return null;
-  } finally {
-    await sql.end({ timeout: 0 });
-  }
+  });
 }

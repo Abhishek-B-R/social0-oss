@@ -19,9 +19,12 @@ function landingNavLinks(): NavLink[] {
   ];
 }
 
-/** On /home, same-page anchors must use /home#… so they don't hit / and redirect logged-in users. */
-function landingNavHref(href: string, pathname: string | null) {
-  if (pathname === "/home" && href.startsWith("/#")) {
+/**
+ * Landing anchors ("/#faq") go through /home#… on /home and for signed-in
+ * visitors on any marketing page: "/" sends a session to the dashboard.
+ */
+function landingNavHref(href: string, homeAnchors: boolean) {
+  if (homeAnchors && href.startsWith("/#")) {
     return `/home${href.slice(1)}`;
   }
   return href;
@@ -33,6 +36,7 @@ export function LandingHeader() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { data: session } = useSession();
   const user = session?.user;
+  const homeAnchors = pathname === "/home" || !!user;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md">
@@ -68,7 +72,7 @@ export function LandingHeader() {
           {navLinks.map((link) => (
             <Link
               key={link.href}
-              href={landingNavHref(link.href, pathname)}
+              href={landingNavHref(link.href, homeAnchors)}
               className="text-[14px] text-muted-foreground transition-colors hover:text-foreground"
             >
               {link.label}
@@ -131,7 +135,7 @@ export function LandingHeader() {
             {navLinks.map((link) => (
               <Link
                 key={link.href}
-                href={landingNavHref(link.href, pathname)}
+                href={landingNavHref(link.href, homeAnchors)}
                 className="text-[15px] text-muted-foreground transition-colors hover:text-foreground"
                 onClick={() => setMobileMenuOpen(false)}
               >

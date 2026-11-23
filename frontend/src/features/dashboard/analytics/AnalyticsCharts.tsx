@@ -1,87 +1,36 @@
-import { memo, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useId, useMemo } from "react";
 import { useReducedMotion } from "framer-motion";
+import { format } from "date-fns";
 import {
   ResponsiveContainer,
   ComposedChart,
   Area,
-  Line,
-  BarChart,
   Bar,
-  PieChart,
-  Pie,
   Cell,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
 } from "recharts";
-import { CaretDown, ChartBar, ChartLine } from "@/icons/phosphor";
+import { ChartBar, ChartLine } from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
-import { formatMetric, type MixSlice } from "./analytics-utils";
-import { MIX_COLORS, VIZ } from "./analytics-colors";
-import {
-  axisTick,
-  buildMixChartModel,
-  buildPlatformChartModel,
-  buildTrendChartModel,
-  chartDayTick,
-  type PlatformChartRow,
-  type TrendPoint,
-} from "./chart-pipeline";
+import { formatMetric } from "./analytics-utils";
+import { VIZ } from "./analytics-colors";
+import { axisTick, chartDayTick } from "./chart-pipeline";
+import { metricMeta, type MetricKey, type SeriesRow } from "./analytics-model";
 
 const GRID = "var(--color-border, #e5e7eb)";
 const MUTED = "var(--color-text-muted, #6b7280)";
+const PREVIOUS = "var(--color-text-subtle, #9ca3af)";
 const ACCENT = VIZ.emerald;
+const COMPARE = VIZ.amber;
 
 const CHART_MOTION = { duration: 320, easing: "ease-out" as const };
 
-const ChartTooltip = memo(function ChartTooltip({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: Array<{
-    name?: string;
-    value?: number;
-    color?: string;
-    payload?: { fullDate?: string };
-  }>;
-  label?: string;
-}) {
-  if (!active || !payload?.length) return null;
-  const heading = payload[0]?.payload?.fullDate ?? label;
-  return (
-    <div className="rounded-xl border border-border/80 bg-bg-elevated/95 px-3 py-2 text-xs shadow-lg backdrop-blur-md">
-      <p className="mb-1.5 font-medium tracking-tight text-text">{heading}</p>
-      <div className="space-y-1">
-        {payload.map((p) => (
-          <p key={p.name} className="flex items-center gap-2 text-text-muted">
-            <span
-              className="inline-block h-2 w-2 shrink-0 rounded-full"
-              style={{ background: p.color }}
-            />
-            <span className="min-w-0 truncate">{p.name}</span>
-            <span className="ml-auto font-medium tabular-nums text-text">
-              {p.value == null ? "-" : formatMetric(p.value)}
-            </span>
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-});
-
-function ChartShell({ children }: { children: ReactNode }) {
-  return (
-    <div className="h-56 w-full min-w-0 sm:h-72 [&_.recharts-surface]:outline-none">
-      {children}
-    </div>
-  );
-}
-
 export type TrendChartView = "line" | "bar";
+/** What the chart overlays on the active metric. */
+export type TrendCompare = "previous" | "none" | MetricKey;
 
 export function TrendChartViewToggle({
   value,
@@ -92,9 +41,9 @@ export function TrendChartViewToggle({
 }) {
   return (
     <div
-      role="tablist"
+      role="group"
       aria-label="Chart type"
-      className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-bg-muted p-1"
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-bg-muted p-0.5"
     >
       {(
         [
@@ -107,18 +56,18 @@ export function TrendChartViewToggle({
           <button
             key={id}
             type="button"
-            role="tab"
-            aria-selected={selected}
+            aria-pressed={selected}
+            aria-label={`${label} chart`}
+            title={`${label} chart`}
             onClick={() => onChange(id)}
             className={cn(
-              "inline-flex items-center justify-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-[transform,background-color,color] duration-150 ease-out touch-manipulation active:scale-[0.97] touch:min-h-10 touch:px-3",
+              "inline-flex h-7 w-8 items-center justify-center rounded-full transition-[color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 touch:h-9 touch:w-10",
               selected
                 ? "bg-bg-elevated text-text shadow-sm"
                 : "text-text-muted hover:text-text",
             )}
           >
             <Icon size={14} weight={selected ? "fill" : "regular"} />
-            {label}
           </button>
         );
       })}
@@ -126,467 +75,345 @@ export function TrendChartViewToggle({
   );
 }
 
-export const EngagementTrendChart = memo(function EngagementTrendChart({
-  data,
-  view = "line",
+type ChartRow = {
+  date: string;
+  fullDate: string;
+  /** Active metric; null on today's still-running day (drawn by `tail`). */
+  cur: number | null;
+  /** Dashed segment into today's partial day. */
+  tail: number | null;
+  /** Raw active value for the tooltip and bars. */
+  value: number;
+  prev: number | null;
+  prevDate: string | null;
+  other: number | null;
+};
+
+function dayDate(iso: string): Date | null {
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function buildRows(
+  rows: SeriesRow[],
+  previous: SeriesRow[] | null,
+  metric: MetricKey,
+  compare: TrendCompare,
+  ongoingToday: boolean,
+): ChartRow[] {
+  const last = rows.length - 1;
+  const dashLast = ongoingToday && rows.length >= 2;
+  return rows.map((r, i) => {
+    const d = dayDate(r.date);
+    const prevRow = compare === "previous" ? previous?.[i] : undefined;
+    const pd = prevRow ? dayDate(prevRow.date) : null;
+    const value = r[metric];
+    return {
+      date: r.date,
+      fullDate: d ? format(d, "EEE, MMM d, yyyy") : r.date,
+      cur: dashLast && i === last ? null : value,
+      tail: dashLast && i >= last - 1 ? value : null,
+      value,
+      prev: prevRow ? prevRow[metric] : null,
+      prevDate: pd ? format(pd, "MMM d") : null,
+      other:
+        compare !== "previous" && compare !== "none" ? r[compare] : null,
+    };
+  });
+}
+
+function TrendTooltip({
+  active,
+  payload,
+  metric,
+  compare,
 }: {
-  data: TrendPoint[];
-  view?: TrendChartView;
+  active?: boolean;
+  payload?: Array<{ payload?: ChartRow }>;
+  metric: MetricKey;
+  compare: TrendCompare;
 }) {
-  const reduceMotion = useReducedMotion();
-  const model = useMemo(() => buildTrendChartModel(data), [data]);
-  const animate = !reduceMotion;
-  const fillId = useId().replace(/:/g, "");
-  const [leftMetric, setLeftMetric] = useState<"views" | "likes" | "comments" | "shares">("views");
-  const [rightMetric, setRightMetric] = useState<"engagement" | "likes" | "comments" | "shares">("engagement");
-
-  if (model.rows.length === 0) {
-    return (
-      <EmptyChart message="No published posts with metrics in this range yet." />
-    );
-  }
-
-  const leftMeta = METRIC_OPTIONS.find((m) => m.key === leftMetric)!;
-  const rightMeta = METRIC_OPTIONS.find((m) => m.key === rightMetric)!;
-
+  const row = payload?.[0]?.payload;
+  if (!active || !row) return null;
+  const otherKey = compare !== "previous" && compare !== "none" ? compare : null;
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <MetricPicker
-          value={leftMetric}
-          color={ACCENT}
-          options={LEFT_METRIC_OPTIONS}
-          onChange={setLeftMetric}
-          ariaLabel="Primary metric"
-        />
-        <span className="text-xs text-text-subtle" aria-hidden>
-          vs
-        </span>
-        <MetricPicker
-          value={rightMetric}
-          color={VIZ.amber}
-          options={RIGHT_METRIC_OPTIONS}
-          onChange={setRightMetric}
-          ariaLabel="Compare metric"
-        />
+    <div className="rounded-xl border border-border/80 bg-bg-elevated/95 px-3 py-2 text-xs shadow-lg backdrop-blur-md">
+      <p className="mb-1.5 font-medium text-text">{row.fullDate}</p>
+      <div className="space-y-1">
+        <p className="flex items-center gap-2 text-text-muted">
+          <span className="inline-block size-2 shrink-0 rounded-full" style={{ background: ACCENT }} />
+          <span>{metricMeta(metric).label}</span>
+          <span className="ml-auto pl-4 font-medium tabular-nums text-text">
+            {formatMetric(row.value)}
+          </span>
+        </p>
+        {compare === "previous" && row.prev != null ? (
+          <p className="flex items-center gap-2 text-text-muted">
+            <span
+              className="inline-block h-0 w-3 shrink-0 border-t-2 border-dashed"
+              style={{ borderColor: PREVIOUS }}
+            />
+            <span>Previous{row.prevDate ? ` (${row.prevDate})` : ""}</span>
+            <span className="ml-auto pl-4 font-medium tabular-nums text-text">
+              {formatMetric(row.prev)}
+            </span>
+          </p>
+        ) : null}
+        {otherKey && row.other != null ? (
+          <p className="flex items-center gap-2 text-text-muted">
+            <span className="inline-block size-2 shrink-0 rounded-full" style={{ background: COMPARE }} />
+            <span>{metricMeta(otherKey).label}</span>
+            <span className="ml-auto pl-4 font-medium tabular-nums text-text">
+              {formatMetric(row.other)}
+            </span>
+          </p>
+        ) : null}
       </div>
-      <ChartShell>
-        <ResponsiveContainer width="100%" height="100%" debounce={120}>
-          {view === "line" ? (
-            <ComposedChart
-              data={model.rows}
-              margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
-            >
-              <defs>
-                <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={ACCENT} stopOpacity={0.28} />
-                  <stop offset="100%" stopColor={ACCENT} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(iso) => chartDayTick(String(iso), model.dayCount)}
-                tick={{ fill: MUTED, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                interval="preserveStartEnd"
-                minTickGap={20}
-                tickMargin={8}
-              />
-              <YAxis
-                yAxisId="left"
-                orientation="left"
-                tick={{ fill: MUTED, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                width={44}
-                allowDecimals={false}
-                tickFormatter={(v) => axisTick(Number(v))}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tick={{ fill: MUTED, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                width={44}
-                allowDecimals={false}
-                tickFormatter={(v) => axisTick(Number(v))}
-              />
-              <Tooltip
-                content={<ChartTooltip />}
-                cursor={{ stroke: GRID, strokeWidth: 1 }}
-                isAnimationActive={false}
-              />
-              <Area
-                yAxisId="left"
-                type="monotone"
-                dataKey={leftMetric}
-                name={leftMeta.label}
-                stroke={ACCENT}
-                strokeWidth={2}
-                fill={`url(#${fillId})`}
-                dot={false}
-                activeDot={{ r: 4, fill: ACCENT, stroke: "var(--color-bg-elevated)", strokeWidth: 2 }}
-                isAnimationActive={animate}
-                animationDuration={CHART_MOTION.duration}
-                animationEasing={CHART_MOTION.easing}
-              />
-              <Line
-                yAxisId="right"
-                type="monotone"
-                dataKey={rightMetric}
-                name={rightMeta.label}
-                stroke={VIZ.amber}
-                strokeWidth={2}
-                dot={false}
-                activeDot={{ r: 4, fill: VIZ.amber, stroke: "var(--color-bg-elevated)", strokeWidth: 2 }}
-                isAnimationActive={animate}
-                animationDuration={CHART_MOTION.duration}
-                animationEasing={CHART_MOTION.easing}
-              />
-            </ComposedChart>
-          ) : (
-            <BarChart
-              data={model.rows}
-              margin={{ top: 8, right: 12, left: 0, bottom: 4 }}
-              barGap={2}
-              barCategoryGap="28%"
-            >
-              <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="date"
-                tickFormatter={(iso) => chartDayTick(String(iso), model.dayCount)}
-                tick={{ fill: MUTED, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                interval="preserveStartEnd"
-                minTickGap={20}
-                tickMargin={8}
-              />
-              <YAxis
-                yAxisId="left"
-                orientation="left"
-                tick={{ fill: MUTED, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                width={44}
-                allowDecimals={false}
-                tickFormatter={(v) => axisTick(Number(v))}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
-                tick={{ fill: MUTED, fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                width={44}
-                allowDecimals={false}
-                tickFormatter={(v) => axisTick(Number(v))}
-              />
-              <Tooltip
-                content={<ChartTooltip />}
-                cursor={{ fill: "var(--color-bg-muted)", opacity: 0.35 }}
-                isAnimationActive={false}
-              />
-              <Bar
-                yAxisId="left"
-                dataKey={leftMetric}
-                name={leftMeta.label}
-                fill={ACCENT}
-                maxBarSize={18}
-                radius={[4, 4, 0, 0]}
-                isAnimationActive={animate}
-                animationDuration={CHART_MOTION.duration}
-                animationEasing={CHART_MOTION.easing}
-              />
-              <Bar
-                yAxisId="right"
-                dataKey={rightMetric}
-                name={rightMeta.label}
-                fill={VIZ.amber}
-                maxBarSize={18}
-                radius={[4, 4, 0, 0]}
-                isAnimationActive={animate}
-                animationDuration={CHART_MOTION.duration}
-                animationEasing={CHART_MOTION.easing}
-              />
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      </ChartShell>
-      <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            className={cn(view === "bar" ? "h-2 w-2 rounded-sm" : "h-0.5 w-4 rounded-full", "bg-accent")}
-            aria-hidden
-          />
-          {leftMeta.label}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            className={cn(
-              view === "bar" ? "h-2 w-2 rounded-sm" : "h-0.5 w-4 rounded-full",
-            )}
-            style={{ background: VIZ.amber }}
-            aria-hidden
-          />
-          {rightMeta.label}
-        </span>
-      </div>
-    </div>
-  );
-});
-
-const LEFT_METRIC_OPTIONS = [
-  { key: "views", label: "Views" },
-  { key: "likes", label: "Likes" },
-  { key: "comments", label: "Comments" },
-  { key: "shares", label: "Shares" },
-] as const;
-
-const RIGHT_METRIC_OPTIONS = [
-  { key: "engagement", label: "Engagements" },
-  { key: "likes", label: "Likes" },
-  { key: "comments", label: "Comments" },
-  { key: "shares", label: "Shares" },
-] as const;
-
-const METRIC_OPTIONS = [
-  ...LEFT_METRIC_OPTIONS,
-  { key: "engagement", label: "Engagements" },
-] as const;
-
-function MetricPicker<T extends string>({
-  value,
-  color,
-  options,
-  onChange,
-  ariaLabel,
-}: {
-  value: T;
-  color: string;
-  options: ReadonlyArray<{ key: T; label: string }>;
-  onChange: (next: T) => void;
-  ariaLabel: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const selected = options.find((o) => o.key === value)!;
-
-  useEffect(() => {
-    if (!open) return;
-    function onDoc(e: MouseEvent) {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        aria-label={ariaLabel}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border border-border bg-bg-muted px-2.5 py-1.5 text-xs font-medium text-text transition-[transform,background-color,color] duration-150 ease-out touch-manipulation hover:bg-bg-elevated active:scale-[0.97] touch:min-h-10 touch:px-3",
-          open && "bg-bg-elevated shadow-sm",
-        )}
-      >
-        <span
-          className="h-2 w-2 shrink-0 rounded-full"
-          style={{ background: color }}
-          aria-hidden
-        />
-        {selected.label}
-        <CaretDown
-          size={12}
-          weight="bold"
-          className={cn("text-text-muted transition-transform", open && "rotate-180")}
-        />
-      </button>
-      {open ? (
-        <div
-          role="listbox"
-          aria-label={ariaLabel}
-          className="absolute top-full left-0 z-30 mt-1.5 min-w-[9.5rem] rounded-xl border border-border bg-bg-elevated p-1 shadow-lg"
-        >
-          {options.map((o) => (
-            <button
-              key={o.key}
-              type="button"
-              role="option"
-              aria-selected={value === o.key}
-              onClick={() => {
-                onChange(o.key);
-                setOpen(false);
-              }}
-              className={cn(
-                "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs transition-colors",
-                value === o.key
-                  ? "bg-bg-muted font-medium text-text"
-                  : "text-text-muted hover:bg-bg-muted/70 hover:text-text",
-              )}
-            >
-              <span
-                className="h-1.5 w-1.5 shrink-0 rounded-full"
-                style={{ background: value === o.key ? color : "var(--color-border)" }}
-                aria-hidden
-              />
-              {o.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
 
-export const PlatformBreakdownChart = memo(function PlatformBreakdownChart({
-  data,
+/**
+ * One chart for the active KPI tab. The previous period rides along as a
+ * dashed grey line (aligned day by day); today's unfinished day is dashed.
+ */
+export const MetricTrendChart = memo(function MetricTrendChart({
+  rows,
+  previous,
+  metric,
+  compare,
+  view,
+  ongoingToday,
+  className,
 }: {
-  data: PlatformChartRow[];
+  rows: SeriesRow[];
+  previous: SeriesRow[] | null;
+  metric: MetricKey;
+  compare: TrendCompare;
+  view: TrendChartView;
+  ongoingToday: boolean;
+  className?: string;
 }) {
   const reduceMotion = useReducedMotion();
-  const model = useMemo(() => buildPlatformChartModel(data), [data]);
   const animate = !reduceMotion;
+  const fillId = useId().replace(/:/g, "");
+  const data = useMemo(
+    () => buildRows(rows, previous, metric, compare, ongoingToday),
+    [rows, previous, metric, compare, ongoingToday],
+  );
+  const dayCount = data.length;
+  // Long ranges label months only; tick the 1st of each month so a month
+  // never shows twice ("Nov Nov Dec Dec").
+  const monthTicks = useMemo(
+    () => (dayCount > 180 ? data.filter((r) => r.date.slice(8, 10) === "01").map((r) => r.date) : undefined),
+    [data, dayCount],
+  );
+  const otherKey = compare !== "previous" && compare !== "none" ? compare : null;
+  const showPrev = compare === "previous" && !!previous?.length;
+  const lastIndex = data.length - 1;
 
-  if (model.rows.length === 0) {
-    return (
-      <EmptyChart message="No Social0 posts in this range to break down by platform." />
-    );
-  }
+  const label = `${metricMeta(metric).label} per day${
+    showPrev ? ", with the previous period dashed" : ""
+  }`;
 
   return (
-    <div className="h-60 w-full min-w-0 sm:h-[22rem] [&_.recharts-surface]:outline-none">
+    <div
+      className={cn("h-56 w-full min-w-0 sm:h-72 [&_.recharts-surface]:outline-none", className)}
+      role="img"
+      aria-label={label}
+    >
       <ResponsiveContainer width="100%" height="100%" debounce={120}>
-        <BarChart
-          data={model.rows}
-          margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
-          barGap={4}
-          barCategoryGap="24%"
-        >
+        <ComposedChart data={data} margin={{ top: 8, right: otherKey ? 4 : 12, left: 0, bottom: 4 }}>
+          <defs>
+            <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={ACCENT} stopOpacity={0.24} />
+              <stop offset="100%" stopColor={ACCENT} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
           <CartesianGrid stroke={GRID} strokeDasharray="3 3" vertical={false} />
           <XAxis
-            dataKey="label"
+            dataKey="date"
+            ticks={monthTicks}
+            tickFormatter={(iso) => chartDayTick(String(iso), dayCount)}
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
+            interval="preserveStartEnd"
+            minTickGap={24}
             tickMargin={8}
-            interval={0}
           />
           <YAxis
+            yAxisId="left"
             tick={{ fill: MUTED, fontSize: 11 }}
             axisLine={false}
             tickLine={false}
-            width={40}
+            width={44}
             allowDecimals={false}
             tickFormatter={(v) => axisTick(Number(v))}
           />
+          {otherKey ? (
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fill: MUTED, fontSize: 11 }}
+              axisLine={false}
+              tickLine={false}
+              width={44}
+              allowDecimals={false}
+              tickFormatter={(v) => axisTick(Number(v))}
+            />
+          ) : null}
           <Tooltip
-            content={<ChartTooltip />}
-            cursor={{ fill: "var(--color-bg-muted, #f3f4f6)", opacity: 0.35 }}
+            content={<TrendTooltip metric={metric} compare={compare} />}
+            cursor={
+              view === "bar"
+                ? { fill: "var(--color-bg-muted)", opacity: 0.4 }
+                : { stroke: GRID, strokeWidth: 1 }
+            }
             isAnimationActive={false}
           />
-          <Legend
-            wrapperStyle={{ fontSize: 12, paddingTop: 10 }}
-            iconType="circle"
-            iconSize={8}
-          />
-          {model.activeSeries.map((s) => (
-            <Bar
-              key={s.key}
-              dataKey={s.key}
-              name={s.name}
-              fill={s.fill}
-              maxBarSize={32}
-              radius={[6, 6, 0, 0]}
+          {showPrev ? (
+            <Line
+              yAxisId="left"
+              type="monotone"
+              dataKey="prev"
+              name="Previous period"
+              stroke={PREVIOUS}
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              dot={false}
+              activeDot={false}
+              connectNulls
               isAnimationActive={animate}
               animationDuration={CHART_MOTION.duration}
               animationEasing={CHART_MOTION.easing}
             />
-          ))}
-        </BarChart>
+          ) : null}
+          {/*
+            Every series is a direct child of the chart, never inside a
+            fragment: Recharts 2 finds its children with react-is 18, which
+            doesn't recognise React 19 fragments. A fragment here silently
+            dropped the area, so the chart drew only the (empty) previous
+            period and a flat 0-4 axis while the totals said 7.4K views.
+          */}
+          {view === "line" ? (
+            <Area
+              yAxisId="left"
+              type="monotone"
+              dataKey="cur"
+              name={metricMeta(metric).label}
+              stroke={ACCENT}
+              strokeWidth={2}
+              fill={`url(#${fillId})`}
+              dot={false}
+              activeDot={{ r: 4, fill: ACCENT, stroke: "var(--color-bg-elevated)", strokeWidth: 2 }}
+              isAnimationActive={animate}
+              animationDuration={CHART_MOTION.duration}
+              animationEasing={CHART_MOTION.easing}
+            />
+          ) : null}
+          {view === "line" ? (
+            <Line
+              yAxisId="left"
+              type="monotone"
+              dataKey="tail"
+              name="Today so far"
+              stroke={ACCENT}
+              strokeWidth={2}
+              strokeDasharray="3 3"
+              dot={false}
+              activeDot={{ r: 4, fill: ACCENT, stroke: "var(--color-bg-elevated)", strokeWidth: 2 }}
+              legendType="none"
+              isAnimationActive={false}
+            />
+          ) : null}
+          {view === "bar" ? (
+            <Bar
+              yAxisId="left"
+              dataKey="value"
+              name={metricMeta(metric).label}
+              fill={ACCENT}
+              maxBarSize={18}
+              radius={[4, 4, 0, 0]}
+              isAnimationActive={animate}
+              animationDuration={CHART_MOTION.duration}
+              animationEasing={CHART_MOTION.easing}
+            >
+              {data.map((row, i) => (
+                <Cell
+                  key={row.date}
+                  fillOpacity={ongoingToday && i === lastIndex ? 0.45 : 1}
+                />
+              ))}
+            </Bar>
+          ) : null}
+          {otherKey ? (
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="other"
+              name={metricMeta(otherKey).label}
+              stroke={COMPARE}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4, fill: COMPARE, stroke: "var(--color-bg-elevated)", strokeWidth: 2 }}
+              isAnimationActive={animate}
+              animationDuration={CHART_MOTION.duration}
+              animationEasing={CHART_MOTION.easing}
+            />
+          ) : null}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
 });
 
-export const EngagementMixChart = memo(function EngagementMixChart({
-  data,
+/** Legend under the chart: what each line means. */
+export function TrendLegend({
+  metric,
+  compare,
+  hasPrevious,
+  ongoingToday,
+  view,
 }: {
-  data: MixSlice[];
+  metric: MetricKey;
+  compare: TrendCompare;
+  hasPrevious: boolean;
+  ongoingToday: boolean;
+  view: TrendChartView;
 }) {
-  const reduceMotion = useReducedMotion();
-  const model = useMemo(() => buildMixChartModel(data), [data]);
-  const animate = !reduceMotion;
-
-  if (model.slices.length === 0) {
-    return (
-      <EmptyChart message="No likes, comments, or shares on Social0 posts in this range yet." />
-    );
-  }
-
+  const otherKey = compare !== "previous" && compare !== "none" ? compare : null;
   return (
-    <div className="flex h-56 w-full min-w-0 items-center gap-4 sm:h-72">
-      <div className="h-full min-w-0 flex-1">
-        <ResponsiveContainer width="100%" height="100%" debounce={120}>
-          <PieChart>
-            <Pie
-              data={model.slices}
-              dataKey="value"
-              nameKey="label"
-              cx="50%"
-              cy="50%"
-              innerRadius="56%"
-              outerRadius="78%"
-              paddingAngle={2}
-              stroke="none"
-              isAnimationActive={animate}
-              animationDuration={CHART_MOTION.duration}
-              animationEasing={CHART_MOTION.easing}
-            >
-              {model.slices.map((s) => (
-                <Cell key={s.key} fill={MIX_COLORS[s.key] ?? ACCENT} />
-              ))}
-            </Pie>
-            <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      <ul className="w-36 shrink-0 space-y-2.5 text-xs sm:w-40">
-        {model.slices.map((s) => {
-          const pct =
-            model.total > 0 ? Math.round((s.value / model.total) * 100) : 0;
-          return (
-            <li key={s.key} className="flex items-center justify-between gap-2">
-              <span className="flex min-w-0 items-center gap-2 text-text-muted">
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ background: MIX_COLORS[s.key] ?? ACCENT }}
-                />
-                <span className="truncate">{s.label}</span>
-              </span>
-              <span className="shrink-0 tabular-nums font-medium text-text">
-                {formatMetric(s.value)}
-                <span className="ml-1 font-normal text-text-muted">{pct}%</span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-});
-
-function EmptyChart({ message }: { message: string }) {
-  return (
-    <div className="flex h-56 items-center justify-center rounded-xl border border-dashed border-border bg-bg-muted/30 px-6 text-center text-sm text-text-muted sm:h-72">
-      {message}
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-text-muted">
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className={cn(view === "bar" ? "size-2 rounded-sm" : "h-0.5 w-4 rounded-full")}
+          style={{ background: ACCENT }}
+          aria-hidden
+        />
+        {metricMeta(metric).label}
+      </span>
+      {compare === "previous" && hasPrevious ? (
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            className="h-0 w-4 border-t-2 border-dashed"
+            style={{ borderColor: PREVIOUS }}
+            aria-hidden
+          />
+          Previous period
+        </span>
+      ) : null}
+      {otherKey ? (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0.5 w-4 rounded-full" style={{ background: COMPARE }} aria-hidden />
+          {metricMeta(otherKey).label}
+        </span>
+      ) : null}
+      {ongoingToday ? (
+        <span className="text-text-subtle">
+          {view === "bar" ? "Faded bar" : "Dashed end"} = today so far
+        </span>
+      ) : null}
     </div>
   );
 }

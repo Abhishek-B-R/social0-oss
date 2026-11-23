@@ -1,4 +1,5 @@
 import Link from "@/components/AppLink";
+import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { SeoHead } from "@/components/seo/SeoHead";
 
 export function NotFoundPage() {
@@ -9,15 +10,23 @@ export function NotFoundPage() {
         description="The page you requested could not be found."
         robots={{ index: false, follow: false }}
       />
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-center">
-        <h1 className="text-4xl font-bold font-serif text-foreground">404</h1>
-        <p className="mt-2 text-text-muted">This page could not be found.</p>
-        <Link
-          href="/"
-          className="mt-6 text-sm font-medium text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-        >
-          Back to home
-        </Link>
+      <div className="landing landing-page flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+        <AuthBrandHeader showNav />
+        <main className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
+          <p className="text-sm font-medium text-muted-foreground">404</p>
+          <h1 className="mt-2 text-[clamp(26px,3.8vw,34px)] font-bold leading-tight tracking-tight text-foreground">
+            Page not found
+          </h1>
+          <p className="mt-2 text-[15px] text-muted-foreground">
+            This page could not be found. It may have moved or never existed.
+          </p>
+          <Link
+            href="/"
+            className="mt-6 inline-flex items-center justify-center rounded-[10px] bg-emerald-500 px-5 py-2.5 text-sm font-semibold text-[#04140c] transition-colors hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Back to home
+          </Link>
+        </main>
       </div>
     </>
   );

@@ -39,7 +39,7 @@ export default function DataDeletionPage() {
             <p className="text-muted-foreground mb-3">
               Signed-in users can close their Social0 account from{" "}
               <Link
-                href="/dashboard/settings"
+                href="/dashboard/settings/security"
                 className="text-foreground font-medium underline underline-offset-2 hover:text-accent transition-colors"
               >
                 Dashboard → Settings → Security

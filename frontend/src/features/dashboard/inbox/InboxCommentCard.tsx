@@ -1,21 +1,20 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import {
   ArrowSquareOut,
   CircleNotch,
   Copy,
   Heart,
+  EyeSlash,
   PencilSimple,
   WarningCircle,
-  X,
 } from "@/icons/phosphor";
 import {
-  hideInboxComment,
   likeInboxComment,
   type InboxAccount,
   type InboxComment,
 } from "@/api/inbox";
+import { RowActions, openComposer } from "@/components/app";
 import { resolveInboxBody } from "@/lib/inbox-display";
 import {
   inboxAuthorProfileUrl,
@@ -25,13 +24,12 @@ import {
   inboxCommentHideSupported,
   inboxCommentLikeSupported,
 } from "@/lib/inbox-comment-status";
-import { setComposerPayload } from "@/lib/composer-bridge";
-import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { PLATFORM_LABEL } from "@/lib/platforms";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InboxAttachmentView } from "./InboxAttachmentView";
 import { InboxAvatar } from "./InboxAvatar";
+import { commentLikeView, type CommentLikeOverride } from "./use-comment-likes";
 
 function quoteForComposer(comment: InboxComment): string {
   const handle = (comment.authorHandle ?? comment.authorName).replace(/^@/, "");
@@ -50,7 +48,7 @@ function CommentBodyText({
 }) {
   const parts = text.split(/(@[A-Za-z0-9_.]+)/g);
   return (
-    <p className="mt-1.5 whitespace-pre-wrap break-words text-[15px] leading-[1.45] tracking-[-0.01em] text-text">
+    <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-relaxed text-text">
       {parts.map((part, i) => {
         if (!part.startsWith("@")) return <span key={i}>{part}</span>;
         const profileUrl = inboxAuthorProfileUrl({
@@ -80,6 +78,9 @@ function CommentBodyText({
   );
 }
 
+const actionBtn =
+  "inline-flex h-8 items-center gap-1.5 rounded-lg px-2 text-[13px] font-medium text-text-muted transition-colors hover:bg-bg-subtle hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50 touch:h-10";
+
 export function InboxCommentCard({
   comment,
   account,
@@ -90,21 +91,27 @@ export function InboxCommentCard({
   failed,
   onReply,
   onRetry,
-  onHidden,
+  onHide,
+  likeOverride,
+  onLiked,
 }: {
   comment: InboxComment;
   account?: InboxAccount;
   allowReply: boolean;
   canReply: boolean;
+  /** This comment is the current reply target. */
   active: boolean;
   sending: boolean;
   failed: boolean;
   onReply: () => void;
   onRetry?: () => void;
-  onHidden?: (commentId: string) => void;
+  /** Hide on the platform (parent handles the Undo window). */
+  onHide?: (comment: InboxComment) => void;
+  /** Page-level like state, so it survives switching threads and refetches. */
+  likeOverride?: CommentLikeOverride;
+  /** The platform accepted a like (true) or unlike (false). */
+  onLiked: (comment: InboxComment, liked: boolean) => void;
 }) {
-  const navigate = useNavigate();
-  const dash = useDashboardPath();
   const when = comment.createdAt
     ? formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })
     : null;
@@ -114,28 +121,14 @@ export function InboxCommentCard({
     : comment.authorAvatarUrl;
   const body = resolveInboxBody(comment.text, comment.attachment);
   const handle = (comment.authorHandle ?? comment.authorName).replace(/^@/, "");
-  const [likeOverride, setLikeOverride] = useState<{
-    id: string;
-    liked: boolean;
-    count: number;
-  } | null>(null);
   const [liking, setLiking] = useState(false);
-  const [hiding, setHiding] = useState(false);
-  const liked =
-    likeOverride?.id === comment.id
-      ? likeOverride.liked
-      : Boolean(comment.likedByMe);
-  const likeCount =
-    likeOverride?.id === comment.id
-      ? likeOverride.count
-      : (comment.likeCount ?? 0);
+  const { liked, count: likeCount } = commentLikeView(comment, likeOverride);
 
+  const isOptimistic = comment.id.startsWith("optimistic-");
   const canToggleLike =
-    allowReply && !own && inboxCommentLikeSupported(comment.platform);
-
+    allowReply && !own && !isOptimistic && inboxCommentLikeSupported(comment.platform);
   const canHide =
-    allowReply &&
-    !own &&
+    allowReply && !own && !isOptimistic && Boolean(onHide) &&
     inboxCommentHideSupported(comment.platform);
 
   const postUrl = inboxCommentPlatformUrl(comment);
@@ -143,14 +136,10 @@ export function InboxCommentCard({
     platform: comment.platform,
     authorHandle: comment.authorHandle,
   });
+  const network = PLATFORM_LABEL[comment.platform] ?? comment.platform;
 
-  const onToggleLike = async () => {
+  const setLike = async (nextLiked: boolean, opts?: { undoable?: boolean }) => {
     if (!canToggleLike || liking) return;
-    const nextLiked = !liked;
-    const baseCount =
-      likeOverride?.id === comment.id
-        ? likeOverride.count
-        : (comment.likeCount ?? 0);
     setLiking(true);
     try {
       const res = await likeInboxComment({
@@ -159,47 +148,25 @@ export function InboxCommentCard({
         unlike: !nextLiked,
       });
       if (!res.ok) {
-        toast.error(res.error);
+        toast.error(`Couldn't ${nextLiked ? "like" : "unlike"} on ${network}: ${res.error}`);
         return;
       }
-      setLikeOverride({
-        id: comment.id,
-        liked: nextLiked,
-        count: Math.max(0, baseCount + (nextLiked ? 1 : -1)),
-      });
+      // Recorded at page level with a functional update: the Undo toast
+      // calls this from an older render.
+      onLiked(comment, nextLiked);
+      if (nextLiked && opts?.undoable) {
+        toast(`Liked on ${network}`, {
+          action: { label: "Undo", onClick: () => void setLike(false) },
+        });
+      }
     } catch (e) {
       toast.error(
         e instanceof Error
           ? e.message
-          : nextLiked
-            ? "Like failed"
-            : "Unlike failed",
+          : `Couldn't ${nextLiked ? "like" : "unlike"} on ${network}. Try again.`,
       );
     } finally {
       setLiking(false);
-    }
-  };
-
-  const onHide = async () => {
-    if (!canHide || hiding) return;
-    setHiding(true);
-    try {
-      const res = await hideInboxComment({
-        publicationId: comment.publicationId,
-        commentId: comment.id,
-      });
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      toast.message("Comment hidden", {
-        description: "Hidden on the platform for other viewers.",
-      });
-      onHidden?.(comment.id);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Hide failed");
-    } finally {
-      setHiding(false);
     }
   };
 
@@ -209,188 +176,156 @@ export function InboxCommentCard({
       await navigator.clipboard.writeText(postUrl);
       toast.message("Link copied");
     } catch {
-      toast.error("Could not copy link");
+      toast.error("Couldn't copy the link. Copy it from the address bar instead.");
     }
   };
 
-  const onCreatePost = () => {
-    const text = quoteForComposer(comment);
-    setComposerPayload({ text, isThread: false, media: [] });
-    navigate(dash("/create/text"));
+  const onTurnIntoPost = () => {
+    openComposer({ text: quoteForComposer(comment) });
   };
 
   return (
     <article
+      data-comment-id={comment.id}
       className={cn(
-        "relative rounded-2xl border bg-bg-elevated p-3.5 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-[background-color,border-color,box-shadow] duration-150 ease-out",
-        active
-          ? "border-accent/25 bg-accent/[0.04]"
-          : "border-black/[0.06] dark:border-white/[0.08]",
-        own && !active && "bg-bg-subtle/40",
-        failed && "border-red-500/25 bg-red-500/[0.04]",
+        "group/row relative rounded-lg px-3 py-2.5 transition-colors",
+        active ? "bg-accent/[0.06]" : own ? "bg-bg-subtle" : "hover:bg-bg-subtle/60",
+        failed && "bg-danger-soft/50",
       )}
     >
-      {canHide ? (
-        <button
-          type="button"
-          onClick={() => void onHide()}
-          disabled={hiding}
-          className="absolute -left-2 -top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-bg-elevated text-text-muted shadow-sm transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97] disabled:opacity-60"
-          aria-label="Hide comment"
-          title="Hide comment on platform"
-        >
-          {hiding ? (
-            <CircleNotch size={12} className="animate-spin" />
-          ) : (
-            <X size={12} weight="bold" />
-          )}
-        </button>
-      ) : null}
-      <div className="flex min-w-0 flex-col">
-        <div className="flex items-start gap-2.5">
-          <InboxAvatar
-            profileImageUrl={avatarUrl}
-            username={comment.authorHandle ?? comment.authorName}
-            platform={comment.platform}
-            size={36}
-            className="mt-0.5 shrink-0"
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-2">
-              <p className="truncate text-[13px] font-semibold tracking-tight text-text">
-                {own ? "You" : comment.authorName}
-              </p>
-              {!own && comment.authorHandle ? (
-                authorProfileUrl ? (
-                  <a
-                    href={authorProfileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="truncate text-[12px] text-text-muted transition-colors hover:text-accent"
-                  >
-                    @{handle}
-                  </a>
-                ) : (
-                  <p className="truncate text-[12px] text-text-muted">
-                    @{handle}
-                  </p>
-                )
-              ) : null}
-              {own ? (
-                <button
-                  type="button"
-                  onClick={onCreatePost}
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-accent transition-[background-color,transform] duration-150 ease-out hover:bg-accent/10 active:scale-[0.97]"
+      <div className="flex items-start gap-2.5">
+        <InboxAvatar
+          profileImageUrl={avatarUrl}
+          username={comment.authorHandle ?? comment.authorName}
+          platform={comment.platform}
+          size={32}
+          className="mt-0.5 shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <p className="truncate text-[13px] font-semibold text-text">
+              {own ? "You" : comment.authorName}
+            </p>
+            {!own && comment.authorHandle ? (
+              authorProfileUrl ? (
+                <a
+                  href={authorProfileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="truncate text-xs text-text-muted transition-colors hover:text-accent"
                 >
-                  <PencilSimple size={12} />
-                  Create a Post
-                </button>
-              ) : null}
-              <p className="ml-auto flex shrink-0 items-center gap-1 text-[11px] tabular-nums text-text-muted">
-                {sending ? (
-                  <CircleNotch size={12} className="animate-spin" />
-                ) : null}
-                {when}
-              </p>
-            </div>
-            {body.text ? (
-              <CommentBodyText text={body.text} platform={comment.platform} />
+                  @{handle}
+                </a>
+              ) : (
+                <p className="truncate text-xs text-text-muted">@{handle}</p>
+              )
             ) : null}
-            {body.attachment ? (
-              <InboxAttachmentView
-                attachment={body.attachment}
-                className="mt-2 max-w-sm"
-              />
-            ) : null}
-            {failed && onRetry ? (
+            <p className="ml-auto flex shrink-0 items-center gap-1 text-xs tabular-nums text-text-muted">
+              {sending ? (
+                <>
+                  <CircleNotch size={12} className="animate-spin motion-reduce:animate-none" />
+                  Sending
+                </>
+              ) : (
+                when
+              )}
+            </p>
+          </div>
+          {body.text ? <CommentBodyText text={body.text} platform={comment.platform} /> : null}
+          {body.attachment ? (
+            <InboxAttachmentView attachment={body.attachment} className="mt-2 max-w-sm" />
+          ) : null}
+          {failed && onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-2 inline-flex items-center gap-1 rounded-md text-xs font-medium text-danger hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/40"
+            >
+              <WarningCircle size={14} weight="fill" />
+              Not sent · Retry
+            </button>
+          ) : null}
+          <div className="-ml-2 mt-1.5 flex flex-wrap items-center gap-0.5">
+            {canReply && allowReply && !own ? (
               <button
                 type="button"
-                onClick={onRetry}
-                className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-red-500 transition-[transform,color] duration-150 ease-out hover:text-red-400 active:scale-[0.97]"
+                onClick={onReply}
+                aria-pressed={active}
+                className={cn(actionBtn, active && "text-accent hover:text-accent")}
               >
-                <WarningCircle size={14} weight="fill" />
-                Failed · Retry
+                Reply
               </button>
             ) : null}
-            <div className="mt-2.5 flex items-center gap-1">
-              {canToggleLike || liked || likeCount > 0 ? (
+            {canToggleLike || liked || likeCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => void setLike(!liked, { undoable: true })}
+                disabled={own || !canToggleLike || liking}
+                className={cn(
+                  actionBtn,
+                  own && "cursor-default hover:bg-transparent",
+                  (liked || liking) && "text-danger hover:text-danger",
+                )}
+                aria-pressed={own ? undefined : liked}
+                aria-label={
+                  own
+                    ? `${likeCount} like${likeCount === 1 ? "" : "s"} on your reply`
+                    : liked
+                      ? "Unlike"
+                      : "Like"
+                }
+              >
+                {liking ? (
+                  <CircleNotch size={15} className="animate-spin motion-reduce:animate-none" />
+                ) : (
+                  <Heart size={15} weight={liked || (own && likeCount > 0) ? "fill" : "regular"} />
+                )}
+                {likeCount > 0 ? <span className="tabular-nums">{likeCount}</span> : null}
+                {!own ? <span className="sr-only sm:not-sr-only">{liked ? "Liked" : "Like"}</span> : null}
+              </button>
+            ) : null}
+            <RowActions className="ml-auto gap-0.5">
+            {canHide ? (
+              <button
+                type="button"
+                onClick={() => onHide?.(comment)}
+                className={actionBtn}
+                title={`Hide this comment on ${network} for everyone else`}
+              >
+                <EyeSlash size={15} />
+                <span className="sr-only sm:not-sr-only">Hide</span>
+              </button>
+            ) : null}
+            {own && !isOptimistic ? (
+              <button type="button" onClick={onTurnIntoPost} className={actionBtn}>
+                <PencilSimple size={15} />
+                Turn into a post
+              </button>
+            ) : null}
+            {postUrl ? (
+              <>
+                <a
+                  href={postUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={cn(actionBtn, "w-8 justify-center px-0 touch:w-10")}
+                  aria-label={`Open on ${network}`}
+                  title={`Open on ${network}`}
+                >
+                  <ArrowSquareOut size={14} />
+                </a>
                 <button
                   type="button"
-                  onClick={() => void onToggleLike()}
-                  disabled={own || !canToggleLike || liking}
-                  className={cn(
-                    "inline-flex h-8 items-center gap-1.5 rounded-full px-1.5 text-text-muted transition-[transform,color,background-color] duration-150 ease-out",
-                    own
-                      ? "cursor-default"
-                      : "hover:bg-rose-500/10 hover:text-rose-500 active:scale-[0.97]",
-                    (liked || liking) && "text-rose-500",
-                  )}
-                  aria-label={
-                    own
-                      ? `${likeCount} like${likeCount === 1 ? "" : "s"} on your reply`
-                      : liked
-                        ? "Unlike comment"
-                        : "Like comment"
-                  }
+                  onClick={() => void onCopyLink()}
+                  className={cn(actionBtn, "w-8 justify-center px-0 touch:w-10")}
+                  aria-label="Copy link"
+                  title="Copy link"
                 >
-                  {liking ? (
-                    <CircleNotch
-                      size={16}
-                      className="animate-spin text-rose-500"
-                    />
-                  ) : (
-                    <Heart
-                      size={16}
-                      weight={
-                        liked || (own && likeCount > 0) ? "fill" : "regular"
-                      }
-                    />
-                  )}
-                  {likeCount > 0 ? (
-                    <span className="text-[12px] tabular-nums">{likeCount}</span>
-                  ) : null}
+                  <Copy size={14} />
                 </button>
-              ) : null}
-              {canReply && allowReply && !own ? (
-                <button
-                  type="button"
-                  onClick={onReply}
-                  className={cn(
-                    "h-8 rounded-full px-2.5 text-[13px] font-semibold transition-[transform,color,background-color] duration-150 ease-out active:scale-[0.97]",
-                    active
-                      ? "text-accent"
-                      : "text-text-muted hover:bg-bg-subtle hover:text-text",
-                  )}
-                >
-                  Reply
-                </button>
-              ) : null}
-              <span className="ml-auto flex items-center gap-0.5">
-                {postUrl ? (
-                  <>
-                    <a
-                      href={postUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-accent active:scale-[0.97]"
-                      aria-label="Open on platform"
-                      title="Open on platform"
-                    >
-                      <ArrowSquareOut size={14} />
-                    </a>
-                    <button
-                      type="button"
-                      onClick={() => void onCopyLink()}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full text-text-muted transition-[transform,background-color,color] duration-150 ease-out hover:bg-bg-subtle hover:text-text active:scale-[0.97]"
-                      aria-label="Copy link"
-                      title="Copy link"
-                    >
-                      <Copy size={14} />
-                    </button>
-                  </>
-                ) : null}
-              </span>
-            </div>
+              </>
+            ) : null}
+            </RowActions>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { rpc } from "@/lib/rpc";
+import type { PublicationErrorKind } from "@/api/dashboard";
 
 export type PublishResult = {
   success: boolean;
@@ -40,13 +41,11 @@ export async function getPostPublicationList(
     publicationStatus: string;
     platformPostUrl: string | null;
     lastError: string | null;
+    /** Which fix to offer for a failed row (server's classifier). */
+    errorKind: PublicationErrorKind | null;
   }[]
 > {
   return rpc("publish.getPostPublicationList", postId);
-}
-
-export async function executePublish(postId: string, userId?: string, publicationIdFilter?: string, options?: PublishOptions) {
-  return rpc("publish.executePublish", postId, userId, publicationIdFilter, options);
 }
 
 export async function publishPost(postId: string, options?: PublishOptions, publicationIdFilter?: string): Promise<PublishResult> {

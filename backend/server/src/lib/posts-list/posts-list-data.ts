@@ -8,13 +8,46 @@ import {
   autoPlugs,
   queuedPosts,
 } from "@/db/schema";
-import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne, isNull } from "drizzle-orm";
+import { eq, desc, asc, inArray, and, sql, gte, exists, gt, lt, ne, isNull, ilike } from "drizzle-orm";
 import { startOfWeek, startOfMonth } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { INTERRUPTED_PUBLISH_ERROR } from "@social0/shared";
+import { isValidIanaTimezone } from "@/lib/resolve-scheduled-at";
+import { listTotal } from "@/lib/list-total";
 import { connectionScopeCondition } from "@/lib/workspace/context";
+import { agentSourceCondition } from "@/lib/post-source";
 import { getSubscriptionForUser } from "@/lib/subscription";
+import { accountReconnectedAtSql } from "@/lib/account-reconnect";
+import {
+  idlePublicationSql,
+  isPostPublishingStale,
+  postPublishingStaleSql,
+} from "@/lib/stuck-publishing";
+import { PLATFORMS } from "@/lib/platforms";
+import {
+  settledPublishingStatus,
+  settlePublishingPosts,
+} from "./settle-publishing.js";
 import { isActiveTier } from "@social0/shared";
 import { POSTS_PAGE_SIZE } from "@social0/shared";
 import type { PublicationRow, PostsListParams } from "@social0/shared";
+
+/**
+ * A publication row as the dashboard reads it: the shared row plus whether
+ * the account was re-authorized after this delivery failed.
+ */
+export type DashboardPublicationRow = PublicationRow & {
+  /**
+   * True only for a failed delivery whose account was reconnected (OAuth /
+   * BYOK stamp `platform_metadata.reconnectedAt`) after it failed. A dead
+   * token stays a "Reconnect" until then: `token_status` alone only flips
+   * when the health sweep runs, so it can't tell a fixed account apart.
+   */
+  reconnectedSinceFailure: boolean;
+};
+
+/** SQL for `DashboardPublicationRow.reconnectedSinceFailure`. */
+const reconnectedSinceFailureSql = sql<boolean>`coalesce(${postPublications.status} = 'failed' and ${accountReconnectedAtSql} > coalesce(${postPublications.updatedAt}, ${postPublications.createdAt}), false)`;
 
 export { POSTS_PAGE_SIZE } from "@social0/shared";
 export type {
@@ -48,6 +81,124 @@ export async function hasPaymentFailedPosts(
   return !!row?.id;
 }
 
+const MAX_QUERY_LENGTH = 200;
+
+const PLATFORM_ORDER: readonly string[] = PLATFORMS.map((p) => p.id);
+const PLATFORM_NAMES = new Map<string, string>(PLATFORMS.map((p) => [p.id, p.name]));
+
+/** Escape LIKE wildcards so a search for "50%" means the text "50%". */
+function likePattern(query: string): string {
+  return `%${query.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+}
+
+/** Normalized caption search term, or null when blank. */
+export function normalizePostsQuery(query: string | null | undefined): string | null {
+  if (typeof query !== "string") return null;
+  const trimmed = query.trim().slice(0, MAX_QUERY_LENGTH);
+  return trimmed ? trimmed : null;
+}
+
+/**
+ * A post that has said "publishing" for `STUCK_PUBLISHING_MINUTES` (from the
+ * latest of created, scheduled and last-updated time) is stuck, and the SPA
+ * shows it as failed with a Retry (`effectiveStatus` in posts-model.ts uses the
+ * same threshold). The Failed tab and its count must include it too.
+ */
+const stuckPublishingSql = sql`(${posts.status} = 'publishing' and ${postPublishingStaleSql})`;
+const failedOrStuckSql = sql`(${posts.status} = 'failed' or ${stuckPublishingSql})`;
+
+/** SQL for one status filter value (undefined = no status condition). */
+function statusCondition(statusFilter: PostsListParams["statusFilter"]) {
+  switch (statusFilter) {
+    case "draft":
+    case "scheduled":
+    case "published":
+      return eq(posts.status, statusFilter);
+    case "failed":
+      return failedOrStuckSql;
+    case "published_or_partial":
+      return inArray(posts.status, ["published", "partial"]);
+    case "needs_review":
+      return and(eq(posts.status, "draft"), agentSourceCondition());
+    case "user_draft":
+      // `IS NOT TRUE`: rows with no metadata make the IN() null, not false.
+      return and(
+        eq(posts.status, "draft"),
+        sql`(${agentSourceCondition()}) is not true`,
+      );
+    default:
+      return undefined;
+  }
+}
+
+/**
+ * Posts list `?source=` filter. One token per chip the SPA shows, computed
+ * from `posts.metadata.source` the same way `toPostSourceDto` reads it:
+ *
+ * - `user:<userId>`: made in the dashboard by that person. Rows from before
+ *   source stamping (and any non-agent kind) count as the creator, falling
+ *   back to the post owner.
+ * - `mcp:<client lowercased>`: an MCP host; `mcp:` when the host is unknown.
+ * - `cli:<keyName>` / `api:<keyName>`: an API key, split by `via`.
+ */
+export type PostsSourceFilter = string;
+
+const MAX_SOURCE_FILTER_LENGTH = 200;
+
+function sourceField(field: "client" | "via" | "keyName") {
+  // Field names are fixed literals, never user input.
+  return sql`nullif(btrim(${posts.metadata} -> 'source' ->> ${sql.raw(`'${field}'`)}), '')`;
+}
+
+/** SQL expression: the `?source=` token for each post row. */
+function postSourceTokenExpr() {
+  const kind = sql`(${posts.metadata} -> 'source' ->> 'kind')`;
+  return sql<string>`(case
+    when ${kind} = 'mcp' then 'mcp:' || coalesce(lower(${sourceField("client")}), '')
+    when ${kind} = 'api_key' then
+      (case when ${sourceField("via")} = 'cli' then 'cli:' else 'api:' end)
+      || coalesce(${sourceField("keyName")}, 'API key')
+    else 'user:' || coalesce(${posts.createdByUserId}, ${posts.userId})
+  end)`;
+}
+
+function normalizeSourceFilter(source: string | null | undefined): string | null {
+  if (typeof source !== "string") return null;
+  const trimmed = source.trim();
+  return trimmed ? trimmed.slice(0, MAX_SOURCE_FILTER_LENGTH) : null;
+}
+
+/**
+ * Where the Posts "This week" / "This month" filter starts: Monday 00:00 or
+ * the 1st at 00:00 on the viewer's own calendar, as a UTC instant. The API
+ * process runs in UTC, so computing it in process-local time started a Los
+ * Angeles user's week at Sunday 5pm and an Indian user's at Monday 5:30am.
+ * An unknown or missing zone falls back to UTC.
+ */
+export function postsTimeFilterStart(
+  time: string | null | undefined,
+  timeZone: string | null | undefined,
+  now: Date = new Date(),
+): Date | null {
+  if (time !== "week" && time !== "month") return null;
+  const tz = timeZone?.trim();
+  const zone = tz && isValidIanaTimezone(tz) ? tz : "UTC";
+  // `toZonedTime` puts the zone's wall time in the Date's local fields, which
+  // is what startOfWeek / startOfMonth read; `fromZonedTime` maps it back.
+  const zoned = toZonedTime(now, zone);
+  const startLocal =
+    time === "week"
+      ? startOfWeek(zoned, { weekStartsOn: 1 })
+      : startOfMonth(zoned);
+  return fromZonedTime(startLocal, zone);
+}
+
+/**
+ * The viewer's IANA zone for the time filter (null = UTC). Used only by
+ * `time`; every other filter is zone-free.
+ */
+type PostsTimeZoneParam = { timeZone?: string | null };
+
 /** Shared list WHERE — keep adjacent nav in lockstep with getPostsListData. */
 function buildPostsListWhere({
   userId,
@@ -56,25 +207,37 @@ function buildPostsListWhere({
   platform: platformFilter,
   time: timeFilter,
   account: accountFilter,
+  query,
+  source,
+  timeZone,
   /** When no status filter (all posts), detail nav still skips drafts. */
   excludeDrafts = false,
 }: Pick<
   PostsListParams,
-  "userId" | "workspaceId" | "statusFilter" | "platform" | "time" | "account"
-> & { excludeDrafts?: boolean }) {
-  const timeFilterDate =
-    timeFilter === "week"
-      ? startOfWeek(new Date(), { weekStartsOn: 1 })
-      : timeFilter === "month"
-        ? startOfMonth(new Date())
-        : null;
+  | "userId"
+  | "workspaceId"
+  | "statusFilter"
+  | "platform"
+  | "time"
+  | "account"
+  | "query"
+> &
+  PostsTimeZoneParam & {
+    source?: PostsSourceFilter | null;
+    excludeDrafts?: boolean;
+  }) {
+  const search = normalizePostsQuery(query);
+  const sourceToken = normalizeSourceFilter(source);
+  const timeFilterDate = postsTimeFilterStart(timeFilter, timeZone);
 
   return and(
     eq(posts.userId, userId),
     workspaceId
       ? eq(posts.workspaceId, workspaceId)
       : isNull(posts.workspaceId),
-    statusFilter ? eq(posts.status, statusFilter) : undefined,
+    statusCondition(statusFilter),
+    search ? ilike(posts.originalContent, likePattern(search)) : undefined,
+    sourceToken ? sql`${postSourceTokenExpr()} = ${sourceToken}` : undefined,
     excludeDrafts && !statusFilter
       ? sql`${posts.status} IS DISTINCT FROM 'draft'`
       : undefined,
@@ -120,10 +283,14 @@ export async function getPostsListData({
   platform: platformFilter,
   time: timeFilter,
   account: accountFilter,
+  query,
+  source,
+  timeZone,
   page = 1,
   limit = POSTS_PAGE_SIZE,
   offset: offsetParam,
-}: PostsListParams) {
+}: PostsListParams &
+  PostsTimeZoneParam & { source?: PostsSourceFilter | null }) {
   const offset = offsetParam ?? (page - 1) * limit;
 
   const whereClause = buildPostsListWhere({
@@ -133,33 +300,39 @@ export async function getPostsListData({
     platform: platformFilter,
     time: timeFilter,
     account: accountFilter,
+    query,
+    source,
+    timeZone,
   });
 
-  // COUNT + paginated SELECT - two fast indexed queries instead of one full scan
-  const [[countRow], userPosts] = await Promise.all([
-    db
+  // Paginated SELECT first; the COUNT only runs when the page cannot answer
+  // it (see listTotal).
+  const userPosts = await db
+    .select({
+      id: posts.id,
+      originalContent: posts.originalContent,
+      status: posts.status,
+      scheduledAt: posts.scheduledAt,
+      failureReason: posts.failureReason,
+      createdAt: posts.createdAt,
+      updatedAt: posts.updatedAt,
+      mediaIds: posts.mediaIds,
+      metadata: posts.metadata,
+      createdByUserId: posts.createdByUserId,
+    })
+    .from(posts)
+    .where(whereClause)
+    .orderBy(sort === "oldest" ? asc(posts.createdAt) : desc(posts.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const totalCount = await listTotal(offset, limit, userPosts.length, async () => {
+    const [countRow] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(posts)
-      .where(whereClause),
-    db
-      .select({
-        id: posts.id,
-        originalContent: posts.originalContent,
-        status: posts.status,
-        scheduledAt: posts.scheduledAt,
-        failureReason: posts.failureReason,
-        createdAt: posts.createdAt,
-        mediaIds: posts.mediaIds,
-        metadata: posts.metadata,
-      })
-      .from(posts)
-      .where(whereClause)
-      .orderBy(sort === "oldest" ? asc(posts.createdAt) : desc(posts.createdAt))
-      .limit(limit)
-      .offset(offset),
-  ]);
-
-  const totalCount = countRow?.count ?? 0;
+      .where(whereClause);
+    return countRow?.count ?? 0;
+  });
   const postIds = userPosts.map((p) => p.id);
   const publications =
     postIds.length > 0
@@ -178,6 +351,8 @@ export async function getPostsListData({
             platformUserId: connectedAccounts.platformUserId,
             isTwitterPremium: connectedAccounts.isTwitterPremium,
             publishedAt: postPublications.publishedAt,
+            tokenStatus: connectedAccounts.tokenStatus,
+            reconnectedSinceFailure: reconnectedSinceFailureSql,
           })
           .from(postPublications)
           .innerJoin(
@@ -193,58 +368,27 @@ export async function getPostsListData({
       acc[p.postId].push(p);
       return acc;
     },
-    {} as Record<string, PublicationRow[]>,
+    {} as Record<string, DashboardPublicationRow[]>,
   );
 
-  // Fix posts stuck in "publishing" when publications have finished (all published or mixed)
-  const toFixPublishedIds = userPosts
-    .filter(
-      (p) =>
-        p.status === "publishing" &&
-        (publicationsByPostId[p.id] ?? []).length > 0 &&
-        (publicationsByPostId[p.id] ?? []).every(
-          (pub) => pub.status === "published",
-        ),
-    )
-    .map((p) => p.id);
-  if (toFixPublishedIds.length > 0) {
-    await db
-      .update(posts)
-      .set({ status: "published", updatedAt: new Date() })
-      .where(inArray(posts.id, toFixPublishedIds));
+  // Settle posts left in "publishing" after every delivery finished (a
+  // finalize that never ran). Only once no delivery is still pending or
+  // publishing, and the UPDATE re-checks that itself.
+  const settledById = new Map<string, "published" | "partial">();
+  for (const p of userPosts) {
+    if (p.status !== "publishing") continue;
+    const settled = settledPublishingStatus(publicationsByPostId[p.id] ?? []);
+    if (settled) settledById.set(p.id, settled);
   }
-  const toFixPartialIds = userPosts
-    .filter((p) => {
-      if (p.status !== "publishing") return false;
-      const pubs = publicationsByPostId[p.id] ?? [];
-      if (pubs.length === 0) return false;
-      const somePublished = pubs.some((pub) => pub.status === "published");
-      const someFailed = pubs.some((pub) => pub.status === "failed");
-      return somePublished && someFailed;
-    })
-    .map((p) => p.id);
-  if (toFixPartialIds.length > 0) {
-    await db
-      .update(posts)
-      .set({ status: "partial", updatedAt: new Date() })
-      .where(inArray(posts.id, toFixPartialIds));
-  }
+  const idsSettledAs = (status: "published" | "partial") =>
+    [...settledById].filter(([, s]) => s === status).map(([id]) => id);
+  await settlePublishingPosts(idsSettledAs("published"), "published");
+  await settlePublishingPosts(idsSettledAs("partial"), "partial");
 
-  const platforms = [...new Set(publications.map((p) => p.platform))];
-
-  // Use derived status: "publishing" -> "published" when all succeeded, "partial" when mixed
-  const userPostsWithStatus = userPosts.map((p) => {
-    const pubs = publicationsByPostId[p.id] ?? [];
-    let effectiveStatus = p.status;
-    if (p.status === "publishing" && pubs.length > 0) {
-      const allPublished = pubs.every((pub) => pub.status === "published");
-      const somePublished = pubs.some((pub) => pub.status === "published");
-      const someFailed = pubs.some((pub) => pub.status === "failed");
-      if (allPublished) effectiveStatus = "published";
-      else if (somePublished && someFailed) effectiveStatus = "partial";
-    }
-    return { ...p, status: effectiveStatus };
-  });
+  const userPostsWithStatus = userPosts.map((p) => ({
+    ...p,
+    status: settledById.get(p.id) ?? p.status,
+  }));
 
   const firstIds = userPostsWithStatus
     .map((p) => (p.mediaIds ?? [])[0])
@@ -307,10 +451,36 @@ export async function getPostsListData({
       ),
     );
 
-  const platformOptions = platforms.map((id) => ({
-    value: id,
-    label: id.charAt(0).toUpperCase() + id.slice(1).replace("_", " "),
-  }));
+  // Network filter: every network in scope (connected now, or on any post),
+  // independent of paging and the active filters, so picking one network
+  // doesn't shrink the menu to that network.
+  const postedPlatforms = await db
+    .selectDistinct({ platform: connectedAccounts.platform })
+    .from(postPublications)
+    .innerJoin(posts, eq(postPublications.postId, posts.id))
+    .innerJoin(
+      connectedAccounts,
+      eq(postPublications.connectedAccountId, connectedAccounts.id),
+    )
+    .where(
+      and(
+        eq(posts.userId, userId),
+        workspaceId
+          ? eq(posts.workspaceId, workspaceId)
+          : isNull(posts.workspaceId),
+      ),
+    );
+  const platformIds = new Set([
+    ...connectedAccountsList.map((a) => a.platform),
+    ...postedPlatforms.map((p) => p.platform),
+  ]);
+  const platformOptions = [...platformIds]
+    .sort((a, b) => {
+      const ia = PLATFORM_ORDER.indexOf(a);
+      const ib = PLATFORM_ORDER.indexOf(b);
+      return (ia < 0 ? Infinity : ia) - (ib < 0 ? Infinity : ib) || a.localeCompare(b);
+    })
+    .map((id) => ({ value: id, label: PLATFORM_NAMES.get(id) ?? id }));
   const accountOptions = connectedAccountsList
     .map((a) => ({
       value: a.id,
@@ -370,23 +540,25 @@ export async function getPostsListData({
           .catch(() => ({}) as ResurfaceMap);
 
   const pagePostIds = userPostsWithStatus.map((p) => p.id);
-  const queuedPostIds =
+  const queuedRows =
     pagePostIds.length > 0
-      ? new Set(
-          (
-            await db
-              .select({ postId: queuedPosts.postId })
-              .from(queuedPosts)
-              .where(
-                and(
-                  eq(queuedPosts.userId, userId),
-                  eq(queuedPosts.status, "pending"),
-                  inArray(queuedPosts.postId, pagePostIds),
-                ),
-              )
-          ).map((r) => r.postId),
-        )
-      : new Set<string>();
+      ? await db
+          .select({ postId: queuedPosts.postId, slotId: queuedPosts.slotId })
+          .from(queuedPosts)
+          .where(
+            and(
+              eq(queuedPosts.userId, userId),
+              eq(queuedPosts.status, "pending"),
+              inArray(queuedPosts.postId, pagePostIds),
+            ),
+          )
+      : [];
+  const queuedPostIds = new Set(queuedRows.map((r) => r.postId));
+  /** Queue slot each queued post holds (Undo of a reschedule gives it back). */
+  const queuedSlotByPostId: Record<string, string> = {};
+  for (const r of queuedRows) {
+    if (r.slotId) queuedSlotByPostId[r.postId] = r.slotId;
+  }
 
   return {
     userPosts: userPostsWithStatus,
@@ -397,7 +569,130 @@ export async function getPostsListData({
     resurfaceByPostId,
     totalCount,
     queuedPostIds,
+    queuedSlotByPostId,
   };
+}
+
+export type PostsStatusCounts = {
+  all: number;
+  /** Every draft, including the ones awaiting review. */
+  drafts: number;
+  /** Drafts created by an API key or MCP host. */
+  needsReview: number;
+  /** drafts - needsReview: drafts made in the dashboard. */
+  userDrafts: number;
+  scheduled: number;
+  publishing: number;
+  published: number;
+  partial: number;
+  failed: number;
+};
+
+/**
+ * Per-status counts for the Posts tabs. Applies every list filter except
+ * status, so the numbers match what each tab would show.
+ */
+export async function getPostsStatusCounts(
+  params: Pick<
+    PostsListParams,
+    "userId" | "workspaceId" | "platform" | "time" | "account" | "query"
+  > &
+    PostsTimeZoneParam & { source?: PostsSourceFilter | null },
+): Promise<PostsStatusCounts> {
+  const where = buildPostsListWhere({ ...params, statusFilter: null });
+  const count = (cond?: ReturnType<typeof sql>) =>
+    cond
+      ? sql<number>`(count(*) filter (where ${cond}))::int`
+      : sql<number>`count(*)::int`;
+  const [row] = await db
+    .select({
+      all: count(),
+      drafts: count(sql`${posts.status} = 'draft'`),
+      needsReview: count(
+        sql`${posts.status} = 'draft' and ${agentSourceCondition()}`,
+      ),
+      scheduled: count(sql`${posts.status} = 'scheduled'`),
+      publishing: count(sql`${posts.status} = 'publishing' and not ${stuckPublishingSql}`),
+      published: count(sql`${posts.status} = 'published'`),
+      partial: count(sql`${posts.status} = 'partial'`),
+      failed: count(failedOrStuckSql),
+    })
+    .from(posts)
+    .where(where);
+  return {
+    all: row?.all ?? 0,
+    drafts: row?.drafts ?? 0,
+    needsReview: row?.needsReview ?? 0,
+    userDrafts: (row?.drafts ?? 0) - (row?.needsReview ?? 0),
+    scheduled: row?.scheduled ?? 0,
+    publishing: row?.publishing ?? 0,
+    published: row?.published ?? 0,
+    partial: row?.partial ?? 0,
+    failed: row?.failed ?? 0,
+  };
+}
+
+/** One distinct post source in scope, for the Posts "Source" filter chip. */
+export type PostsSourceOptionRow = {
+  /** `?source=` token (see PostsSourceFilter). */
+  value: string;
+  kind: "user" | "api_key" | "mcp";
+  /** user: the creator. */
+  userId: string | null;
+  /** mcp: host name as first stored; api_key: "cli" | "api". */
+  client: string | null;
+  keyName: string | null;
+  count: number;
+};
+
+const MAX_SOURCE_OPTIONS = 50;
+
+/**
+ * Every source that created a post in this workspace scope (ignores the other
+ * list filters, like the account options), most used first.
+ */
+export async function getPostsSourceOptions({
+  userId,
+  workspaceId = null,
+}: Pick<PostsListParams, "userId" | "workspaceId">): Promise<PostsSourceOptionRow[]> {
+  const token = postSourceTokenExpr();
+  const rows = await db
+    .select({
+      value: token,
+      creator: sql<string>`min(coalesce(${posts.createdByUserId}, ${posts.userId}))`,
+      client: sql<string | null>`min(${sourceField("client")})`,
+      keyName: sql<string | null>`min(${sourceField("keyName")})`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.userId, userId),
+        workspaceId
+          ? eq(posts.workspaceId, workspaceId)
+          : isNull(posts.workspaceId),
+      ),
+    )
+    .groupBy(token)
+    .orderBy(sql`count(*) desc`)
+    .limit(MAX_SOURCE_OPTIONS);
+
+  return rows.map((r) => {
+    if (r.value.startsWith("mcp:")) {
+      return { value: r.value, kind: "mcp", userId: null, client: r.client, keyName: r.keyName, count: r.count };
+    }
+    if (r.value.startsWith("cli:") || r.value.startsWith("api:")) {
+      return {
+        value: r.value,
+        kind: "api_key",
+        userId: null,
+        client: r.value.startsWith("cli:") ? "cli" : "api",
+        keyName: r.keyName ?? "API key",
+        count: r.count,
+      };
+    }
+    return { value: r.value, kind: "user", userId: r.creator, client: null, keyName: null, count: r.count };
+  });
 }
 
 export type PostForEdit = {
@@ -500,9 +795,13 @@ export type PostDetailRow = {
   status: string | null;
   scheduledAt: Date | null;
   createdAt: Date | null;
+  /** Last write to the row (bumped when a publish / retry starts). */
+  updatedAt: Date | null;
   mediaIds: string[] | null;
   metadata: Record<string, unknown> | null;
   failureReason: string | null;
+  /** Actor who created the post (null on rows from before Teams / old `/v1`). */
+  createdByUserId: string | null;
 };
 
 /** Queued slot info when a post is in the queue (scheduled + has queued_posts row). */
@@ -556,7 +855,7 @@ export type AutoPlugDetail = {
 
 export type PostDetailResult = {
   post: PostDetailRow;
-  publications: PublicationRow[];
+  publications: DashboardPublicationRow[];
   /** Set when post is scheduled and has a pending queued_posts entry */
   queuedSlot: QueuedSlotInfo | null;
   /** Set when post has Auto-Plug enabled (X published); latest row */
@@ -567,8 +866,15 @@ export type PostDetailResult = {
 
 export type AdjacentPostsListContext = Pick<
   PostsListParams,
-  "workspaceId" | "statusFilter" | "sort" | "platform" | "time" | "account"
->;
+  | "workspaceId"
+  | "statusFilter"
+  | "sort"
+  | "platform"
+  | "time"
+  | "account"
+  | "query"
+> &
+  PostsTimeZoneParam & { source?: PostsSourceFilter | null };
 
 /**
  * Neighbors for detail-page edge nav, in the same order/filters as the
@@ -608,6 +914,9 @@ export async function getAdjacentPostIds(
     platform: list.platform,
     time: list.time,
     account: list.account,
+    query: list.query,
+    source: list.source,
+    timeZone: list.timeZone,
     // All-posts / calendar: stay on detailable posts only.
     excludeDrafts: !list.statusFilter,
   });
@@ -667,9 +976,11 @@ export async function getPostDetail(
         status: posts.status,
         scheduledAt: posts.scheduledAt,
         createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
         mediaIds: posts.mediaIds,
         metadata: posts.metadata,
         failureReason: posts.failureReason,
+        createdByUserId: posts.createdByUserId,
       })
       .from(posts)
       .where(
@@ -699,6 +1010,10 @@ export async function getPostDetail(
         platformMetadata: connectedAccounts.platformMetadata,
         isTwitterPremium: connectedAccounts.isTwitterPremium,
         publishedAt: postPublications.publishedAt,
+        tokenStatus: connectedAccounts.tokenStatus,
+        reconnectedSinceFailure: reconnectedSinceFailureSql,
+        /** No write for `STUCK_PUBLISHING_MINUTES`: a "publishing" row this old is not running. */
+        idle: idlePublicationSql,
       })
       .from(postPublications)
       .innerJoin(
@@ -712,34 +1027,40 @@ export async function getPostDetail(
       queuedSlot = await getQueuedSlotForPost(postId, userId);
     }
 
-    const hasStuckPubs = pubs.some(
-      (p) => p.status === "pending" || p.status === "publishing",
-    );
-    const hasTerminalPubs = pubs.some(
-      (p) => p.status === "published" || p.status === "failed",
-    );
-    const shouldNormalizeStuckPubs =
-      hasStuckPubs &&
-      (post.failureReason?.trim() ||
-        post.status === "failed" ||
-        post.status === "partial" ||
-        post.status === "published" ||
-        hasTerminalPubs);
+    // A post that finished (failed / partial / published) can still hold rows
+    // that never completed: show those as failed so they can be retried. Never
+    // while the post itself is publishing: X / TikTok finish on the API in
+    // seconds while the other networks still wait in the queue as "pending".
+    // A "publishing" row on a finished post is a single-row retry in flight
+    // unless it has sat untouched for a while.
+    // A post stuck in "publishing" (same rule as stuckPublishingSql and the
+    // SPA's effectiveStatus) reads as failed too.
+    const postStuck =
+      post.status === "publishing" && isPostPublishingStale(post);
+    const postSettled =
+      postStuck ||
+      post.status === "failed" ||
+      post.status === "partial" ||
+      post.status === "published";
+    const isStuck = (p: { status: string | null; idle: boolean }) =>
+      p.status === "pending" || (p.status === "publishing" && p.idle);
 
-    const normalizedPubs = shouldNormalizeStuckPubs
-      ? pubs.map((pub) =>
-          pub.status === "pending" || pub.status === "publishing"
-            ? {
-                ...pub,
-                status: "failed" as const,
-                lastError:
-                  pub.lastError ??
-                  post.failureReason ??
-                  "Publish did not complete for this platform",
-              }
-            : pub,
-        )
-      : pubs;
+    const normalizedPubs = pubs.map(({ idle, ...pub }) =>
+      postSettled && isStuck({ status: pub.status, idle })
+        ? {
+            ...pub,
+            status: "failed" as const,
+            // An idle "publishing" row was mid-send when its run stopped and
+            // may already be live: say so before the person retries it.
+            lastError:
+              pub.lastError ??
+              (pub.status === "publishing"
+                ? INTERRUPTED_PUBLISH_ERROR
+                : (post.failureReason ??
+                  "Publish did not complete for this platform")),
+          }
+        : pub,
+    );
 
     const hasXPublished = normalizedPubs.some(
       (p) => p.platform === "twitter_x" && p.status === "published",
@@ -798,9 +1119,11 @@ export async function getPostDetail(
         status: post.status,
         scheduledAt: post.scheduledAt,
         createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
         mediaIds: post.mediaIds,
         metadata: post.metadata ?? null,
         failureReason: post.failureReason ?? null,
+        createdByUserId: post.createdByUserId ?? null,
       },
       publications: normalizedPubs,
       queuedSlot,

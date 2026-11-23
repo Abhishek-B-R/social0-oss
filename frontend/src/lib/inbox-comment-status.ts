@@ -47,17 +47,6 @@ export function inboxThreadMatchesFilter(
   return true;
 }
 
-/** Threads always render whole; the filter decides which threads show at all. */
-export function visibleInboxComments<T extends InboxStatusComment>(
-  flat: Array<{ comment: T; depth: number }>,
-  filter: InboxCommentStatusFilter,
-): Array<{ comment: T; depth: number }> {
-  if (filter === "all") return flat;
-  const answered = flat.some((n) => n.comment.isOwn && n.depth > 0);
-  if (filter === "answered") return answered ? flat : [];
-  return answered ? [] : flat;
-}
-
 export type InboxPostGroup<T extends InboxStatusThread = InboxStatusThread> = {
   publicationId: string;
   threads: T[];

@@ -70,7 +70,7 @@ export function AutoResurfaceSettingsModal({
           <button
             type="button"
             onClick={onDone}
-            className="flex-1 touch:min-h-11 touch-manipulation rounded-xl bg-accent hover:bg-accent-hover text-white px-4 py-2.5 text-sm font-semibold shadow-md transition-colors active:opacity-90"
+            className="flex-1 touch:min-h-11 touch-manipulation rounded-xl bg-accent hover:bg-accent-hover text-accent-foreground px-4 py-2.5 text-sm font-semibold shadow-md transition-colors active:opacity-90"
           >
             Done
           </button>

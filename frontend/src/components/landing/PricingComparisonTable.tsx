@@ -1,59 +1,48 @@
 import { Check, CircleHelp, Minus } from "lucide-react";
-import type { BillingInterval } from "@/lib/plans";
-import { getPlanLimits } from "@/lib/plans";
 import {
-  formatEffectiveMonthly,
+  AGENCY_INCLUDED_ACCOUNTS,
+  CREATOR_ACCOUNTS,
+  PLAN_NAMES,
+  getPlanLimits,
+  type BillingInterval,
+} from "@/lib/plans";
+import {
+  AGENCY_EXTRA_ACCOUNT_PRICE,
   formatPlanPriceLabel,
-  getPlanPrice,
 } from "@/lib/plan-pricing";
 import Link from "@/components/AppLink";
+import { signInUrl } from "@/lib/sign-in-url";
 
 type Cell = string | boolean;
 
-type CompareCol = "free" | "starter" | "growth" | "pro" | "max";
+type CompareCol = "free" | "creator" | "agency";
 
 type CompareRow = {
   feature: string;
   tip: string;
   free: Cell;
-  starter: Cell;
-  growth: Cell;
-  pro: Cell;
-  max: Cell;
+  creator: Cell;
+  agency: Cell;
 };
 
-const freePosts = getPlanLimits("free").maxFreePosts;
+const freeLimits = getPlanLimits("free");
 
 const ALL: Pick<CompareRow, CompareCol> = {
   free: true,
-  starter: true,
-  growth: true,
-  pro: true,
-  max: true,
+  creator: true,
+  agency: true,
 };
 
-const STARTER_UP: Pick<CompareRow, CompareCol> = {
+const PAID: Pick<CompareRow, CompareCol> = {
   free: false,
-  starter: true,
-  growth: true,
-  pro: true,
-  max: true,
+  creator: true,
+  agency: true,
 };
 
-const GROWTH_UP: Pick<CompareRow, CompareCol> = {
+const AGENCY_ONLY: Pick<CompareRow, CompareCol> = {
   free: false,
-  starter: false,
-  growth: true,
-  pro: true,
-  max: true,
-};
-
-const PRO_UP: Pick<CompareRow, CompareCol> = {
-  free: false,
-  starter: false,
-  growth: false,
-  pro: true,
-  max: true,
+  creator: false,
+  agency: true,
 };
 
 function f(
@@ -68,24 +57,20 @@ function f(
 export const COMPARE_ROWS: CompareRow[] = [
   f(
     "Connected accounts",
-    "How many social profiles you can link at once across all platforms.",
+    "How many social profiles you can link at once across all platforms. Each profile counts once.",
     {
-      free: "3",
-      starter: "5",
-      growth: "15",
-      pro: "50",
-      max: "Unlimited",
+      free: String(freeLimits.maxConnectedAccounts),
+      creator: String(CREATOR_ACCOUNTS),
+      agency: `${AGENCY_INCLUDED_ACCOUNTS}, then $${AGENCY_EXTRA_ACCOUNT_PRICE.monthly}/mo each`,
     },
   ),
   f(
     "Posts",
     "How many posts you can create and publish. Free includes a lifetime trial allotment.",
     {
-      free: `${freePosts} for trial`,
-      starter: "Unlimited",
-      growth: "Unlimited",
-      pro: "Unlimited",
-      max: "Unlimited",
+      free: `${freeLimits.maxFreePosts} for trial`,
+      creator: "Unlimited",
+      agency: "Unlimited",
     },
   ),
   f(
@@ -93,26 +78,24 @@ export const COMPARE_ROWS: CompareRow[] = [
     "Rate limit for Social0 REST API calls with your API key.",
     {
       free: "60",
-      starter: "300",
-      growth: "1,000",
-      pro: "5,000",
-      max: "10,000",
+      creator: "1,000",
+      agency: "5,000",
     },
   ),
   f(
     "Multiple accounts per platform",
     "Connect more than one profile on the same network (e.g. two X accounts).",
-    STARTER_UP,
+    PAID,
   ),
   f(
     "Workspaces (multi-brand)",
     "Separate workspaces so you can manage more than one brand or client.",
-    STARTER_UP,
+    PAID,
   ),
   f(
     "Team members & invites",
     "Invite teammates into a shared workspace with roles and collaboration.",
-    PRO_UP,
+    AGENCY_ONLY,
   ),
   f(
     "All 9 platforms",
@@ -203,17 +186,17 @@ export const COMPARE_ROWS: CompareRow[] = [
   f(
     "Bulk image & video scheduling",
     "Upload many media files and schedule them across days in one flow.",
-    GROWTH_UP,
+    PAID,
   ),
   f(
     "Auto-plug (performance CTA replies)",
     "Automatically add a CTA reply when a post hits a performance threshold (e.g. on X).",
-    GROWTH_UP,
+    PAID,
   ),
   f(
     "Auto-repost / resurface",
     "Automatically repost evergreen content on an interval with optional limits.",
-    GROWTH_UP,
+    PAID,
   ),
   f(
     "REST API",
@@ -252,27 +235,15 @@ export const COMPARE_ROWS: CompareRow[] = [
   ),
   f(
     "Human support",
-    "Email support from the Social0 team on Growth and above.",
-    GROWTH_UP,
-  ),
-  f(
-    "Priority support",
-    "Faster response queue for Pro and Max customers.",
-    PRO_UP,
-  ),
-  f(
-    "Early access to new features",
-    "Try new Social0 capabilities before general release.",
-    PRO_UP,
+    "Email support from the Social0 team on every paid plan.",
+    PAID,
   ),
 ];
 
 const COLS: { key: CompareCol; label: string }[] = [
-  { key: "free", label: "Free" },
-  { key: "starter", label: "Starter" },
-  { key: "growth", label: "Growth" },
-  { key: "pro", label: "Pro" },
-  { key: "max", label: "Max" },
+  { key: "free", label: PLAN_NAMES.free },
+  { key: "creator", label: PLAN_NAMES.creator },
+  { key: "agency", label: PLAN_NAMES.agency },
 ];
 
 function FeatureLabel({ feature, tip }: { feature: string; tip: string }) {
@@ -328,16 +299,18 @@ export function PricingComparisonTable({
   interval: BillingInterval;
   signedIn?: boolean;
 }) {
-  const ctaHref = signedIn ? "/dashboard" : "/auth?mode=signin";
-  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signin";
-  const maxWalkthroughHref = "https://cal.com/abhishekbr/30min";
+  // Signed out, paid CTAs keep the purchase intent through sign-in
+  // (`/auth/continue` → returnTo) instead of dropping the buyer on Home.
+  const freeHref = signedIn ? "/dashboard" : "/auth?mode=signin";
+  const paidHref = (plan: "creator" | "agency") => {
+    const target = `/dashboard/billing?view=plans&plan=${plan}&interval=${interval}`;
+    return signedIn ? target : signInUrl(target);
+  };
 
   const priceLabel = (tier: CompareCol) => {
     if (tier === "free") return "$0";
-    if (interval === "yearly") {
-      return `≈ $${formatEffectiveMonthly(tier)}/mo`;
-    }
-    return formatPlanPriceLabel(tier, interval);
+    const label = formatPlanPriceLabel(tier, interval);
+    return tier === "agency" ? `from ${label}` : label;
   };
 
   const btnClass =
@@ -364,7 +337,7 @@ export function PricingComparisonTable({
 
         <div className="overflow-x-auto rounded-[28px] border border-border bg-muted/40 p-1.5 dark:border-white/10 dark:bg-[#1A1A1A]">
           <div className="rounded-[22px] border border-border/60 bg-background dark:border-white/5 dark:bg-[#111111]">
-            <table className="w-full min-w-[920px] border-collapse text-left">
+            <table className="w-full min-w-[560px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-border dark:border-white/10">
                   <th className="sticky left-0 z-10 bg-background px-4 py-5 text-left text-[12px] font-medium uppercase tracking-wider text-muted-foreground dark:bg-[#111111] sm:px-6">
@@ -421,32 +394,16 @@ export function PricingComparisonTable({
                       key={col.key}
                       className="px-3 py-5 text-center align-top sm:px-4"
                     >
-                      {col.key === "max" ? (
-                        <div className="mx-auto flex w-full max-w-[140px] flex-col gap-2">
-                          <a
-                            href={maxWalkthroughHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={btnClass}
-                          >
-                            Walkthrough
-                          </a>
-                          <Link href={maxBuyHref} className={btnClass}>
-                            Buy Max
-                          </Link>
-                        </div>
-                      ) : (
-                        <Link
-                          href={ctaHref}
-                          className={btnClass}
-                        >
-                          {signedIn
-                            ? "Dashboard"
-                            : col.key === "free"
-                              ? "Start free"
-                              : "Get started"}
-                        </Link>
-                      )}
+                      <Link
+                        href={col.key === "free" ? freeHref : paidHref(col.key)}
+                        className={btnClass}
+                      >
+                        {signedIn
+                          ? "Dashboard"
+                          : col.key === "free"
+                            ? "Start free"
+                            : "Get started"}
+                      </Link>
                     </td>
                   ))}
                 </tr>
@@ -455,25 +412,11 @@ export function PricingComparisonTable({
           </div>
         </div>
 
-        {interval === "yearly" ? (
-          <p className="mt-4 text-center text-[12px] text-muted-foreground">
-            Yearly prices shown as effective monthly. Starter{" "}
-            {formatPlanPriceLabel("starter", "yearly")} · Growth{" "}
-            {formatPlanPriceLabel("growth", "yearly")}
-            {getPlanPrice("growth", "yearly").listPrice
-              ? ` (list $${getPlanPrice("growth", "yearly").listPrice})`
-              : ""}{" "}
-            · Pro {formatPlanPriceLabel("pro", "yearly")}
-            {getPlanPrice("pro", "yearly").listPrice
-              ? ` (list $${getPlanPrice("pro", "yearly").listPrice})`
-              : ""}{" "}
-            · Max {formatPlanPriceLabel("max", "yearly")}
-            {getPlanPrice("max", "yearly").listPrice
-              ? ` (list $${getPlanPrice("max", "yearly").listPrice})`
-              : ""}
-            .
-          </p>
-        ) : null}
+        <p className="mt-4 text-center text-[12px] text-muted-foreground">
+          {PLAN_NAMES.agency} adds ${AGENCY_EXTRA_ACCOUNT_PRICE.monthly}/month
+          (${AGENCY_EXTRA_ACCOUNT_PRICE.yearly}/year) per account above{" "}
+          {AGENCY_INCLUDED_ACCOUNTS}. Yearly plans are 2 months free.
+        </p>
       </div>
     </section>
   );

@@ -6,7 +6,9 @@ import { getOnboardingStatus } from "@/api/onboarding";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import {
   AUTH_CONTINUE_PATH,
+  authContinuePath,
   resolvePostAuthDestination,
+  verifyEmailUrl,
 } from "@/lib/sign-in-url";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
 
@@ -40,7 +42,7 @@ export default function AuthContinuePage() {
 
     if (session.user.emailVerified === false) {
       navigate(
-        `/auth/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`,
+        verifyEmailUrl(session.user.email ?? "", authContinuePath(returnTo)),
         { replace: true },
       );
       return;

@@ -8,7 +8,11 @@ import {
   EyeSlash,
 } from "@/icons/phosphor";
 import { signIn, useSession } from "@/lib/auth-client";
-import { absoluteCallbackUrl, resolveCallbackUrl } from "@/lib/sign-in-url";
+import {
+  absoluteCallbackUrl,
+  resolveCallbackUrl,
+  verifyEmailUrl,
+} from "@/lib/sign-in-url";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import {
   friendlyAuthError,
@@ -19,6 +23,10 @@ import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { fetchApi } from "@/lib/fetch-api";
 import { LegalConsentCheckboxes } from "@/components/auth/LegalConsentCheckboxes";
+import {
+  TURNSTILE_SITE_KEY,
+  TurnstileWidget,
+} from "@/components/auth/TurnstileWidget";
 import {
   EMPTY_LEGAL_CONSENT,
   type LegalConsentValues,
@@ -68,9 +76,7 @@ function AuthPageContent() {
   useEffect(() => {
     if (isPending || !session) return;
     if (session.user.emailVerified === false) {
-      navigate(
-        `/auth/verify-email?email=${encodeURIComponent(session.user.email ?? "")}`,
-      );
+      navigate(verifyEmailUrl(session.user.email ?? "", callbackUrl));
       return;
     }
     assignSafeRedirectUrl(callbackUrl);
@@ -98,6 +104,10 @@ function AuthPageContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [legalConsent, setLegalConsent] =
     useState<LegalConsentValues>(EMPTY_LEGAL_CONSENT);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  /** Bumped to remount the captcha once a submission has spent its token. */
+  const [captchaRound, setCaptchaRound] = useState(0);
+  const captchaMissing = Boolean(TURNSTILE_SITE_KEY) && !captchaToken;
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
@@ -139,9 +149,7 @@ function AuthPageContent() {
         const msg = friendlyAuthError(err);
         toast.error(msg);
         if (isEmailNotVerifiedError(err)) {
-          navigate(
-            `/auth/verify-email?email=${encodeURIComponent(normalizedEmail)}`,
-          );
+          navigate(verifyEmailUrl(normalizedEmail, callbackUrl));
         }
         return;
       }
@@ -164,7 +172,12 @@ function AuthPageContent() {
       );
       return;
     }
+    if (captchaMissing) {
+      toast.error("Please complete the verification check.");
+      return;
+    }
     setLoading(true);
+    let created = false;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
@@ -178,6 +191,8 @@ function AuthPageContent() {
           acceptTerms: legalConsent.acceptTerms,
           acceptPrivacy: legalConsent.acceptPrivacy,
           marketingOptIn: legalConsent.marketingOptIn,
+          // The API requires this whenever it has a Turnstile secret.
+          turnstileToken: captchaToken ?? undefined,
         }),
         signal: controller.signal,
       });
@@ -187,24 +202,27 @@ function AuthPageContent() {
         toast.error(await messageForAuthResponse(res));
         return;
       }
-      const data = (await res.json().catch(() => ({}))) as { url?: string };
       const normalizedSignUpEmail = email.trim().toLowerCase();
       posthog?.identify(normalizedSignUpEmail, {
         email: normalizedSignUpEmail,
         name: name.trim(),
       });
       posthog?.capture("user_signed_up", { method: "email" });
-      const verifyUrl =
-        data.url ??
-        `/auth/verify-email?email=${encodeURIComponent(normalizedSignUpEmail)}`;
-      if (!assignSafeRedirectUrl(verifyUrl)) {
-        window.location.href = verifyUrl;
-      }
+      created = true;
+      // Built here, not from the response's `url`, so the callback (invite or
+      // deep link) rides through verification to `/auth/continue`.
+      assignSafeRedirectUrl(verifyEmailUrl(normalizedSignUpEmail, callbackUrl));
     } catch (err) {
       toast.error(friendlyAuthError(err));
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
+      // A Turnstile token is single-use: any attempt that did not create the
+      // account needs a fresh challenge before it can be retried.
+      if (!created && TURNSTILE_SITE_KEY) {
+        setCaptchaToken(null);
+        setCaptchaRound((round) => round + 1);
+      }
     }
   };
 
@@ -228,7 +246,7 @@ function AuthPageContent() {
                 <p className="text-[15px] leading-relaxed text-muted-foreground">
                   {mode === "signin"
                     ? "Plan, schedule, and publish to all your social accounts from one place."
-                    : "Free to start — no credit card. Connect an account and schedule your first post in minutes."}
+                    : "Free to start, no credit card. Connect an account and schedule your first post in minutes."}
                 </p>
               </div>
 
@@ -239,6 +257,7 @@ function AuthPageContent() {
                     setMode("signin");
                     toast.dismiss();
                   }}
+                  aria-pressed={mode === "signin"}
                   className={`flex-1 rounded-[8px] py-2.5 text-sm font-medium transition-colors ${
                     mode === "signin"
                       ? "bg-background text-foreground shadow-sm dark:bg-[#1A1A1A]"
@@ -254,6 +273,7 @@ function AuthPageContent() {
                     toast.dismiss();
                     setLegalConsent(EMPTY_LEGAL_CONSENT);
                   }}
+                  aria-pressed={mode === "signup"}
                   className={`flex-1 rounded-[8px] py-2.5 text-sm font-medium transition-colors ${
                     mode === "signup"
                       ? "bg-background text-foreground shadow-sm dark:bg-[#1A1A1A]"
@@ -294,7 +314,7 @@ function AuthPageContent() {
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-border dark:border-white/10" />
                 </div>
-                <div className="relative flex justify-center text-[11px] uppercase tracking-widest">
+                <div className="relative flex justify-center text-xs">
                   <span className="bg-background px-2 text-muted-foreground dark:bg-[#111111]">
                     Or continue with email
                   </span>
@@ -343,7 +363,7 @@ function AuthPageContent() {
                         onChange={(e) => setPassword(e.target.value)}
                         required
                         autoComplete="current-password"
-                        placeholder="Enter a strong password"
+                        placeholder="Your password"
                         className="w-full rounded-[10px] border border-border bg-background px-3 py-2.5 pr-11 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 touch:min-h-11 touch:pr-[3.25rem] dark:border-white/10 dark:bg-[#0A0A0A]"
                       />
                       <button
@@ -455,11 +475,19 @@ function AuthPageContent() {
                     onChange={setLegalConsent}
                     idPrefix="signup"
                   />
+                  {TURNSTILE_SITE_KEY ? (
+                    <TurnstileWidget
+                      key={captchaRound}
+                      siteKey={TURNSTILE_SITE_KEY}
+                      onToken={setCaptchaToken}
+                    />
+                  ) : null}
                   <button
                     type="submit"
                     disabled={
                       loading ||
                       googleLoading ||
+                      captchaMissing ||
                       !legalConsent.acceptTerms ||
                       !legalConsent.acceptPrivacy
                     }

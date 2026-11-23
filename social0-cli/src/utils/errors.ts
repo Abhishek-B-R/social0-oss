@@ -8,6 +8,7 @@ const ERROR_HINTS: Record<string, string> = {
   validation_error: "The request data is invalid. Check your input and try again.",
   rate_limit_exceeded: "Rate limit exceeded. Wait a moment and try again.",
   idempotency_conflict: "A duplicate publish request is already in progress.",
+  idempotency_key_reused: "That idempotency key was already used for a different request. Use a new key.",
 };
 
 export function formatApiError(err: unknown): string {

@@ -18,7 +18,7 @@ import type {
 } from "../schemas/tools.js";
 import type { Platform } from "../types/index.js";
 import { formatAccountsList, formatPostSummary, resolveAccountIds } from "../utils/accounts.js";
-import { formatToolError, resolveUploadMediaInput } from "../utils/index.js";
+import { formatToolError, isUuid, resolveUploadMediaInput } from "../utils/index.js";
 import { resolvePostFormFromMediaIds, validatePlatformsForForm } from "../utils/post-form.js";
 
 function textResult(text: string, isError = false): CallToolResult {
@@ -40,12 +40,28 @@ function handleApiError(context: string, error: unknown): CallToolResult {
   return textResult(formatToolError(context, message), true);
 }
 
+/**
+ * Connected accounts, only when a target is named by platform and needs
+ * looking up. When every target is already an account UUID there is nothing
+ * to resolve: the API validates ownership and the post form itself, so the
+ * extra GET /v1/accounts (and its rate-limit cost) is skipped.
+ */
+async function accountsForTargets(
+  platforms: string[],
+): Promise<Awaited<ReturnType<typeof accountsApi.listAccounts>> | null> {
+  if (platforms.length > 0 && platforms.every((p) => isUuid(p))) return null;
+  return accountsApi.listAccounts();
+}
+
 async function resolveAccountsForPost(
   context: string,
   platforms: string[],
-  accounts: Awaited<ReturnType<typeof accountsApi.listAccounts>>,
+  accounts: Awaited<ReturnType<typeof accountsApi.listAccounts>> | null,
   media?: string[],
 ): Promise<{ accountIds: string[]; error?: CallToolResult }> {
+  if (accounts === null) {
+    return { accountIds: [...new Set(platforms.map((p) => p.toLowerCase()))] };
+  }
   const { accountIds, errors } = resolveAccountIds(platforms, accounts);
   if (errors.length > 0) {
     return { accountIds: [], error: textResult(formatToolError(context, errors.join("; ")), true) };
@@ -136,7 +152,7 @@ export async function handleListAccounts(): Promise<CallToolResult> {
 
 export async function handleCreatePost(input: CreatePostInput): Promise<CallToolResult> {
   try {
-    const accounts = await accountsApi.listAccounts();
+    const accounts = await accountsForTargets(input.platforms);
     const { accountIds, error } = await resolveAccountsForPost(
       "create draft",
       input.platforms,
@@ -145,12 +161,15 @@ export async function handleCreatePost(input: CreatePostInput): Promise<CallTool
     );
     if (error) return error;
 
-    const created = await postsApi.createPost({
-      content: input.content,
-      platforms: accountIds,
-      ...(input.media ? { media: input.media } : {}),
-      ...(input.platform_options ? { platform_options: input.platform_options } : {}),
-    });
+    const created = await postsApi.createPost(
+      {
+        content: input.content,
+        platforms: accountIds,
+        ...(input.media ? { media: input.media } : {}),
+        ...(input.platform_options ? { platform_options: input.platform_options } : {}),
+      },
+      input.idempotency_key,
+    );
 
     const post = await postsApi.getPost(created.id);
 
@@ -273,7 +292,7 @@ export async function handlePublishPost(input: PublishPostInput): Promise<CallTo
     });
     if (updateError) return updateError;
 
-    const result = await postsApi.publishPost(input.post_id);
+    const result = await postsApi.publishPost(input.post_id, input.idempotency_key);
 
     return jsonResult({
       success: true,
@@ -341,7 +360,7 @@ export async function handleUploadMedia(input: UploadMediaInput): Promise<CallTo
 
 export async function handlePublishNow(input: PublishNowInput): Promise<CallToolResult> {
   try {
-    const accounts = await accountsApi.listAccounts();
+    const accounts = await accountsForTargets(input.platforms);
     const { accountIds, error } = await resolveAccountsForPost(
       "publish now",
       input.platforms,
@@ -350,12 +369,15 @@ export async function handlePublishNow(input: PublishNowInput): Promise<CallTool
     );
     if (error) return error;
 
-    const result = await postsApi.publishNow({
-      content: input.content,
-      platforms: accountIds,
-      ...(input.media ? { media: input.media } : {}),
-      ...(input.platform_options ? { platform_options: input.platform_options } : {}),
-    });
+    const result = await postsApi.publishNow(
+      {
+        content: input.content,
+        platforms: accountIds,
+        ...(input.media ? { media: input.media } : {}),
+        ...(input.platform_options ? { platform_options: input.platform_options } : {}),
+      },
+      input.idempotency_key,
+    );
 
     return jsonResult({
       success: true,
@@ -372,7 +394,7 @@ export async function handlePublishNow(input: PublishNowInput): Promise<CallTool
 
 export async function handleScheduleContent(input: ScheduleContentInput): Promise<CallToolResult> {
   try {
-    const accounts = await accountsApi.listAccounts();
+    const accounts = await accountsForTargets(input.platforms);
     const { accountIds, error } = await resolveAccountsForPost(
       "schedule content",
       input.platforms,
@@ -381,13 +403,16 @@ export async function handleScheduleContent(input: ScheduleContentInput): Promis
     );
     if (error) return error;
 
-    const result = await postsApi.scheduleContent({
-      content: input.content,
-      platforms: accountIds,
-      scheduledAt: input.scheduled_at,
-      ...(input.media ? { media: input.media } : {}),
-      ...(input.platform_options ? { platform_options: input.platform_options } : {}),
-    });
+    const result = await postsApi.scheduleContent(
+      {
+        content: input.content,
+        platforms: accountIds,
+        scheduledAt: input.scheduled_at,
+        ...(input.media ? { media: input.media } : {}),
+        ...(input.platform_options ? { platform_options: input.platform_options } : {}),
+      },
+      input.idempotency_key,
+    );
 
     return jsonResult({
       success: true,

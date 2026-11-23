@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Social0 Blog</title>
+    <link>https://social0.app/blog</link>
+    <atom:link href="https://social0.app/feed.xml" rel="self" type="application/rss+xml" />
+    <description>Platform specs, publishing strategy, and AI agent workflows for multi-platform social media publishing.</description>
+    <language>en</language>
+    <lastBuildDate>Thu, 19 Nov 2026 00:00:00 GMT</lastBuildDate>
+    <item>
+      <title>How to Cancel Buffer (and Keep Your Scheduled Posts)</title>
+      <link>https://social0.app/blog/how-to-cancel-buffer</link>
+      <guid isPermaLink="true">https://social0.app/blog/how-to-cancel-buffer</guid>
+      <description>The exact clicks to cancel a Buffer plan, what happens to your channels and queue afterwards, and how to save your scheduled posts first. Checked November 2026.</description>
+      <pubDate>Thu, 19 Nov 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>How to Cancel Hootsuite Without Being Charged Again</title>
+      <link>https://social0.app/blog/how-to-cancel-hootsuite</link>
+      <guid isPermaLink="true">https://social0.app/blog/how-to-cancel-hootsuite</guid>
+      <description>Step-by-step: downgrade a Hootsuite plan, export your scheduled posts to CSV first, and what Hootsuite's terms say about refunds. Checked November 2026.</description>
+      <pubDate>Thu, 19 Nov 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Why Your Social Account Won't Connect to a Scheduler (And How to Fix It)</title>
+      <link>https://social0.app/blog/connect-social-accounts-troubleshooting</link>
+      <guid isPermaLink="true">https://social0.app/blog/connect-social-accounts-troubleshooting</guid>
+      <description>Instagram needs a professional account, Facebook needs a Page, TikTok needs the right product — the account requirements and permission problems that block scheduling, and how to fix each one.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>How the Instagram Algorithm Works in 2026 (Feed, Reels, Explore)</title>
+      <link>https://social0.app/blog/instagram-algorithm-guide</link>
+      <guid isPermaLink="true">https://social0.app/blog/instagram-algorithm-guide</guid>
+      <description>Instagram runs four different algorithms, not one. What Feed, Reels, Stories, and Explore each rank on, why sends beat likes, and the repost rule that can remove you from recommendations.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Instagram's 5-Hashtag Limit: What Changed and What Works Now</title>
+      <link>https://social0.app/blog/instagram-hashtag-limit</link>
+      <guid isPermaLink="true">https://social0.app/blog/instagram-hashtag-limit</guid>
+      <description>Instagram cut hashtags from 30 to 5 in December 2025. What the cap actually enforces, why the old block strategy is dead, and how to pick five tags that still earn discovery.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>How the LinkedIn Algorithm Works in 2026 (And What Still Gets Reach)</title>
+      <link>https://social0.app/blog/linkedin-algorithm-guide</link>
+      <guid isPermaLink="true">https://social0.app/blog/linkedin-algorithm-guide</guid>
+      <description>Dwell time, the first-hour test, why personal profiles beat company pages, which formats still work, and the tactics that stopped working — a practical guide to LinkedIn organic reach.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Managing Multiple Social Media Accounts: An Agency Workflow</title>
+      <link>https://social0.app/blog/managing-multiple-social-accounts</link>
+      <guid isPermaLink="true">https://social0.app/blog/managing-multiple-social-accounts</guid>
+      <description>How to run social for several clients or brands without losing track — account structure, approval workflows, batching, permissions, and the mistakes that cause wrong-account posts.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Reels vs TikTok vs Shorts: Where Short-Form Video Actually Works</title>
+      <link>https://social0.app/blog/reels-vs-tiktok-vs-shorts</link>
+      <guid isPermaLink="true">https://social0.app/blog/reels-vs-tiktok-vs-shorts</guid>
+      <description>How Instagram Reels, TikTok, and YouTube Shorts differ in distribution, audience, discovery and monetisation — and how to post one video to all three without the watermark penalty.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Engagement Rate: Formulas, Benchmarks, and What to Actually Track</title>
+      <link>https://social0.app/blog/social-media-engagement-rate</link>
+      <guid isPermaLink="true">https://social0.app/blog/social-media-engagement-rate</guid>
+      <description>The three engagement rate formulas, why they give wildly different numbers, 2026 benchmarks by platform, and how to pick one and report it consistently.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>How the TikTok Algorithm Works in 2026 (For You Page Ranking)</title>
+      <link>https://social0.app/blog/tiktok-algorithm-guide</link>
+      <guid isPermaLink="true">https://social0.app/blog/tiktok-algorithm-guide</guid>
+      <description>Watch time per impression is now the dominant signal, shares and saves outweigh likes, and the follower test phase still gates everything. How TikTok ranks video, and what that means for length.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>How the X (Twitter) Algorithm Works in 2026</title>
+      <link>https://social0.app/blog/x-algorithm-guide</link>
+      <guid isPermaLink="true">https://social0.app/blog/x-algorithm-guide</guid>
+      <description>Replies are worth many times a like, the first 30 minutes decide most of your reach, links cost you distribution, and Premium changes the maths. How the For You feed actually ranks posts.</description>
+      <pubDate>Sun, 20 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Bluesky vs Threads in 2026: Which Is Worth Your Time?</title>
+      <link>https://social0.app/blog/bluesky-and-threads-for-brands</link>
+      <guid isPermaLink="true">https://social0.app/blog/bluesky-and-threads-for-brands</guid>
+      <description>How Bluesky and Threads actually differ — feed mechanics, links, API access, and audience — plus how to run both alongside X without tripling your workload.</description>
+      <pubDate>Sat, 19 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Social Media Automation for Developers: CLI, CI, and Webhooks</title>
+      <link>https://social0.app/blog/social-media-automation-for-developers</link>
+      <guid isPermaLink="true">https://social0.app/blog/social-media-automation-for-developers</guid>
+      <description>Automate posting from release pipelines, cron jobs, and your own apps — announce releases from CI, turn changelogs into threads, and wire publish events back into your systems.</description>
+      <pubDate>Fri, 18 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Why Scheduled Social Posts Fail (and How to Build So They Don't)</title>
+      <link>https://social0.app/blog/why-scheduled-posts-fail</link>
+      <guid isPermaLink="true">https://social0.app/blog/why-scheduled-posts-fail</guid>
+      <description>Expired tokens, ambiguous timeouts, duplicate posts, and partial failures — the real failure modes of scheduled publishing, and the idempotency and retry design that prevents them.</description>
+      <pubDate>Wed, 16 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Instagram API Rate Limits Explained (2026 Developer Guide)</title>
+      <link>https://social0.app/blog/instagram-api-rate-limits</link>
+      <guid isPermaLink="true">https://social0.app/blog/instagram-api-rate-limits</guid>
+      <description>How Instagram's publishing cap, rolling 24-hour window, container limits, and hourly call quotas actually work — including error code 9 and how to design a publisher around them.</description>
+      <pubDate>Sat, 12 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Social Media Posting API: A Developer's Guide (2026)</title>
+      <link>https://social0.app/blog/social-media-posting-api-guide</link>
+      <guid isPermaLink="true">https://social0.app/blog/social-media-posting-api-guide</guid>
+      <description>What it takes to publish programmatically to Instagram, X, LinkedIn, TikTok, and YouTube — auth models, app review, rate limits, and when to use a unified API instead of building nine integrations.</description>
+      <pubDate>Wed, 09 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>How to Build a Social Media Content Calendar That You'll Actually Use</title>
+      <link>https://social0.app/blog/social-media-content-calendar</link>
+      <guid isPermaLink="true">https://social0.app/blog/social-media-content-calendar</guid>
+      <description>A practical system for planning social content: choosing a cadence you can sustain, content pillars, batching, queue slots, and the failure modes that kill most calendars by week three.</description>
+      <pubDate>Sat, 05 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>How to Post to Social Media from ChatGPT or Claude (MCP Guide)</title>
+      <link>https://social0.app/blog/post-to-social-media-with-ai-agents</link>
+      <guid isPermaLink="true">https://social0.app/blog/post-to-social-media-with-ai-agents</guid>
+      <description>A practical guide to social media MCP servers: how the Model Context Protocol lets ChatGPT, Claude, and Cursor publish and schedule posts, what it can't do, and how to set it up safely.</description>
+      <pubDate>Wed, 02 Sep 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Cross-Posting vs Repurposing: How to Post Everywhere Without Looking Lazy</title>
+      <link>https://social0.app/blog/cross-posting-vs-repurposing</link>
+      <guid isPermaLink="true">https://social0.app/blog/cross-posting-vs-repurposing</guid>
+      <description>When the same post works on every network and when it actively hurts you — the watermark penalty, the per-platform adjustments that matter, and a content mix that scales.</description>
+      <pubDate>Sat, 29 Aug 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Best Time to Post on Social Media in 2026 (Every Platform)</title>
+      <link>https://social0.app/blog/best-time-to-post-on-social-media</link>
+      <guid isPermaLink="true">https://social0.app/blog/best-time-to-post-on-social-media</guid>
+      <description>Benchmark posting times for Instagram, LinkedIn, X, TikTok, Facebook, YouTube, Threads, Pinterest, and Bluesky — and the method for replacing them with your own audience data.</description>
+      <pubDate>Wed, 26 Aug 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Social Media Image Sizes 2026: Cheat Sheet for Every Platform</title>
+      <link>https://social0.app/blog/social-media-image-sizes</link>
+      <guid isPermaLink="true">https://social0.app/blog/social-media-image-sizes</guid>
+      <description>Exact image dimensions for Instagram, X, LinkedIn, Facebook, Pinterest, TikTok, Threads, YouTube, and Bluesky — feed posts, stories, profile photos, and covers, in one table.</description>
+      <pubDate>Wed, 19 Aug 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Social Media Video Specs 2026: Length, Size &amp; Format by Platform</title>
+      <link>https://social0.app/blog/social-media-video-specs</link>
+      <guid isPermaLink="true">https://social0.app/blog/social-media-video-specs</guid>
+      <description>Max video length, file size, aspect ratio, and accepted formats for TikTok, Reels, Shorts, X, LinkedIn, Facebook, Threads, Pinterest, and Bluesky — the limits that actually fail a publish.</description>
+      <pubDate>Wed, 12 Aug 2026 00:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Social Media Character Limits (2026): Every Platform in One Table</title>
+      <link>https://social0.app/blog/social-media-character-limits</link>
+      <guid isPermaLink="true">https://social0.app/blog/social-media-character-limits</guid>
+      <description>Caption and character limits for X, LinkedIn, Instagram, TikTok, Threads, Bluesky, Pinterest, YouTube, and Facebook — plus what actually counts as a character on each network.</description>
+      <pubDate>Wed, 05 Aug 2026 00:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

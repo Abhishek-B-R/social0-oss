@@ -33,9 +33,16 @@ const ROUTES: Array<[string, string, string]> = [
   ["post", "/v1/inbox/dms/{conversationId}/reply", "replyToInboxDm"],
 ];
 
-/** Webhook debugging surface: read one endpoint, its deliveries, ping it. */
+/**
+ * Webhook CRUD plus the debugging surface. Request/response shapes are pinned
+ * against the live routes in v1-webhooks-contract.test.ts.
+ */
 const WEBHOOK_ROUTES: Array<[string, string, string]> = [
+  ["get", "/v1/webhooks", "listWebhooks"],
+  ["post", "/v1/webhooks", "createWebhook"],
   ["get", "/v1/webhooks/{id}", "getWebhook"],
+  ["patch", "/v1/webhooks/{id}", "updateWebhook"],
+  ["delete", "/v1/webhooks/{id}", "deleteWebhook"],
   ["get", "/v1/webhooks/{id}/deliveries", "listWebhookDeliveries"],
   ["post", "/v1/webhooks/{id}/test", "testWebhook"],
 ];

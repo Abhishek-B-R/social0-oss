@@ -77,6 +77,27 @@ function mockSelectRows(rows: Record<string, unknown>[]) {
   });
 }
 
+/**
+ * Like `mockSelectRows`, but each `db.select()` call resolves to the next row
+ * set (the last one repeats), for flows that read different workspaces.
+ */
+function mockSelectRowsSequence(rowSets: Record<string, unknown>[][]) {
+  let call = 0;
+  mockDb.select.mockImplementation(() => {
+    const rows = rowSets[Math.min(call++, rowSets.length - 1)];
+    const builder: Record<string, unknown> = {};
+    const chain = () => builder;
+    for (const method of ["from", "innerJoin", "leftJoin", "where", "orderBy"]) {
+      builder[method] = vi.fn(chain);
+    }
+    builder.limit = vi.fn().mockResolvedValue(rows);
+    builder.then = (
+      resolve: (value: Record<string, unknown>[]) => unknown,
+    ) => resolve(rows);
+    return builder;
+  });
+}
+
 /** `assertCanManageAccount` reads (ownerUserId, role) for the source workspace. */
 function mockWorkspaceAccessRow(row: {
   ownerUserId: string;
@@ -136,6 +157,60 @@ describe("moveConnectedAccountToWorkspace", () => {
     ).resolves.toEqual({ workspaceId: null });
     expect(set).toHaveBeenCalledWith(
       expect.objectContaining({ workspaceId: null, userId: "owner-1" }),
+    );
+  });
+
+  /**
+   * Moving into a workspace the actor owns also hands the connection to the
+   * actor (`nextUserId = actor`). A workspace the Admin owns is as private as
+   * their Main, so the owner's connection must not be walkable into it.
+   */
+  it("refuses to move another user's connection into a workspace the actor owns", async () => {
+    mockDb.query.connectedAccounts.findFirst.mockResolvedValue({
+      id: "acc-1",
+      userId: "owner-1",
+      workspaceId: "ws-1",
+      platform: "linkedin",
+      platformUserId: "li-1",
+    });
+    mockSelectRowsSequence([
+      // assertCanManageAccount: actor is an Admin in the owner's team.
+      [{ ownerUserId: "owner-1", role: "admin" }],
+      // assertActorCanManageWorkspace: target workspace is the actor's own.
+      [{ ownerUserId: "admin-2", role: "admin" }],
+    ]);
+
+    await expect(
+      moveConnectedAccountToWorkspace("admin-2", "acc-1", "ws-admin-own"),
+    ).rejects.toMatchObject({ statusCode: 403 });
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it("still lets the owner move their own connection into another workspace they own", async () => {
+    mockDb.query.connectedAccounts.findFirst
+      .mockResolvedValueOnce({
+        id: "acc-1",
+        userId: "owner-1",
+        workspaceId: "ws-1",
+        platform: "linkedin",
+        platformUserId: "li-1",
+      })
+      // already-in-destination probe
+      .mockResolvedValue(undefined);
+    mockSelectRowsSequence([
+      [{ ownerUserId: "owner-1", role: "admin" }],
+      [{ ownerUserId: "owner-1", role: "admin" }],
+    ]);
+
+    const where = vi.fn().mockResolvedValue(undefined);
+    const set = vi.fn().mockReturnValue({ where });
+    mockDb.update.mockReturnValue({ set });
+
+    await expect(
+      moveConnectedAccountToWorkspace("owner-1", "acc-1", "ws-2"),
+    ).resolves.toEqual({ workspaceId: "ws-2" });
+    expect(set).toHaveBeenCalledWith(
+      expect.objectContaining({ workspaceId: "ws-2", userId: "owner-1" }),
     );
   });
 

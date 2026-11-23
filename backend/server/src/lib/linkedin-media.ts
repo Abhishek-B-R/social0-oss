@@ -3,6 +3,10 @@
  */
 
 import { fetchAllowedMedia } from "@/lib/media-fetch.js";
+import {
+  bufferedMediaTooLargeError,
+  getMediaByteSize,
+} from "@/lib/publish-platforms/media";
 
 /**
  * Upload an image to LinkedIn Assets API and return the digitalmediaAsset URN
@@ -152,6 +156,15 @@ export async function uploadLinkedInVideo(
   accessToken: string,
   personUrn: string,
 ): Promise<string> {
+  // The upload below sends the whole file in one PUT. On the publish worker
+  // that is buffered in a 128 MB isolate, so refuse a file that cannot fit
+  // before downloading it rather than crash the isolate mid-job.
+  const tooLarge = bufferedMediaTooLargeError(
+    await getMediaByteSize(videoUrl),
+    "LinkedIn",
+  );
+  if (tooLarge) throw new Error(tooLarge);
+
   // Step 1: Download video from R2 to get file size
   const videoRes = await fetchAllowedMedia(videoUrl);
   if (!videoRes.ok) {

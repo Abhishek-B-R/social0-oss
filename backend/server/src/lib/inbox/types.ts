@@ -57,12 +57,24 @@ export type InboxFetchError = {
 export type InboxNotice = {
   platform: string;
   message: string;
+  /**
+   * "stale": we're showing saved data because the platform (or our outbound
+   * budget) says wait. "retry": nothing saved yet; the client retries at
+   * `retryAt` on its own. Absent for plain informational notices.
+   */
+  kind?: "stale" | "retry";
+  /** ISO time the shown data was fetched (kind "stale"). */
+  cachedAt?: string;
+  /** ISO time it's worth trying again (kind "retry"). */
+  retryAt?: string;
 };
 
 export type InboxListResult = {
   range: DateWindowRange;
   since: string;
   until: string;
+  /** IANA zone `since` / `until` were resolved in (the workspace owner's setting). */
+  timeZone: string;
   threads: InboxThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
@@ -393,6 +405,8 @@ export type InboxDmListResult = {
   range: DateWindowRange;
   since: string;
   until: string;
+  /** IANA zone `since` / `until` were resolved in (the workspace owner's setting). */
+  timeZone: string;
   threads: InboxDmThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];

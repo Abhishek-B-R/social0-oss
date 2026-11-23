@@ -1,9 +1,8 @@
 import { RouteResponse } from "../../lib/http/http.js";
-import { auth } from "../../lib/auth.js";
+import { getRouteSession } from "../../lib/session.js";
 import { db } from "../../db/index.js";
 import { queueSlots } from "../../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
-import { headers } from "../../lib/http/request-cookies.js";
 import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -14,7 +13,7 @@ function isValidDays(days: unknown): days is number[] {
 }
 
 export async function listQueueSlots() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -36,7 +35,7 @@ export async function listQueueSlots() {
 }
 
 export async function createQueueSlot(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

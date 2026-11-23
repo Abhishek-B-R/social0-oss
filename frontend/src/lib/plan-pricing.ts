@@ -1,92 +1,135 @@
 /**
- * Shared plan prices for landing, onboarding, and billing.
- * Monthly (early adopter): Starter $9, Growth $19 (list $29), Pro $35 (list $49),
- *   Max $59 (list $99).
- * Yearly (early adopter): Starter $99, Growth $199 (list $299, ~33% off),
- *   Pro $349 (list $499, ~30% off), Max $599 (list $999, ≈$50/mo).
+ * Single source of plan prices for the pricing page, onboarding and billing.
  *
- * Discount UI (PlanDiscountPrice): list amount first with same-color slash,
- * then sale amount, then /month or /year. Yearly cards also show ≈ $/month.
+ * Creator: $29.90/month or $299/year, 15 accounts, no paid extras.
+ * Agency: $59.90/month or $599/year with 59 accounts, then $1/month
+ *   ($10/year) per extra account, no cap. Price = base + extra × (accounts
+ *   above 59). Yearly is 10× monthly ("2 months free").
+ *
+ * Starter / Growth / Pro / Max are closed to new signups. Their prices stay
+ * here only so grandfathered customers see what they actually pay.
  */
 
-import type { BillingInterval, PaidPlanTier } from "@/lib/plans";
+import {
+  AGENCY_INCLUDED_ACCOUNTS,
+  CREATOR_ACCOUNTS,
+  type BillingInterval,
+  type PaidPlanTier,
+  type SellablePlanTier,
+} from "@/lib/plans";
 
-export type { BillingInterval, PaidPlanTier };
+export type { BillingInterval, PaidPlanTier, SellablePlanTier };
 
 export type PlanPrice = {
   /** Amount charged per billing period (USD). */
   price: number;
-  /** Struck list price when early-adopter discount applies. */
-  listPrice?: number;
-  /** Dollars saved vs paying monthly early-adopter rates for 12 months. */
-  saveVsMonthly?: number;
-  /** Percent off list price (Growth yearly 33%, Pro yearly 30%). */
-  savePercent?: number;
 };
 
-const MONTHLY: Record<PaidPlanTier, PlanPrice> = {
-  starter: { price: 9 },
-  growth: { price: 19, listPrice: 29, savePercent: 34 },
-  pro: { price: 35, listPrice: 49, savePercent: 30 },
-  // Placeholder until final Max Dodo prices land.
-  max: { price: 59, listPrice: 99, savePercent: 40 },
+const MONTHLY: Record<PaidPlanTier, number> = {
+  creator: 29.9,
+  agency: 59.9,
+  // Grandfathered (what existing customers were sold at).
+  starter: 9,
+  growth: 19,
+  pro: 35,
+  max: 59,
 };
 
-const YEARLY: Record<PaidPlanTier, PlanPrice> = {
-  // ~2 months free vs paying monthly for a year (marketing framing).
-  starter: { price: 99 },
-  growth: {
-    price: 199,
-    listPrice: 299,
-    saveVsMonthly: 29,
-    savePercent: 33,
-  },
-  pro: {
-    price: 349,
-    listPrice: 499,
-    saveVsMonthly: 71,
-    savePercent: 30,
-  },
-  max: {
-    price: 599,
-    listPrice: 999,
-    saveVsMonthly: 109,
-    savePercent: 40,
-  },
+const YEARLY: Record<PaidPlanTier, number> = {
+  creator: 299,
+  agency: 599,
+  starter: 99,
+  growth: 199,
+  pro: 349,
+  max: 599,
 };
+
+/** Price of one Agency account above the included 59. */
+export const AGENCY_EXTRA_ACCOUNT_PRICE: Record<BillingInterval, number> = {
+  monthly: 1,
+  yearly: 10,
+};
+
+/**
+ * The one sentence that tells Agency users how accounts above the included
+ * ones are billed. Information, never a block: connecting always works.
+ */
+export const AGENCY_EXTRA_ACCOUNT_NOTE = `Each account over ${AGENCY_INCLUDED_ACCOUNTS} adds $${AGENCY_EXTRA_ACCOUNT_PRICE.monthly}/mo ($${AGENCY_EXTRA_ACCOUNT_PRICE.yearly}/yr on yearly), added to your bill automatically.`;
+
+/** Accounts on the pricing slider. */
+export const ACCOUNT_SLIDER = {
+  min: 1,
+  max: 200,
+  default: 12,
+  ticks: [1, 15, 59, 100, 200],
+} as const;
+
+/** Agency extra accounts needed for `accounts` connected profiles. */
+export function agencyExtraAccounts(accounts: number): number {
+  return Math.max(0, Math.ceil(accounts) - AGENCY_INCLUDED_ACCOUNTS);
+}
+
+/** The plan that fits `accounts`: Creator up to 15, Agency above. */
+export function recommendedPlan(accounts: number): SellablePlanTier {
+  return accounts <= CREATOR_ACCOUNTS ? "creator" : "agency";
+}
+
+/**
+ * Price per billing period of `tier` with `accounts` connected.
+ * Creator is flat (it holds up to 15). Agency adds each account above 59.
+ */
+export function planPriceForAccounts(
+  tier: SellablePlanTier,
+  accounts: number,
+  interval: BillingInterval,
+): number {
+  const base = interval === "yearly" ? YEARLY[tier] : MONTHLY[tier];
+  if (tier === "creator") return base;
+  return roundCents(
+    base + agencyExtraAccounts(accounts) * AGENCY_EXTRA_ACCOUNT_PRICE[interval],
+  );
+}
+
+/** Cheapest plan for `accounts`, priced per billing period. */
+export function priceForAccounts(
+  accounts: number,
+  interval: BillingInterval,
+): { plan: SellablePlanTier; price: number } {
+  const plan = recommendedPlan(accounts);
+  return { plan, price: planPriceForAccounts(plan, accounts, interval) };
+}
 
 export function getPlanPrice(
   tier: PaidPlanTier,
   interval: BillingInterval,
 ): PlanPrice {
-  return interval === "yearly" ? YEARLY[tier] : MONTHLY[tier];
+  return { price: interval === "yearly" ? YEARLY[tier] : MONTHLY[tier] };
 }
 
-/** Round effective monthly for display: 16.58 → 16.5, 29.08 → 29. */
-function roundEffectiveMonthlyDisplay(n: number): number {
-  return Math.round(n * 2) / 2;
+/** Dollars saved by paying yearly instead of 12 monthly payments. */
+export function yearlySavings(tier: PaidPlanTier): number {
+  return roundCents(MONTHLY[tier] * 12 - YEARLY[tier]);
 }
 
-/** Effective monthly rate for yearly plans (display-rounded). */
+function roundCents(amount: number): number {
+  return Math.round(amount * 100) / 100;
+}
+
+/**
+ * Effective monthly rate for yearly plans, rounded up to the cent so the
+ * advertised per-month price is never below the real charge.
+ * Creator $24.92, Agency $49.92.
+ */
 export function getEffectiveMonthly(tier: PaidPlanTier): number {
-  const raw = YEARLY[tier].price / 12;
-  // Starter: $8; Growth: $16.5; Pro: $29; Max: ~$50
-  if (tier === "starter") return Math.round(raw);
-  return roundEffectiveMonthlyDisplay(raw);
-}
-
-/** Monthly sticker to slash next to yearly effective $/mo (Starter $9, Growth $29, Pro $49, Max $99). */
-export function getYearlySlashMonthly(tier: PaidPlanTier): number {
-  const m = MONTHLY[tier];
-  return m.listPrice ?? m.price;
+  return Math.ceil((YEARLY[tier] * 100) / 12) / 100;
 }
 
 export function formatMoney(amount: number): string {
-  if (Number.isInteger(amount)) return String(amount);
-  if (Math.abs(amount * 10 - Math.round(amount * 10)) < 1e-9) {
-    return amount.toFixed(1);
-  }
-  return amount.toFixed(2);
+  if (Number.isInteger(amount)) return amount.toLocaleString("en-US");
+  return amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 export function formatEffectiveMonthly(tier: PaidPlanTier): string {
@@ -98,9 +141,11 @@ export function formatPlanPriceLabel(
   interval: BillingInterval,
 ): string {
   const { price } = getPlanPrice(tier, interval);
-  return interval === "yearly" ? `$${price}/year` : `$${price}/month`;
+  return interval === "yearly"
+    ? `$${formatMoney(price)}/year`
+    : `$${formatMoney(price)}/month`;
 }
 
 export function billedAsYearlyLabel(tier: PaidPlanTier): string {
-  return `Billed as $${YEARLY[tier].price}/year`;
+  return `Billed as $${formatMoney(YEARLY[tier])}/year`;
 }

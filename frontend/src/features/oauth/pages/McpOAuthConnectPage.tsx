@@ -234,7 +234,7 @@ export default function McpOAuthConnectPage() {
               Deny
             </Button>
             <Button variant="ghost" asChild>
-              <Link href="/dashboard/api-keys">Manage API keys</Link>
+              <Link href="/dashboard/agents">Manage AI agents</Link>
             </Button>
           </div>
         </div>

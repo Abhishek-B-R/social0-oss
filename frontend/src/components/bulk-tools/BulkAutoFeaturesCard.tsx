@@ -1,6 +1,7 @@
 
 import { useRef, useState } from "react";
 import Link from "@/components/AppLink";
+import { useDashboardPath } from "@/components/app";
 import { Settings2 } from "lucide-react";
 import { AutoResurfaceSettingsModal } from "@/components/repost/AutoResurfaceSettingsModal";
 import { AutoPlugSettingsModal } from "@/components/autoplug/AutoPlugSettingsModal";
@@ -33,6 +34,7 @@ export function BulkAutoFeaturesCard({
   allowAutoRepost = true,
   allowAutoPlug = true,
 }: BulkAutoFeaturesCardProps) {
+  const dash = useDashboardPath();
   const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
   const [autoPlugModalOpen, setAutoPlugModalOpen] = useState(false);
   const configBeforeResurfaceRef = useRef<AutoResurfaceConfig | null>(null);
@@ -93,7 +95,7 @@ export function BulkAutoFeaturesCard({
             <p className="mt-0.5 text-xs text-muted-foreground">
               Available on Growth plan.{" "}
               <Link
-                href="/dashboard/billing"
+                href={dash("billing")}
                 className="text-accent hover:text-accent-hover underline underline-offset-2"
               >
                 Upgrade
@@ -147,7 +149,7 @@ export function BulkAutoFeaturesCard({
             <p className="mt-0.5 text-xs text-muted-foreground">
               Available on Growth plan.{" "}
               <Link
-                href="/dashboard/billing"
+                href={dash("billing")}
                 className="text-accent hover:text-accent-hover underline underline-offset-2"
               >
                 Upgrade

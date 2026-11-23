@@ -25,6 +25,23 @@ describe("cors-policy MCP OAuth", () => {
     expect(allowsMissingCorsOrigin(req("POST", "/api/posts"))).toBe(false);
   });
 
+  it("allows missing Origin on the signed Dodo payments webhook", () => {
+    expect(allowsMissingCorsOrigin(req("POST", "/api/webhooks/dodo"))).toBe(true);
+    expect(
+      allowsMissingCorsOrigin(req("POST", "/api/webhooks/dodo?attempt=2")),
+    ).toBe(true);
+  });
+
+  it("still requires Origin on session-cookie webhook subscription routes", () => {
+    expect(
+      allowsMissingCorsOrigin(req("POST", "/api/webhooks/subscriptions")),
+    ).toBe(false);
+    expect(
+      allowsMissingCorsOrigin(req("POST", "/api/webhooks/subscriptions/abc/test")),
+    ).toBe(false);
+    expect(allowsMissingCorsOrigin(req("POST", "/api/webhooks/dodo/extra"))).toBe(false);
+  });
+
   it("recognizes AI host browser origins for MCP OAuth CORS", () => {
     expect(isMcpOAuthCorsOrigin("https://claude.ai")).toBe(true);
     expect(isMcpOAuthCorsOrigin("https://www.claude.ai")).toBe(true);

@@ -1,8 +1,7 @@
-import { auth } from "../lib/auth.js";
+import { getRouteSession } from "../lib/session.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { headers } from "../lib/http/request-cookies.js";
 import { AppRequest, RouteResponse } from "../lib/http/http.js";
 import { getValidToken } from "../lib/token-refresh.js";
 import { PLATFORMS, type Platform } from "../lib/platforms.js";
@@ -22,7 +21,7 @@ const REFRESH_SUPPORTED_PLATFORMS = new Set<string>([
 ]);
 
 export async function refreshTokens(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

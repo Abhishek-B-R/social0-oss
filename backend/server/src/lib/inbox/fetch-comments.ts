@@ -1,5 +1,8 @@
 /**
- * Live comment fetchers. Failures degrade - never throw past the dispatcher.
+ * Live comment fetchers. Failures degrade to a status + error result, with one
+ * exception: a platform throttle (HTTP 429, Graph rate-limit codes, YouTube
+ * quotaExceeded) throws, so `withPlatformReadCache` sets a cooldown and serves
+ * the saved copy instead of an error.
  */
 
 import { TwitterApi, type TweetV2 } from "twitter-api-v2";
@@ -11,7 +14,19 @@ import {
   TOKEN_EXPIRED_MARKER,
 } from "../platform-auth-errors.js";
 import { jsonGet } from "../http-json.js";
-import { throwIfPlatformRateLimited } from "../platform-rate-limit.js";
+import {
+  graphApiError,
+  isGraphObjectGone,
+  isGraphPermissionError,
+  throwIfGraphRateLimited,
+} from "../graph-api-errors.js";
+import {
+  googleErrorReason,
+  isYouTubeThrottle,
+  PlatformRateLimitError,
+  rethrowIfRateLimited,
+  throwIfHttpRateLimited,
+} from "../platform-rate-limit.js";
 import type { InboxComment } from "./types.js";
 import {
   INBOX_REQUIRED_SCOPES,
@@ -137,19 +152,18 @@ async function fetchFacebook(
   const id = encodeURIComponent(input.platformPostId);
   const sinceMs = input.since ? Date.parse(input.since) : null;
   const fields =
-    "id,from,message,created_time,like_count,user_likes,attachment,comments.limit(25){id,from,message,created_time,like_count,user_likes,attachment}";
+    "id,from,message,created_time,like_count,user_likes,attachment,is_hidden,comments.limit(25){id,from,message,created_time,like_count,user_likes,attachment,is_hidden}";
   const startUrl = `https://graph.facebook.com/v21.0/${id}/comments?fields=${fields}&limit=25&order=reverse_chronological&access_token=${token}`;
-  const startRes = await jsonGet(startUrl);
-  throwIfPlatformRateLimited("facebook", startRes, { graph: true });
-  const { ok, data } = startRes;
+  const { ok, data, status } = await jsonGet(startUrl);
   if (!ok) {
-    const msg =
-      (data as { error?: { message?: string } })?.error?.message ??
-      "Facebook comments failed";
-    if (/permission|#200|#10|manage_engagement/i.test(msg)) {
-      return err(msg, ["pages_manage_engagement"]);
+    const gErr = graphApiError(data, "Facebook comments failed");
+    throwIfGraphRateLimited("facebook", gErr, status);
+    // A post deleted on Facebook has no comments to show; it is not a scope gap.
+    if (isGraphObjectGone(gErr)) return { comments: [], status: "ok" };
+    if (isGraphPermissionError(gErr, /manage_engagement/i)) {
+      return err(gErr.message, ["pages_manage_engagement"]);
     }
-    return err(msg);
+    return err(gErr.message);
   }
 
   const pageCap = graphPagesCap(input);
@@ -188,11 +202,15 @@ async function fetchFacebook(
   };
 
   for (const row of rows) {
+    // Graph still returns hidden comments to the Page admin. A hidden comment
+    // (and its replies) is moderated away: keep it out of the inbox so it
+    // doesn't come back as "Needs reply" after a reload.
+    if (row.is_hidden === true) continue;
     comments.push(mapRow(row, null));
     const nestedObj = row.comments as GraphPage | undefined;
     let nested = [...(nestedObj?.data ?? [])];
     if (nestedObj?.paging?.next || nested.length >= 25) {
-      const nestedUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/comments?fields=id,from,message,created_time,like_count,user_likes,attachment&limit=50&order=reverse_chronological&access_token=${token}`;
+      const nestedUrl = `https://graph.facebook.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/comments?fields=id,from,message,created_time,like_count,user_likes,attachment,is_hidden&limit=50&order=reverse_chronological&access_token=${token}`;
       const nestedRes = await jsonGet(nestedUrl);
       if (nestedRes.ok) {
         nested = await restOfGraphPages(
@@ -204,6 +222,7 @@ async function fetchFacebook(
       }
     }
     for (const child of nested) {
+      if (child.is_hidden === true) continue;
       comments.push(mapRow(child, String(row.id ?? "")));
     }
   }
@@ -216,18 +235,16 @@ async function fetchInstagram(
   const token = encodeURIComponent(input.accessToken);
   const id = encodeURIComponent(input.platformPostId);
   const sinceMs = input.since ? Date.parse(input.since) : null;
-  const url = `https://graph.instagram.com/v21.0/${id}/comments?fields=id,text,username,timestamp,like_count,user_likes,replies.limit(50){id,text,username,timestamp,like_count,user_likes}&limit=50&access_token=${token}`;
-  const res = await jsonGet(url);
-  throwIfPlatformRateLimited("instagram", res, { graph: true });
-  const { ok, data } = res;
+  const url = `https://graph.instagram.com/v21.0/${id}/comments?fields=id,text,username,timestamp,like_count,user_likes,hidden,replies.limit(50){id,text,username,timestamp,like_count,user_likes,hidden}&limit=50&access_token=${token}`;
+  const { ok, data, status } = await jsonGet(url);
   if (!ok) {
-    const msg =
-      (data as { error?: { message?: string } })?.error?.message ??
-      "Instagram comments failed";
-    if (/permission|manage_comments/i.test(msg)) {
-      return err(msg, ["instagram_business_manage_comments"]);
+    const gErr = graphApiError(data, "Instagram comments failed");
+    throwIfGraphRateLimited("instagram", gErr, status);
+    if (isGraphObjectGone(gErr)) return { comments: [], status: "ok" };
+    if (isGraphPermissionError(gErr, /manage_comments/i)) {
+      return err(gErr.message, ["instagram_business_manage_comments"]);
     }
-    return err(msg);
+    return err(gErr.message);
   }
   const pageCap = graphPagesCap(input);
   const rows = await restOfGraphPages(
@@ -260,11 +277,13 @@ async function fetchInstagram(
   };
 
   for (const row of rows) {
+    // Same as Facebook: the owner still sees comments they hid.
+    if (row.hidden === true) continue;
     comments.push(mapIg(row, null));
     const nestedObj = row.replies as GraphPage | undefined;
     let nested = [...(nestedObj?.data ?? [])];
     if (nestedObj?.paging?.next || nested.length >= 50) {
-      const nestedUrl = `https://graph.instagram.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/replies?fields=id,text,username,timestamp,like_count,user_likes&limit=50&access_token=${token}`;
+      const nestedUrl = `https://graph.instagram.com/v21.0/${encodeURIComponent(String(row.id ?? ""))}/replies?fields=id,text,username,timestamp,like_count,user_likes,hidden&limit=50&access_token=${token}`;
       const nestedRes = await jsonGet(nestedUrl);
       if (nestedRes.ok) {
         nested = await restOfGraphPages(
@@ -276,6 +295,7 @@ async function fetchInstagram(
       }
     }
     for (const child of nested) {
+      if (child.hidden === true) continue;
       comments.push(mapIg(child, String(row.id ?? "")));
     }
   }
@@ -288,24 +308,28 @@ async function fetchThreads(
   const id = encodeURIComponent(input.platformPostId);
   const token = encodeURIComponent(input.accessToken);
   const convoUrl = `https://graph.threads.net/v1.0/${id}/conversation?fields=id,text,username,timestamp,like_count,replied_to{id}&limit=50&access_token=${token}`;
-  const convoRes = await jsonGet(convoUrl);
-  throwIfPlatformRateLimited("threads", convoRes, { graph: true });
-  let { ok, data } = convoRes;
+  let { ok, data, status } = await jsonGet(convoUrl);
   if (!ok) {
+    // Throttled: the /replies fallback would only spend more of the same quota.
+    throwIfGraphRateLimited(
+      "threads",
+      graphApiError(data, "Threads replies failed"),
+      status,
+    );
     const fallback = `https://graph.threads.net/v1.0/${id}/replies?fields=id,text,username,timestamp,like_count,replied_to{id}&limit=25&access_token=${token}`;
     const retry = await jsonGet(fallback);
-    throwIfPlatformRateLimited("threads", retry, { graph: true });
     ok = retry.ok;
     data = retry.data;
+    status = retry.status;
   }
   if (!ok) {
-    const msg =
-      (data as { error?: { message?: string } })?.error?.message ??
-      "Threads replies failed";
-    if (/permission|manage_replies/i.test(msg)) {
-      return err(msg, ["threads_manage_replies"]);
+    const gErr = graphApiError(data, "Threads replies failed");
+    throwIfGraphRateLimited("threads", gErr, status);
+    if (isGraphObjectGone(gErr)) return { comments: [], status: "ok" };
+    if (isGraphPermissionError(gErr, /manage_replies/i)) {
+      return err(gErr.message, ["threads_manage_replies"]);
     }
-    return err(msg);
+    return err(gErr.message);
   }
   const sinceMs = input.since ? Date.parse(input.since) : null;
   const rows = await restOfGraphPages(
@@ -371,6 +395,13 @@ async function fetchYoutubeReplies(
   return out;
 }
 
+/**
+ * 403 reasons that really mean the token cannot read these comments. Other
+ * 403s (quotaExceeded, rateLimitExceeded, accessNotConfigured, ...) are not
+ * fixed by reconnecting, so they must never read as a missing scope.
+ */
+const YOUTUBE_SCOPE_REASONS = new Set(["insufficientPermissions", "forbidden"]);
+
 async function fetchYouTube(
   input: CommentFetchInput,
 ): Promise<CommentFetchResult> {
@@ -388,12 +419,9 @@ async function fetchYouTube(
     url.searchParams.set("maxResults", "100");
     url.searchParams.set("textFormat", "plainText");
     if (pageToken) url.searchParams.set("pageToken", pageToken);
-    const ytRes = await jsonGet(url.toString(), {
+    const { ok, data, status } = await jsonGet(url.toString(), {
       Authorization: `Bearer ${input.accessToken}`,
     });
-    // Only the first page decides the read; a quota hit mid-walk keeps what we have.
-    if (first) throwIfPlatformRateLimited("youtube", ytRes, { youtube: true });
-    const { ok, data, status } = ytRes;
     if (!ok) {
       const msg =
         (data as { error?: { message?: string } })?.error?.message ??
@@ -404,7 +432,17 @@ async function fetchYouTube(
       if (first && (status === 404 || isGonePlatformPost(msg))) {
         return { comments: [], status: "ok" };
       }
-      if (first && (status === 403 || /forbidden|insufficient|permission/i.test(msg))) {
+      // Quota / rate limit: throw so the cache sets a cooldown and serves
+      // saved comments instead of telling every YouTube account to reconnect.
+      if (first && isYouTubeThrottle(status, data)) {
+        throw new PlatformRateLimitError("youtube");
+      }
+      const reason = googleErrorReason(data);
+      if (
+        first &&
+        ((reason && YOUTUBE_SCOPE_REASONS.has(reason)) ||
+          /\bscopes?\b|insufficient|permission/i.test(msg))
+      ) {
         return err(msg, INBOX_REQUIRED_SCOPES.youtube);
       }
       // A dead Google token is a reconnect, not a transient failure.
@@ -726,7 +764,8 @@ async function fetchTwitter(
     const results = await fetchTwitterCommentsBatch([input]);
     return results[input.publicationId] ?? err("X replies failed");
   } catch (e) {
-    if (extractHttpStatus(e) === 429) throw e;
+    // The batch throws a 429 on purpose; keep it a throttle, not an error row.
+    rethrowIfRateLimited(e);
     return err(e instanceof Error ? e.message : "X replies failed");
   }
 }
@@ -750,11 +789,9 @@ async function fetchBluesky(
   if (!session) {
     return err("Bluesky login failed. Reconnect the account.");
   }
-  const firstRead = await jsonGet(urlFor(input.platformPostId), {
+  let { ok, data, status } = await jsonGet(urlFor(input.platformPostId), {
     Authorization: `Bearer ${session.accessJwt}`,
   });
-  throwIfPlatformRateLimited("bluesky", firstRead);
-  let { ok, data, status } = firstRead;
   if (status === 401) {
     session = await blueskySessionAfter401(
       input.accountId,
@@ -765,7 +802,6 @@ async function fetchBluesky(
     const retry = await jsonGet(urlFor(input.platformPostId), {
       Authorization: `Bearer ${session.accessJwt}`,
     });
-    throwIfPlatformRateLimited("bluesky", retry);
     ok = retry.ok;
     data = retry.data;
     status = retry.status;
@@ -775,6 +811,7 @@ async function fetchBluesky(
       (data as { message?: string; error?: string })?.message ??
       (data as { error?: string })?.error ??
       "Bluesky thread failed";
+    throwIfHttpRateLimited("bluesky", status, msg);
     if (status === 404 || isGonePlatformPost(msg)) {
       return { comments: [], status: "ok" };
     }
@@ -842,14 +879,17 @@ async function fetchLinkedIn(
     ? input.platformPostId
     : `urn:li:share:${input.platformPostId}`;
   const url = `https://api.linkedin.com/rest/socialActions/${encodeURIComponent(urn)}/comments`;
-  const liRes = await jsonGet(url, {
+  const { ok, data, status } = await jsonGet(url, {
     Authorization: `Bearer ${input.accessToken}`,
     "LinkedIn-Version": "202411",
     "X-Restli-Protocol-Version": "2.0.0",
   });
-  throwIfPlatformRateLimited("linkedin", liRes);
-  const { ok, data, status } = liRes;
   if (!ok) {
+    throwIfHttpRateLimited(
+      "linkedin",
+      status,
+      (data as { message?: string })?.message,
+    );
     if (status === 403) {
       return {
         comments: [],

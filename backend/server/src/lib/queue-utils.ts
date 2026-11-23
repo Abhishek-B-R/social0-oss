@@ -101,7 +101,11 @@ export function getNextAvailableSlot(
     const first = heap.shift()!;
     if (!occupiedSet.has(normalizeUtc(first.utc)))
       return { utc: first.utc, slotId: first.slot.id };
-    heap.push(nextForSlot(first.slot, addDays(first.utc, 1)));
+    // Search from the taken instant itself: slotToNextUTCDateSingle treats an
+    // occurrence at exactly `fromDate` as passed, so this yields the slot's
+    // very next occurrence (tomorrow for a daily slot). Searching from a day
+    // later would skip that one and fill the queue every other day.
+    heap.push(nextForSlot(first.slot, first.utc));
     heap.sort((a, b) => a.utc.getTime() - b.utc.getTime());
   }
   return null;

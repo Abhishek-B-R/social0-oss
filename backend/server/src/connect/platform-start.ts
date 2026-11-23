@@ -1,7 +1,7 @@
-import { auth } from "../lib/auth.js";
+import { getRouteSession } from "../lib/session.js";
 import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { env } from "../lib/env.js";
-import { headers, cookies } from "../lib/http/request-cookies.js";
+import { cookies } from "../lib/http/request-cookies.js";
 import { encrypt, encryptToken } from "@social0/shared";
 import { appUrlForPath, getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import crypto from "crypto";
@@ -28,7 +28,7 @@ export async function platformStart(
   }
   
   const platform = platformParam as Platform;
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

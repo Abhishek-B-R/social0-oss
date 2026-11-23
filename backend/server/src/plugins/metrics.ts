@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import fp from "fastify-plugin";
 import { verifyAdminRequest } from "../lib/admin-auth.js";
 
 type CounterMap = Map<string, number>;
@@ -22,7 +23,7 @@ export function getMetricsSnapshot() {
   };
 }
 
-export async function registerMetricsPlugin(app: FastifyInstance) {
+async function metricsPlugin(app: FastifyInstance) {
   app.addHook("onResponse", async () => {
     incrementMetric("http.requests");
   });
@@ -34,3 +35,9 @@ export async function registerMetricsPlugin(app: FastifyInstance) {
     return getMetricsSnapshot();
   });
 }
+
+/**
+ * fp breaks encapsulation so the onResponse counter sees every route, not only
+ * `/metrics` itself; otherwise `http.requests` counts nothing useful.
+ */
+export const registerMetricsPlugin = fp(metricsPlugin, { name: "metrics" });

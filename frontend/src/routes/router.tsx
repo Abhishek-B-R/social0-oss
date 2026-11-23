@@ -1,5 +1,12 @@
 import { lazy, Suspense, type ReactNode } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Route,
+  RouterProvider,
+  Routes,
+  useLocation,
+  useRouteError,
+} from "react-router-dom";
 import { RootLayout } from "@/layouts/RootLayout";
 import { HomePage } from "@/pages/HomePage";
 
@@ -32,31 +39,38 @@ const ComposerPage = lazy(() =>
   import("@/pages/ComposerPage").then((m) => ({ default: m.ComposerPage })),
 );
 const PostsPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.PostsPage })),
+  import("@/features/dashboard/posts/PostsPage").then((m) => ({
+    default: m.PostsPage,
+  })),
 );
 const BillingPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.BillingPage })),
+  import("@/features/dashboard/billing/BillingPage").then((m) => ({
+    default: m.BillingPage,
+  })),
 );
 const CalendarPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.CalendarPage })),
+  import("@/features/dashboard/calendar/CalendarPage").then((m) => ({
+    default: m.CalendarPage,
+  })),
 );
 const AnalyticsPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.AnalyticsPage })),
+  import("@/features/dashboard/analytics/AnalyticsPage").then((m) => ({
+    default: m.AnalyticsPage,
+  })),
 );
 const InboxPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.InboxPage })),
+  import("@/features/dashboard/inbox/InboxPage").then((m) => ({
+    default: m.InboxPage,
+  })),
 );
 const ConnectionsPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({
+  import("@/features/dashboard/connections/ConnectionsPage").then((m) => ({
     default: m.ConnectionsPage,
   })),
 );
-const SettingsPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.SettingsPage })),
-);
 const FeedbackPageRoute = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({
-    default: m.FeedbackPageRoute,
+  import("@/features/dashboard/feedback/FeedbackPage").then((m) => ({
+    default: m.FeedbackPage,
   })),
 );
 const CreateHubPage = lazy(() =>
@@ -68,8 +82,30 @@ const CreateTypePage = lazy(() =>
 const PostDetailPage = lazy(() =>
   import("@/pages/PostDetailPage").then((m) => ({ default: m.PostDetailPage })),
 );
-const EditPostPage = lazy(() =>
-  import("@/pages/EditPostPage").then((m) => ({ default: m.EditPostPage })),
+const DashboardHomePage = lazy(() =>
+  import("@/features/dashboard/home/HomePage").then((m) => ({
+    default: m.HomePage,
+  })),
+);
+const NewPostPage = lazy(() =>
+  import("@/features/dashboard/create/NewPostPage").then((m) => ({
+    default: m.NewPostPage,
+  })),
+);
+const AutomationsPage = lazy(() =>
+  import("@/features/dashboard/automations/AutomationsPage").then((m) => ({
+    default: m.AutomationsPage,
+  })),
+);
+const AgentsPage = lazy(() =>
+  import("@/features/dashboard/api-keys/AgentsPage").then((m) => ({
+    default: m.AgentsPage,
+  })),
+);
+const SettingsShell = lazy(() =>
+  import("@/features/dashboard/settings/SettingsShell").then((m) => ({
+    default: m.SettingsShell,
+  })),
 );
 const MorePage = lazy(() =>
   import("@/pages/MorePage").then((m) => ({ default: m.MorePage })),
@@ -87,35 +123,35 @@ const BulkToolsVideoPage = lazy(() =>
     default: m.BulkToolsVideoPage,
   })),
 );
-const DraftsPostsPage = lazy(() =>
-  import("@/pages/StatusPostsPage").then((m) => ({
-    default: m.DraftsPostsPage,
+const DashboardRedirect = lazy(() =>
+  import("@/pages/DashboardRedirect").then((m) => ({
+    default: m.DashboardRedirect,
   })),
 );
-const ScheduledPostsPage = lazy(() =>
-  import("@/pages/StatusPostsPage").then((m) => ({
-    default: m.ScheduledPostsPage,
+const EditPostRedirect = lazy(() =>
+  import("@/pages/DashboardRedirect").then((m) => ({
+    default: m.EditPostRedirect,
   })),
 );
-const PostedPostsPage = lazy(() =>
-  import("@/pages/StatusPostsPage").then((m) => ({
-    default: m.PostedPostsPage,
+const DashboardIndexRedirect = lazy(() =>
+  import("@/pages/DashboardRedirect").then((m) => ({
+    default: m.DashboardIndexRedirect,
   })),
-);
-const ApiKeysPage = lazy(() =>
-  import("@/pages/ApiKeysPage").then((m) => ({ default: m.ApiKeysPage })),
 );
 const TeamsPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.TeamsPage })),
+  import("@/features/dashboard/teams/TeamsPage").then((m) => ({
+    default: m.TeamsPage,
+  })),
 );
 const WorkspacesPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.WorkspacesPage })),
+  import("@/features/dashboard/workspaces/WorkspacesPage").then((m) => ({
+    default: m.WorkspacesPage,
+  })),
 );
 const CreateTeamPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.CreateTeamPage })),
-);
-const TeamDetailPage = lazy(() =>
-  import("@/pages/DashboardPages").then((m) => ({ default: m.TeamDetailPage })),
+  import("@/features/dashboard/teams/CreateTeamPage").then((m) => ({
+    default: m.CreateTeamPage,
+  })),
 );
 const TeamAppLayout = lazy(() =>
   import("@/layouts/TeamAppLayout").then((m) => ({ default: m.TeamAppLayout })),
@@ -232,376 +268,387 @@ function RouteFallback() {
   );
 }
 
+/** `/alternative-to-buffer` (trailing slash ok). Kept here so the router
+ *  doesn't pull the lazily loaded redirect module into the main chunk. */
+const ALTERNATIVE_TO_PATH = /^\/alternative-to-[^/]+\/?$/;
+
+function CatchAllRoute() {
+  const { pathname } = useLocation();
+  return (
+    <Lazy>
+      {ALTERNATIVE_TO_PATH.test(pathname) ? <AlternativeToRedirect /> : <NotFoundPage />}
+    </Lazy>
+  );
+}
+
 function Lazy({ children }: { children: ReactNode }) {
   return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
 }
 
-export function AppRouter() {
+/**
+ * Pages that exist in both the personal tree (/dashboard/*) and each team
+ * tree (/dashboard/teams/:teamId/*). Account-level pages (billing,
+ * settings, feedback, teams, workspaces) are registered separately.
+ */
+function workspaceRoutes() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<RootLayout />}>
-          <Route index element={<HomePage />} />
-          <Route
-            path="auth"
-            element={
-              <Lazy>
-                <AuthRoutePage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="auth/forgot-password"
-            element={
-              <Lazy>
-                <ForgotPasswordPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="auth/reset-password"
-            element={
-              <Lazy>
-                <ResetPasswordPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="auth/verify-email"
-            element={
-              <Lazy>
-                <VerifyEmailPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="auth/continue"
-            element={
-              <Lazy>
-                <AuthContinuePage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="terms"
-            element={
-              <Lazy>
-                <TermsPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="privacy"
-            element={
-              <Lazy>
-                <PrivacyPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="refund"
-            element={
-              <Lazy>
-                <RefundPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="data-deletion"
-            element={
-              <Lazy>
-                <DataDeletionPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="features"
-            element={
-              <Lazy>
-                <FeaturesIndexPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="features/:slug"
-            element={
-              <Lazy>
-                <FeatureDetailPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="alternatives"
-            element={
-              <Lazy>
-                <AlternativesIndexPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="alternatives/:slug"
-            element={
-              <Lazy>
-                <AlternativeDetailPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="alternative-to-:slug"
-            element={
-              <Lazy>
-                <AlternativeToRedirect />
-              </Lazy>
-            }
-          />
-          {[
-            "social-media-scheduler",
-            "bluesky-scheduler",
-            "x-scheduler",
-            "twitter-scheduler",
-            "instagram-scheduler",
-            "linkedin-scheduler",
-            "tiktok-scheduler",
-            "youtube-scheduler",
-            "pinterest-scheduler",
-            "facebook-scheduler",
-            "threads-scheduler",
-            "social-media-calendar",
-          ].map((slug) => (
-            <Route
-              key={slug}
-              path={slug}
-              element={
-                <Lazy>
-                  <FeatureRootRedirect />
-                </Lazy>
-              }
-            />
-          ))}
-          <Route
-            path="home"
-            element={
-              <Lazy>
-                <HomeMarketingPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="mcp"
-            element={
-              <Lazy>
-                <McpPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="tools"
-            element={
-              <Lazy>
-                <ToolsIndexPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="tools/:slug"
-            element={
-              <Lazy>
-                <ToolDetailPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="blog"
-            element={
-              <Lazy>
-                <BlogIndexPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="blog/:slug"
-            element={
-              <Lazy>
-                <BlogPostPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="pricing"
-            element={
-              <Lazy>
-                <PricingPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="about"
-            element={
-              <Lazy>
-                <AboutPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="contact"
-            element={
-              <Lazy>
-                <ContactPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="developers"
-            element={
-              <Lazy>
-                <DevelopersPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="oauth/mcp/connect"
-            element={
-              <Lazy>
-                <McpOAuthConnectPage />
-              </Lazy>
-            }
-          />
-          <Route
-            path="invite/:token"
-            element={
-              <Lazy>
-                <AcceptInvitePage />
-              </Lazy>
-            }
-          />
-
-          <Route
-            path="onboarding"
-            element={
-              <Lazy>
-                <OnboardingLayout />
-              </Lazy>
-            }
-          >
-            <Route index element={<OnboardingWelcomePage />} />
-            <Route path="step2" element={<OnboardingConnectPage />} />
-            <Route path="step3" element={<OnboardingPlanPage />} />
-            <Route path="step4" element={<OnboardingReadyPage />} />
-          </Route>
-
-          <Route
-            path="dashboard"
-            element={
-              <Lazy>
-                <DashboardLayout />
-              </Lazy>
-            }
-          >
-            <Route
-              index
-              element={<Navigate to="/dashboard/composer" replace />}
-            />
-            <Route path="composer" element={<ComposerPage />} />
-            <Route path="create" element={<CreateHubPage />} />
-            <Route path="create/:type" element={<CreateTypePage />} />
-            <Route path="posts" element={<PostsPage />} />
-            <Route path="posts/drafts" element={<DraftsPostsPage />} />
-            <Route path="posts/scheduled" element={<ScheduledPostsPage />} />
-            <Route path="posts/posted" element={<PostedPostsPage />} />
-            <Route path="posts/:id" element={<PostDetailPage />} />
-            <Route path="posts/:id/edit" element={<EditPostPage />} />
-            <Route path="calendar" element={<CalendarPage />} />
-            <Route path="analytics" element={<AnalyticsPage />} />
-            <Route path="inbox" element={<InboxPage />} />
-            <Route path="connections" element={<ConnectionsPage />} />
-            <Route
-              path="connections/facebook/select"
-              element={<FacebookSelectPage />}
-            />
-            <Route
-              path="connections/instagram/select"
-              element={<InstagramSelectPage />}
-            />
-            <Route
-              path="connections/linkedin/select"
-              element={<LinkedinSelectPage />}
-            />
-            <Route
-              path="connect/instagram-facebook/select"
-              element={<ConnectInstagramFacebookSelectPage />}
-            />
-            <Route path="billing" element={<BillingPage />} />
-            <Route path="settings" element={<SettingsPage />} />
-            <Route path="bulk-tools" element={<BulkToolsPage />} />
-            <Route path="bulk-tools/image" element={<BulkToolsImagePage />} />
-            <Route path="bulk-tools/video" element={<BulkToolsVideoPage />} />
-            <Route path="api-keys" element={<ApiKeysPage />} />
-            <Route path="feedback/*" element={<FeedbackPageRoute />} />
-            <Route path="more" element={<MorePage />} />
-            <Route path="workspaces" element={<WorkspacesPage />} />
-            <Route path="teams" element={<TeamsPage />} />
-            <Route path="teams/create" element={<CreateTeamPage />} />
-            <Route
-              path="teams/:teamId/settings"
-              element={<TeamDetailPage />}
-            />
-            <Route
-              path="teams/:teamId"
-              element={
-                <Lazy>
-                  <TeamAppLayout />
-                </Lazy>
-              }
-            >
-              <Route
-                index
-                element={<Navigate to="composer" replace />}
-              />
-              <Route path="composer" element={<ComposerPage />} />
-              <Route path="create" element={<CreateHubPage />} />
-              <Route path="create/:type" element={<CreateTypePage />} />
-              <Route path="posts" element={<PostsPage />} />
-              <Route path="posts/drafts" element={<DraftsPostsPage />} />
-              <Route path="posts/scheduled" element={<ScheduledPostsPage />} />
-              <Route path="posts/posted" element={<PostedPostsPage />} />
-              <Route path="posts/:id" element={<PostDetailPage />} />
-              <Route path="posts/:id/edit" element={<EditPostPage />} />
-              <Route path="calendar" element={<CalendarPage />} />
-              <Route path="analytics" element={<AnalyticsPage />} />
-              <Route path="inbox" element={<InboxPage />} />
-              <Route path="connections" element={<ConnectionsPage />} />
-              <Route
-                path="connections/facebook/select"
-                element={<FacebookSelectPage />}
-              />
-              <Route
-                path="connections/instagram/select"
-                element={<InstagramSelectPage />}
-              />
-              <Route
-                path="connections/linkedin/select"
-                element={<LinkedinSelectPage />}
-              />
-              <Route
-                path="connect/instagram-facebook/select"
-                element={<ConnectInstagramFacebookSelectPage />}
-              />
-              <Route path="bulk-tools" element={<BulkToolsPage />} />
-              <Route path="bulk-tools/image" element={<BulkToolsImagePage />} />
-              <Route path="bulk-tools/video" element={<BulkToolsVideoPage />} />
-            </Route>
-          </Route>
-
-          <Route
-            path="*"
-            element={
-              <Lazy>
-                <NotFoundPage />
-              </Lazy>
-            }
-          />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <>
+      <Route path="home" element={<DashboardHomePage />} />
+      <Route path="new" element={<NewPostPage />} />
+      {/* Old composer entry points render the same one-screen composer and
+          keep ?edit= / ?draft= / ?scheduled= / fromComposer. */}
+      <Route path="composer" element={<ComposerPage />} />
+      <Route path="create" element={<CreateHubPage />} />
+      <Route path="create/:type" element={<CreateTypePage />} />
+      <Route path="posts" element={<PostsPage />} />
+      <Route
+        path="posts/drafts"
+        element={<DashboardRedirect to="posts?tab=drafts" />}
+      />
+      <Route
+        path="posts/scheduled"
+        element={<DashboardRedirect to="posts?tab=scheduled" />}
+      />
+      <Route
+        path="posts/posted"
+        element={<DashboardRedirect to="posts?tab=published" />}
+      />
+      <Route path="posts/:id" element={<PostDetailPage />} />
+      {/* The old edit page is gone; old links open the composer in edit mode. */}
+      <Route path="posts/:id/edit" element={<EditPostRedirect />} />
+      <Route path="calendar" element={<CalendarPage />} />
+      <Route path="analytics" element={<AnalyticsPage />} />
+      <Route path="inbox" element={<InboxPage />} />
+      <Route path="automations" element={<AutomationsPage />} />
+      <Route path="agents" element={<AgentsPage />} />
+      <Route path="more" element={<MorePage />} />
+      <Route path="connections" element={<ConnectionsPage />} />
+      <Route
+        path="connections/facebook/select"
+        element={<FacebookSelectPage />}
+      />
+      <Route
+        path="connections/instagram/select"
+        element={<InstagramSelectPage />}
+      />
+      <Route
+        path="connections/linkedin/select"
+        element={<LinkedinSelectPage />}
+      />
+      <Route
+        path="connect/instagram-facebook/select"
+        element={<ConnectInstagramFacebookSelectPage />}
+      />
+      <Route path="bulk-tools" element={<BulkToolsPage />} />
+      <Route path="bulk-tools/image" element={<BulkToolsImagePage />} />
+      <Route path="bulk-tools/video" element={<BulkToolsVideoPage />} />
+    </>
   );
+}
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route element={<RootLayout />}>
+        <Route index element={<HomePage />} />
+        <Route
+          path="auth"
+          element={
+            <Lazy>
+              <AuthRoutePage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="auth/forgot-password"
+          element={
+            <Lazy>
+              <ForgotPasswordPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="auth/reset-password"
+          element={
+            <Lazy>
+              <ResetPasswordPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="auth/verify-email"
+          element={
+            <Lazy>
+              <VerifyEmailPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="auth/continue"
+          element={
+            <Lazy>
+              <AuthContinuePage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="terms"
+          element={
+            <Lazy>
+              <TermsPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="privacy"
+          element={
+            <Lazy>
+              <PrivacyPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="refund"
+          element={
+            <Lazy>
+              <RefundPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="data-deletion"
+          element={
+            <Lazy>
+              <DataDeletionPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="features"
+          element={
+            <Lazy>
+              <FeaturesIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="features/:slug"
+          element={
+            <Lazy>
+              <FeatureDetailPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="alternatives"
+          element={
+            <Lazy>
+              <AlternativesIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="alternatives/:slug"
+          element={
+            <Lazy>
+              <AlternativeDetailPage />
+            </Lazy>
+          }
+        />
+        {[
+          "social-media-scheduler",
+          "bluesky-scheduler",
+          "x-scheduler",
+          "twitter-scheduler",
+          "instagram-scheduler",
+          "linkedin-scheduler",
+          "tiktok-scheduler",
+          "youtube-scheduler",
+          "pinterest-scheduler",
+          "facebook-scheduler",
+          "threads-scheduler",
+          "social-media-calendar",
+        ].map((slug) => (
+          <Route
+            key={slug}
+            path={slug}
+            element={
+              <Lazy>
+                <FeatureRootRedirect />
+              </Lazy>
+            }
+          />
+        ))}
+        <Route
+          path="home"
+          element={
+            <Lazy>
+              <HomeMarketingPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="mcp"
+          element={
+            <Lazy>
+              <McpPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="tools"
+          element={
+            <Lazy>
+              <ToolsIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="tools/:slug"
+          element={
+            <Lazy>
+              <ToolDetailPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="blog"
+          element={
+            <Lazy>
+              <BlogIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="blog/:slug"
+          element={
+            <Lazy>
+              <BlogPostPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="pricing"
+          element={
+            <Lazy>
+              <PricingPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="about"
+          element={
+            <Lazy>
+              <AboutPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="contact"
+          element={
+            <Lazy>
+              <ContactPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="developers"
+          element={
+            <Lazy>
+              <DevelopersPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="oauth/mcp/connect"
+          element={
+            <Lazy>
+              <McpOAuthConnectPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="invite/:token"
+          element={
+            <Lazy>
+              <AcceptInvitePage />
+            </Lazy>
+          }
+        />
+
+        <Route
+          path="onboarding"
+          element={
+            <Lazy>
+              <OnboardingLayout />
+            </Lazy>
+          }
+        >
+          <Route index element={<OnboardingWelcomePage />} />
+          <Route path="step2" element={<OnboardingConnectPage />} />
+          <Route path="step3" element={<OnboardingPlanPage />} />
+          <Route path="step4" element={<OnboardingReadyPage />} />
+        </Route>
+
+        <Route
+          path="dashboard"
+          element={
+            <Lazy>
+              <DashboardLayout />
+            </Lazy>
+          }
+        >
+          <Route index element={<DashboardIndexRedirect />} />
+          {workspaceRoutes()}
+          <Route path="billing" element={<BillingPage />} />
+          <Route path="settings" element={<SettingsShell />} />
+          <Route path="settings/:section" element={<SettingsShell />} />
+          <Route
+            path="api-keys"
+            element={<DashboardRedirect to="agents?tab=keys" />}
+          />
+          <Route path="feedback/*" element={<FeedbackPageRoute />} />
+          <Route path="workspaces" element={<WorkspacesPage />} />
+          <Route path="teams" element={<TeamsPage />} />
+          <Route path="teams/create" element={<CreateTeamPage />} />
+          <Route
+            path="teams/:teamId"
+            element={
+              <Lazy>
+                <TeamAppLayout />
+              </Lazy>
+            }
+          >
+            <Route index element={<DashboardIndexRedirect />} />
+            {workspaceRoutes()}
+            {/* Team settings sit behind the same gate, so the team's
+                workspace is active before the shell (composer, sidebar
+                accounts) reads it. */}
+            <Route path="settings" element={<SettingsShell />} />
+            <Route path="settings/:section" element={<SettingsShell />} />
+          </Route>
+        </Route>
+
+        {/* Also serves /alternative-to-:slug: React Router can't match a
+            param in the middle of a segment. */}
+        <Route path="*" element={<CatchAllRoute />} />
+      </Route>
+    </Routes>
+  );
+}
+
+/** Render errors keep going past the router, as they did under BrowserRouter. */
+function RethrowRouteError(): never {
+  throw useRouteError();
+}
+
+// A data router so pages can use `useBlocker` (the composer asks before
+// unsaved changes are dropped). Every route is still declared in AppRoutes,
+// under one splat route.
+const router = createBrowserRouter([
+  { path: "*", element: <AppRoutes />, errorElement: <RethrowRouteError /> },
+]);
+
+export function AppRouter() {
+  return <RouterProvider router={router} />;
 }

@@ -1,6 +1,7 @@
 /**
  * Max allowed video duration in seconds (5 minutes).
- * Enforced in VideoPostForm, ThreadsPostForm, CollectionPostForm, and BulkToolsVideo.
+ * Enforced in the composer (features/dashboard/composer/media-intake.ts) and bulk import
+ * (features/dashboard/bulk-tools/use-bulk-import.ts).
  */
 export const MAX_VIDEO_DURATION_SECONDS = 300;
 

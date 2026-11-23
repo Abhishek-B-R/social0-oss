@@ -10,18 +10,22 @@ import {
 } from "@/components/AccountPicker";
 import { toast } from "sonner";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { completeConnectSelect } from "@/lib/connect-select-response";
 import { stripSensitiveQueryParams } from "@/lib/sanitize-analytics-url";
+import { SelectLoadError } from "./SelectLoadError";
 
 export default function InstagramSelectPage() {
   const [searchParams] = useSearchParams();
+  const dash = useDashboardPath();
   const token = searchParams.get("token");
   const returnTo =
-    sanitizeReturnToPath(searchParams.get("returnTo")) ??
-    "/dashboard/connections";
+    sanitizeReturnToPath(searchParams.get("returnTo")) ?? dash("connections");
 
   const [accounts, setAccounts] = useState<AccountPickerAccount[]>([]);
   const [loading, setLoading] = useState(() => Boolean(token));
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [submitLoading, setSubmitLoading] = useState(false);
 
   useEffect(() => {
@@ -29,10 +33,7 @@ export default function InstagramSelectPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      toast.error("Missing token");
-      return;
-    }
+    if (!token) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -63,11 +64,10 @@ export default function InstagramSelectPage() {
             }),
           ),
         );
+        setLoadError(null);
       } catch (err) {
         if (!cancelled) {
-          toast.error(
-            err instanceof Error ? err.message : "Failed to load accounts",
-          );
+          setLoadError(err instanceof Error ? err.message : "Failed to load accounts");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -76,7 +76,12 @@ export default function InstagramSelectPage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, loadAttempt]);
+
+  const retryLoad = useCallback(() => {
+    setLoading(true);
+    setLoadAttempt((n) => n + 1);
+  }, []);
 
   const handleSelect = useCallback(
     async (pageId: string) => {
@@ -100,6 +105,20 @@ export default function InstagramSelectPage() {
     },
     [token, returnTo],
   );
+
+  if (!token || loadError) {
+    return (
+      <SelectLoadError
+        title="Connect Instagram"
+        message="Couldn't load your Instagram accounts. The sign-in link may have expired."
+        detail={loadError}
+        hasToken={Boolean(token)}
+        onRetry={retryLoad}
+        retrying={loading}
+        startOverHref={dash("connections?connect=instagram")}
+      />
+    );
+  }
 
   if (loading) {
     return (

@@ -17,6 +17,7 @@ export function DemoVideoSection() {
               {/* ponytail: YouTube no longer allows hiding the title bar — crop it */}
               <iframe
                 src={`https://www.youtube.com/embed/${YOUTUBE_DEMO_ID}?rel=0&modestbranding=1&iv_load_policy=3`}
+                loading="lazy"
                 title="Social0 demo - post and schedule to all your socials from one place"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                 referrerPolicy="strict-origin-when-cross-origin"

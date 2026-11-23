@@ -6,7 +6,7 @@ import { PricingCards } from "@/components/landing/PricingSection";
 import { PricingComparisonTable } from "@/components/landing/PricingComparisonTable";
 import { PricingFaq } from "@/components/landing/PricingFaq";
 import { SeoHead } from "@/components/seo/SeoHead";
-import type { BillingInterval } from "@/lib/plans";
+import { PLAN_NAMES, type BillingInterval } from "@/lib/plans";
 import { scrollToHash } from "@/lib/scroll-to-hash";
 import { absoluteUrl } from "@/lib/seo";
 
@@ -17,19 +17,21 @@ export default function PricingPage() {
   const { data: session } = useSession();
   const signedIn = !!session?.user;
   const [interval, setInterval] = useState<BillingInterval>("monthly");
-  const { hash } = useLocation();
+  const { hash, key } = useLocation();
 
+  // `key` changes on every navigation, so clicking the same #section link
+  // again (same URL) still scrolls back to it.
   useEffect(() => {
     if (!hash) return;
     const t = window.setTimeout(() => scrollToHash(hash), 50);
     return () => window.clearTimeout(t);
-  }, [hash]);
+  }, [hash, key]);
 
   return (
     <MarketingPageLayout signedIn={signedIn}>
       <SeoHead
-        title="Pricing — Social0"
-        description="Simple Social0 pricing. Start free, then upgrade to Starter, Growth, or Pro. Every plan includes REST API, MCP, and CLI. Compare every feature side by side."
+        title={`Social0 Pricing: Free, ${PLAN_NAMES.creator} $29.90, ${PLAN_NAMES.agency} $59.90`}
+        description={`Start free with 3 accounts. ${PLAN_NAMES.creator} $29.90/mo for 15 accounts, ${PLAN_NAMES.agency} $59.90/mo for 59 (+$1 per extra). Unlimited posts, API, MCP and CLI on every plan.`}
         path="/pricing"
         canonical={absoluteUrl("/pricing")}
         keywords={[
@@ -43,7 +45,6 @@ export default function PricingPage() {
         interval={interval}
         onIntervalChange={setInterval}
         headingAs="h1"
-        wide
       />
       <PricingComparisonTable interval={interval} signedIn={signedIn} />
       <PricingFaq />

@@ -1,1136 +1,2163 @@
-import { useNavigate } from "react-router-dom";
-import { useState, useCallback, useRef, useEffect } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  ImagePlus,
-  FileText,
-  Plus,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-} from "lucide-react";
-import Link from "@/components/AppLink";
-import {
-  setComposerPayload,
-  type ComposerMediaItem,
-} from "@/lib/composer-bridge";
-import { useDashboardPath } from "@/lib/dashboard-base-path";
-import {
-  measureVideoAspectRatio,
-  getAspectRatioGuidance,
-  captureVideoPoster,
-  NON_STANDARD_VIDEO_ASPECT_GUIDANCE,
-  type AspectRatioGuidance,
-} from "@/lib/video-aspect-ratio";
-import {
-  getVideoDuration,
-  MAX_VIDEO_DURATION_SECONDS,
-  VIDEO_DURATION_MESSAGE,
-} from "@/lib/video-duration";
-import { cn } from "@/lib/utils";
-import { AspectRatioGuidanceBanner } from "@/components/AspectRatioGuidanceBanner";
-import { shouldAutoFocusOnMount } from "@/lib/touch";
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
+import { useBlocker, useNavigate, type BlockerFunction } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { usePostHog } from "@posthog/react";
 import { toast } from "sonner";
 import {
-  CLIENT_MAX_VIDEO_UPLOAD_BYTES,
-  CLIENT_MAX_VIDEO_UPLOAD_LABEL,
-} from "@/lib/media-limits";
+  AlertTriangle,
+  Expand,
+  ImagePlus,
+  Info,
+  ListPlus,
+  Loader2,
+  PanelRightOpen,
+  Upload,
+  X,
+} from "lucide-react";
+import Link from "@/components/AppLink";
+import { AutoResizeTextarea } from "@/components/ui/AutoResizeTextarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  EmptyState,
+  ErrorState,
+  shortcutLabel,
+  useDashboardBasePath,
+  useDashboardPath,
+  type ComposerOpenOptions,
+} from "@/components/app";
+import {
+  deleteDraft,
+  getDraft,
+  getPostToEdit,
+  getScheduledPost,
+  updateDraft,
+} from "@/api/posts";
+import { useIsGuest } from "@/lib/use-is-guest";
+import { useSession } from "@/lib/auth-client";
+import { signInUrl } from "@/lib/sign-in-url";
+import { loadDashboardLayoutData } from "@/api/dashboard-data";
+import {
+  REMEMBERED_ACCOUNT_KEYS,
+  useRememberedAccounts,
+} from "@/lib/remembered-accounts";
+import { useRememberedAutoRepostAutoPlug } from "@/lib/remembered-autorepost-autoplug";
+import { getRememberedBoard, getRememberedLink } from "@/lib/pinterest-remembered";
+import { freePublishBlockReason } from "@/lib/free-tier-publish";
+import { useLimitModal } from "@/components/billing/use-limit-modal";
+import { getPlanLimits } from "@/lib/plans";
+import { shouldAutoFocusOnMount } from "@/lib/touch";
+import { cn } from "@/lib/utils";
+import { runSubmit } from "@/features/dashboard/publish/run-submit";
+import { heldQueueTimes, useTrayJobs } from "@/features/dashboard/publish/publish-store";
+import { useIsDesktop } from "@/features/dashboard/inbox/use-is-desktop";
+import { AccountPicker } from "./AccountPicker";
+import {
+  clearLocalDraft,
+  clearPendingRestore,
+  getPendingRestore,
+  hasContent,
+  loadLocalDraft,
+  newerScope,
+  saveLocalDraft,
+  setPendingRestore,
+  type HandOffSlots,
+} from "./autosave";
+import { detectContentType } from "./content-type";
+import {
+  cropImage,
+  intakeFiles,
+  localId,
+  posterFor,
+  revokeMedia,
+} from "./media-intake";
+import { MediaTray } from "./MediaTray";
+import { NetworkStrip } from "./NetworkStrip";
+import {
+  buildMetadata,
+  contentFor,
+  draftFromPost,
+  emptyDraft,
+  publishableParts,
+  withPinterestDefaults,
+} from "./payload";
+import { Popover } from "./Popover";
+import { PreviewRail } from "./PreviewRail";
+import { THREAD_MAX_MEDIA_PER_POST, validateComposer } from "./rules";
+import { SchedulePanel } from "./SchedulePanel";
+import { SettingsPills } from "./SettingsPills";
+import { SplitButton, type SplitMenuItem } from "./SplitButton";
+import { ThreadEditor } from "./ThreadEditor";
+import { formatShortTime, safeTimezone } from "./nl-time";
+import {
+  useBestTimeHistory,
+  useComposerAccounts,
+  useComposerSettings,
+  useNextSlot,
+} from "./use-composer-data";
+import { bestTimeFromPublications } from "./best-time";
+import type {
+  ComposerAccount,
+  ComposerContentType,
+  ComposerDraft,
+  ComposerFix,
+  ComposerIssue,
+  ComposerMode,
+  ComposerPart,
+  SettingKey,
+  SubmitAction,
+} from "./types";
 
-const THREAD_MAX_MEDIA_PER_POST = 4;
+export type ComposerProps = {
+  variant: "page" | "modal";
+  mode: ComposerMode;
+  /** Prefill from `openComposer()` / `/new?text=&at=&accounts=&intent=`. */
+  prefill?: ComposerOpenOptions;
+  /** Old `/create/threads`: start with a second post. */
+  startAsThread?: boolean;
+  /** Called after a submit (modal closes; page navigates). */
+  onDone: () => void;
+  /** Modal only: close without submitting. */
+  onClose?: () => void;
+  /** Modal only: continue in the full-page composer. */
+  onExpand?: (draft: ComposerDraft, slots: HandOffSlots) => void;
+};
 
-const EASE_OUT: [number, number, number, number] = [0.23, 1, 0.32, 1];
+type SaveState = "idle" | "saving" | "saved" | "local" | "error" | "pending";
 
-/** Play icon: dark circle + white triangle, bottom-right (matches typical video thumb UI). */
-function VideoPlayBadge({ compact }: { compact?: boolean }) {
-  return (
-    <div
-      className={`pointer-events-none absolute flex items-center justify-center rounded-full bg-black/60 text-white shadow-sm ${
-        compact ? "bottom-0.5 right-0.5 h-6 w-6" : "bottom-1 right-1 h-7 w-7"
-      }`}
-      role="img"
-      aria-label="Video"
-    >
-      <svg
-        viewBox="0 0 24 24"
-        className={`fill-current ${
-          compact ? "h-3 w-3 translate-x-[1.5px]" : "h-4 w-4 translate-x-px"
-        }`}
-        aria-hidden
-      >
-        <path d="M8 5v14l11-7z" />
-      </svg>
-    </div>
-  );
+const PREVIEW_PREF_KEY = "social0-composer-preview-collapsed";
+
+function readPreviewPref(): boolean {
+  try {
+    return localStorage.getItem(PREVIEW_PREF_KEY) === "1";
+  } catch {
+    return false;
+  }
 }
 
-function hasFileDrag(e: React.DragEvent): boolean {
+function goToSignIn(): void {
+  window.location.assign(signInUrl(window.location.pathname + window.location.search));
+}
+
+function isPast(d: Date): boolean {
+  return d.getTime() <= Date.now();
+}
+
+function hasFiles(e: DragEvent): boolean {
   return [...e.dataTransfer.types].includes("Files");
 }
 
-type ThreadSlot = {
-  id: string;
-  text: string;
-  media: (ComposerMediaItem & { id: string })[];
-};
+function clipboardFiles(e: ClipboardEvent<HTMLTextAreaElement>): File[] {
+  const out: File[] = [];
+  for (const item of Array.from(e.clipboardData?.items ?? [])) {
+    if (item.kind !== "file") continue;
+    const f = item.getAsFile();
+    if (f && (f.type.startsWith("image/") || f.type.startsWith("video/"))) out.push(f);
+  }
+  return out;
+}
+
+/** Per-account captions minus the ones for `network`'s accounts. */
+function withoutNetworkCaptions(
+  captions: Record<string, string> | undefined,
+  accounts: readonly { id: string; platform: string }[],
+  network: string,
+): Record<string, string> | undefined {
+  if (!captions) return captions;
+  const next = { ...captions };
+  for (const a of accounts) if (a.platform === network) delete next[a.id];
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+/** Time and accounts a prefill asks for (calendar slot, "post to X"). */
+function prefillTarget(
+  prefill: ComposerOpenOptions | undefined,
+): Pick<ComposerDraft, "scheduledAt" | "queueSlotId"> & { accountIds: string[] | null } {
+  const at = prefill?.scheduledAt ? new Date(prefill.scheduledAt) : null;
+  const futureAt =
+    at && !Number.isNaN(at.getTime()) && at.getTime() > Date.now() ? at.toISOString() : null;
+  return {
+    accountIds: prefill?.accounts?.length ? prefill.accounts : null,
+    scheduledAt: futureAt,
+    queueSlotId: futureAt ? (prefill?.queueSlotId ?? null) : null,
+  };
+}
+
+/** A new, empty composer with the prefill's text, time and accounts applied. */
+function freshDraft(props: ComposerProps): ComposerDraft {
+  const base = emptyDraft();
+  const p = props.prefill;
+  const target = prefillTarget(p);
+  const draft: ComposerDraft = {
+    ...base,
+    parts: [{ id: base.parts[0]!.id, text: p?.text ?? "", media: [] }],
+    accountIds: target.accountIds ?? [],
+    scheduledAt: target.scheduledAt,
+    queueSlotId: target.queueSlotId,
+  };
+  const prefilled = !!(p?.text || p?.files?.length || target.accountIds || p?.scheduledAt);
+  if (!prefilled && props.startAsThread) {
+    return { ...draft, parts: [...draft.parts, { id: localId("p"), text: "", media: [] }] };
+  }
+  return draft;
+}
 
 /**
- * Quick composer / bridge into create flows. No account picker here yet.
- * If Remember is added, use `REMEMBERED_ACCOUNT_KEYS.composer` → `remembered-accounts-composer`.
- * @see REMEMBERED_ACCOUNT_KEYS in `@/lib/remembered-accounts`
+ * Which saved post a new composer keeps aside instead of overwriting it:
+ * - null: none. This post saves to the main slot.
+ * - "main": an older unsent post is in the main slot. This post saves to the
+ *   newer slot (`newerScope`) until the person opens or discards the older one.
+ * - "newer": both slots hold other posts. This post isn't saved until the
+ *   person opens or discards the one in the newer slot.
  */
-export function Composer() {
+type OlderSlot = null | "main" | "newer";
+
+/** Where a post goes, given which slots already hold other posts. */
+function olderSlot(mainTaken: boolean, newerTaken: boolean): OlderSlot {
+  if (!mainTaken) return null;
+  return newerTaken ? "newer" : "main";
+}
+
+function savedContent(scope: string): ComposerDraft | null {
+  const saved = loadLocalDraft(scope);
+  return saved && hasContent(saved.draft) ? saved.draft : null;
+}
+
+/**
+ * Seed for a brand-new composer: hand-off > local autosave (with a
+ * calendar slot / account prefill applied on top) > prefill.
+ *
+ * A prefill that brings its own text or files starts from that content, and
+ * so does a hand-off. An unsent post already saved on this device stays
+ * saved (`older`) until the person opens or discards it, so the new content
+ * doesn't overwrite it.
+ */
+function initialDraft(
+  props: ComposerProps,
+  scope: string,
+): { draft: ComposerDraft; restoredLocal: boolean; older: OlderSlot; ownsNewer: boolean } {
+  const pending = getPendingRestore();
+  if (props.mode.kind !== "new") {
+    return { draft: pending?.draft ?? emptyDraft(), restoredLocal: false, older: null, ownsNewer: false };
+  }
+
+  const main = savedContent(scope);
+  const newer = savedContent(newerScope(scope));
+  if (pending) {
+    // "Open full page" says where the modal was saving this post. A reopened
+    // post (sent, then failed) was cleared when it was sent, so any saved
+    // post is another one.
+    const ownsNewer = pending.slots?.ownsNewer ?? false;
+    const mainTaken = !!main && (pending.slots?.keepsOlder ?? true);
+    return {
+      draft: pending.draft,
+      restoredLocal: false,
+      older: olderSlot(mainTaken, !!newer && !ownsNewer),
+      ownsNewer,
+    };
+  }
+
+  const p = props.prefill;
+  if (p?.text || p?.files?.length) {
+    return { draft: freshDraft(props), restoredLocal: false, older: olderSlot(!!main, !!newer), ownsNewer: false };
+  }
+  // A post written while an older one was kept aside wins: it is the latest.
+  const saved = newer ?? main;
+  if (saved) {
+    const target = prefillTarget(p);
+    return {
+      draft: {
+        ...saved,
+        accountIds: target.accountIds ?? saved.accountIds,
+        scheduledAt: target.scheduledAt,
+        queueSlotId: target.queueSlotId,
+      },
+      restoredLocal: true,
+      older: newer && main ? "main" : null,
+      ownsNewer: !!newer,
+    };
+  }
+  return { draft: freshDraft(props), restoredLocal: false, older: null, ownsNewer: false };
+}
+
+/** Files added in this composer that the server doesn't have yet. */
+function hasNewFiles(draft: ComposerDraft): boolean {
+  return draft.parts.some((p) => p.media.some((m) => !m.existingId));
+}
+
+/**
+ * What autosave stores for an existing draft: everything but the files added
+ * here, which upload only on an explicit save. The server keeps the draft's
+ * media and the new files stay in the composer, pending. Null when the draft
+ * can't be saved as it stands.
+ */
+function draftAutosavePayload(
+  draft: ComposerDraft,
+  accounts: readonly ComposerAccount[],
+): { content: string; mediaIds: string[]; metadata: Record<string, unknown> } | null {
+  const kept: ComposerDraft = {
+    ...draft,
+    parts: draft.parts.map((p) => ({ ...p, media: p.media.filter((m) => !!m.existingId) })),
+  };
+  const type = detectContentType(kept.parts, kept.initialContentType);
+  const content = contentFor(kept, type);
+  if (!content || draft.accountIds.length === 0) return null;
+  // updatePost replaces posts.metadata, and per-network settings are built
+  // per account: with any selected account missing (accounts failed to
+  // load, or it was disconnected) the save would drop its settings.
+  const accs = accounts.filter((a) => draft.accountIds.includes(a.id));
+  if (accs.length !== draft.accountIds.length) return null;
+  const partMediaIds = publishableParts(kept).map((p) =>
+    p.media.map((m) => m.existingId).filter((id): id is string => !!id),
+  );
+  return {
+    content,
+    mediaIds: partMediaIds.flat(),
+    metadata: buildMetadata({ draft: kept, type, accounts: accs, partMediaIds, action: "draft" }),
+  };
+}
+
+/**
+ * One-screen composer (mock 03·A + 04·A): accounts, caption with
+ * per-network overrides, media with ratio fixes, threads, network setting
+ * pills, preview rail, autosave, and the split publish button. Used as a
+ * full page (`/new`) and as a modal from anywhere.
+ */
+export function Composer(props: ComposerProps) {
+  const { variant, mode } = props;
   const navigate = useNavigate();
   const dash = useDashboardPath();
-  const reduceMotion = useReducedMotion();
-  const motionDuration = reduceMotion ? 0.12 : 0.2;
-  const [text, setText] = useState("");
-  const [media, setMedia] = useState<(ComposerMediaItem & { id: string })[]>(
-    [],
-  );
-  const [isThread, setIsThread] = useState(false);
-  const [threadSlots, setThreadSlots] = useState<ThreadSlot[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [threadDragged, setThreadDragged] = useState<{
-    slotId: string;
-    index: number;
-  } | null>(null);
-  const [scrollArrows, setScrollArrows] = useState({
-    left: false,
-    right: false,
+  const basePath = useDashboardBasePath();
+  const queryClient = useQueryClient();
+  const posthog = usePostHog();
+  const isGuest = useIsGuest();
+  const { data: session, isPending: sessionPending } = useSession();
+  // Same query as the layout (role gates); read here so a failure can retry.
+  const layout = useQuery({
+    queryKey: ["dashboard-layout"],
+    queryFn: loadDashboardLayoutData,
+    enabled: !!session,
+    staleTime: 60_000,
   });
-  const [aspectGuidanceByMediaId, setAspectGuidanceByMediaId] = useState<
-    Record<string, AspectRatioGuidance>
-  >({});
-  const [isFileDragOver, setIsFileDragOver] = useState(false);
-  const mediaStripRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const threadTextareaRefs = useRef<Record<string, HTMLTextAreaElement>>({});
+  const perms = {
+    ready: layout.isSuccess,
+    canCreatePosts: layout.data?.canCreatePosts ?? false,
+  };
+  const settings = useComposerSettings();
+  const signedIn = !!session;
+  const { accounts, isLoading: accountsLoading, isError: accountsError, refetch: refetchAccounts, canManageConnections } =
+    useComposerAccounts(signedIn);
+  // Slots taken by queued posts still uploading (the server can't see them yet).
+  const trayJobs = useTrayJobs();
+  const heldSlots = useMemo(() => heldQueueTimes(trayJobs), [trayJobs]);
+  const nextSlotQ = useNextSlot(signedIn && perms.canCreatePosts, heldSlots);
+  const nextSlot = nextSlotQ.data ?? null;
 
-  const MAX_TEXTAREA_HEIGHT_PX = 600;
-  const MAX_THREAD_TEXTAREA_HEIGHT_PX = 200;
-
-  const autoResizeTextarea = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT_PX) + "px";
-  }, []);
-
-  // Composer is the default dashboard home, so this runs on every mobile
-  // app open. Claiming focus there throws up the keyboard over half the
-  // screen before the user has seen the page — see lib/touch.ts. Desktop
-  // keeps the ready-to-type cursor.
-  useEffect(() => {
-    if (!shouldAutoFocusOnMount()) return;
-    textareaRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    autoResizeTextarea();
-  }, [text, autoResizeTextarea]);
-
-  const resizeThreadSlotTextarea = useCallback(
-    (el: HTMLTextAreaElement | null) => {
-      if (!el) return;
-      el.style.height = "auto";
-      el.style.height =
-        Math.min(el.scrollHeight, MAX_THREAD_TEXTAREA_HEIGHT_PX) + "px";
+  const scope = `composer:${basePath}`;
+  const [init] = useState(() => initialDraft(props, scope));
+  const [{ draft, restoredLocal }, setState] = useState(() => ({
+    draft: init.draft,
+    restoredLocal: init.restoredLocal,
+  }));
+  // An older unsent post this composer must not overwrite (see OlderSlot).
+  const [older, setOlder] = useState<OlderSlot>(init.older);
+  const newerKey = newerScope(scope);
+  // This post is the one saved in the newer slot.
+  const ownsNewerRef = useRef(init.ownsNewer);
+  const [rev, setRev] = useState(0);
+  const setDraft = useCallback(
+    (next: ComposerDraft | ((d: ComposerDraft) => ComposerDraft), userEdit = true) => {
+      setState((s) => ({
+        ...s,
+        draft: typeof next === "function" ? next(s.draft) : next,
+      }));
+      if (userEdit) setRev((r) => r + 1);
     },
     [],
   );
-
+  const update = useCallback(
+    (patch: Partial<ComposerDraft> | ((d: ComposerDraft) => Partial<ComposerDraft>)) =>
+      setDraft((d) => ({ ...d, ...(typeof patch === "function" ? patch(d) : patch) })),
+    [setDraft],
+  );
+  // Latest draft for async handlers (file intake) that must not use stale state.
+  const draftRef = useRef(draft);
   useEffect(() => {
-    threadSlots.forEach((slot) => {
-      const el = threadTextareaRefs.current[slot.id];
-      if (el) resizeThreadSlotTextarea(el);
-    });
-  }, [threadSlots, resizeThreadSlotTextarea]);
+    draftRef.current = draft;
+  }, [draft]);
 
-  const updateScrollArrows = useCallback(() => {
-    const el = mediaStripRef.current;
-    if (!el) {
-      setScrollArrows({ left: false, right: false });
-      return;
-    }
-    const { scrollLeft, scrollWidth, clientWidth } = el;
-    setScrollArrows({
-      left: scrollLeft > 2,
-      right: scrollLeft < scrollWidth - clientWidth - 2,
-    });
+  // The hand-off is read once, then cleared.
+  useEffect(() => {
+    clearPendingRestore(draft);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ---- load the post being edited ------------------------------------------
+  const [restoredFromHandOff] = useState(() => getPendingRestore() != null);
+  const [loadState, setLoadState] = useState<"idle" | "loading" | "error">(
+    mode.kind === "new" || restoredFromHandOff ? "idle" : "loading",
+  );
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadNonce, setLoadNonce] = useState(0);
   useEffect(() => {
-    const el = mediaStripRef.current;
-    if (!el) return;
-    updateScrollArrows();
-    const ro = new ResizeObserver(updateScrollArrows);
-    ro.observe(el);
-    el.addEventListener("scroll", updateScrollArrows);
+    if (mode.kind === "new" || restoredFromHandOff) return;
+    // Per-network settings (TikTok, Pinterest, captions) are restored per
+    // account, so wait for the accounts: a draft loaded without them would
+    // come back without those settings, and autosave would drop them.
+    if (!signedIn || accountsLoading || accountsError) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res =
+          mode.kind === "draft"
+            ? await getDraft(mode.postId).then((r) => (r.success ? { ok: true as const, post: { ...r.draft, queueSlotId: null } } : { ok: false as const, error: r.error }))
+            : mode.kind === "scheduled"
+              ? await getScheduledPost(mode.postId).then((r) => (r.success ? { ok: true as const, post: r.post } : { ok: false as const, error: r.error }))
+              : await getPostToEdit(mode.postId).then((r) => (r.success ? { ok: true as const, post: r.post } : { ok: false as const, error: r.error }));
+        if (cancelled) return;
+        if (!res.ok) {
+          setLoadError(res.error);
+          setLoadState("error");
+          return;
+        }
+        const fromPost = draftFromPost({ ...res.post, id: mode.postId }, accounts, {
+          keepSchedule: mode.kind !== "edit",
+        });
+        // "Edit for <network>" on one failed delivery (`?edit=<id>&accounts=<id>`):
+        // post again to that account only, never to the ones already live.
+        const only = mode.kind === "edit" ? props.prefill?.accounts : undefined;
+        const loaded = only?.length
+          ? { ...fromPost, accountIds: fromPost.accountIds.filter((id) => only.includes(id)) }
+          : fromPost;
+        setDraft({ ...loaded, pinterest: withPinterestDefaults(loaded, accounts) }, false);
+        setLoadState("idle");
+      } catch {
+        if (cancelled) return;
+        setLoadError(null);
+        setLoadState("error");
+      }
+    })();
     return () => {
-      ro.disconnect();
-      el.removeEventListener("scroll", updateScrollArrows);
+      cancelled = true;
     };
-  }, [media.length, updateScrollArrows]);
+    // accounts identity changes on refetch; load once per post / retry.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode.kind, "postId" in mode ? mode.postId : null, signedIn, accountsLoading, accountsError, loadNonce]);
 
-  const scrollMediaStrip = (dir: "left" | "right") => {
-    const el = mediaStripRef.current;
-    if (!el) return;
-    const step = 100;
-    el.scrollBy({ left: dir === "left" ? -step : step, behavior: "smooth" });
-  };
-
-  const handleMediaDragStart = (index: number) => {
-    setDraggedIndex(index);
-  };
-
-  const handleMediaDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (draggedIndex === null || draggedIndex === index) return;
-    setMedia((prev) => {
-      const next = [...prev];
-      const [item] = next.splice(draggedIndex, 1);
-      next.splice(index, 0, item);
-      return next;
-    });
-    setDraggedIndex(index);
-  };
-
-  const handleMediaDragEnd = () => {
-    setDraggedIndex(null);
-  };
-
-  const handleThreadSlotMediaDragStart = (slotId: string, index: number) => {
-    setThreadDragged({ slotId, index });
-  };
-
-  const handleThreadSlotMediaDragOver = (
-    slotId: string,
-    index: number,
-    e: React.DragEvent,
-  ) => {
-    e.preventDefault();
-    if (
-      !threadDragged ||
-      threadDragged.slotId !== slotId ||
-      threadDragged.index === index
-    )
+  // ---- remembered accounts + automations -----------------------------------
+  const remembered = useRememberedAccounts(REMEMBERED_ACCOUNT_KEYS.composer);
+  const legacyRemembered = useRememberedAccounts(REMEMBERED_ACCOUNT_KEYS.textPost);
+  const appliedRemember = useRef(false);
+  useEffect(() => {
+    if (appliedRemember.current || !signedIn || accountsLoading || accountsError) return;
+    if (mode.kind !== "new") return;
+    appliedRemember.current = true;
+    const valid = new Set(accounts.filter((a) => !a.tokenExpired).map((a) => a.id));
+    if (draft.accountIds.length > 0) {
+      // Prefilled / restored ids: drop ones not in this workspace or expired.
+      const kept = draft.accountIds.filter((id) => valid.has(id));
+      if (kept.length !== draft.accountIds.length) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setDraft((d) => ({ ...d, accountIds: kept }), false);
+      }
       return;
-    setThreadSlots((prev) =>
-      prev.map((s) => {
-        if (s.id !== slotId) return s;
-        const next = [...s.media];
-        const [item] = next.splice(threadDragged.index, 1);
-        next.splice(index, 0, item);
-        return { ...s, media: next };
+    }
+    let ids = remembered.getInitialSelectedIds(valid);
+    if (ids.size === 0 && !remembered.remember) ids = legacyRemembered.getInitialSelectedIds(valid);
+    // Remembered selection lives in localStorage and applies once accounts load.
+    if (ids.size > 0) setDraft((d) => ({ ...d, accountIds: [...ids] }), false);
+  }, [signedIn, accountsLoading, accountsError, accounts, mode.kind, draft.accountIds, remembered, legacyRemembered, setDraft]);
+  useEffect(() => {
+    if (!appliedRemember.current || !remembered.remember) return;
+    remembered.persistSelection(new Set(draft.accountIds));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.accountIds, remembered.remember]);
+
+  const autoRemember = useRememberedAutoRepostAutoPlug();
+  const selected = useMemo(
+    () => accounts.filter((a) => draft.accountIds.includes(a.id)),
+    [accounts, draft.accountIds],
+  );
+  const hasX = selected.some((a) => a.platform === "twitter_x");
+  const restoredAutoRef = useRef(false);
+  useEffect(() => {
+    if (!hasX) {
+      restoredAutoRef.current = false;
+      return;
+    }
+    if (!autoRemember.remember || restoredAutoRef.current || mode.kind !== "new") return;
+    restoredAutoRef.current = true;
+    const { autoRepostConfig, autoPlugConfig } = autoRemember.getInitialState();
+    setDraft(
+      (d) => ({
+        ...d,
+        autoRepost: d.autoRepost ?? (settings.allowAutoRepost ? autoRepostConfig : null),
+        autoPlug: d.autoPlug ?? (settings.allowAutoPlug ? autoPlugConfig : null),
       }),
+      false,
     );
-    setThreadDragged((p) => (p ? { ...p, index } : null));
-  };
+  }, [hasX, autoRemember, mode.kind, settings.allowAutoPlug, settings.allowAutoRepost, setDraft]);
+  useEffect(() => {
+    if (!autoRemember.remember || !hasX) return;
+    autoRemember.persistAutoRepost(!!draft.autoRepost, draft.autoRepost);
+    autoRemember.persistAutoPlug(!!draft.autoPlug, draft.autoPlug);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.autoRepost, draft.autoPlug, autoRemember.remember, hasX]);
 
-  const handleThreadSlotMediaDragEnd = () => {
-    setThreadDragged(null);
-  };
+  // Pinterest: saved default board, then the board remembered on this device.
+  useEffect(() => {
+    const pins = selected.filter((a) => a.platform === "pinterest");
+    if (pins.length === 0) return;
+    let next = withPinterestDefaults(draft, pins);
+    for (const a of pins) {
+      if (next[a.id]?.boardId) continue;
+      const board = getRememberedBoard(a.id);
+      if (!board) continue;
+      next = {
+        ...next,
+        [a.id]: {
+          boardId: board,
+          title: next[a.id]?.title ?? "",
+          link: next[a.id]?.link || getRememberedLink(a.id) || "",
+          rememberBoard: true,
+          rememberLink: !!getRememberedLink(a.id),
+        },
+      };
+    }
+    // Saved boards come from account metadata / this device; fill them in once.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (next !== draft.pinterest) setDraft((d) => ({ ...d, pinterest: next }), false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
 
-  const handleFiles = useCallback(
-    (files: FileList | null) => {
-      if (!files || files.length === 0) return;
-      const fileList = Array.from(files);
+  // ---- derived -------------------------------------------------------------
+  const type: ComposerContentType = detectContentType(draft.parts, draft.initialContentType);
+  const isThread = type === "threads";
+  const [tiktokMaxDuration, setTiktokMaxDuration] = useState<Record<string, number>>({});
+  const validation = useMemo(
+    () => validateComposer({ draft, accounts, contentType: type, tiktokMaxDuration }),
+    [draft, accounts, type, tiktokMaxDuration],
+  );
+  const tz = safeTimezone(draft.timezoneOverride ?? settings.timezone);
+  const pickedAt = useMemo(
+    () => (draft.scheduledAt ? new Date(draft.scheduledAt) : null),
+    [draft.scheduledAt],
+  );
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  const pickedPast = !!pickedAt && pickedAt.getTime() <= now;
+  const slotAt = nextSlot ? new Date(nextSlot.scheduledAt) : null;
 
-      const imageFiles: File[] = [];
-      const videoFiles: File[] = [];
-      fileList.forEach((file) => {
-        const mime = file.type;
-        if (mime.startsWith("image/")) imageFiles.push(file);
-        else if (mime.startsWith("video/")) videoFiles.push(file);
+  const publishBlockedReason = isGuest
+    ? "Sign in to post."
+    : freePublishBlockReason(settings.tier, settings.freePostsUsed, "now");
+  // Free posts used up: the plan-limit moment (drafts still save).
+  const { openLimit, limitModal } = useLimitModal();
+  const openFreePostsLimit = () => openLimit("free_posts", { currentTier: settings.tier });
+  // A post that is already scheduled was charged when it was first scheduled,
+  // so rescheduling it or publishing it now is free (updatePostInScope only
+  // charges drafts). Guests are blocked from everything but drafts.
+  const freeLimitBlocks = (action: SubmitAction): boolean =>
+    action !== "draft" && !!publishBlockedReason && (isGuest || mode.kind !== "scheduled");
+
+  // Home's "Publish now…" opens on Publish now even when a queue exists;
+  // "Add to queue" in the split menu switches back.
+  const [preferNow, setPreferNow] = useState(
+    () => mode.kind === "new" && props.prefill?.intent === "now",
+  );
+  const queueOpen = !!slotAt && slotAt.getTime() > now;
+  const primaryAction: Exclude<SubmitAction, "draft"> = pickedAt
+    ? "schedule"
+    : queueOpen && !preferNow
+      ? "queue"
+      : "now";
+
+  const allIssues: ComposerIssue[] = useMemo(() => {
+    const list = [...validation.issues];
+    if (pickedPast) {
+      list.push({
+        id: "past",
+        message: "The time you picked has passed. Pick a new time.",
+        accountIds: [],
+        fix: { kind: "schedule", label: "Pick a time" },
       });
+    }
+    if (publishBlockedReason && !isGuest) {
+      list.push({
+        id: "free-limit",
+        message: publishBlockedReason,
+        accountIds: [],
+        fix: { kind: "upgrade", label: "See plans" },
+      });
+    }
+    return list;
+  }, [validation.issues, pickedPast, publishBlockedReason, isGuest]);
+  // What blocks a given action. "Time has passed" only matters when scheduling
+  // for the picked time: publish now ignores it, and a fresh time from the
+  // schedule popover replaces it. The free-post limit only blocks actions
+  // that charge (see freeLimitBlocks).
+  const issuesFor = (action: SubmitAction, freshTime = false): ComposerIssue[] =>
+    allIssues.filter(
+      (i) =>
+        (i.id !== "past" || (action === "schedule" && !freshTime)) &&
+        (i.id !== "free-limit" || freeLimitBlocks(action)),
+    );
+  const okCount = validation.okAccountIds.length;
 
-      const imageItems: (ComposerMediaItem & { id: string })[] = imageFiles.map(
-        (file) => ({
-          id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
-          type: "image" as const,
-          file,
-          previewUrl: URL.createObjectURL(file),
-        }),
-      );
+  // Problems stay out of sight until there is something to check: an empty
+  // composer reads neutral. They show once text or media exists, or after a
+  // submit attempt.
+  const [attempted, setAttempted] = useState(false);
+  const showIssues = attempted || hasContent(draft);
+  const visibleIssues = useMemo(
+    () => (showIssues ? validation.issues : []),
+    [showIssues, validation.issues],
+  );
 
-      if (imageItems.length > 0) {
-        setMedia((prev) => {
-          const maxNew = isThread
-            ? THREAD_MAX_MEDIA_PER_POST - prev.length
-            : imageItems.length;
-          if (maxNew <= 0) return prev;
-          const toAdd = imageItems.slice(0, maxNew);
-          return [...prev, ...toAdd];
-        });
-      }
+  const settingsNeedingAttention = useMemo(() => {
+    const s = new Set<SettingKey>();
+    for (const i of visibleIssues) {
+      if (i.fix?.kind === "open-setting") s.add(i.fix.setting);
+    }
+    return s;
+  }, [visibleIssues]);
 
-      const overSizeVideos = videoFiles.filter(
-        (f) => f.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES,
-      );
-      if (overSizeVideos.length > 0) {
-        toast.error(
-          `Video too large. Max upload size is ${CLIENT_MAX_VIDEO_UPLOAD_LABEL}. ${overSizeVideos.length} file(s) skipped.`,
+  const problemsByAccount = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const i of visibleIssues) for (const id of i.accountIds) out[id] ??= i.message;
+    return out;
+  }, [visibleIssues]);
+
+  // ---- autosave --------------------------------------------------------------
+  const submittedRef = useRef(false);
+  // Mirrors submittedRef for rendering: the page composer stays mounted until
+  // the route change lands, and must not take a second submit meanwhile.
+  const [submitted, setSubmitted] = useState(false);
+  const autosaveInFlight = useRef<Promise<unknown> | null>(null);
+  const [serverSave, setServerSave] = useState<{
+    status: "idle" | "saving" | "saved" | "error";
+    rev: number;
+  }>({ status: "idle", rev: 0 });
+  // The save waiting on the debounce timer. Unmounting (closing the modal,
+  // leaving the page) or hiding the tab runs it instead of dropping the
+  // last edits.
+  const pendingSaveRef = useRef<(() => void) | null>(null);
+  const draftAutosave = useMemo(
+    () => (mode.kind === "draft" ? draftAutosavePayload(draft, accounts) : null),
+    [mode.kind, draft, accounts],
+  );
+  const newFiles = hasNewFiles(draft);
+  useEffect(() => {
+    pendingSaveRef.current = null;
+    if (rev === 0 || submittedRef.current) return;
+    if (mode.kind === "new") {
+      // Both slots hold other posts: nowhere to save until the person picks.
+      if (older === "newer") return;
+      // Don't overwrite an older unsent post: save next to it.
+      const keepAside = older === "main";
+      const saveLocal = () => {
+        pendingSaveRef.current = null;
+        if (submittedRef.current) return;
+        if (keepAside) {
+          saveLocalDraft(newerKey, draftRef.current);
+          ownsNewerRef.current = true;
+          return;
+        }
+        saveLocalDraft(scope, draftRef.current);
+        if (ownsNewerRef.current) {
+          clearLocalDraft(newerKey);
+          ownsNewerRef.current = false;
+        }
+      };
+      pendingSaveRef.current = saveLocal;
+      const t = setTimeout(saveLocal, 500);
+      return () => clearTimeout(t);
+    }
+    if (mode.kind !== "draft") return;
+    // Existing draft: save everything but new files to the server.
+    const payload = draftAutosave;
+    if (!payload) return;
+    const savingRev = rev;
+    const postId = mode.postId;
+    const accountIds = draft.accountIds;
+    const saveToServer = async () => {
+      pendingSaveRef.current = null;
+      if (submittedRef.current) return;
+      setServerSave({ status: "saving", rev: savingRev });
+      try {
+        const call = updateDraft(
+          postId,
+          payload.content,
+          accountIds,
+          payload.mediaIds,
+          payload.metadata,
         );
-      }
-      const allowedVideos = videoFiles.filter(
-        (f) => f.size <= CLIENT_MAX_VIDEO_UPLOAD_BYTES,
-      );
-      if (allowedVideos.length === 0) return;
-
-      Promise.all(
-        allowedVideos.map(async (file) => {
-          const [m, duration] = await Promise.all([
-            measureVideoAspectRatio(file),
-            getVideoDuration(file),
-          ]);
-          return { file, m, duration };
-        }),
-      ).then((rows) => {
-        const validItems: (ComposerMediaItem & { id: string })[] = [];
-        const videoGuidanceById: Record<string, AspectRatioGuidance> = {};
-        let anyOverDuration = false;
-        for (const row of rows) {
-          if (row.duration > MAX_VIDEO_DURATION_SECONDS) {
-            anyOverDuration = true;
-            continue;
+        autosaveInFlight.current = call.catch(() => undefined);
+        const r = await call;
+        if (submittedRef.current) return;
+        setServerSave({ status: r.success ? "saved" : "error", rev: savingRev });
+        if (r.success) {
+          // Every list that shows this draft's caption.
+          for (const queryKey of [
+            ["posts-page"],
+            ["dashboard-home"],
+            ["calendar-page"],
+            ["post-detail", postId],
+            ["command-palette"],
+          ]) {
+            void queryClient.invalidateQueries({ queryKey });
           }
-          const id = `${Date.now()}-${row.file.name}-${Math.random().toString(36).slice(2)}`;
-          const g = getAspectRatioGuidance(row.m.ratio);
-          if (g) videoGuidanceById[id] = g;
-          validItems.push({
-            id,
-            type: "video",
-            file: row.file,
-            previewUrl: URL.createObjectURL(row.file),
-          });
         }
-        if (anyOverDuration) toast.error(VIDEO_DURATION_MESSAGE);
-        if (validItems.length === 0) return;
-        setMedia((prev) => {
-          const maxNew = isThread
-            ? THREAD_MAX_MEDIA_PER_POST - prev.length
-            : validItems.length;
-          if (maxNew <= 0) return prev;
-          const n = Math.min(maxNew, validItems.length);
-          const toAdd = validItems.slice(0, n);
-          setAspectGuidanceByMediaId((gprev) => {
-            const next = { ...gprev };
-            for (const item of toAdd) {
-              const g = videoGuidanceById[item.id];
-              if (g) next[item.id] = g;
-            }
-            return next;
-          });
-          for (const item of toAdd) {
-            if (item.type !== "video") continue;
-            void captureVideoPoster(item.file).then((posterUrl) => {
-              if (!posterUrl) return;
-              setMedia((prev) =>
-                prev.map((m) => (m.id === item.id ? { ...m, posterUrl } : m)),
-              );
-            });
-          }
-          return [...prev, ...toAdd];
-        });
-      });
-    },
-    [isThread],
-  );
-
-  const handleComposerDragOver = useCallback((e: React.DragEvent) => {
-    if (!hasFileDrag(e)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-    setIsFileDragOver(true);
+      } catch {
+        if (!submittedRef.current) setServerSave({ status: "error", rev: savingRev });
+      }
+    };
+    pendingSaveRef.current = () => void saveToServer();
+    const t = setTimeout(() => void saveToServer(), 1500);
+    return () => clearTimeout(t);
+    // Runs per edit (rev); the values it reads are from that edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rev]);
+  useEffect(() => {
+    const flush = () => pendingSaveRef.current?.();
+    window.addEventListener("pagehide", flush);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      flush();
+    };
   }, []);
-
-  const handleComposerDragLeave = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
-      const related = e.relatedTarget as Node | null;
-      if (related && e.currentTarget.contains(related)) return;
-      setIsFileDragOver(false);
-    },
-    [],
-  );
-
-  const handleComposerDrop = useCallback(
-    (e: React.DragEvent) => {
-      if (!hasFileDrag(e)) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setIsFileDragOver(false);
-      handleFiles(e.dataTransfer.files);
-    },
-    [handleFiles],
-  );
-
-  const onPaste: React.ClipboardEventHandler<HTMLTextAreaElement> = (event) => {
-    const clipboardItems = event.clipboardData?.items;
-    if (!clipboardItems) return;
-
-    const files: File[] = [];
-    for (let i = 0; i < clipboardItems.length; i++) {
-      const item = clipboardItems[i];
-      if (item.kind === "file") {
-        const file = item.getAsFile();
-        if (file) {
-          files.push(file);
-        }
-      }
-    }
-
-    if (files.length) {
-      const fileList = {
-        ...files,
-        length: files.length,
-        item: (index: number) => files[index] ?? null,
-      } as unknown as FileList;
-      handleFiles(fileList);
+  // Forget this post's local save (sent, or started over). An older post
+  // kept aside stays saved.
+  const clearOwnLocal = () => {
+    pendingSaveRef.current = null;
+    if (older === null) clearLocalDraft(scope);
+    if (ownsNewerRef.current) {
+      clearLocalDraft(newerKey);
+      ownsNewerRef.current = false;
     }
   };
+  const saveState: SaveState = (() => {
+    if (mode.kind === "new") {
+      if (older === "newer") return rev > 0 ? "pending" : "idle";
+      return (rev > 0 || restoredLocal) && hasContent(draft) ? "local" : "idle";
+    }
+    if (mode.kind === "draft") {
+      if (serverSave.status === "saving") return "saving";
+      if (serverSave.rev === rev && serverSave.status === "error") return "error";
+      // Autosave leaves new files out: they wait for an explicit save.
+      if (newFiles) return "pending";
+      if (serverSave.rev === rev && serverSave.status === "saved") return "saved";
+    }
+    return rev > 0 ? "pending" : "idle";
+  })();
 
-  const addThreadSlot = useCallback(() => {
-    setThreadSlots((prev) => [
-      ...prev,
-      {
-        id: `slot-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        text: "",
-        media: [],
-      },
-    ]);
-  }, []);
+  // ---- leaving with unsaved work -----------------------------------------------
+  // What leaving now would lose. A new post saves on this device and a draft
+  // autosaves (a pending save runs on the way out), except new files, a
+  // draft autosave can't store as it stands (no caption or account) and one
+  // that failed. A scheduled post or "Post again" only saves on submit.
+  const unsavedOnLeave =
+    !submitted &&
+    rev > 0 &&
+    (mode.kind === "scheduled" ||
+      mode.kind === "edit" ||
+      (mode.kind === "draft" &&
+        (newFiles ||
+          !draftAutosave ||
+          (serverSave.rev === rev && serverSave.status === "error"))));
 
-  const removeThreadSlot = useCallback((slotId: string) => {
-    setThreadSlots((prev) => {
-      const slot = prev.find((s) => s.id === slotId);
-      if (slot) {
-        slot.media.forEach((m) => {
-          if (m.previewUrl.startsWith("blob:"))
-            URL.revokeObjectURL(m.previewUrl);
-        });
-        const mediaIds = slot.media.map((m) => m.id);
-        if (mediaIds.length > 0) {
-          setAspectGuidanceByMediaId((gprev) => {
-            const next = { ...gprev };
-            mediaIds.forEach((id) => {
-              delete next[id];
-            });
-            return next;
-          });
+  // ---- parts & media -----------------------------------------------------------
+  const setPart = useCallback(
+    (partId: string, fn: (p: ComposerPart) => ComposerPart) =>
+      setDraft((d) => ({ ...d, parts: d.parts.map((p) => (p.id === partId ? fn(p) : p)) })),
+    [setDraft],
+  );
+
+  const addFiles = useCallback(
+    async (partId: string, files: File[]) => {
+      if (files.length === 0) return;
+      const { items, errors } = await intakeFiles(files);
+      for (const e of errors) toast.error(e);
+      if (items.length === 0) return;
+      const current = draftRef.current;
+      const part = current.parts.find((p) => p.id === partId);
+      if (!part) {
+        revokeMedia(items);
+        return;
+      }
+      let add = items;
+      if (current.parts.length > 1) {
+        const room = Math.max(0, THREAD_MAX_MEDIA_PER_POST - part.media.length);
+        if (add.length > room) {
+          revokeMedia(add.slice(room));
+          toast.error(
+            `Each post in a thread takes up to ${THREAD_MAX_MEDIA_PER_POST} attachments. ${add.length - room} skipped.`,
+          );
+          add = add.slice(0, room);
         }
       }
-      return prev.filter((s) => s.id !== slotId);
+      if (add.length === 0) return;
+      setDraft((d) => ({
+        ...d,
+        parts: d.parts.map((p) => (p.id === partId ? { ...p, media: [...p.media, ...add] } : p)),
+      }));
+      for (const item of add) {
+        void posterFor(item).then((posterUrl) => {
+          if (!posterUrl) return;
+          setDraft(
+            (d) => ({
+              ...d,
+              parts: d.parts.map((p) => ({
+                ...p,
+                media: p.media.map((m) => (m.id === item.id ? { ...m, posterUrl } : m)),
+              })),
+            }),
+            false,
+          );
+        });
+      }
+    },
+    [setDraft],
+  );
+
+  // Files handed over by `openComposer({ files })` (Home quick-compose drop /
+  // paste): attach once, through the same intake checks as the media button.
+  const prefillFilesRef = useRef(mode.kind === "new" ? (props.prefill?.files ?? []) : []);
+  useEffect(() => {
+    const files = prefillFilesRef.current;
+    if (files.length === 0) return;
+    prefillFilesRef.current = [];
+    const first = draftRef.current.parts[0];
+    if (first) void addFiles(first.id, files);
+  }, [addFiles]);
+
+  const removeMedia = useCallback(
+    (partId: string, mediaId: string) => {
+      const gone = draftRef.current.parts
+        .find((p) => p.id === partId)
+        ?.media.filter((m) => m.id === mediaId);
+      setPart(partId, (p) => ({ ...p, media: p.media.filter((m) => m.id !== mediaId) }));
+      if (gone) revokeMedia(gone);
+    },
+    [setPart],
+  );
+
+  const moveMedia = useCallback(
+    (partId: string, from: number, to: number) =>
+      setPart(partId, (p) => {
+        const next = [...p.media];
+        const [item] = next.splice(from, 1);
+        if (!item) return p;
+        next.splice(to, 0, item);
+        return { ...p, media: next };
+      }),
+    [setPart],
+  );
+
+  const cropForInstagram = useCallback(
+    async (mediaId: string, ratio: number) => {
+      const part = draft.parts[0];
+      const item = part?.media.find((m) => m.id === mediaId);
+      if (!part || !item) return;
+      const cropped = await cropImage(item, ratio);
+      if (!cropped) {
+        toast.error("Couldn't crop that image here. Crop it in an editor and add it again.");
+        return;
+      }
+      setPart(part.id, (p) => ({
+        ...p,
+        media: p.media.map((m) => (m.id === mediaId ? cropped : m)),
+      }));
+      toast.success(`Cropped to ${ratio === 1.91 ? "1.91:1" : "4:5"}. The crop is used on every network.`);
+    },
+    [draft.parts, setPart],
+  );
+
+  const addThreadPart = useCallback(() => {
+    const first = draftRef.current.parts[0];
+    const trim =
+      draftRef.current.parts.length === 1 &&
+      (first?.media.length ?? 0) > THREAD_MAX_MEDIA_PER_POST;
+    if (trim && first) {
+      revokeMedia(first.media.slice(THREAD_MAX_MEDIA_PER_POST));
+      toast.message(
+        `Thread posts take up to ${THREAD_MAX_MEDIA_PER_POST} attachments each. Kept the first ${THREAD_MAX_MEDIA_PER_POST}.`,
+      );
+    }
+    setDraft((d) => {
+      const parts = trim
+        ? d.parts.map((p, i) => (i === 0 ? { ...p, media: p.media.slice(0, THREAD_MAX_MEDIA_PER_POST) } : p))
+        : d.parts;
+      return { ...d, parts: [...parts, { id: localId("p"), text: "", media: [] }] };
     });
-  }, []);
+  }, [setDraft]);
 
-  const updateThreadSlot = useCallback(
-    (slotId: string, update: Partial<Pick<ThreadSlot, "text" | "media">>) => {
-      setThreadSlots((prev) =>
-        prev.map((s) => (s.id === slotId ? { ...s, ...update } : s)),
-      );
+  const removeThreadPart = useCallback(
+    (partId: string) => {
+      const gone = draftRef.current.parts.find((p) => p.id === partId);
+      setDraft((d) => ({ ...d, parts: d.parts.filter((p) => p.id !== partId) }));
+      if (gone) revokeMedia(gone.media);
     },
-    [],
+    [setDraft],
   );
 
-  const handleThreadSlotFiles = useCallback(
-    (slotId: string, files: FileList | null) => {
-      if (!files || files.length === 0) return;
-      const fileList = Array.from(files);
-
-      const imageFiles: File[] = [];
-      const videoFiles: File[] = [];
-      fileList.forEach((file) => {
-        const mime = file.type;
-        if (mime.startsWith("image/")) imageFiles.push(file);
-        else if (mime.startsWith("video/")) videoFiles.push(file);
-      });
-
-      const imageItems: (ComposerMediaItem & { id: string })[] = imageFiles.map(
-        (file) => ({
-          id: `${Date.now()}-${file.name}-${Math.random().toString(36).slice(2)}`,
-          type: "image" as const,
-          file,
-          previewUrl: URL.createObjectURL(file),
-        }),
-      );
-
-      if (imageItems.length > 0) {
-        setThreadSlots((prev) =>
-          prev.map((s) => {
-            if (s.id !== slotId) return s;
-            const maxNew = THREAD_MAX_MEDIA_PER_POST - s.media.length;
-            if (maxNew <= 0) return s;
-            const toAdd = imageItems.slice(
-              0,
-              Math.min(maxNew, imageItems.length),
-            );
-            return { ...s, media: [...s.media, ...toAdd] };
-          }),
-        );
-      }
-
-      const overSizeVideos = videoFiles.filter(
-        (f) => f.size > CLIENT_MAX_VIDEO_UPLOAD_BYTES,
-      );
-      if (overSizeVideos.length > 0) {
-        toast.error(
-          `Video too large. Max upload size is ${CLIENT_MAX_VIDEO_UPLOAD_LABEL}. ${overSizeVideos.length} file(s) skipped.`,
-        );
-      }
-      const allowedVideos = videoFiles.filter(
-        (f) => f.size <= CLIENT_MAX_VIDEO_UPLOAD_BYTES,
-      );
-      if (allowedVideos.length === 0) return;
-
-      Promise.all(
-        allowedVideos.map(async (file) => {
-          const [m, duration] = await Promise.all([
-            measureVideoAspectRatio(file),
-            getVideoDuration(file),
-          ]);
-          return { file, m, duration };
-        }),
-      ).then((rows) => {
-        const validItems: (ComposerMediaItem & { id: string })[] = [];
-        const videoGuidanceById: Record<string, AspectRatioGuidance> = {};
-        let anyOverDuration = false;
-        for (const row of rows) {
-          if (row.duration > MAX_VIDEO_DURATION_SECONDS) {
-            anyOverDuration = true;
-            continue;
-          }
-          const id = `${Date.now()}-${row.file.name}-${Math.random().toString(36).slice(2)}`;
-          const g = getAspectRatioGuidance(row.m.ratio);
-          if (g) videoGuidanceById[id] = g;
-          validItems.push({
-            id,
-            type: "video",
-            file: row.file,
-            previewUrl: URL.createObjectURL(row.file),
-          });
-        }
-        if (anyOverDuration) toast.error(VIDEO_DURATION_MESSAGE);
-        if (validItems.length === 0) return;
-        const slotItemsToAdd: (ComposerMediaItem & { id: string })[] = [];
-        setThreadSlots((prev) =>
-          prev.map((s) => {
-            if (s.id !== slotId) return s;
-            const maxNew = THREAD_MAX_MEDIA_PER_POST - s.media.length;
-            if (maxNew <= 0) return s;
-            const n = Math.min(maxNew, validItems.length);
-            const toAdd = validItems.slice(0, n);
-            slotItemsToAdd.push(...toAdd);
-            setAspectGuidanceByMediaId((gprev) => {
-              const next = { ...gprev };
-              for (const item of toAdd) {
-                const g = videoGuidanceById[item.id];
-                if (g) next[item.id] = g;
-              }
-              return next;
-            });
-            return { ...s, media: [...s.media, ...toAdd] };
-          }),
-        );
-        for (const item of slotItemsToAdd) {
-          if (item.type !== "video") continue;
-          void captureVideoPoster(item.file).then((posterUrl) => {
-            if (!posterUrl) return;
-            setThreadSlots((prev) =>
-              prev.map((s) => {
-                if (s.id !== slotId) return s;
-                return {
-                  ...s,
-                  media: s.media.map((m) =>
-                    m.id === item.id ? { ...m, posterUrl } : m,
-                  ),
-                };
-              }),
-            );
-          });
-        }
-      });
-    },
-    [],
-  );
-
-  const handleThreadSlotFileDrop = useCallback(
-    (slotId: string, e: React.DragEvent) => {
-      if (!hasFileDrag(e)) return;
+  const onPasteInto = useCallback(
+    (partId: string, e: ClipboardEvent<HTMLTextAreaElement>) => {
+      const files = clipboardFiles(e);
+      if (files.length === 0) return;
       e.preventDefault();
-      e.stopPropagation();
-      handleThreadSlotFiles(slotId, e.dataTransfer.files);
+      void addFiles(partId, files);
     },
-    [handleThreadSlotFiles],
+    [addFiles],
   );
 
-  const removeThreadSlotMedia = useCallback(
-    (slotId: string, mediaId: string) => {
-      setThreadSlots((prev) =>
-        prev.map((s) => {
-          if (s.id !== slotId) return s;
-          const removed = s.media.find((m) => m.id === mediaId);
-          if (removed?.previewUrl.startsWith("blob:"))
-            URL.revokeObjectURL(removed.previewUrl);
-          return {
-            ...s,
-            media: s.media.filter((m) => m.id !== mediaId),
-          };
-        }),
-      );
-      setAspectGuidanceByMediaId((prev) => {
-        const next = { ...prev };
-        delete next[mediaId];
-        return next;
+  // ---- popovers ----------------------------------------------------------------
+  const [openSetting, setOpenSetting] = useState<SettingKey | null>(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  // "Best time" preset: only fetched once the schedule popover opens.
+  const bestTimeHistory = useBestTimeHistory(
+    scheduleOpen && signedIn && !isGuest && perms.canCreatePosts,
+    basePath,
+  );
+  const bestTime = useMemo(
+    () =>
+      bestTimeHistory.data
+        ? bestTimeFromPublications(bestTimeHistory.data, tz, new Date(now))
+        : null,
+    [bestTimeHistory.data, tz, now],
+  );
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  // The action that opened "Before you post", so "…to the other N" repeats it.
+  const [issuesAction, setIssuesAction] = useState<Exclude<SubmitAction, "draft">>("now");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const splitRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const [previewCollapsed, setPreviewCollapsed] = useState(readPreviewPref);
+  // Below lg the publish button sits in the header, in thumb reach above the
+  // on-screen keyboard (which covers a bottom footer on iOS).
+  const actionsInHeader = !useIsDesktop();
+  // The modal closes itself; the page (full screen on phones) goes back.
+  const onShellClose = props.onClose ?? props.onDone;
+  const [mobilePreview, setMobilePreview] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+
+  const setPreviewPref = (collapsed: boolean) => {
+    setPreviewCollapsed(collapsed);
+    try {
+      localStorage.setItem(PREVIEW_PREF_KEY, collapsed ? "1" : "0");
+    } catch {
+      // ignore
+    }
+  };
+
+  // ---- submit --------------------------------------------------------------------
+  const leave = () => {
+    props.onDone();
+  };
+
+  const submit = (
+      requested: SubmitAction,
+      opts?: { onlyOk?: boolean; at?: Date; slotId?: string | null },
+    ) => {
+      // Already sent: the page composer can still be on screen while the
+      // route change is pending (lazy route), so a second click or Cmd+Enter
+      // must not save the post again.
+      if (submittedRef.current) return;
+      // No queue set up: "Add to queue" falls back to publishing now.
+      const action: SubmitAction = requested === "queue" && !nextSlot ? "now" : requested;
+      setAttempted(true);
+      if (isGuest || !signedIn) {
+        goToSignIn();
+        return;
+      }
+      if (freeLimitBlocks(action)) {
+        setIssuesOpen(false);
+        openFreePostsLimit();
+        return;
+      }
+      if (!(draft.parts[0]?.text ?? "").trim()) {
+        toast.error(isThread ? "Add text to the first post." : "Add a caption.");
+        textRef.current?.focus();
+        return;
+      }
+      if (draft.accountIds.length === 0) {
+        toast.error(action === "draft" ? "Pick at least one account before saving a draft." : "Pick at least one account to post to.");
+        return;
+      }
+      let at: Date | null = null;
+      let slotId: string | null = null;
+      if (action === "schedule") {
+        const when = opts?.at ?? pickedAt;
+        if (!when) {
+          setScheduleOpen(true);
+          return;
+        }
+        if (isPast(when)) {
+          toast.error("That time has passed. Pick a later one.");
+          setScheduleOpen(true);
+          return;
+        }
+        at = when;
+        slotId = opts?.at ? (opts.slotId ?? null) : draft.queueSlotId;
+      } else if (action === "queue" && nextSlot) {
+        at = new Date(nextSlot.scheduledAt);
+        // The slot is still being looked up again (a queued post that was
+        // uploading just saved, or the list of held slots changed): wait for
+        // it rather than book a slot another post already has.
+        if (
+          nextSlotQ.isPlaceholderData ||
+          nextSlotQ.isFetching ||
+          heldSlots.some((t) => new Date(t).getTime() === at!.getTime())
+        ) {
+          toast.message("Finding the next free queue slot. Try again in a moment.");
+          return;
+        }
+        slotId = nextSlot.slotId;
+      }
+      // A fresh time from the popover replaces a stale "time has passed".
+      const blocking = issuesFor(action, !!opts?.at);
+
+      let targets = selected.filter((a) => !a.tokenExpired);
+      if (action !== "draft") {
+        if (opts?.onlyOk) {
+          targets = selected.filter((a) => validation.okAccountIds.includes(a.id));
+        } else if (blocking.length > 0) {
+          setIssuesAction(action);
+          setIssuesOpen(true);
+          return;
+        }
+      }
+      if (targets.length === 0) {
+        toast.error("None of the selected accounts can take this post yet.");
+        return;
+      }
+
+      submittedRef.current = true;
+      setSubmitted(true);
+      const snapshot: ComposerDraft = at
+        ? { ...draft, scheduledAt: at.toISOString(), queueSlotId: slotId }
+        : draft;
+      const modeAtSubmit = mode;
+      const reopen = () => {
+        setPendingRestore(snapshot);
+        if (modeAtSubmit.kind === "new") {
+          navigate(dash("new"));
+        } else {
+          navigate(dash(`new?${modeAtSubmit.kind === "edit" ? "edit" : modeAtSubmit.kind}=${modeAtSubmit.postId}`));
+        }
+      };
+      void runSubmit({
+        action,
+        mode,
+        draft: snapshot,
+        type,
+        accounts: targets,
+        scheduledAt: at,
+        queueSlotId: slotId,
+        scheduledLabel: at ? formatShortTime(at, tz, settings.use24h) : undefined,
+        basePath,
+        queryClient,
+        posthog,
+        reopen,
+        // Let an autosave that is already on the wire land first, so it can't
+        // turn a just-scheduled draft back into a draft.
+        waitFor: autosaveInFlight.current,
       });
-    },
-    [],
-  );
+      // An older unsent post this composer kept aside stays saved.
+      if (mode.kind === "new") clearOwnLocal();
+      leave();
+    };
 
-  const handleSubmit = async () => {
-    const hasMain = text.trim() || media.length > 0;
-    const hasThreadContent =
-      threadSlots.length > 0 &&
-      threadSlots.some((s) => s.text.trim() || s.media.length > 0);
-    if (!hasMain && !hasThreadContent) {
+  const onPrimary = () => {
+    if (submittedRef.current) return;
+    if (isGuest) {
+      goToSignIn();
       return;
     }
+    setAttempted(true);
+    if (issuesFor(primaryAction).length > 0) {
+      setIssuesAction(primaryAction);
+      setIssuesOpen(true);
+      return;
+    }
+    submit(primaryAction);
+  };
 
-    setLoading(true);
+  const applyFix = (issue: ComposerIssue, fix: ComposerFix) => {
+    setIssuesOpen(false);
+    if (fix.kind === "open-setting") setOpenSetting(fix.setting);
+    else if (fix.kind === "add-media") fileInputRef.current?.click();
+    else if (fix.kind === "deselect") {
+      update((d) => ({ accountIds: d.accountIds.filter((id) => !issue.accountIds.includes(id)) }));
+    } else if (fix.kind === "schedule") setScheduleOpen(true);
+  };
+
+  const onDeleteDraft = async () => {
+    if (mode.kind !== "draft") return;
+    setDeleting(true);
     try {
-      const imageCount = media.filter((m) => m.type === "image").length;
-      const videoCount = media.filter((m) => m.type === "video").length;
-
-      let targetSlug: "text" | "image" | "video" | "collection" | "threads" =
-        "text";
-
-      if (isThread) {
-        targetSlug = "threads";
-      } else if (videoCount === 0 && imageCount > 0) {
-        targetSlug = "image";
-      } else if (videoCount === 1 && imageCount === 0) {
-        targetSlug = "video";
-      } else if (videoCount > 1 || (videoCount >= 1 && imageCount >= 1)) {
-        targetSlug = "collection";
-      } else {
-        targetSlug = "text";
+      const r = await deleteDraft(mode.postId);
+      if (!r.success) {
+        toast.error(r.error);
+        return;
       }
-
-      setComposerPayload({
-        text: text.trim(),
-        isThread,
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        media: media.map(({ id, ...rest }) => rest),
-        threadPosts:
-          isThread && threadSlots.length > 0
-            ? threadSlots.map((s) => ({
-                text: s.text.trim(),
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                media: s.media.map(({ id: _id, ...rest }) => rest),
-              }))
-            : undefined,
-      });
-
-      const search = new URLSearchParams();
-      search.set("fromComposer", "1");
-
-      // Stay under the current dashboard base (personal or /teams/:id) so the
-      // in-memory composer payload survives — a jump to /dashboard/* from a
-      // team URL triggers workspace boot/reload and drops caption + media.
-      navigate(`${dash(`create/${targetSlug}`)}?${search.toString()}`);
-      // Leave loading true so spinner stays until navigation completes
+      submittedRef.current = true;
+      setConfirmDelete(false);
+      toast.success("Draft deleted.");
+      void queryClient.invalidateQueries();
+      if (variant === "page") navigate(dash("posts?tab=drafts"), { replace: true });
+      else props.onDone();
     } catch {
-      setLoading(false);
+      toast.error("Couldn't delete the draft. Try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
-  const removeMedia = (id: string) => {
-    setMedia((prev) => {
-      const removed = prev.find((m) => m.id === id);
-      if (removed?.previewUrl.startsWith("blob:"))
-        URL.revokeObjectURL(removed.previewUrl);
-      return prev.filter((m) => m.id !== id);
-    });
-    setAspectGuidanceByMediaId((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
+  const startFresh = () => {
+    for (const p of draft.parts) revokeMedia(p.media);
+    clearOwnLocal();
+    // Keep what the composer was opened for (calendar slot, account).
+    setState({ draft: freshDraft(props), restoredLocal: false });
+    setRev(0);
+    textRef.current?.focus();
   };
 
+  // The older unsent post kept aside (see OlderSlot): open it instead, or
+  // let this post take its place.
+  const openOlderLocal = () => {
+    if (older === null) return;
+    const fromNewer = older === "newer";
+    const saved = savedContent(fromNewer ? newerKey : scope);
+    if (!saved) {
+      // Already gone (discarded in another tab): keep this post and save it.
+      setOlder(fromNewer && savedContent(scope) ? "main" : null);
+      setRev((r) => r + 1);
+      return;
+    }
+    // This post (never sent) is set aside for the one opened.
+    if (fromNewer) {
+      ownsNewerRef.current = true;
+      setOlder(savedContent(scope) ? "main" : null);
+    } else {
+      if (ownsNewerRef.current) clearLocalDraft(newerKey);
+      ownsNewerRef.current = false;
+      setOlder(null);
+    }
+    for (const p of draft.parts) revokeMedia(p.media);
+    setState({
+      draft: { ...saved, scheduledAt: null, queueSlotId: null },
+      restoredLocal: true,
+    });
+    setRev(0);
+    textRef.current?.focus();
+  };
+  const discardOlderLocal = () => {
+    if (older === "newer") {
+      clearLocalDraft(newerKey);
+      ownsNewerRef.current = false;
+      setOlder(savedContent(scope) ? "main" : null);
+    } else {
+      clearLocalDraft(scope);
+      setOlder(null);
+    }
+    // Save this post in the slot it now has.
+    setRev((r) => r + 1);
+  };
+
+  // "Schedule post" from the command palette: open the picker once the
+  // composer (and its split button) is on screen.
+  const wantsSchedule = props.prefill?.intent === "schedule";
+  const openedScheduleRef = useRef(false);
+  const ready = loadState === "idle" && (!signedIn || perms.ready) && !(sessionPending && !session);
+  useEffect(() => {
+    if (!wantsSchedule || !ready || openedScheduleRef.current || isGuest) return;
+    openedScheduleRef.current = true;
+    setScheduleOpen(true);
+  }, [wantsSchedule, ready, isGuest]);
+
+  // Focus the caption on desktop (phones keep the keyboard down).
+  useEffect(() => {
+    if (!ready || wantsSchedule) return;
+    if (!shouldAutoFocusOnMount()) return;
+    const t = setTimeout(() => {
+      const el = textRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+    }, 50);
+    return () => clearTimeout(t);
+  }, [ready, wantsSchedule]);
+
+  // ---- labels ------------------------------------------------------------------------
+  const short = (d: Date) => formatShortTime(d, tz, settings.use24h, new Date(now));
+  // Neutral button ("Add to queue · 7:00 PM") until there is content to check.
+  const issueCount = showIssues ? issuesFor(primaryAction).length : 0;
+  // "Before you post" lists what blocks the action that opened it.
+  const popoverIssues = issuesFor(issuesAction);
+  const popoverGlobalBlocked = popoverIssues.some((i) => i.accountIds.length === 0);
+  const issueSuffix = issueCount > 0 ? ` · ${issueCount} ${issueCount === 1 ? "issue" : "issues"}` : "";
+  const primaryActionLabel = isGuest
+    ? "Sign in to post"
+    : primaryAction === "schedule"
+      ? `${mode.kind === "scheduled" ? "Save" : "Schedule"} · ${short(pickedAt!)}`
+      : primaryAction === "queue"
+        ? `Add to queue · ${short(slotAt!)}`
+        : "Publish now";
+
+  const draftLabel = mode.kind === "scheduled" ? "Move to drafts" : "Save draft";
+  const menu: SplitMenuItem[] = [
+    {
+      key: "now",
+      label: "Publish now",
+      shortcut: "mod+shift+enter",
+      onSelect: () => submit("now"),
+      disabled: freeLimitBlocks("now"),
+      disabledReason: freeLimitBlocks("now") ? publishBlockedReason : null,
+    },
+    {
+      key: "schedule",
+      label: pickedAt ? "Change time…" : "Schedule…",
+      hint: pickedAt ? short(pickedAt) : "Pick a date and time",
+      onSelect: () => setScheduleOpen(true),
+    },
+    ...((pickedAt || (preferNow && queueOpen)) && slotAt
+      ? [
+          {
+            key: "queue",
+            label: `Add to queue · ${short(slotAt)}`,
+            hint: "Use the next free slot instead",
+            onSelect: () => {
+              setPreferNow(false);
+              if (pickedAt) update({ scheduledAt: null, queueSlotId: null });
+            },
+          },
+        ]
+      : []),
+    ...(pickedAt
+      ? [
+          {
+            key: "clear",
+            label: "Clear time",
+            hint: slotAt && !preferNow ? "Back to the queue" : "Back to publish now",
+            onSelect: () => update({ scheduledAt: null, queueSlotId: null }),
+          },
+        ]
+      : []),
+    { key: "draft", label: draftLabel, onSelect: () => submit("draft") },
+    ...(mode.kind === "draft"
+      ? [
+          {
+            key: "delete",
+            label: "Delete draft",
+            tone: "danger" as const,
+            onSelect: () => setConfirmDelete(true),
+          },
+        ]
+      : []),
+  ];
+
+  const title =
+    mode.kind === "draft"
+      ? "Edit draft"
+      : mode.kind === "scheduled"
+        ? "Edit scheduled post"
+        : mode.kind === "edit"
+          ? "Post again"
+          : "New post";
+
+  // ---- gates ---------------------------------------------------------------------------
+  if (submitted && variant === "page") {
+    // Sent: hold this screen (no second submit) until the route change lands.
+    return (
+      <Shell variant={variant} title={title}>
+        <div
+          role="status"
+          className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-sm text-text-muted"
+        >
+          <Loader2 className="size-5 animate-spin motion-reduce:animate-none" aria-hidden />
+          <p>Your post is on its way. Its progress shows in the tray.</p>
+          <Link href={dash()} className="font-medium text-accent hover:text-accent-hover">
+            Back to Home
+          </Link>
+        </div>
+      </Shell>
+    );
+  }
+  if (signedIn && perms.ready && !perms.canCreatePosts) {
+    return (
+      <Shell variant={variant} title={title} onClose={onShellClose}>
+        <EmptyState
+          title="Publishing isn't part of your role"
+          description="Ask a workspace admin to make you a Member or Admin to create posts."
+          primaryAction={{ label: "Back to Home", href: dash() }}
+          className="m-6"
+        />
+      </Shell>
+    );
+  }
+  if (signedIn && layout.isError) {
+    return (
+      <Shell variant={variant} title={title} onClose={onShellClose}>
+        <ErrorState
+          message="Couldn't check your workspace role."
+          detail="Check your connection, then try again."
+          onRetry={() => void layout.refetch()}
+          retrying={layout.isFetching}
+          className="m-6"
+        />
+      </Shell>
+    );
+  }
+  if (mode.kind !== "new" && loadState === "loading" && accountsError) {
+    return (
+      <Shell variant={variant} title={title} onClose={onShellClose}>
+        <ErrorState
+          message="Couldn't load your accounts."
+          detail="The post opens once your accounts load. Check your connection, then try again."
+          onRetry={() => void refetchAccounts()}
+          className="m-6"
+        />
+      </Shell>
+    );
+  }
+  if (
+    loadState === "loading" ||
+    (sessionPending && !session) ||
+    (signedIn && !perms.ready && !isGuest)
+  ) {
+    return (
+      <Shell variant={variant} title={title} onClose={onShellClose}>
+        <div className="space-y-3 p-5" aria-busy aria-label="Loading post">
+          <div className="h-8 w-2/3 animate-pulse rounded-full bg-bg-muted motion-reduce:animate-none" />
+          <div className="h-36 animate-pulse rounded-xl bg-bg-muted motion-reduce:animate-none" />
+          <div className="h-16 w-1/2 animate-pulse rounded-xl bg-bg-muted motion-reduce:animate-none" />
+        </div>
+      </Shell>
+    );
+  }
+  if (loadState === "error") {
+    return (
+      <Shell variant={variant} title={title} onClose={onShellClose}>
+        <ErrorState
+          message="Couldn't open this post."
+          detail={loadError ?? "Check your connection, then try again."}
+          onRetry={() => {
+            setLoadState("loading");
+            setLoadNonce((n) => n + 1);
+          }}
+          className="m-6"
+        />
+        <p className="px-6 text-center text-sm text-text-muted">
+          or{" "}
+          <Link href={dash("new")} className="font-medium text-accent hover:text-accent-hover">
+            start a new post
+          </Link>
+        </p>
+      </Shell>
+    );
+  }
+
+  const part0 = draft.parts[0]!;
+  const threadLimit = isThread
+    ? validation.networks.length
+      ? Math.min(...validation.networks.map((n) => n.limit))
+      : null
+    : null;
+  const warnings = validation.warnings;
+  const videoDuration = draft.parts.flatMap((p) => p.media).find((m) => m.kind === "video")?.durationSec ?? null;
+  const showRail = !previewCollapsed;
+
+  const editor = (
+    <div className="space-y-3">
+      {restoredLocal && saveState === "local" && rev === 0 ? (
+        <p className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+          Picked up your unsent post.
+          <button type="button" onClick={startFresh} className="font-medium text-accent hover:text-accent-hover">
+            Start fresh
+          </button>
+        </p>
+      ) : null}
+      {older ? (
+        <p className="flex flex-wrap items-center gap-2 text-xs text-text-muted">
+          {older === "newer"
+            ? "You have two earlier unsent posts saved on this device. This one isn't saved until you open or discard the latest."
+            : "You have an earlier unsent post saved on this device."}
+          <button type="button" onClick={openOlderLocal} className="font-medium text-accent hover:text-accent-hover">
+            Open it instead
+          </button>
+          <button type="button" onClick={discardOlderLocal} className="font-medium text-text-muted hover:text-text">
+            Discard it
+          </button>
+        </p>
+      ) : null}
+
+      {isGuest ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-bg-subtle px-4 py-3">
+          <p className="text-sm text-text">Sign in to connect accounts and post. You can write now.</p>
+          <a
+            href={signInUrl(typeof window !== "undefined" ? window.location.pathname + window.location.search : dash("new"))}
+            className="inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-medium text-accent-foreground hover:bg-accent-hover"
+          >
+            Sign in
+          </a>
+        </div>
+      ) : (
+        <AccountPicker
+          accounts={accounts}
+          selectedIds={draft.accountIds}
+          onToggle={(id) =>
+            update((d) => ({
+              accountIds: d.accountIds.includes(id)
+                ? d.accountIds.filter((x) => x !== id)
+                : [...d.accountIds, id],
+            }))
+          }
+          onSetSelection={(ids) => update({ accountIds: ids })}
+          remember={remembered.remember}
+          onRememberChange={(on) => remembered.setRememberAndSelection(on, new Set(draft.accountIds))}
+          problems={problemsByAccount}
+          loading={accountsLoading}
+          error={accountsError}
+          onRetry={() => void refetchAccounts()}
+          tier={settings.tier}
+          connectHref={dash("connections?connect=1")}
+          canManageConnections={canManageConnections}
+        />
+      )}
+
+      <div
+        className={cn(
+          "rounded-xl border bg-bg transition-colors focus-within:border-accent/60 focus-within:ring-2 focus-within:ring-accent/15",
+          dragOver ? "border-accent ring-2 ring-accent/20" : "border-input",
+        )}
+      >
+        <label htmlFor="composer-text" className="sr-only">
+          {isThread ? "Post 1" : "Caption"}
+        </label>
+        <AutoResizeTextarea
+          id="composer-text"
+          ref={textRef}
+          value={part0.text}
+          onChange={(e) => {
+            const text = e.target.value;
+            setPart(part0.id, (p) => ({ ...p, text }));
+          }}
+          onPaste={(e) => onPasteInto(part0.id, e)}
+          placeholder={isThread ? "Start your thread…" : "What do you want to share?"}
+          rows={variant === "modal" ? 5 : 6}
+          maxHeight={variant === "modal" ? 320 : 420}
+          className="block min-h-32 w-full rounded-xl bg-transparent px-3.5 py-3 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted"
+        />
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 px-2.5 py-2">
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isThread && part0.media.length >= THREAD_MAX_MEDIA_PER_POST}
+              className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-text-muted transition-colors hover:bg-bg-muted hover:text-text disabled:opacity-50 touch:h-11"
+            >
+              <ImagePlus className="size-4" aria-hidden />
+              Media
+            </button>
+            {!isThread ? (
+              <button
+                type="button"
+                onClick={addThreadPart}
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-text-muted transition-colors hover:bg-bg-muted hover:text-text touch:h-11"
+              >
+                <ListPlus className="size-4" aria-hidden />
+                Make it a thread
+              </button>
+            ) : null}
+          </div>
+          <span className="pr-1 text-xs tabular-nums text-text-muted" aria-live="polite">
+            {part0.text.length > 0 ? `${part0.text.length.toLocaleString()} character${part0.text.length === 1 ? "" : "s"}` : null}
+          </span>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            e.target.value = "";
+            void addFiles(part0.id, files);
+          }}
+        />
+      </div>
+
+      <NetworkStrip
+        networks={validation.networks}
+        showProblems={showIssues}
+        overrides={draft.captionOverrides}
+        mainText={part0.text}
+        allowOverrides={!isThread}
+        onStartOverride={(network) =>
+          update((d) => ({ captionOverrides: { ...d.captionOverrides, [network]: d.parts[0]?.text ?? "" } }))
+        }
+        onChangeOverride={(network, text) =>
+          update((d) => ({ captionOverrides: { ...d.captionOverrides, [network]: text } }))
+        }
+        onClearOverride={(network) =>
+          update((d) => {
+            const next = { ...d.captionOverrides };
+            delete next[network];
+            return {
+              captionOverrides: next,
+              accountCaptions: withoutNetworkCaptions(d.accountCaptions, accounts, network),
+            };
+          })
+        }
+        accountCaptions={draft.accountCaptions}
+        onChangeAccountCaption={(accountId, text) =>
+          update((d) => ({ accountCaptions: { ...d.accountCaptions, [accountId]: text } }))
+        }
+        onUseOneCaption={(network) =>
+          update((d) => {
+            const first = accounts.find(
+              (a) => a.platform === network && d.accountIds.includes(a.id),
+            );
+            const caption =
+              (first ? d.accountCaptions?.[first.id] : undefined) ??
+              d.captionOverrides[network] ??
+              d.parts[0]?.text ??
+              "";
+            return {
+              captionOverrides: { ...d.captionOverrides, [network]: caption },
+              accountCaptions: withoutNetworkCaptions(d.accountCaptions, accounts, network),
+            };
+          })
+        }
+      />
+
+      {part0.media.length > 0 ? (
+        <MediaTray
+          media={part0.media}
+          onAddFiles={(files) => void addFiles(part0.id, files)}
+          onRemove={(id) => removeMedia(part0.id, id)}
+          onMove={(from, to) => moveMedia(part0.id, from, to)}
+          onCropForInstagram={
+            selected.some((a) => a.platform === "instagram") && !isThread
+              ? (id, ratio) => void cropForInstagram(id, ratio)
+              : undefined
+          }
+          max={isThread ? THREAD_MAX_MEDIA_PER_POST : undefined}
+          label={isThread ? "Media for post 1" : "Media"}
+        />
+      ) : null}
+
+      {isThread ? (
+        <ThreadEditor
+          parts={draft.parts}
+          limit={threadLimit}
+          onChangeText={(id, text) => setPart(id, (p) => ({ ...p, text }))}
+          onAddFiles={(id, files) => void addFiles(id, files)}
+          onRemoveMedia={removeMedia}
+          onMoveMedia={moveMedia}
+          onRemovePart={removeThreadPart}
+          onAddPart={addThreadPart}
+          onPaste={onPasteInto}
+        />
+      ) : null}
+
+      <SettingsPills
+        draft={draft}
+        update={update}
+        selected={selected}
+        type={type}
+        allowAutoPlug={settings.allowAutoPlug}
+        allowAutoRepost={settings.allowAutoRepost}
+        use24h={settings.use24h}
+        billingHref={dash("billing")}
+        open={openSetting}
+        onOpenChange={setOpenSetting}
+        needsAttention={settingsNeedingAttention}
+        rememberAutomations={autoRemember.remember}
+        onRememberAutomationsChange={autoRemember.setRemember}
+        onTikTokMaxDuration={(id, seconds) =>
+          setTiktokMaxDuration((m) => (m[id] === seconds ? m : { ...m, [id]: seconds }))
+        }
+        videoDurationSec={videoDuration}
+      />
+
+      {warnings.length > 0 ? (
+        <ul className="space-y-1" aria-label="Notes">
+          {warnings.map((w) => (
+            <li key={w.id} className="flex items-start gap-2 text-xs text-text-muted">
+              {w.tone === "info" ? (
+                <Info className="mt-0.5 size-3.5 shrink-0 text-info" aria-hidden />
+              ) : (
+                <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" aria-hidden />
+              )}
+              <span>{w.message}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+
+  const rail = (
+    <PreviewRail
+      draft={draft}
+      selected={selected}
+      type={type}
+      networks={validation.networks}
+      issues={visibleIssues}
+      targetAt={pickedAt ?? (primaryAction === "queue" ? slotAt : null)}
+      timezone={tz}
+      use24h={settings.use24h}
+      onCollapse={() => setPreviewPref(true)}
+      onPostWithout={(network) =>
+        update((d) => ({
+          accountIds: d.accountIds.filter((id) => accounts.find((a) => a.id === id)?.platform !== network),
+        }))
+      }
+    />
+  );
+
+  const savedPill = (() => {
+    if (isGuest) return null;
+    const map: Record<SaveState, { text: string; cls: string; title: string } | null> = {
+      idle: null,
+      local: { text: "Saved", cls: "text-text-muted", title: "Saved on this device. It'll be here when you come back." },
+      saved: { text: "Saved", cls: "text-text-muted", title: "Draft saved" },
+      saving: { text: "Saving…", cls: "text-text-muted", title: "Saving draft" },
+      error: { text: "Not saved", cls: "text-danger", title: "Couldn't save the draft. Use Save draft to try again." },
+      pending:
+        mode.kind === "draft"
+          ? {
+              text: "Unsaved",
+              cls: "text-text-muted",
+              title: newFiles
+                ? "New media is uploaded when you use Save draft. Everything else saves as you type."
+                : draftAutosave
+                  ? "Saving in a moment."
+                  : "Not saved yet. A draft saves once it has a caption and an account.",
+            }
+          : { text: "Unsaved changes", cls: "text-text-muted", title: "Changes are saved when you submit." },
+    };
+    const v = map[saveState];
+    if (!v) return null;
+    return (
+      <span className={cn("shrink-0 whitespace-nowrap text-xs", v.cls)} title={v.title} aria-live="polite">
+        {v.text}
+      </span>
+    );
+  })();
+
+  const primaryControl = isGuest ? (
+    <a
+      href={signInUrl(typeof window !== "undefined" ? window.location.pathname + window.location.search : dash("new"))}
+      className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-xl bg-accent px-4 text-sm font-semibold text-accent-foreground hover:bg-accent-hover touch:h-11"
+    >
+      Sign in to post
+    </a>
+  ) : (
+    <SplitButton
+      ref={splitRef}
+      label={
+        <>
+          {primaryActionLabel}
+          {/* Header room is tight on phones: the amber button already says
+              "fix first", so the count is for screen readers there. */}
+          {issueSuffix ? <span className={cn(actionsInHeader && "sr-only")}>{issueSuffix}</span> : null}
+        </>
+      }
+      onPrimary={onPrimary}
+      title={`${primaryAction === "queue" ? "Add to queue" : primaryAction === "schedule" ? "Schedule" : "Publish"} (${shortcutLabel("mod+enter")})`}
+      menu={menu}
+      warn={issueCount > 0}
+    />
+  );
+
+  return (
+    <Shell
+      variant={variant}
+      title={title}
+      onClose={onShellClose}
+      headerExtra={savedPill}
+      headerActions={
+        <>
+          {variant === "page" && mode.kind === "new" ? (
+            <Link
+              href={dash("bulk-tools")}
+              className="hidden h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-text-muted hover:bg-bg-muted hover:text-text sm:inline-flex"
+            >
+              <Upload className="size-3.5" aria-hidden />
+              Bulk upload
+            </Link>
+          ) : null}
+          {variant === "modal" && props.onExpand ? (
+            <button
+              type="button"
+              onClick={() => {
+                // Save first, so the full page goes on saving to the same slot.
+                pendingSaveRef.current?.();
+                props.onExpand?.(draft, { keepsOlder: older !== null, ownsNewer: ownsNewerRef.current });
+              }}
+              aria-label="Open full page"
+              title="Open full page"
+              className="inline-flex size-8 items-center justify-center rounded-lg text-text-muted hover:bg-bg-muted hover:text-text touch:size-11"
+            >
+              <Expand className="size-4" aria-hidden />
+            </button>
+          ) : null}
+          {actionsInHeader ? primaryControl : null}
+        </>
+      }
+    >
+      <div
+        className="relative flex min-h-0 flex-1 flex-col"
+        onKeyDown={(e) => {
+          // A field that already handled Enter (the schedule "Type a time" input)
+          // owns it: submitting again here would create the post twice.
+          if (e.defaultPrevented || e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
+          e.preventDefault();
+          if (e.shiftKey) submit("now");
+          else onPrimary();
+        }}
+        onDragEnter={(e) => {
+          if (hasFiles(e)) setDragOver(true);
+        }}
+        onDragOver={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          setDragOver(true);
+        }}
+        onDragLeave={(e) => {
+          if (e.relatedTarget && e.currentTarget.contains(e.relatedTarget as Node)) return;
+          setDragOver(false);
+        }}
+        onDrop={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          setDragOver(false);
+          void addFiles(part0.id, Array.from(e.dataTransfer.files));
+        }}
+      >
+        <div
+          className={cn(
+            "grid min-h-0 flex-1",
+            showRail ? "lg:grid-cols-[minmax(0,1fr)_330px]" : "lg:grid-cols-1",
+          )}
+        >
+          <div
+            data-popover-boundary
+            className={cn(
+              "min-h-0 px-4 py-4 sm:px-5",
+              variant === "modal" || actionsInHeader
+                ? "overflow-y-auto overscroll-contain"
+                : "lg:overflow-y-auto lg:overscroll-contain",
+            )}
+          >
+            {editor}
+            {mobilePreview ? <div className="mt-4 border-t border-border pt-4 lg:hidden">{rail}</div> : null}
+          </div>
+          {showRail ? (
+            <aside
+              className="hidden min-h-0 border-l border-border bg-bg-subtle px-3.5 py-4 lg:flex lg:flex-col"
+              aria-label="Preview"
+            >
+              {rail}
+            </aside>
+          ) : null}
+        </div>
+        {dragOver ? (
+          <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-xl border-2 border-dashed border-accent bg-accent/5 text-sm font-medium text-accent">
+            Drop images or videos to add them
+          </div>
+        ) : null}
+
+        <footer
+          className={cn(
+            "flex flex-wrap items-center justify-between gap-2 border-t border-border bg-bg-elevated px-4 py-3 sm:px-5",
+            // Full screen (modal, or the page on phones): clear the gesture bar.
+            variant === "modal" || actionsInHeader
+              ? "pb-[calc(env(safe-area-inset-bottom)+0.75rem)]"
+              : "rounded-b-2xl",
+          )}
+        >
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-muted">
+            {settings.freePostsRemaining != null && !isGuest ? (
+              <span className={cn(settings.freePostsRemaining <= 0 && "text-warning")}>
+                {settings.freePostsRemaining}/{getPlanLimits("free").maxFreePosts} free posts left
+                {settings.freePostsRemaining <= 0 ? (
+                  <>
+                    {" · "}
+                    <button
+                      type="button"
+                      onClick={openFreePostsLimit}
+                      className="font-medium text-accent hover:text-accent-hover"
+                    >
+                      Upgrade
+                    </button>
+                  </>
+                ) : null}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setMobilePreview((v) => !v)}
+              className="inline-flex items-center gap-1 font-medium text-text-muted hover:text-text lg:hidden"
+              aria-expanded={mobilePreview}
+            >
+              {mobilePreview ? "Hide preview" : "Preview"}
+            </button>
+            {previewCollapsed ? (
+              <button
+                type="button"
+                onClick={() => setPreviewPref(false)}
+                className="hidden items-center gap-1 font-medium text-text-muted hover:text-text lg:inline-flex"
+              >
+                <PanelRightOpen className="size-3.5" aria-hidden />
+                Show preview
+              </button>
+            ) : null}
+          </div>
+          <div className="ml-auto flex min-w-0 max-w-full items-center gap-2">
+            {!isGuest ? (
+              // Phones: the caret menu already has Save draft.
+              <button
+                type="button"
+                onClick={() => submit("draft")}
+                className="hidden h-9 shrink-0 items-center whitespace-nowrap rounded-xl border border-border bg-bg-elevated px-3 text-sm font-medium text-text transition-colors sm:inline-flex hover:bg-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 touch:h-11"
+              >
+                {draftLabel}
+              </button>
+            ) : null}
+            {actionsInHeader ? null : primaryControl}
+          </div>
+        </footer>
+
+        <Popover
+          open={scheduleOpen}
+          onClose={() => setScheduleOpen(false)}
+          anchorRef={splitRef}
+          title="Schedule"
+          side="top"
+          align="end"
+          width={460}
+        >
+          <SchedulePanel
+            value={draft.scheduledAt}
+            valueSlotId={draft.queueSlotId}
+            timezone={tz}
+            defaultTimezone={settings.timezone}
+            onTimezoneChange={(z) => update({ timezoneOverride: z })}
+            use24h={settings.use24h}
+            dateFormat={settings.dateFormat}
+            nextSlot={nextSlot}
+            bestTime={bestTime}
+            onPick={(at, slotId) => update({ scheduledAt: at.toISOString(), queueSlotId: slotId })}
+            onSchedule={(at, slotId) => {
+              update({ scheduledAt: at.toISOString(), queueSlotId: slotId });
+              setScheduleOpen(false);
+              submit("schedule", { at, slotId });
+            }}
+            onPublishNow={() => {
+              setScheduleOpen(false);
+              submit("now");
+            }}
+            onSaveDraft={() => {
+              setScheduleOpen(false);
+              submit("draft");
+            }}
+            canPublish={!freeLimitBlocks("now")}
+            publishDisabledReason={freeLimitBlocks("now") ? publishBlockedReason : null}
+            canSchedule={!freeLimitBlocks("schedule")}
+            scheduleDisabledReason={freeLimitBlocks("schedule") ? publishBlockedReason : null}
+            scheduleQueueHref={dash("settings/schedule")}
+            settingsHref={dash("settings/general")}
+            submitLabel={mode.kind === "scheduled" ? "Save" : "Schedule"}
+          />
+        </Popover>
+
+        <Popover
+          open={issuesOpen}
+          onClose={() => setIssuesOpen(false)}
+          anchorRef={splitRef}
+          title="Before you post"
+          side="top"
+          align="end"
+          width={380}
+        >
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-text">
+              {popoverIssues.length === 1 ? "1 thing to fix" : `${popoverIssues.length} things to fix`}
+            </p>
+            <ul className="space-y-2">
+              {popoverIssues.map((issue) => (
+                <li key={issue.id} className="flex items-start gap-2 text-xs text-text">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" aria-hidden />
+                  <span className="min-w-0 flex-1">
+                    {issue.message}
+                    {issue.fix ? (
+                      <span className="mt-1 block">
+                        {issue.fix.kind === "reconnect" ? (
+                          <a href={issue.fix.href} className="font-medium text-accent hover:text-accent-hover">
+                            {issue.fix.label}
+                          </a>
+                        ) : issue.fix.kind === "upgrade" ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIssuesOpen(false);
+                              openFreePostsLimit();
+                            }}
+                            className="font-medium text-accent hover:text-accent-hover"
+                          >
+                            {issue.fix.label}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => applyFix(issue, issue.fix!)}
+                            className="font-medium text-accent hover:text-accent-hover"
+                          >
+                            {issue.fix.label}
+                          </button>
+                        )}
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {!popoverGlobalBlocked && okCount > 0 && okCount < selected.length ? (
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+                <p className="text-xs text-text-muted">
+                  {okCount} of {selected.length} accounts are ready.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIssuesOpen(false);
+                    submit(issuesAction, { onlyOk: true });
+                  }}
+                  className="inline-flex h-8 items-center rounded-lg bg-accent px-3 text-xs font-semibold text-accent-foreground hover:bg-accent-hover"
+                >
+                  {issuesAction === "now" ? "Publish" : issuesAction === "queue" ? "Queue" : "Schedule"} to the other {okCount}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </Popover>
+      </div>
+
+      <Dialog open={confirmDelete} onOpenChange={(o) => !deleting && setConfirmDelete(o)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this draft?</DialogTitle>
+            <DialogDescription>It&apos;s removed for everyone in this workspace. This can&apos;t be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(false)}
+              className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm font-medium text-text hover:bg-bg-muted"
+            >
+              Keep draft
+            </button>
+            <button
+              type="button"
+              onClick={() => void onDeleteDraft()}
+              disabled={deleting}
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-destructive px-3 text-sm font-semibold text-white hover:bg-destructive/90 disabled:opacity-60"
+            >
+              {deleting ? <Loader2 className="size-4 animate-spin motion-reduce:animate-none" aria-hidden /> : null}
+              Delete draft
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {mode.kind !== "new" ? (
+        <LeaveGuard
+          unsaved={unsavedOnLeave}
+          sentRef={submittedRef}
+          message={
+            mode.kind === "draft" && newFiles
+              ? "The media you added isn't saved yet. Use Save draft to keep it."
+              : mode.kind === "scheduled"
+                ? "Your changes to this scheduled post aren't saved. Use Save to keep them."
+                : "Your changes aren't saved."
+          }
+          discardLabel={mode.kind === "draft" && newFiles ? "Discard new media" : "Discard changes"}
+        />
+      ) : null}
+      {limitModal}
+    </Shell>
+  );
+}
+
+/**
+ * Asks before unsaved changes are dropped: in-app navigation (the ✕, which
+ * goes back on the page, the sidebar, browser back) gets a dialog, closing
+ * the tab or reloading gets the browser's prompt. Mounted only by a composer
+ * editing an existing post: a router runs one blocker at a time.
+ */
+function LeaveGuard({
+  unsaved,
+  sentRef,
+  message,
+  discardLabel,
+}: {
+  unsaved: boolean;
+  /** Set once the post is sent or deleted: the composer leaves on its own. */
+  sentRef: RefObject<boolean>;
+  message: string;
+  discardLabel: string;
+}) {
+  const shouldBlock = useCallback<BlockerFunction>(
+    ({ currentLocation, nextLocation }) =>
+      unsaved &&
+      !sentRef.current &&
+      (currentLocation.pathname !== nextLocation.pathname ||
+        currentLocation.search !== nextLocation.search),
+    [unsaved, sentRef],
+  );
+  const blocker = useBlocker(shouldBlock);
+  // Nothing left to lose any more (a save landed meanwhile): go on.
+  useEffect(() => {
+    if (blocker.state === "blocked" && !unsaved) blocker.proceed();
+  }, [blocker, unsaved]);
+  useEffect(() => {
+    if (!unsaved) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [unsaved]);
+
+  return (
+    <Dialog
+      open={blocker.state === "blocked"}
+      onOpenChange={(o) => {
+        if (!o) blocker.reset?.();
+      }}
+    >
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Leave without saving?</DialogTitle>
+          <DialogDescription>{message}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <button
+            type="button"
+            onClick={() => blocker.proceed?.()}
+            className="inline-flex h-9 items-center rounded-lg border border-border px-3 text-sm font-medium text-text hover:bg-bg-muted"
+          >
+            {discardLabel}
+          </button>
+          <button
+            type="button"
+            onClick={() => blocker.reset?.()}
+            className="inline-flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-accent-foreground hover:bg-accent-hover"
+          >
+            Keep editing
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Shell({
+  variant,
+  title,
+  onClose,
+  headerExtra,
+  headerActions,
+  children,
+}: {
+  variant: "page" | "modal";
+  title: string;
+  onClose?: () => void;
+  headerExtra?: ReactNode;
+  headerActions?: ReactNode;
+  children: ReactNode;
+}) {
+  const Heading = variant === "modal" ? "h2" : "h1";
+  // Below lg the publish button moves into this header (mock 17·A: ✕ on the
+  // left, the split button on the right), and the page composer becomes a
+  // full-screen sheet over the app chrome; the layout hides the mobile top
+  // bar and tab bar on composer routes.
+  const compact = !useIsDesktop();
+  const fullScreen = variant === "page" && compact;
+  const closeButton =
+    (variant === "modal" || fullScreen) && onClose ? (
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Close composer"
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-bg-muted hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 touch:size-11"
+      >
+        <X className="size-4" aria-hidden />
+      </button>
+    ) : null;
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-200 px-1 pb-20 sm:px-0 sm:pb-24",
-        "transition-[padding] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        isThread
-          ? "pt-[clamp(0.35rem,1.5vh,0.75rem)] sm:pt-[clamp(0.5rem,2vh,1rem)]"
-          : "pt-[clamp(0.75rem,3.5vh,1.75rem)] sm:pt-[clamp(1rem,4.5vh,2.5rem)]",
+        "flex min-h-0 flex-col bg-bg-elevated text-text",
+        variant === "modal"
+          ? "h-full"
+          : fullScreen
+            ? "fixed inset-0 z-50 overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+            : "rounded-2xl border border-border shadow-sm lg:h-[calc(100dvh-4rem)] lg:min-h-[560px] lg:overflow-hidden",
       )}
     >
-      <div className="space-y-5 sm:space-y-6">
-        <div className="space-y-1.5 sm:space-y-2">
-          <h1 className="dash-page-title sm:mb-0.5">
-            Composer
-          </h1>
-          <p className="max-w-xl text-sm leading-snug text-text-muted sm:leading-normal">
-            Type anything, paste, drag and drop, or upload images/videos —
-            we&apos;ll route you to the right post flow.
-          </p>
-        </div>
-
-        <div
-          className={cn(
-            "rounded-[1.35rem] border bg-composer-card sm:rounded-[1.5rem]",
-            "border-composer-card-border/90",
-            "shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_10px_36px_-18px_rgba(0,0,0,0.45)]",
-            "p-5 sm:p-6",
-            "transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
-            "focus-within:border-accent/40 focus-within:shadow-[0_1px_0_rgba(255,255,255,0.03)_inset,0_0_0_3px_color-mix(in_srgb,var(--accent)_14%,transparent),0_10px_36px_-18px_rgba(0,0,0,0.45)]",
-            isFileDragOver &&
-              "border-accent shadow-[0_0_0_3px_color-mix(in_srgb,var(--accent)_24%,transparent)]",
-          )}
-          onDragEnter={(e) => {
-            if (!hasFileDrag(e)) return;
-            e.preventDefault();
-            setIsFileDragOver(true);
-          }}
-          onDragOver={handleComposerDragOver}
-          onDragLeave={handleComposerDragLeave}
-          onDrop={handleComposerDrop}
-        >
-          <textarea
-            ref={textareaRef}
-            className="min-h-21 max-h-80 w-full resize-none overflow-y-auto border-none bg-transparent px-2 py-1.5 text-[15px] leading-relaxed text-text outline-none placeholder:text-text-muted/80 sm:min-h-23 sm:text-base"
-            placeholder="Write your post, or paste content..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onDragOver={(e) => {
-              if (!hasFileDrag(e)) return;
-              e.preventDefault();
-              e.dataTransfer.dropEffect = "copy";
-            }}
-            onPaste={onPaste}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            autoFocus={shouldAutoFocusOnMount()}
-          />
-
-          {media.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs text-text-muted">
-                Drag to reorder · Tap the bin to remove
-              </p>
-              <div className="flex items-center gap-1">
-                {scrollArrows.left && (
-                  <button
-                    type="button"
-                    onClick={() => scrollMediaStrip("left")}
-                    className="hidden h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-composer-chip text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip-hover hover:text-text active:scale-[0.97] hoverable:flex"
-                    aria-label="Scroll left"
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                )}
-                <div
-                  ref={mediaStripRef}
-                  className="flex min-w-0 flex-1 gap-3 overflow-x-auto overflow-y-hidden py-1 scroll-smooth scrollbar-thin scroll-touch"
-                  style={{ scrollbarWidth: "thin" }}
-                >
-                  {media.map((item, index) => (
-                    <div
-                      key={item.id}
-                      draggable
-                      onDragStart={() => handleMediaDragStart(index)}
-                      onDragOver={(e) => handleMediaDragOver(e, index)}
-                      onDragEnd={handleMediaDragEnd}
-                      className="group relative flex h-24 w-24 shrink-0 cursor-move items-center justify-center overflow-hidden rounded-xl border border-composer-card-border bg-composer-chip transition-[border-color] duration-150 hover:border-accent"
-                    >
-                      {item.type === "image" ? (
-                        <img
-                          src={item.previewUrl}
-                          alt=""
-                          className="pointer-events-none h-full w-full object-cover"
-                          draggable={false}
-                        />
-                      ) : (
-                        <>
-                          <video
-                            src={item.previewUrl}
-                            poster={item.posterUrl}
-                            className="pointer-events-none h-full w-full object-cover"
-                            muted
-                            playsInline
-                            preload="auto"
-                            draggable={false}
-                          />
-                          <VideoPlayBadge />
-                        </>
-                      )}
-                      <div className="pointer-events-none absolute left-0 right-0 top-0 bg-black/60 px-1.5 py-0.5 text-center">
-                        <span className="text-xs font-bold text-white">
-                          {index + 1}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeMedia(item.id)}
-                        onMouseDown={(e) => e.stopPropagation()}
-                        className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white transition-opacity duration-150 touch:p-1.5 hover:bg-black/80 active:scale-[0.97] hoverable:opacity-0 hoverable:group-hover:opacity-100"
-                        aria-label="Remove"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                {scrollArrows.right && (
-                  <button
-                    type="button"
-                    onClick={() => scrollMediaStrip("right")}
-                    className="hidden h-24 w-8 shrink-0 items-center justify-center rounded-lg bg-composer-chip text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip-hover hover:text-text active:scale-[0.97] hoverable:flex"
-                    aria-label="Scroll right"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-                )}
-              </div>
-              {media.some(
-                (m) => m.type === "video" && aspectGuidanceByMediaId[m.id],
-              ) && (
-                <div className="pt-1">
-                  <AspectRatioGuidanceBanner
-                    guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-
-          {isThread && (
-            <p className="rounded-lg border border-composer-card-border/70 bg-composer-chip/70 px-3 py-2 text-xs text-text-muted">
-              Threads can contain at most 4 attachments per post.
-            </p>
-          )}
-
-          <div className="mt-3 flex flex-col gap-3 border-t border-composer-card-border/60 pt-3.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <label
-                className={cn(
-                  "inline-flex cursor-pointer items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium touch-manipulation touch:min-h-11 sm:py-1.5",
-                  "bg-composer-chip text-text",
-                  "transition-[background-color,color,transform] duration-150",
-                  "hover:bg-composer-chip-hover active:scale-[0.97]",
-                  isThread &&
-                    media.length >= THREAD_MAX_MEDIA_PER_POST &&
-                    "cursor-not-allowed opacity-70",
-                )}
-              >
-                <ImagePlus className="h-4 w-4 shrink-0 text-text-muted" />
-                <span>Images / Videos{isThread ? " (max 4)" : ""}</span>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleFiles(e.target.files)}
-                  disabled={
-                    isThread && media.length >= THREAD_MAX_MEDIA_PER_POST
-                  }
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  const next = !isThread;
-                  setIsThread(next);
-                  if (next) {
-                    if (threadSlots.length === 0) addThreadSlot();
-                    setMedia((prev) => {
-                      if (prev.length <= THREAD_MAX_MEDIA_PER_POST) return prev;
-                      prev.slice(THREAD_MAX_MEDIA_PER_POST).forEach((m) => {
-                        if (m.previewUrl.startsWith("blob:"))
-                          URL.revokeObjectURL(m.previewUrl);
-                      });
-                      return prev.slice(0, THREAD_MAX_MEDIA_PER_POST);
-                    });
-                    setThreadSlots((prev) =>
-                      prev.map((s) => {
-                        if (s.media.length <= THREAD_MAX_MEDIA_PER_POST)
-                          return s;
-                        s.media
-                          .slice(THREAD_MAX_MEDIA_PER_POST)
-                          .forEach((m) => {
-                            if (m.previewUrl.startsWith("blob:"))
-                              URL.revokeObjectURL(m.previewUrl);
-                          });
-                        return {
-                          ...s,
-                          media: s.media.slice(0, THREAD_MAX_MEDIA_PER_POST),
-                        };
-                      }),
-                    );
-                  } else {
-                    setThreadSlots([]);
-                  }
-                }}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-medium touch-manipulation touch:min-h-11 sm:py-1.5",
-                  "transition-[background-color,color,transform] duration-150",
-                  "active:scale-[0.97]",
-                  isThread
-                    ? "bg-accent/10 text-accent"
-                    : "bg-composer-chip text-text hover:bg-composer-chip-hover",
-                )}
-              >
-                <Plus className="h-3 w-3 shrink-0" />
-                <span>Add another post as thread</span>
-              </button>
-            </div>
-
-            {text.length > 0 && (
-              <p
-                className="text-right text-xs text-text-muted sm:order-0"
-                aria-live="polite"
-              >
-                {text.length} character{text.length !== 1 ? "s" : ""}
-              </p>
-            )}
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={
-                loading ||
-                (!text.trim() &&
-                  media.length === 0 &&
-                  !threadSlots.some((s) => s.text.trim() || s.media.length > 0))
-              }
-              className="order-first inline-flex w-full items-center justify-center gap-2 rounded-full bg-accent px-5 py-3 text-sm font-semibold text-accent-foreground shadow-sm transition-[background-color,transform,opacity] duration-150 hover:bg-accent-hover active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-70 disabled:active:scale-100 touch-manipulation sm:order-0 sm:w-auto sm:py-2"
-            >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <FileText className="h-4 w-4" />
-              )}
-              <span>{loading ? "Loading…" : "Continue"}</span>
-            </button>
-          </div>
-        </div>
-
-        {isThread && (
-          <div className="space-y-4">
-            <AnimatePresence initial={false}>
-              {threadSlots.map((slot, index) => (
-                <motion.div
-                  key={slot.id}
-                  initial={
-                    reduceMotion
-                      ? { opacity: 0 }
-                      : {
-                          opacity: 0,
-                          transform: "translateY(6px) scale(0.97)",
-                        }
-                  }
-                  animate={
-                    reduceMotion
-                      ? { opacity: 1 }
-                      : {
-                          opacity: 1,
-                          transform: "translateY(0px) scale(1)",
-                        }
-                  }
-                  exit={
-                    reduceMotion
-                      ? { opacity: 0 }
-                      : {
-                          opacity: 0,
-                          transform: "translateY(4px) scale(0.98)",
-                        }
-                  }
-                  transition={{ duration: motionDuration, ease: EASE_OUT }}
-                  className="space-y-4 rounded-2xl border border-composer-card-border bg-composer-card p-4 shadow-sm sm:p-5"
-                  onDragOver={(e) => {
-                    if (!hasFileDrag(e)) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "copy";
-                  }}
-                  onDrop={(e) => handleThreadSlotFileDrop(slot.id, e)}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-text-muted">
-                      Post {index + 2}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeThreadSlot(slot.id)}
-                      className="rounded-full p-1.5 text-text-muted transition-[background-color,color,transform] duration-150 hover:bg-composer-chip hover:text-text active:scale-[0.97]"
-                      aria-label="Remove post"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <textarea
-                    ref={(el) => {
-                      if (el) threadTextareaRefs.current[slot.id] = el;
-                    }}
-                    className="min-h-24 max-h-50 w-full resize-none overflow-y-auto rounded-xl border border-composer-card-border bg-bg px-4 py-3 text-sm text-text placeholder:text-text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-                    placeholder="What's in this post?"
-                    value={slot.text}
-                    onChange={(e) => {
-                      updateThreadSlot(slot.id, { text: e.target.value });
-                      requestAnimationFrame(() =>
-                        resizeThreadSlotTextarea(
-                          e.target as HTMLTextAreaElement,
-                        ),
-                      );
-                    }}
-                    onDragOver={(e) => {
-                      if (!hasFileDrag(e)) return;
-                      e.preventDefault();
-                      e.dataTransfer.dropEffect = "copy";
-                    }}
-                  />
-                  {slot.media.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-xs text-text-muted">
-                        Drag to reorder · max 4 per post
-                      </p>
-                      <div className="flex gap-2 overflow-x-auto overflow-y-hidden py-1 scroll-smooth">
-                        {slot.media.map((item, idx) => (
-                          <div
-                            key={item.id}
-                            draggable
-                            onDragStart={() =>
-                              handleThreadSlotMediaDragStart(slot.id, idx)
-                            }
-                            onDragOver={(e) =>
-                              handleThreadSlotMediaDragOver(slot.id, idx, e)
-                            }
-                            onDragEnd={handleThreadSlotMediaDragEnd}
-                            className="group relative flex h-20 w-20 shrink-0 cursor-move items-center justify-center overflow-hidden rounded-xl border border-composer-card-border bg-composer-chip transition-[border-color] duration-150 hover:border-accent"
-                          >
-                            {item.type === "image" ? (
-                              <img
-                                src={item.previewUrl}
-                                alt=""
-                                className="pointer-events-none h-full w-full object-cover"
-                                draggable={false}
-                              />
-                            ) : (
-                              <>
-                                <video
-                                  src={item.previewUrl}
-                                  poster={item.posterUrl}
-                                  className="pointer-events-none h-full w-full object-cover"
-                                  muted
-                                  playsInline
-                                  preload="auto"
-                                  draggable={false}
-                                />
-                                <VideoPlayBadge compact />
-                              </>
-                            )}
-                            <div className="pointer-events-none absolute left-0 right-0 top-0 bg-black/60 px-1 py-0.5 text-center">
-                              <span className="text-xs font-bold text-white">
-                                {idx + 1}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                removeThreadSlotMedia(slot.id, item.id)
-                              }
-                              onMouseDown={(e) => e.stopPropagation()}
-                              className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white transition-opacity duration-150 touch:p-1.5 hover:bg-black/80 active:scale-[0.97] hoverable:opacity-0 hoverable:group-hover:opacity-100"
-                              aria-label="Remove"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                      {slot.media.some(
-                        (m) =>
-                          m.type === "video" && aspectGuidanceByMediaId[m.id],
-                      ) && (
-                        <div className="pt-1">
-                          <AspectRatioGuidanceBanner
-                            guidance={NON_STANDARD_VIDEO_ASPECT_GUIDANCE}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <label
-                      className={cn(
-                        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium",
-                        "border-composer-card-border bg-composer-chip text-text",
-                        "transition-[background-color,color,border-color,transform] duration-150",
-                        "active:scale-[0.97]",
-                        slot.media.length >= THREAD_MAX_MEDIA_PER_POST
-                          ? "cursor-not-allowed opacity-70"
-                          : "cursor-pointer hover:bg-composer-chip-hover",
-                      )}
-                    >
-                      <ImagePlus className="h-4 w-4 text-text-muted" />
-                      <span>Images / Videos (max 4)</span>
-                      <input
-                        type="file"
-                        accept="image/*,video/*"
-                        multiple
-                        className="hidden"
-                        onChange={(e) =>
-                          handleThreadSlotFiles(slot.id, e.target.files)
-                        }
-                        disabled={
-                          slot.media.length >= THREAD_MAX_MEDIA_PER_POST
-                        }
-                      />
-                    </label>
-                    <p
-                      className="mt-1 text-right text-xs text-text-muted"
-                      aria-live="polite"
-                    >
-                      {slot.text.length} character
-                      {slot.text.length !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-            <button
-              type="button"
-              onClick={addThreadSlot}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-composer-card-border bg-composer-card py-4 text-sm font-medium text-text-muted transition-[border-color,background-color,color,transform] duration-150 hover:border-accent hover:bg-accent/5 hover:text-accent active:scale-[0.99]"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Add another post</span>
-            </button>
-          </div>
+      <header
+        className={cn(
+          "flex shrink-0 items-center gap-2.5 border-b border-border px-4 py-3 sm:px-5",
+          compact && "pl-2 sm:pl-3",
+          fullScreen && "pt-[calc(env(safe-area-inset-top)+0.75rem)]",
         )}
-
-        <div className="space-y-2 pt-0.5">
-          <p className="flex items-center gap-2 text-sm leading-snug text-text-muted">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/20 text-accent">
-              ✓
-            </span>
-            You can connect your accounts from{" "}
-            <Link
-              href={dash("connections")}
-              className="font-medium text-accent transition-colors hover:text-accent-hover hover:underline"
-            >
-              here
-            </Link>
-            .
-          </p>
+      >
+        {compact ? closeButton : null}
+        <Heading
+          className={cn(
+            "whitespace-nowrap text-base font-semibold tracking-tight text-text",
+            // Phones: the ✕ and the publish button need the row.
+            compact && "max-sm:sr-only",
+          )}
+          id="composer-title"
+        >
+          {title}
+        </Heading>
+        {headerExtra}
+        <div className="ml-auto flex min-w-0 items-center gap-1">
+          {headerActions}
+          {compact ? null : closeButton}
         </div>
-      </div>
+      </header>
+      {children}
     </div>
   );
 }

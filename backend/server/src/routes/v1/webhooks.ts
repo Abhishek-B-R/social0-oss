@@ -75,61 +75,68 @@ export async function registerWebhooksRoutes(app: FastifyInstance) {
     return { data: rows.map(toWebhookDto) };
   });
 
-  app.post("/webhooks", async (request, reply) => {
-    const userId = v1UserId(request);
-    const body = createWebhookSchema.safeParse(request.body);
-    if (!body.success) {
-      return reply
-        .status(400)
-        .send(apiError("validation_error", "url and events are required."));
-    }
-    if (!(await isAllowedWebhookUrl(body.data.url))) {
-      return reply
-        .status(400)
-        .send(
+  // Create and update resolve DNS for a user-supplied host, so they sit behind
+  // the per-minute mutation budget, not only the hourly tier limit.
+  app.post(
+    "/webhooks",
+    { preHandler: requireV1MutationBudget },
+    async (request, reply) => {
+      const userId = v1UserId(request);
+      const body = createWebhookSchema.safeParse(request.body);
+      if (!body.success) {
+        return reply
+          .status(400)
+          .send(apiError("validation_error", "url and events are required."));
+      }
+      // Count before resolving: a user at the cap gets no DNS lookup.
+      if (
+        (await countWebhookSubscriptions(userId)) >= WEBHOOK_SUBSCRIPTION_LIMIT
+      ) {
+        return reply.status(409).send(
           apiError(
-            "validation_error",
-            "Webhook URL must be a public https URL that resolves to a public address.",
+            "limit_exceeded",
+            `You can have up to ${WEBHOOK_SUBSCRIPTION_LIMIT} webhook endpoints. Delete one first.`,
           ),
         );
-    }
+      }
 
-    if (
-      (await countWebhookSubscriptions(userId)) >= WEBHOOK_SUBSCRIPTION_LIMIT
-    ) {
-      return reply.status(409).send(
-        apiError(
-          "limit_exceeded",
-          `You can have up to ${WEBHOOK_SUBSCRIPTION_LIMIT} webhook endpoints. Delete one first.`,
-        ),
-      );
-    }
+      if (!(await isAllowedWebhookUrl(body.data.url))) {
+        return reply
+          .status(400)
+          .send(
+            apiError(
+              "validation_error",
+              "Webhook URL must be a public https URL that resolves to a public address.",
+            ),
+          );
+      }
 
-    const secret = crypto.randomBytes(32).toString("base64url");
-    const subscriptionId = crypto.randomUUID();
+      const secret = crypto.randomBytes(32).toString("base64url");
+      const subscriptionId = crypto.randomUUID();
 
-    const [row] = await db
-      .insert(userWebhookSubscriptions)
-      .values({
-        id: subscriptionId,
-        userId,
-        url: body.data.url,
-        secret: encryptToken(secret, subscriptionId),
-        events: body.data.events,
-      })
-      .returning({
-        id: userWebhookSubscriptions.id,
-        url: userWebhookSubscriptions.url,
-        events: userWebhookSubscriptions.events,
-        active: userWebhookSubscriptions.active,
-        created_at: userWebhookSubscriptions.createdAt,
+      const [row] = await db
+        .insert(userWebhookSubscriptions)
+        .values({
+          id: subscriptionId,
+          userId,
+          url: body.data.url,
+          secret: encryptToken(secret, subscriptionId),
+          events: body.data.events,
+        })
+        .returning({
+          id: userWebhookSubscriptions.id,
+          url: userWebhookSubscriptions.url,
+          events: userWebhookSubscriptions.events,
+          active: userWebhookSubscriptions.active,
+          created_at: userWebhookSubscriptions.createdAt,
+        });
+
+      return reply.status(201).send({
+        ...row,
+        secret,
       });
-
-    return reply.status(201).send({
-      ...row,
-      secret,
-    });
-  });
+    },
+  );
 
   app.get("/webhooks/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
@@ -165,7 +172,7 @@ export async function registerWebhooksRoutes(app: FastifyInstance) {
     const next = rows.length === limit ? rows[rows.length - 1] : undefined;
     return {
       data: rows.map(toDeliveryDto),
-      next_before: next ? next.createdAt.toISOString() : null,
+      next_before: next ? next.cursor : null,
     };
   });
 
@@ -202,56 +209,60 @@ export async function registerWebhooksRoutes(app: FastifyInstance) {
     },
   );
 
-  app.patch("/webhooks/:id", async (request, reply) => {
-    const userId = v1UserId(request);
-    const { id } = request.params as { id: string };
-    if (!isValidUUID(id)) {
-      return reply.status(404).send(apiError("not_found", "Webhook not found."));
-    }
-    const body = updateWebhookSchema.safeParse(request.body);
-    if (!body.success) {
-      return reply
-        .status(400)
-        .send(apiError("validation_error", "Invalid request body."));
-    }
-    if (body.data.url && !(await isAllowedWebhookUrl(body.data.url))) {
-      return reply
-        .status(400)
-        .send(
-          apiError(
-            "validation_error",
-            "Webhook URL must be a public https URL that resolves to a public address.",
+  app.patch(
+    "/webhooks/:id",
+    { preHandler: requireV1MutationBudget },
+    async (request, reply) => {
+      const userId = v1UserId(request);
+      const { id } = request.params as { id: string };
+      if (!isValidUUID(id)) {
+        return reply.status(404).send(apiError("not_found", "Webhook not found."));
+      }
+      const body = updateWebhookSchema.safeParse(request.body);
+      if (!body.success) {
+        return reply
+          .status(400)
+          .send(apiError("validation_error", "Invalid request body."));
+      }
+      if (body.data.url && !(await isAllowedWebhookUrl(body.data.url))) {
+        return reply
+          .status(400)
+          .send(
+            apiError(
+              "validation_error",
+              "Webhook URL must be a public https URL that resolves to a public address.",
+            ),
+          );
+      }
+
+      const [updated] = await db
+        .update(userWebhookSubscriptions)
+        .set({
+          ...(body.data.url ? { url: body.data.url } : {}),
+          ...(body.data.events ? { events: body.data.events } : {}),
+          ...(body.data.active !== undefined ? { active: body.data.active } : {}),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(userWebhookSubscriptions.id, id),
+            eq(userWebhookSubscriptions.userId, userId),
           ),
-        );
-    }
+        )
+        .returning({
+          id: userWebhookSubscriptions.id,
+          url: userWebhookSubscriptions.url,
+          events: userWebhookSubscriptions.events,
+          active: userWebhookSubscriptions.active,
+          updated_at: userWebhookSubscriptions.updatedAt,
+        });
 
-    const [updated] = await db
-      .update(userWebhookSubscriptions)
-      .set({
-        ...(body.data.url ? { url: body.data.url } : {}),
-        ...(body.data.events ? { events: body.data.events } : {}),
-        ...(body.data.active !== undefined ? { active: body.data.active } : {}),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(userWebhookSubscriptions.id, id),
-          eq(userWebhookSubscriptions.userId, userId),
-        ),
-      )
-      .returning({
-        id: userWebhookSubscriptions.id,
-        url: userWebhookSubscriptions.url,
-        events: userWebhookSubscriptions.events,
-        active: userWebhookSubscriptions.active,
-        updated_at: userWebhookSubscriptions.updatedAt,
-      });
-
-    if (!updated) {
-      return reply.status(404).send(apiError("not_found", "Webhook not found."));
-    }
-    return updated;
-  });
+      if (!updated) {
+        return reply.status(404).send(apiError("not_found", "Webhook not found."));
+      }
+      return updated;
+    },
+  );
 
   app.delete("/webhooks/:id", async (request, reply) => {
     const userId = v1UserId(request);

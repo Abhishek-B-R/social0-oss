@@ -1,19 +1,4 @@
-export { POSTS_PAGE_SIZE } from "./posts-constants";
-export type {
-  PublicationRow,
-  PostsListParams,
-  StatusFilter,
-} from "./posts-list-types";
-
-export type PostForEdit = {
-  id: string;
-  originalContent: string | null;
-  status: string | null;
-  scheduledAt: Date | null;
-  mediaIds: string[] | null;
-  connectedAccountIds: string[];
-};
-
+/** Post detail / composer types shared with `api/posts.ts`. */
 export type PostMediaRow = {
   id: string;
   originalFilename: string;

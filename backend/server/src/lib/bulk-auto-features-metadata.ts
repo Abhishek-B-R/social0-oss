@@ -4,8 +4,9 @@ import type {
 } from "@/lib/auto-features-types";
 
 /**
- * Stored on scheduled/queued posts so executePublish can run setupBulkAutoFeaturesIfPresent
- * after Twitter publishes (same shape as bulk tools).
+ * Stored on scheduled/queued posts so `maybeFinalizePostPublish` can set them up
+ * once the X delivery publishes (`publish/bulk-auto-features.ts`; same shape as
+ * bulk tools).
  */
 export function applyBulkAutoFeaturesToScheduledMetadata(
   metadata: Record<string, unknown>,

@@ -5,7 +5,7 @@
  * - Input sanitization
  */
 
-import { isValidUUID } from "@/lib/validation";
+import { isValidUUID } from "./validation.js";
 
 const CONTENT_LIMITS: Record<string, { max: number; name: string }> = {
   facebook: { max: 63_206, name: "Facebook" },
@@ -19,7 +19,14 @@ const CONTENT_LIMITS: Record<string, { max: number; name: string }> = {
   twitter_x: { max: 280, name: "X (Twitter)" },
 };
 
-const MAX_MEDIA_IDS = 20;
+/**
+ * Hard ceiling on the media ids in one list of a post: the top-level list, one
+ * thread part, or one `accountMedia` entry. It guards against malformed input;
+ * it is not a product limit. Each publisher trims to what its network takes
+ * (Instagram 10, Bluesky 4, Pinterest 1, ...). 35 is the most any network
+ * accepts in one post: a TikTok photo post.
+ */
+export const MAX_MEDIA_IDS_PER_POST = 35;
 
 /** Validate content length for a platform. Returns error message or null. */
 export function validateContentLength(
@@ -38,13 +45,13 @@ export function validateContentLength(
   return null;
 }
 
-/** Validate mediaIds array size to prevent abuse. */
+/** Validate one media id list against the abuse ceiling. */
 export function validateMediaCount(
-  mediaIds: string[] | null | undefined,
+  mediaIds: readonly unknown[] | null | undefined,
 ): string | null {
   if (!mediaIds?.length) return null;
-  if (mediaIds.length > MAX_MEDIA_IDS) {
-    return `Maximum ${MAX_MEDIA_IDS} media items per post.`;
+  if (mediaIds.length > MAX_MEDIA_IDS_PER_POST) {
+    return `Maximum ${MAX_MEDIA_IDS_PER_POST} media items per post.`;
   }
   return null;
 }

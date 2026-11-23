@@ -98,6 +98,18 @@ const FEATURES = [
 
 const FAQ = [
   {
+    q: "How do I schedule social media posts with MCP?",
+    a: "Connect your social accounts in Social0, add https://mcp.social0.app/mcp to Claude, ChatGPT or Cursor and sign in, then ask in plain words, for example: schedule this for tomorrow 9 AM on LinkedIn and X. The assistant calls schedule_post and Social0 publishes at that time.",
+  },
+  {
+    q: "Which AI assistants work with the Social0 MCP server?",
+    a: "ChatGPT, Claude (web, desktop and Claude Code) and Cursor connect to the hosted server over OAuth. VS Code and other local MCP hosts use npx @social0/mcp with an API key. OpenClaw and Hermes use the Social0 skill.",
+  },
+  {
+    q: "Which platforms can it post to?",
+    a: "X (Twitter), LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky and Pinterest: whichever accounts you have connected in Social0.",
+  },
+  {
     q: "What is MCP?",
     a: "Model Context Protocol is an open standard that lets AI assistants call tools on your behalf. Social0's MCP server exposes posting, scheduling, and account tools to Claude, Cursor, VS Code, and other hosts.",
   },
@@ -431,19 +443,21 @@ function McpConfigPanel() {
 
 export default function McpPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const { hash } = useLocation();
+  const { hash, key } = useLocation();
 
+  // `key` changes on every navigation, so clicking the same #section link
+  // again (same URL) still scrolls back to it.
   useEffect(() => {
     if (!hash) return;
     const t = window.setTimeout(() => scrollToHash(hash), 50);
     return () => window.clearTimeout(t);
-  }, [hash]);
+  }, [hash, key]);
 
   return (
     <MarketingPageLayout showCta={false}>
       <SeoHead
-        title="Social0 MCP Server — Manage social media from your AI"
-        description="Connect ChatGPT, Claude, Cursor, VS Code, OpenClaw, or Hermes to Social0. Remote OAuth for ChatGPT, Claude, and Cursor — or local npx / CLI skills. Create posts, publish, and schedule from natural language."
+        title="Social Media MCP Server for Claude, ChatGPT & Cursor | Social0"
+        description="Schedule and publish social media posts from Claude, ChatGPT or Cursor. Add mcp.social0.app/mcp, sign in, then post to X, LinkedIn, Instagram, TikTok and 5 more."
         path="/mcp"
         keywords={[
           "Social0 MCP",
@@ -467,9 +481,9 @@ export default function McpPage() {
           </p>
 
           <h1 className="mx-auto max-w-3xl font-sans text-[clamp(36px,5.5vw,56px)] font-bold leading-[1.08] tracking-tight text-[#333C4D] dark:text-white">
-            Manage social media accounts{" "}
+            The social media MCP server{" "}
             <span className="text-emerald-600 dark:text-emerald-400">
-              from your AI
+              for Claude, ChatGPT and Cursor
             </span>
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-[16px] leading-relaxed text-muted-foreground sm:text-[17px]">
@@ -526,7 +540,7 @@ export default function McpPage() {
           <div className="grid gap-5 lg:grid-cols-2">
             <div className={`${cardShell} overflow-hidden p-1.5 sm:p-2`}>
               <img
-                src="/demos/claude-mcp.png"
+                src="/demos/claude-mcp.webp"
                 alt="Claude using Social0 MCP to draft and publish"
                 className="w-full rounded-[14px] object-cover object-top"
                 loading="lazy"
@@ -535,7 +549,7 @@ export default function McpPage() {
             </div>
             <div className={`${cardShell} overflow-hidden p-1.5 sm:p-2`}>
               <img
-                src="/demos/chatgpt-mcp-accounts.png"
+                src="/demos/chatgpt-mcp-accounts.webp"
                 alt="ChatGPT using Social0 MCP to list connected accounts"
                 className="w-full rounded-[14px] object-cover object-top"
                 loading="lazy"
@@ -551,7 +565,7 @@ export default function McpPage() {
         <div className="mx-auto max-w-280">
           <div className="mb-12 text-center">
             <p className={sectionEyebrow}>Get started</p>
-            <h2 className={sectionTitle}>Setup in 3 steps</h2>
+            <h2 className={sectionTitle}>How to schedule social media posts with MCP</h2>
           </div>
           <div className="grid gap-5 md:grid-cols-3">
             {[

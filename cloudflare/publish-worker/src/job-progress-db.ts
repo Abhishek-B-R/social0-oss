@@ -1,6 +1,7 @@
 import { publishJobOutcome } from "@social0/shared";
 import type { PublishPlatformJob } from "./types";
 import { assertPublishJobAuthorized } from "./validate-job";
+import { withSql, type Sql } from "./db";
 
 /** Write SSE events directly to Postgres (API streams DB changes). */
 export async function trackPlatformPhase(
@@ -8,24 +9,19 @@ export async function trackPlatformPhase(
   job: PublishPlatformJob,
   phase: string,
   message: string,
-  opts?: { skipAuth?: boolean },
+  opts?: { skipAuth?: boolean; sql?: Sql },
 ): Promise<void> {
-  if (!job.trackingId) return;
-  if (!opts?.skipAuth && (await assertPublishJobAuthorized(env, job))) return;
+  const trackingId = job.trackingId;
+  if (!trackingId) return;
+  if (!opts?.skipAuth && (await assertPublishJobAuthorized(env, job, opts?.sql))) return;
 
-  const { default: postgres } = await import("postgres");
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 1,
-    fetch_types: false,
-  });
-
-  try {
+  await withSql(env, opts?.sql, async (sql) => {
     await sql`
       INSERT INTO publish_job_events (
         tracking_id, post_id, user_id, phase, platform,
         connected_account_id, message
       ) VALUES (
-        ${job.trackingId},
+        ${trackingId},
         ${job.postId}::uuid,
         ${job.userId},
         ${phase},
@@ -38,11 +34,9 @@ export async function trackPlatformPhase(
     await sql`
       UPDATE publish_jobs
       SET status = 'processing', updated_at = NOW()
-      WHERE tracking_id = ${job.trackingId}
+      WHERE tracking_id = ${trackingId}
     `;
-  } finally {
-    await sql.end({ timeout: 0 });
-  }
+  });
 }
 
 /** Increment platform counters and emit terminal completed/failed when all platforms finish. */
@@ -51,23 +45,33 @@ export async function recordPlatformResult(
   job: PublishPlatformJob,
   success: boolean,
   message: string,
-  opts?: { skipAuth?: boolean },
+  opts?: { skipAuth?: boolean; sql?: Sql },
 ): Promise<void> {
-  if (!opts?.skipAuth && (await assertPublishJobAuthorized(env, job))) return;
+  if (!opts?.skipAuth && (await assertPublishJobAuthorized(env, job, opts?.sql))) return;
 
-  const { default: postgres } = await import("postgres");
-  const sql = postgres(env.HYPERDRIVE.connectionString, {
-    max: 1,
-    fetch_types: false,
-  });
-
-  try {
+  await withSql(env, opts?.sql, async (sql) => {
     if (!success) {
-      await sql`
+      // Only a delivery nobody is working on can be marked failed here. A
+      // "publishing" row belongs to a live run (possibly another one: a
+      // redelivered message, Publish now racing the cron) and a "published"
+      // row is done; that run records its own outcome. Demoting either failed
+      // a post mid-upload and invited a Retry that posted it twice.
+      const demoted = await sql`
         UPDATE post_publications
         SET status = 'failed', last_error = ${message}, updated_at = NOW()
         WHERE id = ${job.publicationId}::uuid
+          AND (status IS NULL OR status IN ('pending', 'failed'))
+        RETURNING id
       `;
+      if (demoted.length === 0) {
+        const [current] = await sql<{ status: string | null }[]>`
+          SELECT status
+          FROM post_publications
+          WHERE id = ${job.publicationId}::uuid
+          LIMIT 1
+        `;
+        if (current?.status === "publishing") return;
+      }
     }
 
     const [pubCounts] = await sql<
@@ -182,7 +186,5 @@ export async function recordPlatformResult(
         )
       `;
     }
-  } finally {
-    await sql.end({ timeout: 0 });
-  }
+  });
 }

@@ -1,6 +1,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
+import { forgetApiKeysForUser } from "@/lib/api-keys";
 import {
   userSettings,
   connectedAccounts,
@@ -19,12 +20,14 @@ import { eq, and } from "drizzle-orm";
 import { headers, cookies } from "../lib/http/request-cookies.js";
 import { redirect } from "../lib/http/route-redirect.js";
 import type { DateFormatKey } from "@social0/shared";
-import { decryptToken } from "@social0/shared";
 import { requireSessionUserId } from "@/lib/require-session-user";
 import { isSafeOutboundUrl } from "@social0/shared";
 import { isValidIanaTimezone } from "../lib/resolve-scheduled-at.js";
-import { revokeTokenOnPlatform } from "../lib/revoke-token.js";
-import type { Platform } from "../lib/platforms.js";
+import { revokeAccountGrant } from "../lib/revoke-account-grant.js";
+import DodoPayments from "dodopayments";
+import { env } from "../lib/env.js";
+import { listOpenDodoSubscriptions } from "../lib/billing-guards.js";
+import { forceCancelDodoSubscription } from "../lib/billing-zombie-utils.js";
 
 export type SettingsConnectionPayload = {
   id: string;
@@ -391,7 +394,27 @@ export async function deleteAccount(
 
   const userId = session.user.id;
 
-  // Kill sessions first (Postgres + Redis secondary storage) while the user still exists.
+  // Billing first, while the user can still sign in and retry: once the
+  // account is gone there is no way back to the billing portal, so an
+  // uncancelled subscription would bill forever.
+  const billingRow = await db.query.userSettings.findFirst({
+    where: eq(userSettings.userId, userId),
+    columns: { subscriptionId: true, customerId: true },
+  });
+  const billing = await cancelDodoSubscriptionsForDeletion(
+    session.user.email ?? "",
+    billingRow?.subscriptionId ?? null,
+    billingRow?.customerId ?? null,
+  );
+  if (!billing.ok) {
+    return {
+      success: false,
+      error:
+        "We could not cancel your subscription, so your account was not deleted. Try again, or contact support.",
+    };
+  }
+
+  // Kill sessions (Postgres + Redis secondary storage) while the user still exists.
   try {
     await auth.api.revokeSessions({ headers: sessionHeaders });
   } catch (err) {
@@ -408,45 +431,24 @@ export async function deleteAccount(
     /* best effort */
   }
 
-  const settingsRow = await db.query.userSettings.findFirst({
-    where: eq(userSettings.userId, userId),
-    columns: { subscriptionId: true },
-  });
-
-  if (settingsRow?.subscriptionId) {
-    try {
-      const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
-      const environment =
-        (process.env.DODO_PAYMENTS_ENVIRONMENT as "test_mode" | "live_mode") ??
-        "test_mode";
-      if (apiKey) {
-        const DodoPayments = (await import("dodopayments")).default;
-        const client = new DodoPayments({ bearerToken: apiKey, environment });
-        await client.subscriptions.update(settingsRow.subscriptionId, {
-          status: "cancelled",
-        });
-      }
-    } catch (err) {
-      console.warn("[deleteAccount] Dodo cancel failed:", err);
-    }
-  }
-
   const accounts = await db.query.connectedAccounts.findMany({
     where: eq(connectedAccounts.userId, userId),
     columns: {
       id: true,
+      userId: true,
       platform: true,
+      platformUserId: true,
       encryptedAccessToken: true,
+      encryptedRefreshToken: true,
     },
   });
 
+  // Every row of this user goes below, but a teammate's personal connection
+  // can share a grant with one of them (team rows are stored under the
+  // owner's id even when an admin did the OAuth). Best effort, never throws.
+  const removingWith = new Set(accounts.map((row) => row.id));
   for (const row of accounts) {
-    try {
-      const accessToken = decryptToken(row.encryptedAccessToken, row.id);
-      await revokeTokenOnPlatform(row.platform as Platform, accessToken);
-    } catch {
-      /* best effort */
-    }
+    await revokeAccountGrant(row, { removingWith });
   }
 
   try {
@@ -455,6 +457,7 @@ export async function deleteAccount(
       .delete(connectedAccounts)
       .where(eq(connectedAccounts.userId, userId));
     await db.delete(apiKeys).where(eq(apiKeys.userId, userId));
+    forgetApiKeysForUser(userId);
     await db
       .delete(userWebhookSubscriptions)
       .where(eq(userWebhookSubscriptions.userId, userId));
@@ -489,6 +492,90 @@ export async function deleteAccount(
   }
 
   return { success: true };
+}
+
+function isDodoNotFound(err: unknown): boolean {
+  return (
+    err instanceof DodoPayments.NotFoundError ||
+    (typeof err === "object" &&
+      err !== null &&
+      (err as { status?: unknown }).status === 404)
+  );
+}
+
+/**
+ * Cancel every Dodo subscription the user could still be charged on before
+ * their account is deleted.
+ *
+ * The stored `subscriptionId` is not enough: it is null while a sub is
+ * on_hold, after a local revert, or after an expiry read, and Dodo keeps
+ * retrying those. So every open sub for the user's email and customer is
+ * listed (strictly: a list that could not finish is a failure) and each one
+ * goes through `forceCancelDodoSubscription`, which tries the cancel shapes an
+ * on_hold sub accepts. Any failure is returned so the caller aborts.
+ */
+async function cancelDodoSubscriptionsForDeletion(
+  email: string,
+  storedSubscriptionId: string | null,
+  customerId: string | null,
+): Promise<{ ok: true } | { ok: false }> {
+  const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
+  if (!apiKey) {
+    // No Dodo configured (local dev): nothing here can bill anyone.
+    if (storedSubscriptionId) {
+      console.warn(
+        "[deleteAccount] DODO_PAYMENTS_API_KEY unset; not cancelling",
+        storedSubscriptionId,
+      );
+    }
+    return { ok: true };
+  }
+
+  const toCancel = new Set<string>();
+  try {
+    const listed = [
+      ...(email
+        ? await listOpenDodoSubscriptions(email, null, { throwOnError: true })
+        : []),
+      ...(customerId
+        ? await listOpenDodoSubscriptions(email, customerId, {
+            throwOnError: true,
+          })
+        : []),
+    ];
+    for (const sub of listed) toCancel.add(sub.subscriptionId);
+
+    // The stored id may be on a product the list does not cover. Cancel it
+    // unless Dodo says it does not exist (a stale id must not block deletion).
+    if (storedSubscriptionId && !toCancel.has(storedSubscriptionId)) {
+      const client = new DodoPayments({
+        bearerToken: apiKey,
+        environment: env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode",
+      });
+      try {
+        await client.subscriptions.retrieve(storedSubscriptionId);
+        toCancel.add(storedSubscriptionId);
+      } catch (err) {
+        if (!isDodoNotFound(err)) throw err;
+      }
+    }
+  } catch (err) {
+    console.error("[deleteAccount] could not resolve open Dodo subscriptions:", err);
+    return { ok: false };
+  }
+
+  let ok = true;
+  for (const subscriptionId of toCancel) {
+    const result = await forceCancelDodoSubscription(subscriptionId);
+    if (!result.ok) {
+      console.error("[deleteAccount] Dodo cancel failed:", {
+        subscriptionId,
+        message: result.message,
+      });
+      ok = false;
+    }
+  }
+  return ok ? { ok: true } : { ok: false };
 }
 
 const BETTER_AUTH_COOKIE_NAMES = [

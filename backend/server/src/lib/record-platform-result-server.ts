@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import {
   publishJobOutcome,
   type JobProgressPhase,
+  type JobProgressSnapshot,
   type PublishPlatformJob,
 } from "@social0/shared";
 import { db } from "../db/index.js";
@@ -17,6 +18,21 @@ import {
   safeDbPublishTracking,
 } from "./publish-job-tracking.js";
 
+/**
+ * Whether the progress store's persist hook wrote the event `emit` was given.
+ * Only `app.jobProgress` carries that hook, and `emit` returns `null` without
+ * running it when Redis holds no snapshot for the job: scheduled jobs never
+ * get one (`initScheduledPublishTracking` writes Postgres only), and a
+ * publish-now loses it whenever Redis is unavailable. Treating those as
+ * persisted left their timeline with nothing past "queued".
+ */
+function hookedStorePersisted(
+  app: FastifyInstance | null,
+  snapshot: JobProgressSnapshot | null,
+): boolean {
+  return Boolean(app?.jobProgress) && snapshot !== null;
+}
+
 /** Job progress for platform publishes that run on the API (not CF worker). */
 export async function trackPlatformPhaseServer(
   app: FastifyInstance | null,
@@ -27,7 +43,7 @@ export async function trackPlatformPhaseServer(
   if (!job.trackingId) return;
 
   const progress = await resolveJobProgressStore(app);
-  await progress.emit({
+  const snapshot = await progress.emit({
     trackingId: job.trackingId,
     postId: job.postId,
     userId: job.userId,
@@ -38,8 +54,9 @@ export async function trackPlatformPhaseServer(
   });
 
   // Same ownership rule as `recordPlatformResultServer`: the hooked store has
-  // already written this event, so only the app-less store leaves it to us.
-  const storeAlreadyPersisted = Boolean(app?.jobProgress);
+  // already written this event when it ran, so the app-less store (and a
+  // hooked store that found no Redis snapshot) leave it to us.
+  const storeAlreadyPersisted = hookedStorePersisted(app, snapshot);
 
   await safeDbPublishTracking(async () => {
     if (!storeAlreadyPersisted) {
@@ -68,14 +85,36 @@ export async function recordPlatformResultServer(
   message: string,
 ): Promise<void> {
   if (!success) {
-    await db
+    // Only a delivery nobody is working on can be marked failed here. A
+    // "publishing" row belongs to a live run (possibly another one: a
+    // duplicate job, Publish now racing the cron) and a "published" row is
+    // done; that run records its own outcome. Demoting either failed a post
+    // mid-upload and invited a Retry that posted it twice.
+    const demoted = await db
       .update(postPublications)
       .set({
         status: "failed",
         lastError: message,
         updatedAt: new Date(),
       })
-      .where(eq(postPublications.id, job.publicationId));
+      .where(
+        and(
+          eq(postPublications.id, job.publicationId),
+          or(
+            isNull(postPublications.status),
+            inArray(postPublications.status, ["pending", "failed"]),
+          ),
+        ),
+      )
+      .returning({ id: postPublications.id });
+    if (demoted.length === 0) {
+      const [current] = await db
+        .select({ status: postPublications.status })
+        .from(postPublications)
+        .where(eq(postPublications.id, job.publicationId))
+        .limit(1);
+      if (current?.status === "publishing") return;
+    }
   }
 
   const pubs = await db
@@ -122,7 +161,7 @@ export async function recordPlatformResultServer(
 
   const progress = await resolveJobProgressStore(app);
   const phase: JobProgressPhase = success ? "platform_success" : "platform_failed";
-  await progress.emit({
+  const snapshot = await progress.emit({
     trackingId: job.trackingId,
     postId: job.postId,
     userId: job.userId,
@@ -132,11 +171,12 @@ export async function recordPlatformResultServer(
     message,
   });
 
-  // `app.jobProgress` is the store built with the persist hooks, so it has
-  // already written this event and the job counters. Only the app-less store
-  // (`getRedisOnlyJobProgress`) leaves that to us — writing them unconditionally
-  // is what put two rows in `publish_job_events` for every phase.
-  const storeAlreadyPersisted = Boolean(app?.jobProgress);
+  // `app.jobProgress` is the store built with the persist hooks, so when it
+  // ran it has already written this event (and the terminal one). The
+  // app-less store (`getRedisOnlyJobProgress`) leaves that to us — writing
+  // them unconditionally is what put two rows in `publish_job_events` for
+  // every phase.
+  const storeAlreadyPersisted = hookedStorePersisted(app, snapshot);
 
   await safeDbPublishTracking(async () => {
     const [row] = await db

@@ -1,4 +1,4 @@
-import { rpc } from "@/lib/rpc";
+import { rpc, rpcKeepalive } from "@/lib/rpc";
 import type { DateWindowRange } from "@/lib/date-window";
 
 export type InboxRange = DateWindowRange;
@@ -57,12 +57,24 @@ export type InboxFetchError = {
 export type InboxNotice = {
   platform: string;
   message: string;
+  /**
+   * "stale": we're showing saved data because the platform (or our outbound
+   * budget) says wait. "retry": nothing saved yet; the client retries at
+   * `retryAt` on its own. Absent for plain informational notices.
+   */
+  kind?: "stale" | "retry";
+  /** ISO time the shown data was fetched (kind "stale"). */
+  cachedAt?: string;
+  /** ISO time it's worth trying again (kind "retry"). */
+  retryAt?: string;
 };
 
 export type InboxListResult = {
   range: InboxRange;
   since: string;
   until: string;
+  /** IANA zone the server resolved `since` / `until` in (the workspace owner's). */
+  timeZone?: string;
   threads: InboxThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
@@ -106,6 +118,11 @@ export type InboxDmMessage = {
 /** Client-only fields for optimistic / failed sends. */
 export type LocalInboxDmMessage = InboxDmMessage & {
   sendStatus?: "sending" | "failed";
+  /**
+   * Delivered from this browser and written into the thread cache before the
+   * server copy arrived: `createdAt` is our clock, not the server's.
+   */
+  sentHere?: boolean;
   localPreviewUrl?: string | null;
   retryPayload?: {
     text: string;
@@ -119,6 +136,8 @@ export type InboxDmListResult = {
   range: InboxRange;
   since: string;
   until: string;
+  /** IANA zone the server resolved `since` / `until` in (the workspace owner's). */
+  timeZone?: string;
   threads: InboxDmThread[];
   accountsNeedingReconnect: InboxReconnectHint[];
   unsupported: string[];
@@ -199,6 +218,14 @@ export function hideInboxComment(input: {
   commentId: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   return rpc("inbox.hideComment", input);
+}
+
+/** Same as `hideInboxComment`, sent with `keepalive` while the tab is closing. */
+export function hideInboxCommentOnUnload(input: {
+  publicationId: string;
+  commentId: string;
+}): void {
+  rpcKeepalive("inbox.hideComment", input);
 }
 
 export function listInboxDms(input?: {

@@ -78,6 +78,12 @@ MCP_OAUTH_INTROSPECT_SECRET=<same secret as worker>
 
 Redeploy the API after setting secrets.
 
+The same secret also signs the caller address the Worker forwards on proxied
+`/oauth/*` requests (`X-Social0-Client-IP` + `X-Social0-Client-IP-Signature`,
+from `CF-Connecting-IP`). The API rate-limits `/oauth/register` and
+`/oauth/authorize` per caller with it; without a matching secret every proxied
+caller falls back to the Worker's own address and shares one bucket.
+
 ## OAuth flow
 
 1. MCP client opens `GET /oauth/authorize` with PKCE (`S256`)

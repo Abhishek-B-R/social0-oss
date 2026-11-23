@@ -78,11 +78,14 @@ export function PinterestConfigInline({
     if (!isVisible || !accountId) return;
     const savedBoard = getRememberedBoard(accountId);
     const savedLink = getRememberedLink(accountId);
-    if (savedBoard && !value.boardId) {
-      onChange({ ...value, boardId: savedBoard });
-    }
-    if (savedLink != null && savedLink !== "" && !value.link) {
-      onChange({ ...value, link: savedLink });
+    // One patch: the parent replaces the account's whole settings object on
+    // each onChange, so two calls spreading the same `value` would drop the
+    // board when a link is also remembered.
+    const patch: Partial<PinterestPostSettings> = {};
+    if (savedBoard && !value.boardId) patch.boardId = savedBoard;
+    if (savedLink != null && savedLink !== "" && !value.link) patch.link = savedLink;
+    if (patch.boardId !== undefined || patch.link !== undefined) {
+      onChange({ ...value, ...patch });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only when visible for this account
   }, [isVisible, accountId]);
@@ -234,7 +237,7 @@ export function PinterestConfigInline({
                   e.stopPropagation();
                   handleCreateBoard(e);
                 }}
-                className="rounded-lg bg-accent text-white px-3 py-2 text-sm font-medium disabled:opacity-50"
+                className="rounded-lg bg-accent text-accent-foreground px-3 py-2 text-sm font-medium disabled:opacity-50"
               >
                 {createSubmitting ? "Creating..." : "Create"}
               </button>

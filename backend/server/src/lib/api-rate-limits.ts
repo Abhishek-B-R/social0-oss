@@ -1,8 +1,7 @@
 import type { FastifyReply } from "fastify";
 import { Ratelimit } from "@upstash/ratelimit";
 import type { SubscriptionTier } from "@social0/shared";
-import { redis } from "./redis.js";
-import { enforceRateLimit } from "./ratelimit.js";
+import { enforceRateLimit, slidingWindowLimiter } from "./ratelimit.js";
 
 export type ApiRateLimitInfo = {
   limit: number;
@@ -13,6 +12,11 @@ export type ApiRateLimitInfo = {
 /** Public API requests per hour by subscription tier. */
 export function apiRequestsPerHour(tier: SubscriptionTier): number {
   switch (tier) {
+    case "agency":
+      return 5000;
+    case "creator":
+      return 1000;
+    // Legacy plans keep the limits they were sold with.
     case "max":
       return 10000;
     case "pro":
@@ -27,12 +31,7 @@ export function apiRequestsPerHour(tier: SubscriptionTier): number {
 }
 
 function createTierLimiter(requestsPerHour: number): Ratelimit | null {
-  if (!redis) return null;
-  return new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(requestsPerHour, "1 h"),
-    prefix: `rl:api_v1:${requestsPerHour}`,
-  });
+  return slidingWindowLimiter(requestsPerHour, "1 h", `rl:api_v1:${requestsPerHour}`);
 }
 
 const limiterCache = new Map<number, Ratelimit | null>();

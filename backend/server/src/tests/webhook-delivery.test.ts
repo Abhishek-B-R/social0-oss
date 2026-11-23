@@ -14,7 +14,7 @@ import {
   verifySocial0WebhookSignature,
 } from "@social0/shared";
 
-const { mockDb } = vi.hoisted(() => ({
+const { mockDb, transport } = vi.hoisted(() => ({
   mockDb: {
     select: vi.fn(),
     insert: vi.fn(),
@@ -22,10 +22,16 @@ const { mockDb } = vi.hoisted(() => ({
     delete: vi.fn(),
     execute: vi.fn(),
   },
+  /** Stands in for the Node connect-time-guarded transport. */
+  transport: { publicAddressFetch: vi.fn() },
 }));
 
 vi.mock("../db/index.js", () => ({ db: mockDb }));
 vi.mock("@/db", () => ({ db: mockDb }));
+vi.mock("../lib/public-address-fetch.js", () => ({
+  publicAddressFetch: (url: string, init: RequestInit) =>
+    transport.publicAddressFetch(url, init),
+}));
 
 /** Drizzle-ish builder: every method returns itself, awaiting yields `result`. */
 function chain(result: unknown = []): unknown {
@@ -74,12 +80,19 @@ beforeEach(() => {
   mockDb.update.mockImplementation(() => chain([]));
   mockDb.delete.mockImplementation(() => chain([]));
   mockDb.execute.mockImplementation(() => Promise.resolve(undefined));
+  // On Node, delivery goes through the guarded transport; the tests below
+  // assert on `fetchMock` for both runtimes, so route it there.
   fetchMock = vi.fn(async () => okResponse());
-  vi.stubGlobal("fetch", fetchMock);
+  transport.publicAddressFetch.mockImplementation(
+    (url: string, init: RequestInit) => fetchMock(url, init),
+  );
+  vi.stubGlobal("fetch", vi.fn(async () => okResponse()));
+  delete process.env.SOCIAL0_PUBLISH_WORKER;
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  delete process.env.SOCIAL0_PUBLISH_WORKER;
 });
 
 describe("deliverUserWebhookEvent", () => {
@@ -245,6 +258,106 @@ describe("deliverUserWebhookEvent", () => {
       attempts: 0,
       responseStatus: null,
     });
+  });
+
+  it("re-checks a redirect target and refuses one that points inside the network", async () => {
+    mockDb.select.mockImplementationOnce(() => chain([subscriptionRow()]));
+    const redirect = new Response("moved", {
+      status: 302,
+      headers: { location: "http://169.254.169.254/latest/meta-data" },
+    });
+    const cancel = vi.spyOn(redirect.body!, "cancel");
+    fetchMock.mockImplementationOnce(async () => redirect);
+
+    const { deliverUserWebhookEvent } = await import(
+      "../lib/user-webhook-delivery.js"
+    );
+    const [outcome] = await deliverUserWebhookEvent(
+      USER_ID,
+      "post.published",
+      { post_id: "post-1" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(cancel).toHaveBeenCalled();
+    expect(outcome).toMatchObject({
+      status: "failed",
+      attempts: 1,
+      responseStatus: null,
+    });
+  });
+
+  it("follows a redirect to another public URL with the same signed request", async () => {
+    mockDb.select.mockImplementationOnce(() => chain([subscriptionRow()]));
+    fetchMock.mockImplementationOnce(
+      async () =>
+        new Response(null, {
+          status: 307,
+          headers: { location: "/v2/webhooks/social0" },
+        }),
+    );
+
+    const { deliverUserWebhookEvent } = await import(
+      "../lib/user-webhook-delivery.js"
+    );
+    const [outcome] = await deliverUserWebhookEvent(
+      USER_ID,
+      "post.published",
+      { post_id: "post-1" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const [first, second] = fetchMock.mock.calls as [string, RequestInit][];
+    expect(second[0]).toBe("https://hooks.example.com/v2/webhooks/social0");
+    expect(second[1].body).toBe(first[1].body);
+    expect(second[1].redirect).toBe("manual");
+    expect(outcome).toMatchObject({ status: "delivered", responseStatus: 200 });
+  });
+
+  it("does not retry when the host resolves to a non-public address", async () => {
+    mockDb.select.mockImplementationOnce(() => chain([subscriptionRow()]));
+    fetchMock.mockImplementation(async () => {
+      throw Object.assign(new Error("Host resolves to a non-public address"), {
+        code: "ENONPUBLICADDRESS",
+      });
+    });
+
+    const { deliverUserWebhookEvent } = await import(
+      "../lib/user-webhook-delivery.js"
+    );
+    const [outcome] = await deliverUserWebhookEvent(
+      USER_ID,
+      "post.published",
+      { post_id: "post-1" },
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(outcome).toMatchObject({
+      status: "failed",
+      attempts: 1,
+      responseStatus: null,
+    });
+    expect(outcome.error).toContain("not public");
+  });
+
+  it("uses the platform fetch on the Cloudflare publish worker", async () => {
+    process.env.SOCIAL0_PUBLISH_WORKER = "1";
+    const workerFetch = vi.fn(async () => okResponse(202));
+    vi.stubGlobal("fetch", workerFetch);
+    mockDb.select.mockImplementationOnce(() => chain([subscriptionRow()]));
+
+    const { deliverUserWebhookEvent } = await import(
+      "../lib/user-webhook-delivery.js"
+    );
+    const [outcome] = await deliverUserWebhookEvent(
+      USER_ID,
+      "post.published",
+      { post_id: "post-1" },
+    );
+
+    expect(workerFetch).toHaveBeenCalledTimes(1);
+    expect(transport.publicAddressFetch).not.toHaveBeenCalled();
+    expect(outcome).toMatchObject({ status: "delivered", responseStatus: 202 });
   });
 
   it("records the attempt and stamps the subscription's last delivery", async () => {

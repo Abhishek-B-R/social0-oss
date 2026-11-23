@@ -8,8 +8,9 @@ import {
 import DodoPayments from "dodopayments";
 import { db } from "../../db/index.js";
 import { userSettings, subscriptionCancellations } from "../../db/schema.js";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { setSubscription } from "../../lib/subscription.js";
+import { clearAfterUpgradeMarker } from "../../lib/billing-after-upgrade.js";
 
 
 const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
@@ -18,7 +19,10 @@ const environment =
   "test_mode";
 
 export async function cancelSubscription(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  });
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -91,12 +95,33 @@ export async function cancelSubscription(request: Request) {
       return RouteResponse.json({ success: true, immediate: true });
     }
 
+    // A scheduled plan change (downgrade, or upgrade at renewal) would land on
+    // the same date the subscription ends: drop it so Dodo holds only the
+    // cancellation and billing doesn't show both.
+    try {
+      await client.subscriptions.cancelChangePlan(row.subscriptionId);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.includes("404") && !msg.toLowerCase().includes("not found")) {
+        console.warn("[billing/cancel] cancelChangePlan warning:", msg);
+      }
+    }
     await client.subscriptions.update(row.subscriptionId, {
       cancel_at_next_billing_date: true,
     });
-    await db.execute(sql`
-      UPDATE user_settings SET subscription_cancel_at_period_end = true WHERE user_id = ${session.user.id}
-    `);
+    await db
+      .update(userSettings)
+      .set({
+        subscriptionCancelAtPeriodEnd: true,
+        pendingPlanTier: null,
+        downgradeReason: null,
+      })
+      .where(eq(userSettings.userId, session.user.id));
+    // An "Upgrade now" still settling must not lift this cancellation or bring
+    // back the scheduled change just dropped when its charge resolves.
+    await clearAfterUpgradeMarker(row.subscriptionId).catch((e) =>
+      console.warn("[billing/cancel] clear after-upgrade marker:", e),
+    );
     return RouteResponse.json({ success: true, scheduled: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Cancel failed";

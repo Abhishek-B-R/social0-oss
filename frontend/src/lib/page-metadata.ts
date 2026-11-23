@@ -233,6 +233,38 @@ export function staticRouteSeo(pathname: string): PageSeoConfig | null {
         },
         "/data-deletion",
       );
+    // Same title / description the Pages middleware injects on a direct load
+    // (STATIC_ROUTE_META in scripts/generate-sitemap.mjs).
+    case "/about":
+      return metadataToSeoConfig(
+        {
+          title: "About Social0 - multi-platform scheduler for humans and agents",
+          description:
+            "Social0 is an independent social media scheduler for creators, founders, and AI agents. Compose once and publish to nine networks via dashboard, MCP, API, or CLI.",
+          alternates: { canonical: absoluteUrl("/about") },
+        },
+        "/about",
+      );
+    case "/contact":
+      return metadataToSeoConfig(
+        {
+          title: "Contact Social0 - support, legal, and privacy",
+          description:
+            "Email support@social0.app for product help, legal@social0.app for legal requests, and privacy@social0.app for privacy. Include your account email and any tracking_id.",
+          alternates: { canonical: absoluteUrl("/contact") },
+        },
+        "/contact",
+      );
+    case "/developers":
+      return metadataToSeoConfig(
+        {
+          title: "Social0 developer resources - API, OpenAPI, MCP, and CLI",
+          description:
+            "Self-serve Social0 developer access: OpenAPI at api.social0.app/openapi.json, hosted MCP at mcp.social0.app, npm CLI, API keys, and docs.social0.app.",
+          alternates: { canonical: absoluteUrl("/developers") },
+        },
+        "/developers",
+      );
     case "/features":
       return metadataToSeoConfig(
         buildPageMetadata({

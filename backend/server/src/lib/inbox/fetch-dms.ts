@@ -6,8 +6,10 @@
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
-import { extractHttpStatus } from "../twitter-errors.js";
-import { throwIfPlatformRateLimited } from "../platform-rate-limit.js";
+import {
+  rethrowIfRateLimited,
+  throwIfPlatformRateLimited,
+} from "../platform-rate-limit.js";
 import { inDateWindow } from "../date-window.js";
 import {
   graphPictureUrl,
@@ -861,7 +863,7 @@ async function fetchTwitterList(
     );
     return { threads, status: "ok" };
   } catch (e) {
-    if (extractHttpStatus(e) === 429) throw e;
+    rethrowIfRateLimited(e);
     const msg = e instanceof Error ? e.message : "X DMs failed";
     return graphErr(
       msg,
@@ -962,7 +964,7 @@ async function fetchTwitterThread(
       nextCursor,
     };
   } catch (e) {
-    if (extractHttpStatus(e) === 429) throw e;
+    rethrowIfRateLimited(e);
     const msg = e instanceof Error ? e.message : "X thread failed";
     return graphMsg(
       msg,
@@ -1038,6 +1040,16 @@ function bskyPeer(members: BskyMember[] | undefined, selfDid: string): BskyMembe
   return others[0] ?? {};
 }
 
+/** Bluesky's answer when the app password lacks DM access ("Bad token scope"). */
+function isBlueskyChatScopeError(data: unknown, message: string): boolean {
+  const code = (data as { error?: unknown } | null)?.error;
+  return (
+    code === "BadTokenScope" ||
+    code === "InvalidToken" ||
+    /bad token scope/i.test(message)
+  );
+}
+
 async function fetchBlueskyList(
   account: DmAccount,
   since: Date,
@@ -1071,6 +1083,14 @@ async function fetchBlueskyList(
       if (convos.length) break;
       const msg =
         (data as { message?: string })?.message ?? "Bluesky chat failed";
+      if (isBlueskyChatScopeError(data, msg)) {
+        // The app password was made without "Allow access to your direct
+        // messages". Retrying cannot fix that; reconnecting with a new one can.
+        return graphErr(
+          "This Bluesky app password can't read DMs. Reconnect with an app password that allows direct messages.",
+          ["chat.bsky"],
+        );
+      }
       return graphErr(msg);
     }
     const pageConvos = (data as { convos?: BskyConvo[] }).convos ?? [];

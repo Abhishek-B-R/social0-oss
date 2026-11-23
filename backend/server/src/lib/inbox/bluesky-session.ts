@@ -4,10 +4,9 @@
  * (createSession is a known rate-limit hotspot on bsky.social).
  */
 
-import { Ratelimit } from "@upstash/ratelimit";
 import { redis } from "../redis.js";
 import { withRedisTimeout } from "../redis-safe.js";
-import { enforceRateLimit } from "../ratelimit.js";
+import { enforceRateLimit, slidingWindowLimiter } from "../ratelimit.js";
 
 const TTL_MS = 50 * 60 * 1000;
 const REDIS_KEY_PREFIX = "bsky:session:";
@@ -24,13 +23,7 @@ const memCache = new Map<string, Cached>();
 /** Singleflight login/refresh per account within this process. */
 const inflight = new Map<string, Promise<{ accessJwt: string; did: string } | null>>();
 
-const createSessionLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(3, "1 h"),
-      prefix: "rl:bsky_create_session",
-    })
-  : null;
+const createSessionLimiter = slidingWindowLimiter(3, "1 h", "rl:bsky_create_session");
 
 function redisKey(accountId: string): string {
   return `${REDIS_KEY_PREFIX}${accountId}`;

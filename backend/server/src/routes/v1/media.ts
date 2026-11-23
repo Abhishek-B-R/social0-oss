@@ -1,7 +1,9 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { apiError } from "../../lib/api-errors.js";
+import { enforceRateLimit, uploadLimiter } from "../../lib/ratelimit.js";
 import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
+import { sendRateLimited } from "../../middleware/v1-live-limits.js";
 import { v1ConfirmMedia, v1GetMedia, v1PresignMedia } from "../../services/v1-media.js";
 
 const presignSchema = z.object({
@@ -18,10 +20,29 @@ const confirmSchema = z.object({
   size_bytes: z.number().int().positive(),
 });
 
+/**
+ * The same hourly upload budget the dashboard's `/api/media/*` routes use
+ * (`uploadLimiter`), on top of the tier limit from `requireV1ApiKey`. Each
+ * presign mints a URL for up to 500 MB of storage. Keys are namespaced `v1:`
+ * like the other `/v1` budgets, so a CLI loop cannot starve the dashboard.
+ */
+async function requireV1UploadBudget(
+  request: FastifyRequest,
+  reply: FastifyReply,
+): Promise<FastifyReply | undefined> {
+  const rate = await enforceRateLimit(
+    uploadLimiter,
+    `v1:upload:${v1UserId(request)}`,
+  );
+  if (rate.allowed) return undefined;
+  return sendRateLimited(reply, rate);
+}
+
 export async function registerMediaRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireV1ApiKey);
+  const upload = { preHandler: requireV1UploadBudget };
 
-  app.post("/media/presign", async (request, reply) => {
+  app.post("/media/presign", upload, async (request, reply) => {
     const userId = v1UserId(request);
     const body = presignSchema.safeParse(request.body);
     if (!body.success) {
@@ -44,7 +65,7 @@ export async function registerMediaRoutes(app: FastifyInstance) {
     };
   });
 
-  app.post("/media/confirm", async (request, reply) => {
+  app.post("/media/confirm", upload, async (request, reply) => {
     const userId = v1UserId(request);
     const body = confirmSchema.safeParse(request.body);
     if (!body.success) {

@@ -6,7 +6,11 @@ export type PublishPostJob = {
   userId: string;
   /** SSE tracking id - publish-now only; omitted for scheduled jobs. */
   trackingId?: string;
-  /** If omitted, worker loads targets from DB. */
+  /**
+   * Narrows the fan-out to these accounts. Publish entry points leave it
+   * unset: the post is claimed as a whole, so the accounts left out stay
+   * `pending` and the post never finalizes.
+   */
   connectedAccountIds?: string[];
 };
 

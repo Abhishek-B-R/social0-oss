@@ -19,6 +19,7 @@ import { requireWorkspaceSession } from "../lib/workspace/session.js";
 import type { WorkspacePermission } from "../lib/workspace/permissions.js";
 import { rpcHttpError } from "../lib/rpc-http-error.js";
 import { resolveAccountAccess } from "../lib/account-access.js";
+import { createAccountAccessResolver } from "../lib/account-access-memo.js";
 import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
 import { mapPool } from "../lib/map-pool.js";
 import { PLATFORMS, type Platform } from "../lib/platforms.js";
@@ -38,11 +39,26 @@ import {
   hideCommentOnPlatform,
   inboxCommentHideSupported,
 } from "../lib/inbox/hide-comment.js";
+import {
+  hiddenCommentIds,
+  rememberHiddenComment,
+  withoutHiddenComments,
+} from "../lib/inbox/hidden-comments.js";
 import { fetchAccountDms, fetchDmMessages } from "../lib/inbox/fetch-dms.js";
 import { replyToDmOnPlatform } from "../lib/inbox/reply-dm.js";
 import { resolveInboxMedia } from "../lib/inbox/resolve-media.js";
 import { verifyCommentOnPublication } from "../lib/inbox/verify-comment.js";
 import { verifyDmConversationOnAccount } from "../lib/inbox/verify-dm.js";
+import {
+  DM_LIST_STASH,
+  X_COMMENT_BATCH_STASH,
+  publicationCommentsStash,
+} from "../lib/inbox/read-stash.js";
+import {
+  expiredTokenMessage,
+  isPlatformAuthError,
+  TOKEN_EXPIRED_MARKER,
+} from "../lib/platform-auth-errors.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import { inDateWindow, parseDateWindow } from "../lib/date-window.js";
 import {
@@ -51,7 +67,7 @@ import {
   olderThanDmCursor,
 } from "../lib/inbox/page-param.js";
 import { getUserTimezone } from "../lib/resolve-scheduled-at.js";
-import { noteFetchError, noteFetchNotice, isInboxFetchNotice } from "../lib/inbox/fetch-errors.js";
+import { noteFetchError, noteFetchNotice, isInboxFetchNotice, staleNotice, retryNotice } from "../lib/inbox/fetch-errors.js";
 import { createLiveRequestBudget, raceTimeout, LIVE_RPC_BUDGET_MS } from "../lib/live-request-budget.js";
 import {
   invalidatePlatformRead,
@@ -81,6 +97,35 @@ import {
 function parsePlatform(value: unknown): Platform | undefined {
   if (typeof value !== "string" || !value) return undefined;
   return PLATFORMS.find((p) => p.id === value)?.id;
+}
+
+function platformLabel(platform: string): string {
+  return PLATFORMS.find((p) => p.id === platform)?.name ?? platform;
+}
+
+/**
+ * A live read threw before or during the platform call. A dead token
+ * (including a refresh token the provider no longer accepts) is a reconnect,
+ * not a fetch error: it gets the token-expired marker so it rides the same
+ * reconnect path as a missing scope. Anything else stays a fetch error, with
+ * the stored-scope hint when the scopes column is short.
+ */
+function classifyLiveReadFailure(
+  e: unknown,
+  platform: string,
+  fallback: string,
+  missingFromDb: string[],
+): { error: string; missingScopes: string[] } {
+  if (isPlatformAuthError(e)) {
+    return {
+      error: expiredTokenMessage(platformLabel(platform)),
+      missingScopes: [TOKEN_EXPIRED_MARKER],
+    };
+  }
+  return {
+    error: e instanceof Error ? e.message : fallback,
+    missingScopes: missingFromDb,
+  };
 }
 
 /** Keep fan-out small enough to finish inside the live RPC budget. */
@@ -190,10 +235,11 @@ async function loadPubs(opts: {
   // is still off in LIVE_PLATFORMS (App Review pending).
   if (!live.length) return [];
   if (opts.platform && !live.includes(opts.platform)) return [];
-  const postFilter = postScopeCondition({
+  const scope = {
     resourceUserId: opts.resourceUserId,
     workspaceId: opts.workspaceId,
-  });
+  };
+  const postFilter = postScopeCondition(scope);
   const limit = opts.limit ?? SAMPLE_LIMIT;
   const rows = await db
     .select({
@@ -222,6 +268,10 @@ async function loadPubs(opts: {
     .where(
       and(
         postFilter,
+        // The live read uses the account's tokens: the account must still be
+        // in this scope, not just the post (accounts move between workspaces
+        // and owners; their old publications stay behind).
+        connectionScopeCondition(scope),
         eq(postPublications.status, "published"),
         isNotNull(postPublications.platformPostId),
         isNotNull(postPublications.publishedAt),
@@ -304,6 +354,10 @@ function snippet(content: string | null): string {
   return content?.replace(/\s+/g, " ").trim().slice(0, 80) || "(No caption)";
 }
 
+/** Inbox twin of `ACCOUNT_OVER_PLAN_LIMIT_ERROR` (that one says "publish"). */
+export const INBOX_ACCOUNT_OVER_PLAN_LIMIT_ERROR =
+  "This account is over your plan's connected-account limit. Upgrade your plan or remove another account to manage its comments.";
+
 type CommentMutationPub = {
   publicationId: string;
   platformPostId: string | null;
@@ -319,14 +373,27 @@ type CommentMutationPub = {
   encryptedRefreshToken: string | null;
 };
 
+/**
+ * Comment mutations act as the publication's connected account, so the
+ * account itself must still be in the caller's scope, not just the post.
+ * Moving an account to another workspace (or owner) leaves its old posts and
+ * publications behind; without `connectionScopeCondition` a member of the old
+ * workspace could keep replying / liking / hiding as an account that now
+ * belongs to someone else's pool. Same rule as `loadDmAccounts` and the
+ * publish path's `connectedAccounts.userId = post.userId` guard.
+ *
+ * An account switched off by the plan cap (`is_active = false`) is refused
+ * too, as publish refuses it; a null `isActive` counts as active, as it does
+ * in `checkSelectedAccounts`.
+ */
 async function loadCommentMutationPublication(
   ctx: { resourceUserId: string; workspaceId: string | null },
   publicationId: string,
-): Promise<CommentMutationPub | null> {
-  const postFilter = postScopeCondition({
+): Promise<{ ok: true; row: CommentMutationPub } | { ok: false; error: string }> {
+  const scope = {
     resourceUserId: ctx.resourceUserId,
     workspaceId: ctx.workspaceId,
-  });
+  };
   const rows = await db
     .select({
       publicationId: postPublications.id,
@@ -341,19 +408,39 @@ async function loadCommentMutationPublication(
       platformUsername: connectedAccounts.platformUsername,
       encryptedAccessToken: connectedAccounts.encryptedAccessToken,
       encryptedRefreshToken: connectedAccounts.encryptedRefreshToken,
+      isActive: connectedAccounts.isActive,
     })
     .from(postPublications)
     .innerJoin(posts, eq(postPublications.postId, posts.id))
-    .leftJoin(
+    .innerJoin(
       connectedAccounts,
       eq(postPublications.connectedAccountId, connectedAccounts.id),
     )
-    .where(and(postFilter, eq(postPublications.id, publicationId)))
+    .where(
+      and(
+        postScopeCondition(scope),
+        connectionScopeCondition(scope),
+        eq(postPublications.id, publicationId),
+      ),
+    )
     .limit(1);
 
   const row = rows[0];
-  if (!row?.accountId || !row.platform) return null;
-  return row as CommentMutationPub;
+  if (!row?.accountId || !row.platform) {
+    return { ok: false, error: "Publication not found." };
+  }
+  if (row.isActive === false) {
+    return { ok: false, error: INBOX_ACCOUNT_OVER_PLAN_LIMIT_ERROR };
+  }
+  // Same rollout gate as the list: a network still waiting on App Review must
+  // not be reachable by naming one of its publications (reply, like, hide).
+  if (!isPlatformLive("inboxComments", row.platform)) {
+    return {
+      ok: false,
+      error: `Comments are not available yet for ${platformLabel(row.platform)}.`,
+    };
+  }
+  return { ok: true, row: row as CommentMutationPub };
 }
 
 function commentFetchInputForMutation(
@@ -433,6 +520,7 @@ export async function listInboxCommentsForScope(
       range,
       since: since.toISOString(),
       until: until.toISOString(),
+      timeZone,
       threads: [],
       accountsNeedingReconnect: [],
       unsupported: [platform],
@@ -465,8 +553,21 @@ export async function listInboxCommentsForScope(
   const fetchErrors: InboxListResult["fetchErrors"] = [];
   const notices: InboxListResult["notices"] = [];
   const allComments: InboxComment[] = [];
+  /** Comments hidden through Social0, per account (cached copies predate the hide). */
+  const hiddenByAccount = new Map<string, Promise<Set<string>>>();
+  const hiddenFor = (account: { id: string; platform: string }) => {
+    if (!inboxCommentHideSupported(account.platform)) return null;
+    let ids = hiddenByAccount.get(account.id);
+    if (!ids) {
+      ids = hiddenCommentIds(account.id);
+      hiddenByAccount.set(account.id, ids);
+    }
+    return ids;
+  };
   const budget = createLiveRequestBudget();
   let budgetHit = false;
+  /** Tokens resolved once per account, and only on a cache miss. */
+  const resolveAccess = createAccountAccessResolver();
 
   let cursorBefore = before;
   let hasMore = false;
@@ -525,17 +626,15 @@ export async function listInboxCommentsForScope(
       string,
       Promise<PlatformReadResult<Record<string, CommentFetchResult>>>
     >();
+    const xWindowStart = new Date(
+      Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 86_400_000) * 86_400_000,
+    );
     const xAccountBatch = (account: NonNullable<PubRow["account"]>) => {
       let batch = xBatches.get(account.id);
       if (!batch) {
         batch = (async () => {
-          const { accessToken, accessSecret } =
-            await resolveAccountAccess(account);
           const rows = pubs.filter(
             (r) => r.account?.id === account.id && r.platformPostId,
-          );
-          const inputs = rows.map((r) =>
-            fetchInputFor(r, accessToken, accessSecret),
           );
           const idsKey = createHash("sha1")
             .update(rows.map((r) => r.platformPostId).sort().join(","))
@@ -545,9 +644,21 @@ export async function listInboxCommentsForScope(
             platform: account.platform,
             accountId: account.id,
             kind: "inbox_comments",
-            suffix: `batch:${idsKey}:${since.toISOString()}`,
+            suffix: `batch:${idsKey}:${xWindowStart.toISOString()}`,
             fresh,
-            fetch: () => fetchTwitterCommentsBatch(inputs),
+            stash: X_COMMENT_BATCH_STASH,
+            fetch: async () => {
+              const { accessToken, accessSecret } = await resolveAccess(account);
+              // X Recent Search only looks back 7 days, so fetch that whole
+              // window once (day-aligned) and filter by the picked range after
+              // the cache. Switching 7D/2W/4W then never spends X quota again.
+              return fetchTwitterCommentsBatch(
+                rows.map((r) => ({
+                  ...fetchInputFor(r, accessToken, accessSecret),
+                  since: xWindowStart.toISOString(),
+                })),
+              );
+            },
           });
         })();
         xBatches.set(account.id, batch);
@@ -555,6 +666,8 @@ export async function listInboxCommentsForScope(
       return batch;
     };
 
+    /** Index of the first publication the budget cut skipped (mapPool skips a tail). */
+    let firstSkipped = pubs.length;
     await mapPool(
       pubs,
       fetchConcurrency,
@@ -565,46 +678,50 @@ export async function listInboxCommentsForScope(
         let result: CommentFetchResult;
         try {
           let rateLimited = false;
+          let cachedAt: number | undefined;
           if (row.account.platform === "twitter_x") {
             const cached = await xAccountBatch(row.account);
             result =
               cached.data[row.publicationId] ??
               ({ comments: [], status: "ok" } satisfies CommentFetchResult);
             rateLimited = Boolean(cached.rateLimited);
+            cachedAt = cached.cachedAt;
           } else {
-            const { accessToken, accessSecret } =
-              await resolveAccountAccess(row.account);
+            const account = row.account;
             const cached = await withPlatformReadCache({
-              platform: row.account.platform,
-              accountId: row.account.id,
+              platform: account.platform,
+              accountId: account.id,
               kind: "inbox_comments",
               suffix: `${row.publicationId}:${since.toISOString()}`,
               fresh,
-              fetch: () =>
-                fetchPublicationComments(
+              stash: publicationCommentsStash(row.publicationId),
+              fetch: async () => {
+                const { accessToken, accessSecret } = await resolveAccess(account);
+                return fetchPublicationComments(
                   fetchInputFor(row, accessToken, accessSecret),
-                ),
+                );
+              },
             });
             result = cached.data;
             rateLimited = Boolean(cached.rateLimited);
+            cachedAt = cached.cachedAt;
           }
           if (rateLimited) {
-            noteFetchNotice(notices, {
-              platform: row.account.platform,
-              message: "Showing cached comments - platform rate limit reached.",
-            });
+            noteFetchNotice(notices, staleNotice(row.account.platform, "comments", cachedAt));
           }
         } catch (e) {
           if (e instanceof PlatformApiCooldownError) {
-            noteFetchNotice(notices, {
-              platform: row.account.platform,
-              message: e.message,
-            });
+            noteFetchNotice(notices, retryNotice(row.account.platform, "comments", e.retryAt));
             return;
           }
           throw e;
         }
-        allComments.push(...result.comments);
+        const hidden = hiddenFor(row.account);
+        allComments.push(
+          ...(hidden
+            ? withoutHiddenComments(result.comments, await hidden)
+            : result.comments),
+        );
         if (result.status === "ok" || result.comments.length > 0) {
           fetchOkAccounts.add(row.account.id);
         }
@@ -633,18 +750,23 @@ export async function listInboxCommentsForScope(
           );
         }
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Comment fetch failed";
+        const failure = classifyLiveReadFailure(
+          e,
+          row.account.platform,
+          "Comment fetch failed",
+          missing,
+        );
         noteFetchError(fetchErrors, {
           accountId: row.account.id,
           platform: row.account.platform,
-          error: message,
+          error: failure.error,
         });
-        if (missing.length) {
+        if (failure.missingScopes.length) {
           reconnect.set(row.account.id, {
             accountId: row.account.id,
             platform: row.account.platform,
             username: row.account.platformUsername,
-            missingScopes: missing,
+            missingScopes: failure.missingScopes,
           });
         }
       }
@@ -657,6 +779,9 @@ export async function listInboxCommentsForScope(
           }
           return true;
         },
+        onSkip: (_row, index) => {
+          firstSkipped = Math.min(firstSkipped, index);
+        },
       },
     );
 
@@ -666,6 +791,17 @@ export async function listInboxCommentsForScope(
       until,
     );
     builtThreads = threads;
+    if (firstSkipped < pubs.length) {
+      // The budget ran out before the tail of this page was fetched. The
+      // cursor must stop at the oldest publication actually read, so the next
+      // page starts with the first skipped one instead of jumping past it.
+      hasMore = true;
+      const lastFetched = firstSkipped > 0 ? pubs[firstSkipped - 1] : undefined;
+      nextBefore = lastFetched
+        ? lastFetched.publishedAt?.toISOString() ?? null
+        : cursorBefore?.toISOString() ?? null;
+      break;
+    }
     hasMore = pubs.length >= limit;
     const lastPub = pubs[pubs.length - 1];
     nextBefore = hasMore ? lastPub?.publishedAt?.toISOString() ?? null : null;
@@ -708,6 +844,7 @@ export async function listInboxCommentsForScope(
     range,
     since: since.toISOString(),
     until: until.toISOString(),
+    timeZone,
     threads: filteredThreads,
     accountsNeedingReconnect: [...reconnect.values()],
     unsupported: [...unsupported],
@@ -757,10 +894,9 @@ export async function replyToInboxCommentForScope(
     return { ok: false, error: "text or mediaId required" };
   }
 
-  const row = await loadCommentMutationPublication(ctx, input.publicationId);
-  if (!row) {
-    return { ok: false, error: "Publication not found." };
-  }
+  const loaded = await loadCommentMutationPublication(ctx, input.publicationId);
+  if (!loaded.ok) return loaded;
+  const row = loaded.row;
   if (row.platform === "linkedin") {
     return { ok: false, error: `Replies are not supported for ${row.platform} yet.` };
   }
@@ -839,10 +975,9 @@ export async function likeInboxCommentForScope(
   }
   const unlike = input.unlike === true;
 
-  const row = await loadCommentMutationPublication(ctx, input.publicationId);
-  if (!row) {
-    return { ok: false, error: "Publication not found." };
-  }
+  const loaded = await loadCommentMutationPublication(ctx, input.publicationId);
+  if (!loaded.ok) return loaded;
+  const row = loaded.row;
   if (!inboxCommentLikeSupported(row.platform)) {
     return {
       ok: false,
@@ -909,10 +1044,9 @@ export async function hideInboxCommentForScope(
     return { ok: false, error: "commentId required" };
   }
 
-  const row = await loadCommentMutationPublication(ctx, input.publicationId);
-  if (!row) {
-    return { ok: false, error: "Publication not found." };
-  }
+  const loaded = await loadCommentMutationPublication(ctx, input.publicationId);
+  if (!loaded.ok) return loaded;
+  const row = loaded.row;
   if (!inboxCommentHideSupported(row.platform)) {
     return {
       ok: false,
@@ -939,11 +1073,16 @@ export async function hideInboxCommentForScope(
       accessSecret,
     );
     if (!bound.ok) return bound;
-    return await hideCommentOnPlatform({
+    const hidden = await hideCommentOnPlatform({
       platform: row.platform,
       commentId: input.commentId,
       accessToken,
     });
+    if (hidden.ok) {
+      // Cached comment lists still hold it until they expire.
+      await rememberHiddenComment(row.accountId, input.commentId);
+    }
+    return hidden;
   } catch (e) {
     return {
       ok: false,
@@ -1041,6 +1180,7 @@ export async function listInboxDmsForScope(
   const threads: InboxDmThread[] = [];
   const budget = createLiveRequestBudget();
   let budgetHit = false;
+  let skippedAccounts = 0;
 
   await mapPool(
     dmAccounts,
@@ -1052,7 +1192,6 @@ export async function listInboxDmsForScope(
     }
     const missing = missingDmScopes(row.platform, row.scopes);
     try {
-      const { accessToken, accessSecret } = await resolveAccountAccess(row);
       let result;
       try {
         const cached = await withPlatformReadCache({
@@ -1061,8 +1200,11 @@ export async function listInboxDmsForScope(
           kind: "inbox_dms",
           suffix: fetchPlan.suffix,
           fresh,
-          fetch: () =>
-            fetchAccountDms(
+          stash: DM_LIST_STASH,
+          // Tokens only on a cache miss (see createAccountAccessResolver).
+          fetch: async () => {
+            const { accessToken, accessSecret } = await resolveAccountAccess(row);
+            return fetchAccountDms(
               {
                 id: row.id,
                 platform: row.platform,
@@ -1075,22 +1217,22 @@ export async function listInboxDmsForScope(
               },
               fetchPlan.fetchSince,
               new Date(),
-            ),
+            );
+          },
         });
         result = cached.data;
         if (cached.rateLimited) {
-          noteFetchNotice(notices, {
-            platform: row.platform,
-            message: "Showing cached DMs - platform rate limit reached.",
-          });
+          noteFetchNotice(notices, staleNotice(row.platform, "DMs", cached.cachedAt));
         }
       } catch (e) {
         if (e instanceof PlatformApiCooldownError) {
-          noteFetchNotice(notices, { platform: row.platform, message: e.message });
+          noteFetchNotice(notices, retryNotice(row.platform, "DMs", e.retryAt));
           return;
         }
         throw e;
       }
+      // The read covers the whole lookback (and the stash may be older):
+      // keep only this window.
       threads.push(
         ...result.threads.filter((t) =>
           inDateWindow(t.lastMessageAt, since, until, { keepUndated: false }),
@@ -1128,18 +1270,23 @@ export async function listInboxDmsForScope(
         );
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : "DM fetch failed";
+      const failure = classifyLiveReadFailure(
+        e,
+        row.platform,
+        "DM fetch failed",
+        missing,
+      );
       noteFetchError(fetchErrors, {
         accountId: row.id,
         platform: row.platform,
-        error: message,
+        error: failure.error,
       });
-      if (missing.length) {
+      if (failure.missingScopes.length) {
         reconnect.set(row.id, {
           accountId: row.id,
           platform: row.platform,
           username: row.platformUsername,
-          missingScopes: missing,
+          missingScopes: failure.missingScopes,
         });
       }
     }
@@ -1151,6 +1298,9 @@ export async function listInboxDmsForScope(
           return false;
         }
         return true;
+      },
+      onSkip: () => {
+        skippedAccounts++;
       },
     },
   );
@@ -1167,13 +1317,25 @@ export async function listInboxDmsForScope(
     (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""),
   );
   const older = olderThanDmCursor(threads, beforeMs);
-  const hasMore = older.length > limit;
   const page = older.slice(0, limit);
-  const nextBefore = page[page.length - 1]?.lastMessageAt ?? null;
+  let hasMore = older.length > limit;
+  let nextBefore = page[page.length - 1]?.lastMessageAt ?? null;
+  if (skippedAccounts > 0) {
+    // Accounts the budget skipped may hold conversations anywhere in this
+    // window, including newer than this page's oldest row. Advancing the
+    // cursor would cut them off for good (later pages fetch only older than
+    // `before`), so hold this cursor: the next request reads the fetched
+    // accounts from cache and spends its budget on the rest. The first page
+    // has no cursor to hold, so it offers none and the notice asks for a
+    // refresh. Callers de-duplicate repeated rows by conversation.
+    hasMore = true;
+    nextBefore = beforeMs != null ? new Date(beforeMs).toISOString() : null;
+  }
   return {
     range,
     since: since.toISOString(),
     until: until.toISOString(),
+    timeZone,
     threads: page,
     accountsNeedingReconnect: [...reconnect.values()],
     unsupported: [...unsupported],
@@ -1266,7 +1428,6 @@ export async function getInboxDmThreadForScope(
   }
 
   try {
-    const { accessToken, accessSecret } = await resolveAccountAccess(row);
     const cached = await raceTimeout(
       withPlatformReadCache({
         platform: row.platform,
@@ -1274,8 +1435,10 @@ export async function getInboxDmThreadForScope(
         kind: "inbox_dm_thread",
         suffix: dmThreadCacheSuffix(input.conversationId, cursor),
         fresh,
-        fetch: () =>
-          fetchDmMessages(
+        // Tokens only on a cache miss (see createAccountAccessResolver).
+        fetch: async () => {
+          const { accessToken, accessSecret } = await resolveAccountAccess(row);
+          return fetchDmMessages(
             {
               id: row.id,
               platform: row.platform,
@@ -1289,7 +1452,8 @@ export async function getInboxDmThreadForScope(
             input.conversationId as string,
             peerId,
             cursor,
-          ),
+          );
+        },
       }),
       LIVE_RPC_BUDGET_MS,
       "inbox DM thread",
@@ -1346,7 +1510,12 @@ export async function getInboxDmThreadForScope(
       };
     }
     return {
-      error: e instanceof Error ? e.message : "Failed to load conversation",
+      error: classifyLiveReadFailure(
+        e,
+        row.platform,
+        "Failed to load conversation",
+        [],
+      ).error,
       code: "fetch_failed",
     };
   }

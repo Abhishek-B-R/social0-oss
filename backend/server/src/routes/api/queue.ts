@@ -9,7 +9,6 @@ import {
   deleteQueueSlot,
 } from "../../handlers/queue/slots-id.js";
 import { getNextQueueSlot } from "../../handlers/queue/next-slot.js";
-import { addToQueue } from "../../handlers/queue/add.js";
 
 export async function registerQueueRoutes(app: FastifyInstance) {
   app.get("/queue/slots", async (req, reply) => {
@@ -32,8 +31,5 @@ export async function registerQueueRoutes(app: FastifyInstance) {
   });
   app.get("/queue/next-slot", async (req, reply) => {
     await runRouteHandler(req, reply, getNextQueueSlot);
-  });
-  app.post("/queue/add", async (req, reply) => {
-    await runRouteHandler(req, reply, addToQueue);
   });
 }

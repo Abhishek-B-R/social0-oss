@@ -12,6 +12,7 @@ import { undoCancel } from "../../handlers/billing/undo-cancel.js";
 import { pauseSubscription } from "../../handlers/billing/pause.js";
 import { previewPlanChange } from "../../handlers/billing/preview-plan-change.js";
 import { syncBilling } from "../../handlers/billing/sync.js";
+import { setExtraAccounts } from "../../handlers/billing/extra-accounts.js";
 
 export async function registerBillingRoutes(app: FastifyInstance) {
   app.post("/billing/checkout", async (req, reply) => {
@@ -40,6 +41,9 @@ export async function registerBillingRoutes(app: FastifyInstance) {
   });
   app.post("/billing/preview-plan-change", async (req, reply) => {
     await runRouteHandler(req, reply, previewPlanChange);
+  });
+  app.post("/billing/extra-accounts", async (req, reply) => {
+    await runRouteHandler(req, reply, setExtraAccounts);
   });
   app.post("/billing/sync", async (req, reply) => {
     await runRouteHandler(req, reply, syncBilling);

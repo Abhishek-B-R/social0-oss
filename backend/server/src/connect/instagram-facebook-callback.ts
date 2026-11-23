@@ -1,5 +1,6 @@
 import { db } from "../db/index.js";
 import { connectedAccounts, verification } from "../db/schema.js";
+import { withReconnectedAt } from "../lib/account-reconnect.js";
 import { eq, and, isNull } from "drizzle-orm";
 import { env } from "../lib/env.js";
 import { decrypt, encryptToken } from "@social0/shared";
@@ -12,6 +13,7 @@ import {
 } from "../lib/app-url.js";
 import { safeRedirect, rethrowRouteRedirect } from "../lib/redirect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
+import { queueAgencyExtraAccountsSync } from "../lib/extra-accounts.js";
 import { AppRequest } from "../lib/http/http.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 import { FACEBOOK_INSTAGRAM_PAGE_SCOPES } from "../lib/facebook-oauth.js";
@@ -259,7 +261,7 @@ export async function igFbCallback(
       });
 
       if (existing) {
-        // Update existing (reconnect: set isActive so it shows in UI)
+        // Update existing (reconnect)
         const profileImageUrl = resolveProfileImageUrl(
           await mirrorProfileImageToR2(pageData.instagramProfilePictureUrl, {
             userId,
@@ -278,12 +280,13 @@ export async function igFbCallback(
             platformUsername:
               pageData.instagramUsername ?? existing.platformUsername,
             profileImageUrl,
-            platformMetadata: {
+            platformMetadata: withReconnectedAt({
               facebookPageId: pageData.pageId,
               instagramBusinessAccountId: pageData.instagramAccountId,
               connectionMethod: "facebook-page",
-            },
-            isActive: true,
+            }),
+            // isActive stays as stored: the plan cap owns it
+            // (syncConnectedAccountsToLimit), a reconnect does not grant it.
             scopes: FACEBOOK_INSTAGRAM_PAGE_SCOPES,
             updatedAt: new Date(),
           })
@@ -329,6 +332,8 @@ export async function igFbCallback(
           connectionMethod: "facebook-page",
         },
       });
+      // Agency bills accounts above 59: update the add-on (never blocks).
+      queueAgencyExtraAccountsSync(userId, "connect");
 
       return safeRedirect(successRedirect, successRedirect);
     }

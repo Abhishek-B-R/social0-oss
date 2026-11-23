@@ -1,6 +1,5 @@
-import { auth } from "../lib/auth.js";
+import { getRouteSession } from "../lib/session.js";
 import { env } from "../lib/env.js";
-import { headers } from "../lib/http/request-cookies.js";
 import { encrypt } from "@social0/shared";
 import { getConnectCallbackBaseUrl } from "../lib/app-url.js";
 import { AppRequest } from "../lib/http/http.js";
@@ -13,7 +12,7 @@ import { sanitizeReturnToPath } from "@social0/shared";
 import { redirectWithOAuthConnectBinding } from "../lib/oauth-connect-binding.js";
 
 export async function igFbStart(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
 
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });

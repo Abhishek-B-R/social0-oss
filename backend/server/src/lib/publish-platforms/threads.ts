@@ -9,6 +9,12 @@ import type { Post, Pub, PublishPlatformResult, ThreadPart } from "./types";
 import { sleep } from "./helpers";
 import { getMediaWithUrls, getOrderedMediaWithUrls } from "./media";
 import { getThreadParts } from "./thread-parts";
+import {
+  partialThreadError,
+  readThreadProgress,
+  saveThreadProgress,
+  threadFingerprint,
+} from "./thread-progress";
 
 /** Build application/x-www-form-urlencoded body. Threads API expects form data, not JSON. */
 function threadsFormBody(
@@ -194,21 +200,102 @@ function threadsProfileFallback(pub: Pub): string | null {
  * for each next part: create container with reply_to_id = previous published id ->
  * publish -> get id -> wait for publish to complete -> repeat.
  * Do NOT create all containers upfront; each step waits for the previous publish.
+ *
+ * Each published part is saved as thread progress. When a later part fails,
+ * the publication keeps the root post's id and URL, and the next run (Retry)
+ * replies to the last live part instead of publishing a second root post.
  */
 async function publishThreadsThread(
   pub: Pub,
+  post: Post,
   parts: ThreadPart[],
   accessToken: string,
 ): Promise<PublishPlatformResult> {
+  const fingerprint = threadFingerprint(parts);
+  const saved = readThreadProgress(
+    post.metadata,
+    pub.publicationId,
+    fingerprint,
+    parts.length,
+  );
+  const startIndex = saved?.posted ?? 0;
+  if (saved) {
+    publishLog.info(
+      `[Threads] thread ${pub.publicationId}: ${saved.posted} of ${parts.length} parts already live, continuing`,
+    );
+  }
+  const state = {
+    posted: startIndex,
+    firstPublishedId: saved?.rootId ?? null,
+    previousPublishedId: saved?.lastId ?? null,
+  };
+
+  let result: PublishPlatformResult;
+  try {
+    result = await publishThreadsParts(
+      pub,
+      parts,
+      accessToken,
+      startIndex,
+      state,
+      (progress) =>
+        saveThreadProgress(post.id, pub.publicationId, {
+          fingerprint,
+          ...progress,
+        }),
+    );
+  } catch (e) {
+    if (!state.firstPublishedId) throw e;
+    const err = e instanceof Error ? e.message : "Threads publish failed";
+    result = threadsFail(err);
+  }
+  // Parts are live (from this run or an earlier one): the publication keeps
+  // the root post, and the error says where a Retry picks up.
+  if (result.status === "failed" && state.firstPublishedId) {
+    return {
+      ...result,
+      platformPostId: state.firstPublishedId,
+      platformPostUrl: await fetchThreadsPermalink(
+        state.firstPublishedId,
+        accessToken,
+        threadsProfileFallback(pub),
+      ),
+      lastError: partialThreadError(
+        result.lastError ?? result.error ?? "Threads publish failed",
+        state.posted,
+        parts.length,
+      ),
+    };
+  }
+  return result;
+}
+
+/** The reply chain from `startIndex` on; `state` tracks what is live. */
+async function publishThreadsParts(
+  pub: Pub,
+  parts: ThreadPart[],
+  accessToken: string,
+  startIndex: number,
+  state: {
+    posted: number;
+    firstPublishedId: string | null;
+    previousPublishedId: string | null;
+  },
+  recordProgress: (progress: {
+    posted: number;
+    rootId: string;
+    lastId: string;
+  }) => Promise<unknown>,
+): Promise<PublishPlatformResult> {
   const threadsUserId = pub.platformUserId;
   const threadParams = new URLSearchParams({ access_token: accessToken });
-  let previousPublishedId: string | null = null;
-  let firstPublishedId: string | null = null;
 
-  for (let i = 0; i < parts.length; i++) {
+  for (let i = startIndex; i < parts.length; i++) {
+    const { previousPublishedId } = state;
     // Wait for previous publish to be visible before creating the next reply
-    // (reply_to_id must be the published post ID from threads_publish, not the container ID)
-    if (previousPublishedId && i > 0) {
+    // (reply_to_id must be the published post ID from threads_publish, not the container ID).
+    // A part published by an earlier run has long been visible.
+    if (previousPublishedId && i > startIndex) {
       await new Promise((r) => setTimeout(r, 15000));
     }
 
@@ -321,14 +408,20 @@ async function publishThreadsThread(
     }
 
     // Step 3: next part's reply_to_id must be this published media id, not the container id.
-    previousPublishedId = publishedId;
-    if (!firstPublishedId) firstPublishedId = publishedId;
+    state.previousPublishedId = publishedId;
+    if (!state.firstPublishedId) state.firstPublishedId = publishedId;
+    state.posted = i + 1;
+    await recordProgress({
+      posted: state.posted,
+      rootId: state.firstPublishedId,
+      lastId: publishedId,
+    });
     if (i < parts.length - 1) {
       await new Promise((r) => setTimeout(r, 2000));
     }
   }
 
-  const rootId = firstPublishedId ?? previousPublishedId;
+  const rootId = state.firstPublishedId ?? state.previousPublishedId;
   const profileFallback = threadsProfileFallback(pub);
   const platformPostUrl = rootId
     ? await fetchThreadsPermalink(rootId, accessToken, profileFallback)
@@ -348,7 +441,7 @@ export async function publishToThreads(
 ): Promise<PublishPlatformResult> {
   const threadParts = getThreadParts(post);
   if (threadParts && threadParts.length > 0) {
-    return await publishThreadsThread(pub, threadParts, accessToken);
+    return await publishThreadsThread(pub, post, threadParts, accessToken);
   }
 
   const threadsUserId = pub.platformUserId;

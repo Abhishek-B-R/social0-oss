@@ -3,82 +3,82 @@ import { SkeletonBone } from "@/components/ui/skeleton-bone";
 import {
   CalendarDots,
   ChartLine,
-  ChatCircle,
-  CheckCircle,
-  Clock,
-  List,
-  NoteBlank,
-  Pencil,
-  PlugsConnected,
+  Files,
+  GearSix,
+  House,
+  Lightning,
+  Robot,
   SidebarSimple,
-  Sliders,
-  Stack,
-  Users,
+  Tray,
 } from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
 
 type StaticNavItem = {
   label: string;
   icon: React.ComponentType<{ className?: string; size?: number }>;
-  experimental?: boolean;
 };
 
-function StaticNavRow({ label, icon: Icon, experimental }: StaticNavItem) {
+/** Same key as DashboardSidebar, so the skeleton has the rail's real width. */
+const SIDEBAR_COLLAPSED_KEY = "social0.sidebar.collapsed";
+
+function readCollapsed(): boolean {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function StaticNavRow({
+  label,
+  icon: Icon,
+  collapsed,
+}: StaticNavItem & { collapsed: boolean }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-text">
-      <Icon className="h-4 w-4 shrink-0 text-sidebar-text" size={16} />
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {experimental ? (
-        <span className="shrink-0 rounded bg-sidebar-active px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sidebar-muted">
-          Beta
-        </span>
-      ) : null}
+    <div
+      className={cn(
+        "flex items-center rounded-lg text-sm font-medium text-sidebar-text",
+        collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-[7px]",
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0" size={16} />
+      {!collapsed ? <span className="min-w-0 flex-1 truncate">{label}</span> : null}
     </div>
   );
 }
 
-function StaticSection({
-  title,
-  items,
-}: {
-  title: string;
-  items: StaticNavItem[];
-}) {
+function StaticGroupLabel({ title, collapsed }: { title: string; collapsed: boolean }) {
+  if (collapsed) return <div className="mx-auto my-1.5 h-px w-6 bg-sidebar-border" />;
   return (
-    <div className="flex flex-col gap-0.5">
-      <p className="mb-1 px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
-        {title}
-      </p>
-      {items.map((item) => (
-        <StaticNavRow key={item.label} {...item} />
-      ))}
-    </div>
+    <p className="px-3 pb-1 pt-5 text-xs font-medium text-sidebar-muted">
+      {title}
+    </p>
   );
 }
 
-const CREATE_ITEMS: StaticNavItem[] = [
-  { label: "Composer", icon: Pencil },
-  { label: "Manual setup", icon: Sliders },
-  { label: "Bulk tools", icon: Stack },
-];
-
-const POST_ITEMS: StaticNavItem[] = [
-  { label: "All", icon: List },
-  { label: "Posted", icon: CheckCircle },
-  { label: "Scheduled", icon: Clock },
-  { label: "Drafts", icon: NoteBlank },
+const MAIN_ITEMS: StaticNavItem[] = [
+  { label: "Home", icon: House },
+  { label: "Inbox", icon: Tray },
   { label: "Calendar", icon: CalendarDots },
-  { label: "Analytics", icon: ChartLine, experimental: true },
-  { label: "Inbox", icon: ChatCircle, experimental: true },
+  { label: "Posts", icon: Files },
 ];
 
-const WORKSPACE_ITEMS: StaticNavItem[] = [
-  { label: "Connections", icon: PlugsConnected },
-  { label: "Teams", icon: Users },
+const GROW_ITEMS: StaticNavItem[] = [
+  { label: "Analytics", icon: ChartLine },
+  { label: "Automations", icon: Lightning },
 ];
 
-/** Full dashboard chrome while session resolves - static sidebar, skeleton only for dynamic bits. */
+const FOOTER_ITEMS: StaticNavItem[] = [
+  { label: "AI agents", icon: Robot },
+  { label: "Settings", icon: GearSix },
+];
+
+/**
+ * Full dashboard chrome while the session resolves. Mirrors DashboardSidebar
+ * (mock 01·A) so nothing jumps when the real sidebar replaces it.
+ */
 export function DashboardShellSkeleton() {
+  const collapsed = readCollapsed();
   return (
     <div
       className="dashboard-shell flex h-app-shell overflow-hidden bg-bg"
@@ -86,62 +86,86 @@ export function DashboardShellSkeleton() {
       aria-label="Loading dashboard"
     >
       <aside
-        className="dashboard-sidebar relative z-10 hidden h-full w-56 shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg lg:flex"
+        className={cn(
+          "dashboard-sidebar relative z-10 hidden h-full shrink-0 flex-col border-r border-sidebar-border bg-sidebar-bg lg:flex",
+          collapsed ? "w-[4.25rem]" : "w-60",
+        )}
         data-sidebar="dashboard"
+        aria-hidden
       >
-        <div className="flex shrink-0 flex-col gap-4 p-4">
-          <div className="flex w-full items-center justify-between gap-2">
-            <div className="flex items-center gap-3 px-2 py-1.5">
-              <Image
-                src="/logo.png"
-                alt="Social0"
-                width={40}
-                height={40}
-                className="h-10 w-10 shrink-0 rounded-full border border-white object-contain"
-              />
-              <span className="font-logo text-[22px] font-normal tracking-tight text-foreground landing">
-                Social0
-              </span>
-            </div>
-            <span
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sidebar-muted"
-              aria-hidden
+        <div
+          className={cn(
+            "flex shrink-0 gap-1",
+            collapsed ? "flex-col items-center p-2 pt-3" : "items-center p-3",
+          )}
+        >
+          <span className="flex shrink-0 items-center justify-center rounded-lg p-1">
+            <Image
+              src="/logo.png"
+              alt=""
+              width={28}
+              height={28}
+              className="h-7 w-7 shrink-0 rounded-full object-contain"
+            />
+          </span>
+          {!collapsed ? (
+            <SkeletonBone className="h-9 flex-1 rounded-lg bg-sidebar-active" />
+          ) : null}
+          <span className="h-9 w-9 shrink-0 rounded-lg bg-accent/80" />
+        </div>
+
+        <div className={cn("min-h-0 flex-1 overflow-hidden", collapsed ? "px-2 pb-3" : "px-3 pb-3")}>
+          <div className="space-y-px">
+            {MAIN_ITEMS.map((item) => (
+              <StaticNavRow key={item.label} {...item} collapsed={collapsed} />
+            ))}
+          </div>
+          <StaticGroupLabel title="Grow" collapsed={collapsed} />
+          <div className="space-y-px">
+            {GROW_ITEMS.map((item) => (
+              <StaticNavRow key={item.label} {...item} collapsed={collapsed} />
+            ))}
+          </div>
+          <StaticGroupLabel title="Accounts" collapsed={collapsed} />
+          <div className="space-y-1.5 px-1 pt-1">
+            {Array.from({ length: 3 }, (_, i) => (
+              <div
+                key={i}
+                className={cn("flex items-center gap-2.5", collapsed ? "justify-center" : "px-2")}
+              >
+                <SkeletonBone className="h-6 w-6 shrink-0 rounded-full bg-sidebar-active" />
+                {!collapsed ? (
+                  <SkeletonBone className="h-3 w-24 rounded bg-sidebar-active" />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div
+          className={cn(
+            "relative z-20 shrink-0 border-t border-sidebar-border bg-sidebar-bg",
+            collapsed ? "space-y-1 p-2" : "space-y-px p-3",
+          )}
+        >
+          {FOOTER_ITEMS.map((item) => (
+            <StaticNavRow key={item.label} {...item} collapsed={collapsed} />
+          ))}
+          <div className={cn("flex items-center gap-1 pt-1", collapsed && "flex-col")}>
+            <div
+              className={cn(
+                "flex min-w-0 flex-1 items-center",
+                collapsed ? "justify-center p-1" : "gap-3 px-3 py-2",
+              )}
             >
-              <SidebarSimple size={18} weight="regular" />
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <p className="px-3 text-xs font-medium uppercase tracking-wider text-sidebar-muted">
-              Workspaces
-            </p>
-            <SkeletonBone className="h-10 w-full rounded-lg bg-sidebar-active" />
-          </div>
-
-          <div
-            className={cn(
-              "sidebar-create-post-cta flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-foreground shadow-sm",
-            )}
-          >
-            Create post
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <nav className="flex flex-col gap-6 p-4 pt-0">
-            <StaticSection title="Create" items={CREATE_ITEMS} />
-            <StaticSection title="Posts" items={POST_ITEMS} />
-            <StaticSection title="Workspace" items={WORKSPACE_ITEMS} />
-          </nav>
-        </div>
-
-        <div className="relative z-20 shrink-0 border-t border-sidebar-border bg-sidebar-bg p-4">
-          <div className="flex w-full items-center gap-3 rounded-lg px-3 py-2">
-            <SkeletonBone className="h-9 w-9 shrink-0 rounded-full bg-sidebar-active" />
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <SkeletonBone className="h-3 w-24 rounded bg-sidebar-active" />
-              <SkeletonBone className="h-2.5 w-16 rounded bg-sidebar-active/80" />
+              <SkeletonBone className="h-8 w-8 shrink-0 rounded-full bg-sidebar-active" />
+              {!collapsed ? (
+                <SkeletonBone className="h-3 w-24 rounded bg-sidebar-active" />
+              ) : null}
             </div>
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sidebar-muted">
+              <SidebarSimple size={18} />
+            </span>
           </div>
         </div>
       </aside>

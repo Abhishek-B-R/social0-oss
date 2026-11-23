@@ -38,10 +38,12 @@ async function findUserIdByNormalizedEmail(normalizedEmail: string) {
 /**
  * Email/password sign-up. Better Auth emailOTP plugin sends the verification OTP; we redirect to verify-email.
  *
- * `requireCaptcha` is set by `POST /api/auth/sign-up-with-turnstile`, whose name
- * is a promise to the caller. The plain `/api/auth/sign-up` route also verifies
- * a token when one is supplied and the server has a Turnstile secret, so the SPA
- * can start sending one without a second route.
+ * The captcha is required whenever the server has a Turnstile secret, on both
+ * routes. It used to be checked on `/api/auth/sign-up` only when the request
+ * carried a token, so a bot that left the field out walked past it, and every
+ * sign-up mails a verification code from our domain to an address the caller
+ * picks. `requireCaptcha` (`/api/auth/sign-up-with-turnstile`) also refuses
+ * when no secret is configured, as that route's name promises.
  */
 export async function signUpDev(
   request: Request,
@@ -78,8 +80,7 @@ export async function signUpDev(
   };
 
   const captchaRequired =
-    opts.requireCaptcha === true ||
-    (isTurnstileConfigured() && typeof turnstileToken === "string");
+    opts.requireCaptcha === true || isTurnstileConfigured();
   if (captchaRequired) {
     const captcha = await verifyTurnstileToken(
       turnstileToken,

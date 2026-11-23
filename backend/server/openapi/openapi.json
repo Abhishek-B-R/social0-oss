@@ -137,7 +137,7 @@
         "schema": {
           "type": "string"
         },
-        "description": "Client-supplied key so retries do not double-publish."
+        "description": "Client-supplied key so retries do not double-publish. A retry with the same key and the same body replays the first response for 24 hours; the same key with a different body returns 422 `idempotency_key_reused`; a retry while the first request is still running returns 409 `idempotency_conflict`."
       },
       "WindowRange": {
         "name": "range",
@@ -243,6 +243,7 @@
                   "validation_error",
                   "rate_limit_exceeded",
                   "idempotency_conflict",
+                  "idempotency_key_reused",
                   "limit_exceeded",
                   "not_implemented",
                   "internal_error"
@@ -598,6 +599,10 @@
           },
           "stream_url": {
             "type": "string"
+          },
+          "warning": {
+            "type": "string",
+            "description": "Present when only part of the fan-out was queued. The accounts that were not are marked failed on the post; follow this job instead of resubmitting."
           }
         }
       },
@@ -960,6 +965,60 @@
           }
         }
       },
+      "WebhookTestResult": {
+        "type": "object",
+        "description": "Outcome of an on-demand `webhook.test` ping. The attempt is also recorded and shows up in the delivery list.",
+        "required": [
+          "delivery_id",
+          "event",
+          "url",
+          "status",
+          "response_status",
+          "attempts",
+          "duration_ms",
+          "error"
+        ],
+        "properties": {
+          "delivery_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Payload `id`, sent to the endpoint as X-Social0-Delivery-Id."
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "webhook.test"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "delivered",
+              "failed",
+              "blocked"
+            ],
+            "description": "`blocked` means Social0 never sent the request — the URL is not a public address, or the signing secret could not be read."
+          },
+          "response_status": {
+            "type": "integer",
+            "nullable": true
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
       "WebhookDeliveryList": {
         "type": "object",
         "properties": {
@@ -971,9 +1030,8 @@
           },
           "next_before": {
             "type": "string",
-            "format": "date-time",
             "nullable": true,
-            "description": "Pass as `before` to fetch the next page; null when the page was not full."
+            "description": "Opaque cursor. Pass as `before` to fetch the next page; null when the page was not full."
           }
         }
       },
@@ -2168,7 +2226,12 @@
           "default": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ]
       }
     },
     "/v1/posts/{id}": {
@@ -2416,7 +2479,7 @@
       "post": {
         "operationId": "publishPost",
         "summary": "Publish post immediately",
-        "description": "Queue an existing draft for publish. Returns 202 and Location of the job.",
+        "description": "Queue an existing draft for publish. Returns 202 and Location of the job; `warning` is set when only some accounts could be queued (the rest are marked failed on the post: follow the job, do not resubmit). Counts against the per-user publish budget (60 an hour, shared with the dashboard): 429 with Retry-After when spent. 503 means nothing was published and the request is safe to retry.",
         "tags": [
           "Posts"
         ],
@@ -2474,6 +2537,9 @@
             "$ref": "#/components/responses/RateLimited"
           },
           "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
             "$ref": "#/components/responses/ServerError"
           },
           "default": {
@@ -2570,7 +2636,7 @@
       "post": {
         "operationId": "createAndPublish",
         "summary": "Create and publish in one request",
-        "description": "Create a post and queue publish. 202 Accepted with Location of the job.",
+        "description": "Create a post and queue publish. 202 Accepted with Location of the job; `warning` is set when only some accounts could be queued (the rest are marked failed on the post: follow the job, do not resubmit). Counts against the per-user publish budget (60 an hour, shared with the dashboard): 429 with Retry-After when spent. 503 means nothing was published and no post was kept, so the request is safe to retry.",
         "tags": [
           "Posts"
         ],
@@ -2626,6 +2692,9 @@
             "$ref": "#/components/responses/RateLimited"
           },
           "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "503": {
             "$ref": "#/components/responses/ServerError"
           },
           "default": {
@@ -2708,7 +2777,12 @@
           "default": {
             "$ref": "#/components/responses/Error"
           }
-        }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ]
       }
     },
     "/v1/jobs/{trackingId}": {
@@ -3189,7 +3263,7 @@
       "patch": {
         "operationId": "updateWebhook",
         "summary": "Update webhook",
-        "description": "Update URL, events, or active flag.",
+        "description": "Update URL, events, or active flag. Omitted fields are left unchanged. A new URL must be a public https URL that resolves to a public address.",
         "tags": [
           "Webhooks"
         ],
@@ -3215,6 +3289,38 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "events": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "post.published",
+                        "post.failed",
+                        "post.scheduled",
+                        "post.deleted"
+                      ]
+                    }
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Updated",
@@ -3225,6 +3331,9 @@
                 }
               }
             }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
           },
           "401": {
             "$ref": "#/components/responses/Unauthorized"
@@ -3335,10 +3444,9 @@
             "name": "before",
             "in": "query",
             "required": false,
-            "description": "Return deliveries created strictly before this timestamp.",
+            "description": "Cursor from the previous response's `next_before`; returns the deliveries after it (older). A bare ISO timestamp is also accepted and returns deliveries created strictly before it.",
             "schema": {
-              "type": "string",
-              "format": "date-time"
+              "type": "string"
             }
           }
         ],
@@ -3407,7 +3515,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/WebhookDelivery"
+                  "$ref": "#/components/schemas/WebhookTestResult"
                 }
               }
             }

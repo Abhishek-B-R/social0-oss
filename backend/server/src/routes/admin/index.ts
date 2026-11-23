@@ -3,16 +3,9 @@ import { desc, eq, isNull } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import { publishFailures, publishJobs } from "../../db/schema.js";
 import { verifyAdminRequest } from "../../lib/admin-auth.js";
-import { enforceRateLimit, redis } from "../../lib/ratelimit.js";
-import { Ratelimit } from "@upstash/ratelimit";
+import { enforceRateLimit, slidingWindowLimiter } from "../../lib/ratelimit.js";
 
-const adminIpLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(60, "1 m"),
-      prefix: "rl:admin_ip",
-    })
-  : null;
+const adminIpLimiter = slidingWindowLimiter(60, "1 m", "rl:admin_ip");
 
 export async function registerAdminRoutes(app: FastifyInstance) {
   app.addHook("onRequest", async (request, reply) => {

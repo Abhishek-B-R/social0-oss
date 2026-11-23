@@ -10,36 +10,44 @@ import {
   type PublishPostJob,
   useCloudflarePublishFromEnv,
 } from "@social0/shared";
-import { prepareAndEnqueuePublish } from "./publish-enqueue.js";
+import { prepareAndEnqueuePublish, type PublishBackend } from "./publish-enqueue.js";
 
 export function useCloudflarePublishDispatch(): boolean {
   return useCloudflarePublishFromEnv();
 }
 
+let warnedLegacyBullmq = false;
+
 /**
  * Refuse to accept a publish that nothing will ever run.
  *
  * With `PUBLISH_DISPATCH` unset, the backend is inferred from whether the
- * Cloudflare credentials parse — so a missing or misspelled `CF_PUBLISH_*`
- * secret silently selects BullMQ instead. No consumer for the
- * `platform-publish-*` queues ships in this repository (the Cloudflare worker
- * reads Cloudflare Queues, not BullMQ), so the job waits forever: the caller
- * gets 202, the post sits in `publishing`, and nothing is logged.
+ * Cloudflare credentials parse, so a missing or misspelled `CF_PUBLISH_*`
+ * secret would otherwise leave the publish with nowhere to go. Choosing
+ * explicitly is fine either way: `cloudflare`, or `server` to run every
+ * platform on the API process.
  *
- * Setting `PUBLISH_DISPATCH=bullmq` is an operator asserting they run their own
- * consumer, and is left alone. This only closes the case where nobody chose it.
+ * `bullmq` is accepted as the old name for `server`. It used to enqueue to
+ * BullMQ queues with no consumer in this repository, so those publishes sat
+ * in `publishing` forever.
  *
  * Called before any row is written, so a misconfigured deployment leaves the
  * post a draft the user can retry rather than a half-published one.
  */
 export function assertPublishDispatchConfigured(): void {
   const mode = process.env.PUBLISH_DISPATCH?.trim();
-  if (mode === "cloudflare" || mode === "bullmq") return;
+  if (mode === "bullmq" && !warnedLegacyBullmq) {
+    warnedLegacyBullmq = true;
+    console.warn(
+      "[publish] PUBLISH_DISPATCH=bullmq is deprecated: publishes now run on the API process. Set PUBLISH_DISPATCH=server.",
+    );
+  }
+  if (mode === "cloudflare" || mode === "server" || mode === "bullmq") return;
   if (cfPublishClientFromEnv()) return;
   throw new Error(
     "Publish dispatch is not configured: set CF_PUBLISH_WORKER_URL and " +
-      "CF_PUBLISH_HMAC_SECRET, or set PUBLISH_DISPATCH=bullmq if this " +
-      "deployment runs its own platform-publish queue consumer.",
+      "CF_PUBLISH_HMAC_SECRET, or set PUBLISH_DISPATCH=server to publish " +
+      "every platform from the API process.",
   );
 }
 
@@ -59,21 +67,18 @@ export async function dispatchPlatformJob(
 export async function dispatchPublishPost(
   app: FastifyInstance | null,
   data: PublishPostJob,
-  opts?: { delay?: number; trackingId?: string; priority?: CfPublishPriority },
-): Promise<{ id: string; backend: "cloudflare" | "bullmq"; enqueued: number }> {
-  const priority =
-    opts?.priority ?? (opts?.delay && opts.delay > 0 ? "scheduled" : "now");
-
-  if (useCloudflarePublishDispatch() && opts?.delay && opts.delay > 0) {
-    throw new Error(
-      "Delayed publish on Cloudflare uses scheduled posts + cron; do not pass delay",
-    );
-  }
+  opts?: {
+    trackingId?: string;
+    priority?: CfPublishPriority;
+    onlyFromStatus?: "draft";
+  },
+): Promise<{ id: string; backend: PublishBackend; enqueued: number }> {
+  const priority = opts?.priority ?? "now";
 
   const result = await prepareAndEnqueuePublish(app, data, {
     priority,
     trackingId: opts?.trackingId ?? data.trackingId,
-    delay: opts?.delay,
+    onlyFromStatus: opts?.onlyFromStatus,
   });
 
   return {
@@ -90,19 +95,12 @@ export function createPublishTrackingId() {
 export function queueNameForJob(
   jobNameOrPriority: string | CfPublishPriority = "now",
 ): string {
+  // Without Cloudflare there is no publish queue: jobs run on the API.
   if (jobNameOrPriority === "now" || jobNameOrPriority === "scheduled") {
-    if (useCloudflarePublishDispatch()) {
-      return cfPublishQueueName(jobNameOrPriority);
-    }
-    return QUEUES.PUBLISH;
+    return useCloudflarePublishDispatch() ? cfPublishQueueName(jobNameOrPriority) : "server";
   }
 
-  if (jobNameOrPriority.startsWith("publish.")) {
-    return useCloudflarePublishDispatch()
-      ? cfPublishQueueName("now")
-      : QUEUES.PUBLISH;
-  }
   if (jobNameOrPriority.startsWith("token.")) return QUEUES.TOKEN;
   if (jobNameOrPriority.startsWith("cron.")) return QUEUES.SCHEDULER;
-  return QUEUES.PUBLISH;
+  return useCloudflarePublishDispatch() ? cfPublishQueueName("now") : "server";
 }

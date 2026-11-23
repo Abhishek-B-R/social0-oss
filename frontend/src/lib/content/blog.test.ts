@@ -4,6 +4,7 @@ import type { BlogBlock } from "./blog-types";
 import { BLOG_CATEGORIES } from "./blog-types";
 import { FEATURES } from "./features";
 import { TOOLS } from "./tools";
+import { ALTERNATIVES } from "./alternatives";
 import { parseInline } from "@/lib/rich-text";
 
 /** Marketing routes that exist outside the pSEO content files. */
@@ -23,6 +24,7 @@ const STATIC_PATHS = new Set([
 const FEATURE_PATHS = new Set(FEATURES.map((f) => `/features/${f.slug}`));
 const TOOL_PATHS = new Set(TOOLS.map((t) => `/tools/${t.slug}`));
 const BLOG_PATHS = new Set(BLOG_POSTS.map((p) => `/blog/${p.slug}`));
+const ALTERNATIVE_PATHS = new Set(ALTERNATIVES.map((a) => `/alternatives/${a.slug}`));
 
 function isKnownInternalPath(href: string): boolean {
   const [path] = href.split("#");
@@ -31,7 +33,8 @@ function isKnownInternalPath(href: string): boolean {
     STATIC_PATHS.has(path) ||
     FEATURE_PATHS.has(path) ||
     TOOL_PATHS.has(path) ||
-    BLOG_PATHS.has(path)
+    BLOG_PATHS.has(path) ||
+    ALTERNATIVE_PATHS.has(path)
   );
 }
 

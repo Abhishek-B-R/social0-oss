@@ -16,10 +16,21 @@ import {
   isGeneratedStorageFilename,
   MAX_IMAGE_SIZE_BYTES,
   MAX_VIDEO_SIZE_BYTES,
+  storedContentTypeMatches,
 } from "../lib/media-upload-policy.js";
 import { sanitizeFilename } from "../lib/validation.js";
 
 const SIZE_TOLERANCE_BYTES = 1024;
+
+function maxSizeFor(contentType: string): number {
+  return contentType.startsWith("image/")
+    ? MAX_IMAGE_SIZE_BYTES
+    : MAX_VIDEO_SIZE_BYTES;
+}
+
+function tooLargeError(contentType: string): string {
+  return `File too large. Max: ${contentType.startsWith("image/") ? "50MB" : "500MB"}`;
+}
 
 export async function v1PresignMedia(
   userId: string,
@@ -47,10 +58,8 @@ export async function v1PresignMedia(
     return { ok: false, error: `Unsupported file type: ${contentType}` };
   }
 
-  const isImage = contentType.startsWith("image/");
-  const maxSize = isImage ? MAX_IMAGE_SIZE_BYTES : MAX_VIDEO_SIZE_BYTES;
-  if (fileSize > maxSize) {
-    return { ok: false, error: `File too large. Max: ${isImage ? "50MB" : "500MB"}` };
+  if (fileSize > maxSizeFor(contentType)) {
+    return { ok: false, error: tooLargeError(contentType) };
   }
 
   const rawExt = (filename.split(".").pop() ?? "").toLowerCase();
@@ -85,6 +94,18 @@ export async function v1ConfirmMedia(
   const { key, storage_filename, original_filename, content_type, size_bytes } =
     input;
 
+  if (!isAllowedMediaContentType(content_type)) {
+    return { ok: false, error: `Unsupported file type: ${content_type}` };
+  }
+
+  // The cap follows the type declared *here*, not at presign: presign as
+  // video (500 MB) then confirm as image would otherwise register a 500 MB
+  // "image" that image publish paths load whole into memory.
+  const maxSize = maxSizeFor(content_type);
+  if (size_bytes > maxSize) {
+    return { ok: false, error: tooLargeError(content_type) };
+  }
+
   if (!isGeneratedStorageFilename(storage_filename)) {
     return { ok: false, error: "Invalid storage key" };
   }
@@ -104,8 +125,17 @@ export async function v1ConfirmMedia(
     return { ok: false, error: "Upload not found. Finish uploading before confirming." };
   }
 
+  // The real length gets no tolerance above the cap.
+  if (metadata.contentLength > maxSize) {
+    return { ok: false, error: tooLargeError(content_type) };
+  }
+
   if (Math.abs(metadata.contentLength - size_bytes) > SIZE_TOLERANCE_BYTES) {
     return { ok: false, error: "Uploaded file size does not match" };
+  }
+
+  if (!storedContentTypeMatches(metadata.contentType, content_type)) {
+    return { ok: false, error: "File content does not match declared type" };
   }
 
   const head = await getR2ObjectByteRange(key, 0, 15);

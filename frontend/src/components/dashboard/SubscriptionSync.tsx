@@ -1,5 +1,6 @@
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { fetchApi } from "@/lib/fetch-api";
+import { isPaidPlan } from "@/components/billing/plan-catalog";
 
 import { useEffect, useRef } from "react";
 
@@ -36,13 +37,7 @@ export function SubscriptionSync({ tier }: SubscriptionSyncProps) {
         } catch {
           // ignore
         }
-        if (
-          data?.ok === true &&
-          (data.tier === "starter" ||
-            data.tier === "growth" ||
-            data.tier === "pro" ||
-            data.tier === "max")
-        ) {
+        if (data?.ok === true && isPaidPlan(data.tier)) {
           invalidateQueries();
         }
       })

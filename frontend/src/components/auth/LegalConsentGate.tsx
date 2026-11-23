@@ -80,7 +80,7 @@ export function LegalConsentGate() {
         return;
       }
       setOpen(false);
-      toast.success("Thanks - you're all set.");
+      toast.success("Thanks, you're all set.");
     } catch (err) {
       toast.error(friendlyAuthError(err));
     } finally {
@@ -116,7 +116,7 @@ export function LegalConsentGate() {
           disabled={
             submitting || !consent.acceptTerms || !consent.acceptPrivacy
           }
-          className="w-full rounded-[10px] bg-accent py-3 text-sm font-medium text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
+          className="w-full rounded-[10px] bg-accent py-3 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent-hover disabled:opacity-50"
         >
           {submitting ? "Saving…" : "Continue"}
         </button>

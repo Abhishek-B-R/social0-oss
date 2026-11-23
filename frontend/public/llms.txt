@@ -10,30 +10,30 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 
 ## Core product
 
-- Homepage: https://social0.app
-- About: https://social0.app/about
-- Contact: https://social0.app/contact
-- Developers (API, MCP, CLI, OpenAPI): https://social0.app/developers
-- Developers (markdown): https://social0.app/developers.md
-- Auth docs: https://social0.app/auth.md
-- Pricing (Free, Starter, Growth, Pro, Max): https://social0.app/pricing
-- Pricing (markdown): https://social0.app/pricing.md
-- MCP server for AI assistants: https://social0.app/mcp
-- Agent instructions: https://social0.app/agent.txt
-- Sign up (free, no credit card): https://social0.app/auth
-- Documentation: https://docs.social0.app
-- MCP docs: https://docs.social0.app/docs/integrations/mcp
-- API reference: https://docs.social0.app/docs/api
-- OpenAPI spec: https://api.social0.app/openapi.json
-- OpenAPI spec (this domain): https://social0.app/openapi.json
-- Hosted MCP: https://mcp.social0.app
-- Hosted MCP endpoint: https://mcp.social0.app/mcp
-- CLI: https://social0.app/tools/cli
-- Webhooks: https://social0.app/tools/webhooks
-- API versioning: https://social0.app/api-versioning.md
-- AI catalog: https://social0.app/.well-known/ai-catalog.json
-- API catalog: https://social0.app/.well-known/api-catalog
-- MCP server card: https://social0.app/.well-known/mcp/server-card.json
+- [Homepage](https://social0.app)
+- [About](https://social0.app/about)
+- [Contact](https://social0.app/contact)
+- [Developers (API, MCP, CLI, OpenAPI)](https://social0.app/developers)
+- [Developers (markdown)](https://social0.app/developers.md)
+- [Auth docs](https://social0.app/auth.md)
+- [Pricing (Free, Creator $29.90/mo, Agency $59.90/mo + $1 per account above 59)](https://social0.app/pricing)
+- [Pricing (markdown)](https://social0.app/pricing.md)
+- [MCP server for AI assistants](https://social0.app/mcp)
+- [Agent instructions](https://social0.app/agent.txt)
+- [Sign up (free, no credit card)](https://social0.app/auth)
+- [Documentation](https://docs.social0.app)
+- [MCP docs](https://docs.social0.app/docs/integrations/mcp)
+- [API reference](https://docs.social0.app/docs/api)
+- [OpenAPI spec](https://api.social0.app/openapi.json)
+- [OpenAPI spec (this domain)](https://social0.app/openapi.json)
+- [Hosted MCP](https://mcp.social0.app)
+- [Hosted MCP endpoint](https://mcp.social0.app/mcp)
+- [CLI](https://social0.app/tools/cli)
+- [Webhooks](https://social0.app/tools/webhooks)
+- [API versioning](https://social0.app/api-versioning.md)
+- [AI catalog](https://social0.app/.well-known/ai-catalog.json)
+- [API catalog](https://social0.app/.well-known/api-catalog)
+- [MCP server card](https://social0.app/.well-known/mcp/server-card.json)
 
 ## Why Social0 vs legacy schedulers
 
@@ -45,142 +45,97 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 
 ## Competitor comparison pages
 
-- Buffer alternative: https://social0.app/alternatives/buffer
-- Hootsuite alternative: https://social0.app/alternatives/hootsuite
-- Later alternative: https://social0.app/alternatives/later
-- Metricool alternative: https://social0.app/alternatives/metricool
-- Publer alternative: https://social0.app/alternatives/publer
-- Sprout Social alternative: https://social0.app/alternatives/sprout-social
-- Agorapulse alternative: https://social0.app/alternatives/agorapulse
-- CoSchedule alternative: https://social0.app/alternatives/coschedule
-- eClincher alternative: https://social0.app/alternatives/eclincher
-- HeyOrca alternative: https://social0.app/alternatives/heyorca
-- Hopper HQ alternative: https://social0.app/alternatives/hopper-hq
-- Iconosquare alternative: https://social0.app/alternatives/iconosquare
-- Kontentino alternative: https://social0.app/alternatives/kontentino
-- Loomly alternative: https://social0.app/alternatives/loomly
-- MeetEdgar alternative: https://social0.app/alternatives/meetedgar
-- NapoleonCat alternative: https://social0.app/alternatives/napoleoncat
-- Pallyy alternative: https://social0.app/alternatives/pallyy
-- Planable alternative: https://social0.app/alternatives/planable
-- Planoly alternative: https://social0.app/alternatives/planoly
-- Post Bridge alternative: https://social0.app/alternatives/postbridge
-- Postiz alternative: https://social0.app/alternatives/postiz
-- Post Planner alternative: https://social0.app/alternatives/post-planner
-- RecurPost alternative: https://social0.app/alternatives/recurpost
-- Sendible alternative: https://social0.app/alternatives/sendible
-- Sked Social alternative: https://social0.app/alternatives/sked-social
-- SocialBee alternative: https://social0.app/alternatives/socialbee
-- SocialPilot alternative: https://social0.app/alternatives/socialpilot
-- Sprinklr alternative: https://social0.app/alternatives/sprinklr
-- Statusbrew alternative: https://social0.app/alternatives/statusbrew
-- Tailwind alternative: https://social0.app/alternatives/tailwind
-- Vista Social alternative: https://social0.app/alternatives/vista-social
-- Zoho Social alternative: https://social0.app/alternatives/zoho-social
-- Ayrshare alternative: https://social0.app/alternatives/ayrshare
-- Bardeen alternative: https://social0.app/alternatives/bardeen
-- Blotato alternative: https://social0.app/alternatives/blotato
-- Brandwatch alternative: https://social0.app/alternatives/brandwatch
-- ContentStudio alternative: https://social0.app/alternatives/contentstudio
-- Creasquare alternative: https://social0.app/alternatives/creasquare
-- dlvr.it alternative: https://social0.app/alternatives/dlvr-it
-- Fedica alternative: https://social0.app/alternatives/fedica
-- FeedHive alternative: https://social0.app/alternatives/feedhive
-- Followr alternative: https://social0.app/alternatives/followr
-- Hookle alternative: https://social0.app/alternatives/hookle
-- Missinglettr alternative: https://social0.app/alternatives/missinglettr
-- Mixpost alternative: https://social0.app/alternatives/mixpost
-- Nuelink alternative: https://social0.app/alternatives/nuelink
-- Oktopost alternative: https://social0.app/alternatives/oktopost
-- OneUp alternative: https://social0.app/alternatives/oneup
-- Planly alternative: https://social0.app/alternatives/planly
-- Postcron alternative: https://social0.app/alternatives/postcron
-- PostFlow alternative: https://social0.app/alternatives/postflow
-- PostSyncer alternative: https://social0.app/alternatives/postsyncer
-- PromoRepublic alternative: https://social0.app/alternatives/promorepublic
-- Radaar alternative: https://social0.app/alternatives/radaar
-- Semrush alternative: https://social0.app/alternatives/semrush
-- Social Champ alternative: https://social0.app/alternatives/social-champ
-- Sociality.io alternative: https://social0.app/alternatives/sociality
-- SocialKiwi alternative: https://social0.app/alternatives/socialkiwi
-- SocialPika alternative: https://social0.app/alternatives/socialpika
-- Storefries alternative: https://social0.app/alternatives/storefries
-- Taplio alternative: https://social0.app/alternatives/taplio
-- The Social Poster alternative: https://social0.app/alternatives/the-social-poster
-- Tweet Hunter alternative: https://social0.app/alternatives/tweet-hunter
-- Typefully alternative: https://social0.app/alternatives/typefully
-- Unbox Social alternative: https://social0.app/alternatives/unboxsocial
-- Upload-Post alternative: https://social0.app/alternatives/upload-post
-- All comparisons: https://social0.app/alternatives
+- [Buffer alternative](https://social0.app/alternatives/buffer)
+- [Hootsuite alternative](https://social0.app/alternatives/hootsuite)
+- [Later alternative](https://social0.app/alternatives/later)
+- [Metricool alternative](https://social0.app/alternatives/metricool)
+- [Publer alternative](https://social0.app/alternatives/publer)
+- [Sprout Social alternative](https://social0.app/alternatives/sprout-social)
+- [Ayrshare alternative](https://social0.app/alternatives/ayrshare)
+- [Postiz alternative](https://social0.app/alternatives/postiz)
+- [Post Bridge alternative](https://social0.app/alternatives/postbridge)
+- [Blotato alternative](https://social0.app/alternatives/blotato)
+- [PostFlow alternative](https://social0.app/alternatives/postflow)
+- [NapoleonCat alternative](https://social0.app/alternatives/napoleoncat)
+- [Planoly alternative](https://social0.app/alternatives/planoly)
+- [dlvr.it alternative](https://social0.app/alternatives/dlvr-it)
+- [Nuelink alternative](https://social0.app/alternatives/nuelink)
+- [OneUp alternative](https://social0.app/alternatives/oneup)
+- [PostSyncer alternative](https://social0.app/alternatives/postsyncer)
+- [Social Champ alternative](https://social0.app/alternatives/social-champ)
+- [Upload-Post alternative](https://social0.app/alternatives/upload-post)
+- [All comparisons](https://social0.app/alternatives)
 
 ## Feature pages (platform schedulers)
 
-- Threads: https://social0.app/features/threads-scheduler
-- Bluesky: https://social0.app/features/bluesky-scheduling-tool
-- TikTok: https://social0.app/features/tiktok-scheduler
-- Instagram: https://social0.app/features/instagram-scheduler
-- LinkedIn: https://social0.app/features/linkedin-scheduler
-- X (Twitter): https://social0.app/features/twitter-scheduler
-- Multi: https://social0.app/features/multi-platform-scheduler
-- Social media calendar for your entire stack: https://social0.app/features/social-media-calendar
-- YouTube: https://social0.app/features/youtube-scheduler
-- Pinterest: https://social0.app/features/pinterest-scheduler
-- Facebook: https://social0.app/features/facebook-scheduler
-- All features: https://social0.app/features
+- [Threads](https://social0.app/features/threads-scheduler)
+- [Bluesky](https://social0.app/features/bluesky-scheduling-tool)
+- [TikTok](https://social0.app/features/tiktok-scheduler)
+- [Instagram](https://social0.app/features/instagram-scheduler)
+- [LinkedIn](https://social0.app/features/linkedin-scheduler)
+- [X (Twitter)](https://social0.app/features/twitter-scheduler)
+- [Multi-platform scheduler](https://social0.app/features/multi-platform-scheduler)
+- [Social media calendar for your entire stack](https://social0.app/features/social-media-calendar)
+- [YouTube](https://social0.app/features/youtube-scheduler)
+- [Pinterest](https://social0.app/features/pinterest-scheduler)
+- [Facebook](https://social0.app/features/facebook-scheduler)
+- [All features](https://social0.app/features)
 
 ## Tools & integrations
 
-- API: https://social0.app/tools/api
-- AI Agents CLI: https://social0.app/tools/cli
-- Webhooks: https://social0.app/tools/webhooks
-- Bulk image tools: https://social0.app/tools/bulk-image
-- Bulk video tools: https://social0.app/tools/bulk-video
-- Auto-repost: https://social0.app/tools/auto-repost
-- Auto-plug: https://social0.app/tools/auto-plug
-- Content calendar: https://social0.app/tools/calendar
-- Posting queue: https://social0.app/tools/queue
-- Teams: https://social0.app/tools/teams
-- ChatGPT MCP: https://social0.app/tools/chatgpt
-- Claude MCP: https://social0.app/tools/claude
-- Cursor MCP: https://social0.app/tools/cursor
-- OpenClaw skill: https://social0.app/tools/openclaw
-- All tools: https://social0.app/tools
+- [API](https://social0.app/tools/api)
+- [AI Agents CLI](https://social0.app/tools/cli)
+- [Webhooks](https://social0.app/tools/webhooks)
+- [Bulk image tools](https://social0.app/tools/bulk-image)
+- [Bulk video tools](https://social0.app/tools/bulk-video)
+- [Auto-repost](https://social0.app/tools/auto-repost)
+- [Auto-plug](https://social0.app/tools/auto-plug)
+- [Content calendar](https://social0.app/tools/calendar)
+- [Posting queue](https://social0.app/tools/queue)
+- [Teams](https://social0.app/tools/teams)
+- [ChatGPT MCP](https://social0.app/tools/chatgpt)
+- [Claude MCP](https://social0.app/tools/claude)
+- [Cursor MCP](https://social0.app/tools/cursor)
+- [OpenClaw skill](https://social0.app/tools/openclaw)
+- [All tools](https://social0.app/tools)
 
 ## Guides and reference
 
-- Why Your Social Account Won't Connect to a Scheduler (And How to Fix It): https://social0.app/blog/connect-social-accounts-troubleshooting
-- How the Instagram Algorithm Works in 2026 (Feed, Reels, Explore): https://social0.app/blog/instagram-algorithm-guide
-- Instagram's 5-Hashtag Limit: What Changed and What Works Now: https://social0.app/blog/instagram-hashtag-limit
-- How the LinkedIn Algorithm Works in 2026 (And What Still Gets Reach): https://social0.app/blog/linkedin-algorithm-guide
-- Managing Multiple Social Media Accounts: An Agency Workflow: https://social0.app/blog/managing-multiple-social-accounts
-- Reels vs TikTok vs Shorts: Where Short-Form Video Actually Works: https://social0.app/blog/reels-vs-tiktok-vs-shorts
-- Engagement Rate: Formulas, Benchmarks, and What to Actually Track: https://social0.app/blog/social-media-engagement-rate
-- How the TikTok Algorithm Works in 2026 (For You Page Ranking): https://social0.app/blog/tiktok-algorithm-guide
-- How the X (Twitter) Algorithm Works in 2026: https://social0.app/blog/x-algorithm-guide
-- Bluesky vs Threads in 2026: Which Is Worth Your Time?: https://social0.app/blog/bluesky-and-threads-for-brands
-- Social Media Automation for Developers: CLI, CI, and Webhooks: https://social0.app/blog/social-media-automation-for-developers
-- Why Scheduled Social Posts Fail (and How to Build So They Don't): https://social0.app/blog/why-scheduled-posts-fail
-- Instagram API Rate Limits Explained (2026 Developer Guide): https://social0.app/blog/instagram-api-rate-limits
-- Social Media Posting API: A Developer's Guide (2026): https://social0.app/blog/social-media-posting-api-guide
-- How to Build a Social Media Content Calendar That You'll Actually Use: https://social0.app/blog/social-media-content-calendar
-- How to Post to Social Media from ChatGPT or Claude (MCP Guide): https://social0.app/blog/post-to-social-media-with-ai-agents
-- Cross-Posting vs Repurposing: How to Post Everywhere Without Looking Lazy: https://social0.app/blog/cross-posting-vs-repurposing
-- Best Time to Post on Social Media in 2026 (Every Platform): https://social0.app/blog/best-time-to-post-on-social-media
-- Social Media Image Sizes 2026: Cheat Sheet for Every Platform: https://social0.app/blog/social-media-image-sizes
-- Social Media Video Specs 2026: Length, Size & Format by Platform: https://social0.app/blog/social-media-video-specs
-- Social Media Character Limits (2026): Every Platform in One Table: https://social0.app/blog/social-media-character-limits
-- All guides: https://social0.app/blog
+- [How to Cancel Buffer (and Keep Your Scheduled Posts)](https://social0.app/blog/how-to-cancel-buffer)
+- [How to Cancel Hootsuite Without Being Charged Again](https://social0.app/blog/how-to-cancel-hootsuite)
+- [Why Your Social Account Won't Connect to a Scheduler (And How to Fix It)](https://social0.app/blog/connect-social-accounts-troubleshooting)
+- [How the Instagram Algorithm Works in 2026 (Feed, Reels, Explore)](https://social0.app/blog/instagram-algorithm-guide)
+- [Instagram's 5-Hashtag Limit: What Changed and What Works Now](https://social0.app/blog/instagram-hashtag-limit)
+- [How the LinkedIn Algorithm Works in 2026 (And What Still Gets Reach)](https://social0.app/blog/linkedin-algorithm-guide)
+- [Managing Multiple Social Media Accounts: An Agency Workflow](https://social0.app/blog/managing-multiple-social-accounts)
+- [Reels vs TikTok vs Shorts: Where Short-Form Video Actually Works](https://social0.app/blog/reels-vs-tiktok-vs-shorts)
+- [Engagement Rate: Formulas, Benchmarks, and What to Actually Track](https://social0.app/blog/social-media-engagement-rate)
+- [How the TikTok Algorithm Works in 2026 (For You Page Ranking)](https://social0.app/blog/tiktok-algorithm-guide)
+- [How the X (Twitter) Algorithm Works in 2026](https://social0.app/blog/x-algorithm-guide)
+- [Bluesky vs Threads in 2026: Which Is Worth Your Time?](https://social0.app/blog/bluesky-and-threads-for-brands)
+- [Social Media Automation for Developers: CLI, CI, and Webhooks](https://social0.app/blog/social-media-automation-for-developers)
+- [Why Scheduled Social Posts Fail (and How to Build So They Don't)](https://social0.app/blog/why-scheduled-posts-fail)
+- [Instagram API Rate Limits Explained (2026 Developer Guide)](https://social0.app/blog/instagram-api-rate-limits)
+- [Social Media Posting API: A Developer's Guide (2026)](https://social0.app/blog/social-media-posting-api-guide)
+- [How to Build a Social Media Content Calendar That You'll Actually Use](https://social0.app/blog/social-media-content-calendar)
+- [How to Post to Social Media from ChatGPT or Claude (MCP Guide)](https://social0.app/blog/post-to-social-media-with-ai-agents)
+- [Cross-Posting vs Repurposing: How to Post Everywhere Without Looking Lazy](https://social0.app/blog/cross-posting-vs-repurposing)
+- [Best Time to Post on Social Media in 2026 (Every Platform)](https://social0.app/blog/best-time-to-post-on-social-media)
+- [Social Media Image Sizes 2026: Cheat Sheet for Every Platform](https://social0.app/blog/social-media-image-sizes)
+- [Social Media Video Specs 2026: Length, Size & Format by Platform](https://social0.app/blog/social-media-video-specs)
+- [Social Media Character Limits (2026): Every Platform in One Table](https://social0.app/blog/social-media-character-limits)
+- [All guides](https://social0.app/blog)
 
 ## Key differentiators
 
 - Content types: text, image, video, threads, collections
 - Parallel publishing to all selected accounts at once
 - Scheduling calendar, drafts, queue slots, and bulk image/video tools
-- Auto-repost and auto-plug (engagement replies) on Growth+ plans
+- Auto-repost and auto-plug (engagement replies) on every paid plan
 - Teams and workspaces for agencies and multi-brand workflows
 - Developer surface: REST /v1 API, webhooks, npm CLI, MCP server
 
 ## Support
 
 - Email: support@social0.app
-- X: https://x.com/social0_app
+- [X](https://x.com/social0_app)

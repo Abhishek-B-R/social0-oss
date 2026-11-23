@@ -1,10 +1,12 @@
-import { auth } from "../lib/auth.js";
+import { getRouteSession } from "../lib/session.js";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
+import { reconnectedAtPatch } from "../lib/account-reconnect.js";
 import { eq, and, isNull } from "drizzle-orm";
-import { headers } from "../lib/http/request-cookies.js";
 import { decryptToken, encryptToken } from "@social0/shared";
 import { checkAccountLimits } from "../lib/plan-limits.js";
+import { queueAgencyExtraAccountsSync } from "../lib/extra-accounts.js";
+import { accountLimitMessage } from "../lib/connections.js";
 import { logConnectBlocked } from "@social0/shared";
 import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
@@ -27,7 +29,7 @@ type LinkedInPayload = {
 };
 
 export async function liSelectGet(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -88,7 +90,7 @@ export async function liSelectGet(req: AppRequest) {
 }
 
 export async function liSelectPost(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -175,7 +177,7 @@ export async function liSelectPost(req: AppRequest) {
   };
 
   const toSave: AccountToSave[] = [];
-  for (const id of selectedIds) {
+  for (const id of new Set(selectedIds)) {
     if (id === personalId) {
       toSave.push({
         platformUserId: personalId,
@@ -200,6 +202,10 @@ export async function liSelectPost(req: AppRequest) {
 
   const tokenExpiresAt = new Date(Date.now() + expiresInSec * 1000);
 
+  // Look everything up first and check the plan once for all new accounts:
+  // checking per account inside the write loop saved the first few and then
+  // failed, leaving a half-connected pick behind a "limit reached" error.
+  const planned = [];
   for (const acc of toSave) {
     const existing = await db.query.connectedAccounts.findFirst({
       where: and(
@@ -211,28 +217,29 @@ export async function liSelectPost(req: AppRequest) {
           : isNull(connectedAccounts.workspaceId),
       ),
     });
-
-    if (!existing) {
-      const limitCheck = await checkAccountLimits(resourceUserId, "linkedin");
-      if (!limitCheck.allowed) {
-        logConnectBlocked(
-          resourceUserId,
-          "linkedin",
-          limitCheck.reason ?? "You need an active plan to connect accounts and post content.",
-          limitCheck.currentTotal,
-          limitCheck.limitTotal,
-        );
-        return Response.json(
-          {
-            error: "limit_reached",
-            message:
-              "You need an active plan to connect accounts and post content.",
-          },
-          { status: 403 },
-        );
-      }
+    planned.push({ acc, existing });
+  }
+  const newCount = planned.filter((p) => !p.existing).length;
+  if (newCount > 0) {
+    const limitCheck = await checkAccountLimits(resourceUserId, "linkedin");
+    const slotsLeft = Math.max(0, limitCheck.limitTotal - limitCheck.currentTotal);
+    if (!limitCheck.allowed || newCount > slotsLeft) {
+      const message = accountLimitMessage(limitCheck, newCount);
+      logConnectBlocked(
+        resourceUserId,
+        "linkedin",
+        message,
+        limitCheck.currentTotal,
+        limitCheck.limitTotal,
+      );
+      return Response.json(
+        { error: "limit_reached", message },
+        { status: 403 },
+      );
     }
+  }
 
+  for (const { acc, existing } of planned) {
     const accountId = existing?.id ?? crypto.randomUUID();
     const encryptedAccess = encryptToken(accessToken, accountId);
     // Keep prior refresh token if this select payload predates the fix.
@@ -259,7 +266,9 @@ export async function liSelectPost(req: AppRequest) {
           platformUsername: acc.platformUsername,
           profileImageUrl,
           platformAccountType: acc.platformAccountType,
-          isActive: true,
+          // isActive stays as stored: the plan cap owns it
+          // (syncConnectedAccountsToLimit), a reconnect does not grant it.
+          platformMetadata: reconnectedAtPatch(),
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, existing.id));
@@ -279,6 +288,8 @@ export async function liSelectPost(req: AppRequest) {
         isActive: true,
         platformAccountType: acc.platformAccountType,
       });
+      // Agency bills accounts above 59: update the add-on (never blocks).
+      queueAgencyExtraAccountsSync(resourceUserId, "connect");
     }
   }
 

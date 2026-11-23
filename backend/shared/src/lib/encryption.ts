@@ -1,15 +1,61 @@
 import crypto from "crypto";
 
+/** Same parsing ENCRYPTION_KEY has always had, so an existing key keeps working. */
+function parseKey(raw: string, name: string): Buffer {
+  const key = Buffer.from(raw, "hex");
+  if (key.length !== 32) {
+    throw new Error(`${name} must be 64 hex characters (32 bytes)`);
+  }
+  return key;
+}
+
+/** The key everything is encrypted with. */
 function encryptionKey(): Buffer {
   const raw = process.env.ENCRYPTION_KEY;
   if (typeof raw !== "string" || raw.length === 0) {
     throw new Error("ENCRYPTION_KEY is not set");
   }
-  const key = Buffer.from(raw, "hex");
-  if (key.length !== 32) {
-    throw new Error("ENCRYPTION_KEY must be 64 hex characters (32 bytes)");
+  return parseKey(raw, "ENCRYPTION_KEY");
+}
+
+/**
+ * Keys a ciphertext may have been written with: the current one first, then
+ * `ENCRYPTION_KEYS_PREVIOUS` (comma-separated, newest first).
+ *
+ * This is how the key is rotated: set the new key as ENCRYPTION_KEY and move
+ * the old one into ENCRYPTION_KEYS_PREVIOUS (on the API and the publish
+ * worker alike). New writes use the new key and old ciphertexts still read;
+ * tokens move over as they are refreshed. Drop an old key once nothing is
+ * written with it any more. AES-GCM authenticates each attempt, so a wrong key
+ * fails cleanly instead of returning garbage.
+ */
+function* decryptionKeys(): Generator<Buffer> {
+  yield encryptionKey();
+  // Parsed only when the current key did not fit, so a typo here can fail
+  // only the reads that need an old key, never every read.
+  const previous = (process.env.ENCRYPTION_KEYS_PREVIOUS ?? "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+  for (const [i, raw] of previous.entries()) {
+    yield parseKey(raw, `ENCRYPTION_KEYS_PREVIOUS[${i}]`);
   }
-  return key;
+}
+
+/**
+ * Try each key in turn; rethrow the current key's error if none fits. A
+ * malformed previous key is a configuration error and is thrown as such.
+ */
+function withEachKey<T>(attempt: (key: Buffer) => T): T {
+  let firstError: unknown;
+  for (const key of decryptionKeys()) {
+    try {
+      return attempt(key);
+    } catch (e) {
+      firstError ??= e;
+    }
+  }
+  throw firstError;
 }
 
 // Simple encryption for OAuth state (userId + platform, optionally stateId for PKCE verifier lookup, oauth_token_secret for Twitter OAuth 1.0a)
@@ -46,7 +92,6 @@ export function decrypt(encrypted: string): {
   reauthAccountId?: string;
   workspaceId?: string | null;
 } {
-  const key = encryptionKey();
   const parts = encrypted.split(":");
   if (parts.length !== 3) {
     throw new Error("Invalid encrypted format");
@@ -54,10 +99,11 @@ export function decrypt(encrypted: string): {
   const [ivBase64, encryptedData, authTagBase64] = parts;
   const iv = Buffer.from(ivBase64, "base64");
   const authTag = Buffer.from(authTagBase64, "base64");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(authTag);
-  let decrypted = decipher.update(encryptedData, "base64", "utf8");
-  decrypted += decipher.final("utf8");
+  const decrypted = withEachKey((key) => {
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(authTag);
+    return decipher.update(encryptedData, "base64", "utf8") + decipher.final("utf8");
+  });
   return JSON.parse(decrypted);
 }
 
@@ -81,7 +127,6 @@ export function encryptToken(token: string, accountId: string): string {
 }
 
 export function decryptToken(encryptedToken: string, accountId: string): string {
-  const key = encryptionKey();
   const parts = encryptedToken.split(":");
   if (parts.length !== 5) {
     throw new Error("Invalid encrypted token format");
@@ -93,17 +138,12 @@ export function decryptToken(encryptedToken: string, accountId: string): string 
   const salt = Buffer.from(saltBase64, "base64");
   const iv = Buffer.from(ivBase64, "base64");
   const authTag = Buffer.from(authTagBase64, "base64");
-  const derivedKeyBuffer = crypto.hkdfSync(
-    "sha256",
-    key,
-    salt,
-    `account-${accountId}`,
-    32,
-  );
-  const derivedKey = Buffer.from(derivedKeyBuffer);
-  const decipher = crypto.createDecipheriv("aes-256-gcm", derivedKey, iv);
-  decipher.setAuthTag(authTag);
-  let decrypted = decipher.update(ciphertext, "base64", "utf8");
-  decrypted += decipher.final("utf8");
-  return decrypted;
+  return withEachKey((key) => {
+    const derivedKey = Buffer.from(
+      crypto.hkdfSync("sha256", key, salt, `account-${accountId}`, 32),
+    );
+    const decipher = crypto.createDecipheriv("aes-256-gcm", derivedKey, iv);
+    decipher.setAuthTag(authTag);
+    return decipher.update(ciphertext, "base64", "utf8") + decipher.final("utf8");
+  });
 }

@@ -60,7 +60,7 @@ export function TeamInviteBanners() {
       }
       // Land in the team app URL tree so PersonalWorkspaceBoot does not wipe
       // the just-activated joined workspace.
-      window.location.assign(`/dashboard/teams/${result.teamId}/composer`);
+      window.location.assign(`/dashboard/teams/${result.teamId}/home`);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to accept invitation",

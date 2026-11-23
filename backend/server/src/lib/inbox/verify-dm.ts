@@ -5,6 +5,7 @@
 import {
   PlatformApiCooldownError,
   withPlatformReadCache,
+  type PlatformReadResult,
 } from "../platform-api-cache.js";
 import {
   fetchAccountDms,
@@ -13,6 +14,7 @@ import {
 } from "./fetch-dms.js";
 import { dmListFetchPlan, dmThreadCacheSuffix } from "./page-param.js";
 import { reconnectScopesFromFetch } from "./types.js";
+import { verifyRateLimitedMessage } from "./verify-comment.js";
 
 export function dmConversationInList(
   threads: Array<{ conversationId: string }>,
@@ -73,25 +75,30 @@ async function verifyFromThread(
   }
 }
 
+type DmFetchResult = Awaited<ReturnType<typeof fetchAccountDms>>;
+
 async function fetchDmsForVerify(
   account: DmAccount,
   fresh: boolean,
-): Promise<Awaited<ReturnType<typeof fetchAccountDms>>> {
+): Promise<PlatformReadResult<DmFetchResult>> {
   // Same plan (and cache entry) as the inbox DM list, so a list the user just
   // looked at verifies the reply for free.
   const lookback = dmListFetchPlan({ since: new Date() });
-  const cached = await withPlatformReadCache({
+  return withPlatformReadCache({
     platform: account.platform,
     accountId: account.id,
     kind: "inbox_dms",
     suffix: lookback.suffix,
     fresh,
+    // Own per-account budget on a miss: the DM list (and "Load older") may
+    // have just spent the inbox_dms list budget, and a reply must not be
+    // refused for it.
+    purpose: "verify",
     // Same reason as verify-comment: the retry pass must reach the platform,
     // or a conversation opened seconds ago is rejected as "not in this inbox".
     ...(fresh ? { softFreshMinAgeMs: 0 } : {}),
     fetch: () => fetchAccountDms(account, lookback.fetchSince, new Date()),
   });
-  return cached.data;
 }
 
 export async function verifyDmConversationOnAccount(
@@ -106,7 +113,16 @@ export async function verifyDmConversationOnAccount(
   if (threadPeer) return { ok: true, peerId: threadPeer };
 
   for (const fresh of [false, true] as const) {
-    const result = await fetchDmsForVerify(account, fresh);
+    let read: PlatformReadResult<DmFetchResult>;
+    try {
+      read = await fetchDmsForVerify(account, fresh);
+    } catch (e) {
+      if (e instanceof PlatformApiCooldownError) {
+        return { ok: false, error: verifyRateLimitedMessage(e.retryAt) };
+      }
+      throw e;
+    }
+    const result = read.data;
     const thread = findDmConversationInList(result.threads, conversationId);
     if (thread) {
       if (account.platform === "instagram" && !thread.peerId) {
@@ -136,6 +152,14 @@ export async function verifyDmConversationOnAccount(
         error: result.error ?? "Could not verify this conversation.",
       };
     }
+    // A saved copy served because of a rate limit cannot prove the
+    // conversation is missing, and a second pass would only hit the same limit.
+    if (read.rateLimited) {
+      return { ok: false, error: verifyRateLimitedMessage() };
+    }
+    // That was already a live read: a second call cannot see more and only
+    // spends another token.
+    if (!read.fromCache) break;
   }
 
   return {

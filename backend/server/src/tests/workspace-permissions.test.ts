@@ -132,9 +132,11 @@ describe("workspaceRoleLabel", () => {
 });
 
 describe("plan allowTeams", () => {
-  it("is enabled only for pro", async () => {
+  it("is enabled for agency and legacy pro/max", async () => {
     const { getPlanLimits } = await import("@social0/shared");
     expect(getPlanLimits("free").allowTeams).toBe(false);
+    expect(getPlanLimits("creator").allowTeams).toBe(false);
+    expect(getPlanLimits("agency").allowTeams).toBe(true);
     expect(getPlanLimits("starter").allowTeams).toBe(false);
     expect(getPlanLimits("growth").allowTeams).toBe(false);
     expect(getPlanLimits("pro").allowTeams).toBe(true);
@@ -146,6 +148,8 @@ describe("plan allowMultiWorkspace", () => {
   it("is enabled for paid plans only", async () => {
     const { getPlanLimits } = await import("@social0/shared");
     expect(getPlanLimits("free").allowMultiWorkspace).toBe(false);
+    expect(getPlanLimits("creator").allowMultiWorkspace).toBe(true);
+    expect(getPlanLimits("agency").allowMultiWorkspace).toBe(true);
     expect(getPlanLimits("starter").allowMultiWorkspace).toBe(true);
     expect(getPlanLimits("growth").allowMultiWorkspace).toBe(true);
     expect(getPlanLimits("pro").allowMultiWorkspace).toBe(true);

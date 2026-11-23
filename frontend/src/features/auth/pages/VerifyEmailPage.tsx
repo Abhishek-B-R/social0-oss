@@ -8,6 +8,12 @@ import { authClient } from "@/lib/auth-client";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
+import { AuthNotice } from "@/components/auth/AuthNotice";
+import {
+  AUTH_CONTINUE_PATH,
+  authContinuePath,
+  resolveCallbackUrl,
+} from "@/lib/sign-in-url";
 
 const RESEND_COOLDOWN_SEC = 30;
 
@@ -15,6 +21,19 @@ function VerifyEmailContent() {
   const [searchParams] = useSearchParams();
   const emailParam = searchParams.get("email") ?? "";
   const [email] = useState(decodeURIComponent(emailParam));
+  // Carries an invite / deep link from sign-up through verification. A fresh
+  // account must still pass the continue gate (onboarding), so a bare path is
+  // wrapped as its returnTo.
+  const callbackUrl = resolveCallbackUrl(searchParams.get("callbackUrl"));
+  const continueUrl =
+    callbackUrl === AUTH_CONTINUE_PATH ||
+    callbackUrl.startsWith(`${AUTH_CONTINUE_PATH}?`)
+      ? callbackUrl
+      : authContinuePath(callbackUrl);
+  const signInHref =
+    callbackUrl === AUTH_CONTINUE_PATH
+      ? "/auth"
+      : `/auth?callbackUrl=${encodeURIComponent(callbackUrl)}`;
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
@@ -46,7 +65,7 @@ function VerifyEmailContent() {
         toast.error(friendlyAuthError(err));
         return;
       }
-      window.location.href = "/auth/continue";
+      window.location.href = continueUrl;
     } catch (err) {
       toast.error(friendlyAuthError(err));
     } finally {
@@ -78,17 +97,13 @@ function VerifyEmailContent() {
 
   if (!email) {
     return (
-      <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
-        <main className="flex flex-1 items-center justify-center px-4">
-          <p className="text-muted-foreground">
-            Missing email.{" "}
-            <Link href="/auth" className="text-accent hover:opacity-80 hover:underline">
-              Sign up again
-            </Link>
-            .
-          </p>
-        </main>
-      </div>
+      <AuthNotice
+        title="Verify your email"
+        actionHref={signInHref}
+        actionLabel="Sign up again"
+      >
+        This link is missing your email address. Sign up again to get a new code.
+      </AuthNotice>
     );
   }
 
@@ -120,7 +135,7 @@ function VerifyEmailContent() {
                   <OtpInputs
                     digits={otp}
                     onChange={setOtp}
-                    inputClassName={"w-11 h-12 text-center text-lg font-semibold rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"}
+                    inputClassName={"w-11 h-12 text-center text-lg font-semibold rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[#0A0A0A]"}
                   />
                 </div>
                 <button
@@ -153,7 +168,7 @@ function VerifyEmailContent() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             <Link
-              href="/auth"
+              href={signInHref}
               className="underline underline-offset-2 transition-colors hover:text-foreground"
             >
               Back to sign in
@@ -167,7 +182,7 @@ function VerifyEmailContent() {
 
 function VerifyEmailFallback() {
   return (
-    <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+    <div className="landing landing-page flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <p className="text-muted-foreground">Loading…</p>
       </main>

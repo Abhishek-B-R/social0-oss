@@ -7,12 +7,23 @@ import {
 } from "./oauth-connect-binding.js";
 import { resolveWorkspaceContext } from "./workspace/context.js";
 
-async function readCallbackSession(request: Request) {
-  const fromRequest = await auth.api.getSession({ headers: request.headers });
+/**
+ * Callbacks are GETs but they insert or overwrite connected accounts, so they
+ * must see a live session row: a revoked session's `session_data` cookie
+ * cache would otherwise still bind an account for up to its maxAge.
+ */
+export async function readCallbackSession(request: Request) {
+  const fromRequest = await auth.api.getSession({
+    headers: request.headers,
+    query: { disableCookieCache: true },
+  });
   if (fromRequest?.user?.id) return fromRequest;
 
   const headerList = await headers();
-  return auth.api.getSession({ headers: headerList });
+  return auth.api.getSession({
+    headers: headerList,
+    query: { disableCookieCache: true },
+  });
 }
 
 /**

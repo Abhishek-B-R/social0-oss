@@ -21,6 +21,14 @@ const postStatusEnum = [
   "failed",
 ] as const;
 
+const idempotencyKeyProperty = {
+  type: "string",
+  minLength: 1,
+  maxLength: 255,
+  description:
+    "Optional. Same key = same post: reuse it when retrying this exact call. Without it, an identical call within 10 minutes is treated as a retry.",
+} as const;
+
 const platformOptionsProperty = {
   type: "object",
   description:
@@ -122,6 +130,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
           description: "Media upload IDs from upload_media",
         },
         platform_options: platformOptionsProperty,
+        idempotency_key: idempotencyKeyProperty,
       },
       required: ["content", "platforms"],
       additionalProperties: false,
@@ -229,6 +238,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
           description: "Optional media IDs from upload_media to attach before publishing",
         },
         platform_options: platformOptionsProperty,
+        idempotency_key: idempotencyKeyProperty,
       },
       required: ["post_id"],
       additionalProperties: false,
@@ -317,6 +327,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
           description: "Media IDs from upload_media",
         },
         platform_options: platformOptionsProperty,
+        idempotency_key: idempotencyKeyProperty,
       },
       required: ["content", "platforms"],
       additionalProperties: false,
@@ -342,6 +353,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
           description: "Media IDs from upload_media",
         },
         platform_options: platformOptionsProperty,
+        idempotency_key: idempotencyKeyProperty,
       },
       required: ["content", "platforms", "scheduled_at"],
       additionalProperties: false,

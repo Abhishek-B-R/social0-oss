@@ -1,174 +1,173 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "@/components/AppLink";
-import {
-  ArrowLeft,
-} from "@/icons/phosphor";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { createTeam, listWorkspaces } from "@/api/team";
-import { Button } from "@/components/ui/button";
-import { CreateTeamPageSkeleton } from "@/components/ui/page-skeletons";
-import { Input } from "@/components/ui/input";
+import Link from "@/components/AppLink";
+import { ErrorState, PageContainer, PageHeader, SkeletonCard } from "@/components/app";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { createTeam, listWorkspaces } from "@/api/team";
 import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
+import { cn } from "@/lib/utils";
+import { FieldError, settingsInputClass } from "@/features/dashboard/settings/settings-ui";
+import { useLimitModal } from "@/components/billing/use-limit-modal";
 
+const BACK_HREF = "/dashboard/settings/members";
+
+/** Page header with the way back to Settings → Members. */
+function Header() {
+  return (
+    <PageHeader
+      title="Create a team"
+      breadcrumb={
+        <Link href={BACK_HREF} className="inline-flex items-center gap-1.5 hover:text-text">
+          <ArrowLeft className="size-3.5" aria-hidden />
+          Settings
+        </Link>
+      }
+    />
+  );
+}
+
+/** /dashboard/teams/create. After creating, opens the new team's Members to invite people. */
 export function CreateTeamPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [teamName, setTeamName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { openLimit, limitModal } = useLimitModal();
 
-  const workspacesQuery = useQuery({
-    queryKey: WORKSPACES_QUERY_KEY,
-    queryFn: listWorkspaces,
-  });
-
-  const canCreate = !!workspacesQuery.data?.canCreateTeam;
-  const atCap =
-    (workspacesQuery.data?.ownedTeamCount ?? 0) >=
-    (workspacesQuery.data?.maxOwnedTeams ?? 5);
-
-  const trimmedTeam = teamName.trim();
-  const defaultWorkspacePreview = trimmedTeam
-    ? `${trimmedTeam}'s default workspace`
-    : "Your team's default workspace";
+  const workspacesQuery = useQuery({ queryKey: WORKSPACES_QUERY_KEY, queryFn: listWorkspaces });
+  const data = workspacesQuery.data;
+  const maxTeams = data?.maxOwnedTeams ?? 5;
+  const atCap = (data?.ownedTeamCount ?? 0) >= maxTeams;
+  const trimmed = teamName.trim();
 
   const handleCreate = async () => {
-    const name = trimmedTeam;
-    if (!name) {
-      toast.error("Enter a team name");
+    if (!trimmed) {
+      setError("Give the team a name.");
       return;
     }
+    setError(null);
     setCreating(true);
     try {
-      const { teamId } = await createTeam(name);
+      const { teamId } = await createTeam(trimmed);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: WORKSPACES_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: ["team"] }),
         queryClient.invalidateQueries({ queryKey: ["dashboard-layout"] }),
         queryClient.invalidateQueries({ queryKey: ["connections"] }),
       ]);
-      toast.success("Team created");
-      navigate(`/dashboard/teams/${teamId}/settings`, { replace: true });
+      toast.success(`Created ${trimmed}`, { description: "Invite people to get started." });
+      navigate(`/dashboard/teams/${teamId}/settings/members?invite=1`, { replace: true });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create team");
+      setError(err instanceof Error ? err.message : "Couldn't create the team. Try again.");
       setCreating(false);
     }
   };
 
-  if (workspacesQuery.isLoading) {
-    return <CreateTeamPageSkeleton />;
+  if (workspacesQuery.isPending) {
+    return (
+      <PageContainer>
+        <Header />
+        <div className="max-w-xl">
+          <SkeletonCard lines={3} />
+        </div>
+      </PageContainer>
+    );
   }
 
   if (workspacesQuery.isError) {
     return (
-      <div className="space-y-4">
-        <Link
-          href="/dashboard/teams"
-          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to teams
-        </Link>
-        <div className="rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
-          {workspacesQuery.error instanceof Error
-            ? workspacesQuery.error.message
-            : "Couldn’t load team limits. Try again."}
-          <div className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => void workspacesQuery.refetch()}
-            >
-              Retry
-            </Button>
-          </div>
+      <PageContainer>
+        <Header />
+        <div className="max-w-xl">
+          <ErrorState
+            message="Couldn't check your team limits."
+            detail={workspacesQuery.error instanceof Error ? workspacesQuery.error.message : undefined}
+            onRetry={() => void workspacesQuery.refetch()}
+            retrying={workspacesQuery.isFetching}
+          />
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
-  if (!canCreate) {
+  if (!data?.canCreateTeam) {
     return (
-      <div className="space-y-4">
-        <Link
-          href="/dashboard/teams"
-          className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to teams
-        </Link>
-        <div className="rounded-xl border border-border bg-bg-elevated p-6 text-sm text-text">
-          {atCap
-            ? `You've reached the limit of ${workspacesQuery.data?.maxOwnedTeams ?? 5} teams.`
-            : "Creating teams requires Pro plan."}
+      <PageContainer>
+        <Header />
+        <div className="max-w-xl rounded-xl border border-border bg-bg-elevated p-5">
+          <p className="text-sm text-text">
+            {atCap
+              ? `You already own ${maxTeams} teams, the most you can have. Delete one to make another.`
+              : "Teams come with Pro and Max. Upgrade to invite people and share workspaces."}
+          </p>
           <div className="mt-4">
-            <Link href={atCap ? "/dashboard/teams" : "/dashboard/billing"}>
-              <Button variant="outline">
-                {atCap ? "Back" : "Upgrade to Pro"}
+            {atCap ? (
+              <Link
+                href={BACK_HREF}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              >
+                Back to settings
+              </Link>
+            ) : (
+              <Button size="sm" onClick={() => openLimit("teams")}>
+                See plans
               </Button>
-            </Link>
+            )}
           </div>
         </div>
-      </div>
+        {limitModal}
+      </PageContainer>
     );
   }
 
   return (
-    <div>
-      <Link
-        href="/dashboard/teams"
-        className="inline-flex items-center gap-1.5 text-sm text-text-muted hover:text-text"
+    <PageContainer>
+      <Header />
+      <form
+        className="max-w-xl space-y-4 rounded-xl border border-border bg-bg-elevated p-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void handleCreate();
+        }}
       >
-        <ArrowLeft className="h-4 w-4" />
-        Back to teams
-      </Link>
-
-      <h1 className="mt-4 dash-page-title">
-        Create new team
-      </h1>
-      <p className="dash-page-subtitle">
-        Create a team with a default workspace. You can add more workspaces
-        later.
-      </p>
-
-      <div className="mt-6 space-y-5 rounded-xl border border-border bg-bg-elevated p-5 sm:p-6">
-        <div className="space-y-2">
-          <Label htmlFor="team-name">Team name</Label>
-          <Input
-            id="team-name"
+        <div className="space-y-1.5">
+          <Label htmlFor="create-team-name">Team name</Label>
+          <input
+            id="create-team-name"
             value={teamName}
-            onChange={(e) => setTeamName(e.target.value)}
-            placeholder="e.g. Marketing"
+            onChange={(e) => {
+              setTeamName(e.target.value);
+              setError(null);
+            }}
+            placeholder="e.g. Acme Agency"
             maxLength={80}
             autoFocus
             disabled={creating}
+            aria-invalid={error ? true : undefined}
+            className={settingsInputClass}
           />
+          <p className="text-xs text-text-muted">
+            A team gets its own members, roles and a first workspace
+            {trimmed ? ` (${trimmed}'s default)` : ""}. You can add more workspaces later.{" "}
+            {data.ownedTeamCount} of {maxTeams} teams created.
+          </p>
+          <FieldError>{error}</FieldError>
         </div>
-
-        <div className="rounded-xl border border-border bg-bg px-3 py-2.5">
-          <p className="text-xs text-text-muted">Default workspace</p>
-          <p className="mt-1 text-sm text-text">{defaultWorkspacePreview}</p>
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={creating}
-            onClick={() => navigate("/dashboard/teams")}
-          >
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" disabled={creating} onClick={() => navigate(BACK_HREF)}>
             Cancel
           </Button>
-          <Button
-            type="button"
-            disabled={creating || !trimmedTeam}
-            onClick={() => void handleCreate()}
-          >
+          <Button type="submit" disabled={creating || !trimmed}>
+            {creating ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : null}
             {creating ? "Creating…" : "Create team"}
           </Button>
         </div>
-      </div>
-    </div>
+      </form>
+    </PageContainer>
   );
 }

@@ -120,19 +120,13 @@ export default {
       const publicOnly =
         methods.length > 0 && methods.every((method) => isPublicMcpMethod(method));
 
-      const credential = publicOnly
-        ? { apiKey: null as string | null }
-        : await resolveCredential(request, env);
-      if ("error" in credential) {
+      const credential = publicOnly ? null : await resolveCredential(request, env);
+      if (credential && "error" in credential) {
         return withCors(credential.error);
       }
 
       try {
-        const response = await handleMcpRequest(
-          request,
-          env,
-          "apiKey" in credential ? credential.apiKey : null,
-        );
+        const response = await handleMcpRequest(request, env, credential);
         return withCors(response);
       } catch (error) {
         const message = error instanceof Error ? error.message : "MCP request failed";

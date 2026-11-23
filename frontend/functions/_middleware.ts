@@ -6,6 +6,8 @@
  */
 
 import routeMetaBundle from "./route-meta.generated.json";
+import crawlerPagesBundle from "./crawler-pages.generated.json";
+import landingPrerender from "./landing-prerender.generated.json";
 import {
   crawlerHtmlForMeta,
   injectCrawlerHtml,
@@ -26,9 +28,16 @@ import {
 type RouteMeta = {
   title: string;
   description: string;
+  /** Static routes with an on-page FAQ (e.g. /mcp): rendered for crawlers + FAQPage schema. */
+  faqs?: Faq[];
   /** When set, emit noindex (app / utility URLs). */
   noindex?: boolean;
+  /** Blog posts: ISO dates from the post file. */
+  datePublished?: string;
+  dateModified?: string;
 };
+
+type Faq = { question: string; answer: string };
 
 type PagesContext = {
   request: Request;
@@ -36,6 +45,13 @@ type PagesContext = {
 };
 
 const OG_IMAGE = "https://social0.app/og-image.jpg";
+
+/** Plan prices for schema.org. Mirrors src/lib/plan-pricing.ts and _agent.ts PRICING_ROWS; update together. */
+const PLAN_OFFERS = [
+  { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD", description: "3 connected accounts, 10 posts, API, MCP and CLI included, no card" },
+  { "@type": "Offer", name: "Creator", price: "29.90", priceCurrency: "USD", description: "15 connected accounts, unlimited posts, API, MCP and CLI; $299 billed yearly" },
+  { "@type": "Offer", name: "Agency", price: "59.90", priceCurrency: "USD", description: "59 connected accounts then $1 per extra account per month, unlimited posts, teams; $599 billed yearly" },
+];
 const SITE = "https://social0.app";
 
 const STATIC_META = routeMetaBundle.static as Record<string, RouteMeta>;
@@ -43,6 +59,11 @@ const FEATURE_META = routeMetaBundle.features as Record<string, RouteMeta>;
 const ALTERNATIVE_META = routeMetaBundle.alternatives as Record<string, RouteMeta>;
 const TOOL_META = routeMetaBundle.tools as Record<string, RouteMeta>;
 const BLOG_META = routeMetaBundle.blog as Record<string, RouteMeta>;
+const HOME_FAQS = (routeMetaBundle as { homeFaqs?: Faq[] }).homeFaqs ?? [];
+/** Full page bodies for blog/feature/tool/alternative routes (scripts/generate-crawler-pages.mjs). */
+const CRAWLER_PAGES = crawlerPagesBundle as Record<string, { html: string; faqs: Faq[] }>;
+/** Build time of the deployed site: the honest "last updated" for static pages. */
+const SITE_UPDATED_AT = routeMetaBundle.generatedAt;
 
 function normalizePath(pathname: string): string {
   if (pathname.length > 1 && pathname.endsWith("/")) {
@@ -84,6 +105,17 @@ function resolveMeta(path: string): RouteMeta | null {
   return null;
 }
 
+/** True when the client names HTML in Accept (a browser) and does not prefer markdown. */
+function acceptsHtml(acceptHeader: string | null): boolean {
+  if (!acceptHeader || prefersMarkdown(acceptHeader)) return false;
+  return acceptHeader.split(",").some((part) => {
+    const [type, ...params] = part.split(";").map((s) => s.trim().toLowerCase());
+    if (type !== "text/html" && type !== "application/xhtml+xml") return false;
+    const q = params.find((p) => p.startsWith("q="));
+    return !q || Number(q.slice(2)) > 0;
+  });
+}
+
 function isKnownPublicPath(path: string): boolean {
   if (resolveMeta(path)) return true;
   // App surfaces Google shouldn't index - still "known" so humans aren't 404'd
@@ -97,8 +129,7 @@ function isKnownPublicPath(path: string): boolean {
     path.startsWith("/v1") ||
     path === "/about" ||
     path === "/contact" ||
-    path === "/developers" ||
-    path.startsWith("/.well-known/")
+    path === "/developers"
   ) {
     return true;
   }
@@ -120,6 +151,13 @@ function upsertMeta(
   return html.replace(/<\/head>/i, `  ${tag}\n</head>`);
 }
 
+function pageDates(meta: RouteMeta): { datePublished?: string; dateModified: string } {
+  return {
+    ...(meta.datePublished ? { datePublished: meta.datePublished } : {}),
+    dateModified: meta.dateModified ?? meta.datePublished ?? SITE_UPDATED_AT,
+  };
+}
+
 function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string): string {
   const webPage = {
     "@context": "https://schema.org",
@@ -127,8 +165,11 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string):
     name: meta.title,
     description: meta.description,
     url,
+    inLanguage: "en",
+    ...pageDates(meta),
     isPartOf: {
       "@type": "WebSite",
+      "@id": `${SITE}/#website`,
       name: "Social0",
       url: SITE,
     },
@@ -146,7 +187,13 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string):
       mainEntityOfPage: { "@type": "WebPage", "@id": url },
       image: OG_IMAGE,
       inLanguage: "en",
-      author: { "@type": "Organization", name: "Social0", url: SITE },
+      ...pageDates(meta),
+      author: {
+        "@type": "Person",
+        name: "Abhishek BR",
+        url: `${SITE}/about`,
+        sameAs: ["https://github.com/Abhishek-B-R", "https://abhishekbr.com"],
+      },
       publisher: {
         "@type": "Organization",
         name: "Social0",
@@ -156,8 +203,43 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string):
     });
   }
 
+  const pageFaqs = CRAWLER_PAGES[path]?.faqs ?? meta.faqs ?? [];
+  if (pageFaqs.length) {
+    graph.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: pageFaqs.map((f) => ({
+        "@type": "Question",
+        name: f.question,
+        acceptedAnswer: { "@type": "Answer", text: f.answer.replace(/\*\*|`|\[([^\]]+)\]\([^)]+\)/g, "$1") },
+      })),
+    });
+  }
+
+  if (path === "/pricing") {
+    graph.push({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "Social0",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: SITE,
+      offers: PLAN_OFFERS,
+    });
+  }
+
   if (path === "/") {
     graph.push(
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "@id": `${SITE}/#website`,
+        name: "Social0",
+        url: SITE,
+        description: meta.description,
+        inLanguage: "en",
+        publisher: { "@type": "Organization", name: "Social0", url: SITE },
+      },
       {
         "@context": "https://schema.org",
         "@type": "Organization",
@@ -167,8 +249,17 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string):
         sameAs: [
           "https://x.com/social0_app",
           "https://www.linkedin.com/company/social0/",
+          "https://github.com/Abhishek-B-R/social0-cli",
+          "https://www.npmjs.com/package/social0",
+          "https://www.npmjs.com/package/@social0/mcp",
         ],
         email: "support@social0.app",
+        founder: {
+          "@type": "Person",
+          name: "Abhishek BR",
+          url: `${SITE}/about`,
+          sameAs: ["https://github.com/Abhishek-B-R", "https://abhishekbr.com"],
+        },
         contactPoint: {
           "@type": "ContactPoint",
           email: "support@social0.app",
@@ -188,14 +279,20 @@ function injectJsonLd(html: string, meta: RouteMeta, url: string, path: string):
         operatingSystem: "Web",
         url: SITE,
         description: meta.description,
-        offers: {
-          "@type": "Offer",
-          price: "0",
-          priceCurrency: "USD",
-          description: "Free plan available; paid tiers for teams and bulk tools",
-        },
+        offers: PLAN_OFFERS,
       },
     );
+    if (HOME_FAQS.length) {
+      graph.push({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: HOME_FAQS.map((f) => ({
+          "@type": "Question",
+          name: f.question,
+          acceptedAnswer: { "@type": "Answer", text: f.answer },
+        })),
+      });
+    }
   }
 
   const script = `<script type="application/ld+json">${JSON.stringify(graph.length === 1 ? graph[0] : graph).replace(/</g, "\\u003c")}</script>`;
@@ -227,6 +324,12 @@ function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
   out = upsertMeta(out, "name", "twitter:description", meta.description);
   out = upsertMeta(out, "name", "twitter:image", OG_IMAGE);
 
+  const dates = pageDates(meta);
+  if (dates.datePublished) {
+    out = upsertMeta(out, "property", "article:published_time", dates.datePublished);
+  }
+  out = upsertMeta(out, "property", "article:modified_time", dates.dateModified);
+
   if (meta.noindex) {
     out = upsertMeta(out, "name", "robots", "noindex, follow");
   }
@@ -242,7 +345,35 @@ function applyRouteMeta(html: string, path: string, meta: RouteMeta): string {
   return out;
 }
 
+/**
+ * Static files and /.well-known/* paths. Pages answers a missing file with the
+ * SPA shell (200 text/html), so anything that isn't a real file becomes a 404.
+ */
+async function staticOr404(context: PagesContext, path: string): Promise<Response> {
+  const response = await context.next();
+  const isHtml = (response.headers.get("content-type") ?? "").includes("text/html");
+  if (isHtml && !/\.html?$/i.test(path)) {
+    return markdownResponse(NOT_FOUND_MARKDOWN, 404);
+  }
+  return response;
+}
+
+/** Only social0.app may be indexed; dev.social0.app and *.pages.dev previews get noindex. */
+const PRODUCTION_HOST = "social0.app";
+
 export async function onRequest(context: PagesContext) {
+  const response = await handleRequest(context);
+  if (new URL(context.request.url).hostname === PRODUCTION_HOST) return response;
+  const headers = new Headers(response.headers);
+  headers.set("x-robots-tag", "noindex, nofollow");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+async function handleRequest(context: PagesContext): Promise<Response> {
   const url = new URL(context.request.url);
   let path = url.pathname || "/";
   const accept = context.request.headers.get("accept");
@@ -274,15 +405,19 @@ export async function onRequest(context: PagesContext) {
     );
   }
 
-  // Leave API proxies and hashed static assets alone
+  // Leave API proxies alone
+  if (path.startsWith("/api") || path.startsWith("/v1")) {
+    return context.next();
+  }
+
+  // Static files and other /.well-known/* files: serve if real, else 404
   if (
-    path.startsWith("/api") ||
-    path.startsWith("/v1") ||
+    path.startsWith("/.well-known/") ||
     /\.(png|jpe?g|webp|gif|svg|ico|xml|txt|md|json|js|css|map|woff2?|ttf|mp4|webm|sh)$/i.test(
       path,
     )
   ) {
-    return context.next();
+    return staticOr404(context, path);
   }
 
   const altSlugAliases: Record<string, string> = {
@@ -339,6 +474,22 @@ export async function onRequest(context: PagesContext) {
 
   // Soft-404 killer: unknown paths must not return SPA 200
   if (!isKnownPublicPath(path)) {
+    // React Router matches case-insensitively, so /Pricing is a real page in
+    // the SPA: send it to the canonical lower-case URL instead of a 404.
+    const lower = path.toLowerCase();
+    if (lower !== path && isKnownPublicPath(lower)) {
+      return Response.redirect(new URL(`${lower}${url.search}`, url.origin).toString(), 301);
+    }
+    // Browsers get the SPA shell (its NotFoundPage is noindex and links home)
+    // with a real 404 status; agents and plain HTTP clients get markdown.
+    if (acceptsHtml(accept)) {
+      const shell = await context.next();
+      if ((shell.headers.get("content-type") ?? "").includes("text/html")) {
+        const headers = withVaryAccept(new Headers(shell.headers));
+        headers.set("x-robots-tag", "noindex");
+        return new Response(shell.body, { status: 404, statusText: "Not Found", headers });
+      }
+    }
     return markdownResponse(NOT_FOUND_MARKDOWN, 404);
   }
 
@@ -363,13 +514,31 @@ export async function onRequest(context: PagesContext) {
   const withMeta = applyRouteMeta(html, path, meta);
   const patched = injectCrawlerHtml(
     withMeta,
-    crawlerHtmlForMeta(meta.title, meta.description, path),
+    CRAWLER_PAGES[path]?.html ??
+      crawlerHtmlForMeta(meta.title, meta.description, path, {
+        updated: pageDates(meta).dateModified,
+        faqs: path === "/" || path === "/home" ? HOME_FAQS : (meta.faqs ?? []),
+      }),
   );
+  // "/" ships the build-time render of the landing page so the hero paints
+  // before the JS bundle loads (scripts/prerender-landing.mjs).
+  // Its ~1,600 words replace the shorter crawler article, so bots and people
+  // get the same page and there is a single <h1>.
+  const landingHtml = (landingPrerender as { html: string }).html;
+  const body =
+    path === "/" && landingHtml
+      ? injectCrawlerHtml(withMeta, landingHtml).replace(
+          '<div id="root">',
+          '<div id="root" data-ssr="landing">',
+        )
+      : patched;
   const headers = withVaryAccept(new Headers(response.headers));
   headers.set("cache-control", "public, max-age=300");
   headers.set("Link", discoveryLinkHeader());
+  // The SPA renders its own robots meta after load; the header is what counts.
+  if (meta.noindex) headers.set("x-robots-tag", "noindex, follow");
 
-  return new Response(patched, {
+  return new Response(body, {
     status: response.status,
     statusText: response.statusText,
     headers,

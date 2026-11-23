@@ -1,5 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createMcpServer, runWithApiKeyAsync } from "@social0/mcp/server";
+import { PROXY_TOKEN_SIGNATURE_HEADER, type McpCredential } from "./auth.js";
 import type { Env } from "./env.js";
 import {
   extractMcpMethods,
@@ -22,7 +23,8 @@ export async function peekMcpMethods(request: Request): Promise<string[]> {
 export async function handleMcpRequest(
   request: Request,
   _env: Env,
-  apiKey: string | null,
+  /** Null for discovery-only requests, which need no credential. */
+  credential: McpCredential | null,
 ): Promise<Response> {
   if (request.method === "POST") {
     try {
@@ -41,9 +43,9 @@ export async function handleMcpRequest(
     });
     await server.connect(transport);
     return transport.handleRequest(request, {
-      authInfo: apiKey
+      authInfo: credential
         ? {
-            token: apiKey,
+            token: credential.token,
             clientId: "social0-mcp-worker",
             scopes: ["social0:read", "social0:write"],
           }
@@ -51,6 +53,11 @@ export async function handleMcpRequest(
     });
   };
 
-  if (apiKey) return runWithApiKeyAsync(apiKey, run);
-  return run();
+  if (!credential) return run();
+  // Tools call /v1 with the caller's own token; the signature lets the API
+  // accept an OAuth token that came through this worker.
+  return runWithApiKeyAsync(credential.token, run, {
+    mcpClient: credential.clientName,
+    headers: { [PROXY_TOKEN_SIGNATURE_HEADER]: credential.proxySignature },
+  });
 }

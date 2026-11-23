@@ -1,9 +1,8 @@
-import { auth } from "../../lib/auth.js";
+import { getRouteSession } from "../../lib/session.js";
 import { db } from "../../db/index.js";
 import { connectedAccounts } from "../../db/schema.js";
 import { and, eq } from "drizzle-orm";
 import { getValidToken } from "../../lib/token-refresh.js";
-import { headers } from "../../lib/http/request-cookies.js";
 import { AppRequest } from "../../lib/http/http.js";
 
 
@@ -60,7 +59,7 @@ async function resolvePinterestAccount(
 
 /** GET ?accountId=xxx – returns boards for the given Pinterest account (must be owned by current user). */
 export async function listPinterestBoards(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -109,7 +108,7 @@ function toPinterestPrivacy(p: string): "PUBLIC" | "SECRET" {
 
 /** POST { accountId, name, privacy: "PUBLIC"|"PRIVATE" } – create a board for the given Pinterest account. */
 export async function savePinterestBoard(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }

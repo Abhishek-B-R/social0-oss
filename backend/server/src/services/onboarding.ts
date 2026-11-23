@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { userSettings, connectedAccounts } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getSubscriptionForUser } from "@/lib/subscription";
+import { isActiveTier } from "@social0/shared";
 import { requireSessionUserId } from "@/lib/require-session-user";
 
 /** Defaults when creating a new user_settings row (avoids relying on DB defaults after migrations). */
@@ -77,11 +78,7 @@ export async function getOnboardingStatus(): Promise<OnboardingStatus | null> {
   ]);
 
   const onboardingCompleted = settingsRow?.onboardingCompleted ?? false;
-  const hasSubscription =
-    sub.tier === "starter" ||
-    sub.tier === "growth" ||
-    sub.tier === "pro" ||
-    sub.tier === "max";
+  const hasSubscription = isActiveTier(sub.tier);
   const connectedAccountsCount = accounts.length;
   const shouldOnboard = !onboardingCompleted;
 

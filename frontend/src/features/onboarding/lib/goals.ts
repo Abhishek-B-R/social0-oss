@@ -4,30 +4,32 @@ export const ONBOARDING_GOALS = [
     label: "Grow my personal brand",
     description: "Post consistently across the platforms that matter.",
     connectHint: "Connect the account you post from most.",
-    readyHint: "Your posts can go live in under a minute.",
   },
   {
     id: "business",
     label: "Promote my business",
     description: "One place to schedule brand posts everywhere.",
-    connectHint: "Connect your brand’s main social account.",
-    readyHint: "Schedule a launch post and stop copy-pasting.",
+    connectHint: "Connect your brand's main social account.",
   },
   {
     id: "clients",
     label: "Manage clients",
     description: "Publish for clients without juggling logins.",
     connectHint: "Connect a client account to start managing.",
-    readyHint: "Draft once, publish to every client channel.",
   },
   {
     id: "exploring",
     label: "Just exploring",
-    description: "Try Social0 free — no credit card needed.",
-    connectHint: "Pick any platform to see how publishing works.",
-    readyHint: "Explore the composer — upgrade only when you need more.",
+    description: "Try Social0 free. No credit card needed.",
+    connectHint: "Pick any network to see how publishing works.",
   },
 ] as const;
+
+export type OnboardingGoalId = (typeof ONBOARDING_GOALS)[number]["id"];
+
+export function isOnboardingGoal(value: unknown): value is OnboardingGoalId {
+  return ONBOARDING_GOALS.some((g) => g.id === value);
+}
 
 export function goalCopy(goalId: string | null | undefined) {
   return (

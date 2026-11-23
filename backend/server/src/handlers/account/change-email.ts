@@ -4,18 +4,80 @@ import { user, account, verification } from "../../db/schema.js";
 import { eq, and, gt, ne } from "drizzle-orm";
 import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
+import { enforceRateLimit, slidingWindowLimiter } from "../../lib/ratelimit.js";
+import { clientIp } from "../../lib/client-ip.js";
+import { sendEmail } from "../../lib/mail.js";
 import { timingSafeEqual } from "crypto";
 
 const MAX_OTP_ATTEMPTS = 5;
+
+// Verify attempts, on top of the per-code cap: a user can request 5 codes an
+// hour (send-otp limiter), so 20 guesses per user and 30 per IP leave room for
+// typos and nothing for brute force.
+const changeEmailVerifyLimiter = slidingWindowLimiter(20, "1 h", "rl:change_email_verify_user");
+
+const changeEmailVerifyIpLimiter = slidingWindowLimiter(30, "1 h", "rl:change_email_verify_ip");
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** Tell the old address its account moved, so a hijacked session cannot do it silently. */
+async function notifyPreviousEmail(previousEmail: string, newEmail: string) {
+  try {
+    await sendEmail({
+      to: previousEmail,
+      subject: "Your Social0 email address was changed",
+      html: `
+      <div style="font-family:sans-serif;max-width:400px;margin:0 auto">
+        <h2>Your email address was changed</h2>
+        <p>The email on your Social0 account is now <strong>${escapeHtml(newEmail)}</strong>.</p>
+        <p>If you did not make this change, contact support right away.</p>
+      </div>
+    `,
+    });
+  } catch (err) {
+    console.error("[change-email] Failed to notify previous email:", err);
+  }
+}
 
 /**
  * Verify OTP sent to new email and update the current user's email.
  * OTP was sent via send-otp; value format is "otp:attempts".
  */
 export async function changeEmail(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  });
   if (!session) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const userRate = await enforceRateLimit(
+    changeEmailVerifyLimiter,
+    session.user.id,
+  );
+  if (!userRate.allowed) {
+    return RouteResponse.json(
+      { error: userRate.error },
+      { status: userRate.status },
+    );
+  }
+  const ipRate = await enforceRateLimit(
+    changeEmailVerifyIpLimiter,
+    clientIp(request),
+  );
+  if (!ipRate.allowed) {
+    return RouteResponse.json(
+      { error: ipRate.error },
+      { status: ipRate.status },
+    );
   }
 
   const body = await request.json().catch(() => ({}));
@@ -66,22 +128,42 @@ export async function changeEmail(request: Request) {
     );
   }
 
+  const tooManyAttempts = () =>
+    RouteResponse.json(
+      { error: "Too many failed attempts. Request a new code." },
+      { status: 400 },
+    );
+
+  if (attempts >= MAX_OTP_ATTEMPTS) {
+    await db.delete(verification).where(eq(verification.id, row.id));
+    return tooManyAttempts();
+  }
+
+  // Spend the attempt before comparing, as a compare-and-set on the value we
+  // read. A burst of concurrent guesses all read the same counter; only one
+  // of them can move it, and the rest are rejected without being compared.
+  // Otherwise the whole burst costs a single attempt.
+  const newAttempts = attempts + 1;
+  const [spent] = await db
+    .update(verification)
+    .set({ value: `${storedOtp}:${newAttempts}:${otpUserId}` })
+    .where(and(eq(verification.id, row.id), eq(verification.value, row.value)))
+    .returning({ id: verification.id });
+  if (!spent) {
+    return RouteResponse.json(
+      { error: "Invalid or expired code." },
+      { status: 400 },
+    );
+  }
+
   if (
     storedOtp.length !== otpTrimmed.length ||
     !timingSafeEqual(Buffer.from(storedOtp, "utf8"), Buffer.from(otpTrimmed, "utf8"))
   ) {
-    const newAttempts = attempts + 1;
     if (newAttempts >= MAX_OTP_ATTEMPTS) {
       await db.delete(verification).where(eq(verification.id, row.id));
-      return RouteResponse.json(
-        { error: "Too many failed attempts. Request a new code." },
-        { status: 400 },
-      );
+      return tooManyAttempts();
     }
-    await db
-      .update(verification)
-      .set({ value: `${storedOtp}:${newAttempts}:${session.user.id}` })
-      .where(eq(verification.id, row.id));
     return RouteResponse.json(
       { error: "Invalid or expired code." },
       { status: 400 },
@@ -137,6 +219,11 @@ export async function changeEmail(request: Request) {
       { error: "Could not update email. Please try again." },
       { status: 500 },
     );
+  }
+
+  const previousEmail = session.user.email?.trim().toLowerCase() ?? "";
+  if (previousEmail && previousEmail !== email) {
+    await notifyPreviousEmail(previousEmail, email);
   }
 
   const sessionHeaders = await headers();

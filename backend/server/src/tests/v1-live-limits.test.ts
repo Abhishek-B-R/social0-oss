@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const enforceRateLimit = vi.fn();
 
 vi.mock("../lib/ratelimit.js", () => ({
+  // Any non-null limiter: the mocked enforceRateLimit decides.
+  slidingWindowLimiter: () => ({}),
   enforceRateLimit,
   rpcLiveReadLimiter: { kind: "live" },
   rpcMutationLimiter: { kind: "mutation" },

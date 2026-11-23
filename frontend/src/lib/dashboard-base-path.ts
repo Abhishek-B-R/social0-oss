@@ -1,15 +1,21 @@
+import { useCallback } from "react";
 import { useLocation, useParams } from "react-router-dom";
 
-/** Paths that live only under personal /dashboard (not mirrored into team URLs). */
+/**
+ * Paths that live only under personal /dashboard (not mirrored into team URLs).
+ * `settings`, `more` and `agents` are mirrored: team settings live at
+ * /dashboard/teams/:teamId/settings[/:section].
+ */
 const PERSONAL_ONLY_SUFFIXES = new Set([
   "billing",
   "api-keys",
   "feedback",
   "workspaces",
   "teams",
-  "more",
-  "settings",
 ]);
+
+/** Landing page of the dashboard (personal and team). */
+export const DASHBOARD_HOME_SEGMENT = "home";
 
 /**
  * Team app shell id from pathname.
@@ -42,12 +48,19 @@ export function isTeamAppPath(pathname: string): boolean {
   return true;
 }
 
+/**
+ * Pages that exist on both trees but, opened on the personal tree, must not
+ * be bounced into the active team's tree by PersonalWorkspaceBoot (account
+ * settings, the mobile More page, AI agents / API keys).
+ */
+const BOOT_EXEMPT_SUFFIXES = new Set(["settings", "more", "agents"]);
+
 /** Account-level pages that should not live under a team URL tree. */
 export function isPersonalOnlyDashboardPath(pathname: string): boolean {
   if (getTeamIdFromPathname(pathname)) return false;
   const relative = pathname.replace(/^\/dashboard\/?/, "");
   const first = relative.split("/")[0] ?? "";
-  return PERSONAL_ONLY_SUFFIXES.has(first);
+  return PERSONAL_ONLY_SUFFIXES.has(first) || BOOT_EXEMPT_SUFFIXES.has(first);
 }
 
 /**
@@ -60,10 +73,10 @@ export function getDashboardRelativePath(pathname: string): string {
   if (teamId) {
     const prefix = `/dashboard/teams/${teamId}`;
     const rest = pathname.slice(prefix.length).replace(/^\//, "");
-    return rest || "composer";
+    return rest || DASHBOARD_HOME_SEGMENT;
   }
   const rest = pathname.replace(/^\/dashboard\/?/, "");
-  return rest || "composer";
+  return rest || DASHBOARD_HOME_SEGMENT;
 }
 
 export function useDashboardBasePath(): string {
@@ -80,17 +93,26 @@ export function useDashboardBasePath(): string {
   return "/dashboard";
 }
 
+/** Pure version of `useDashboardPath` for code outside React. */
+export function dashboardPathFor(base: string, suffix = ""): string {
+  // Accept "posts", "/posts", "/dashboard/posts" and keep ?query / #hash.
+  const clean = suffix.replace(/^\/+/, "").replace(/^dashboard(\/|$)/, "");
+  if (!clean) return `${base}/${DASHBOARD_HOME_SEGMENT}`;
+  const first = clean.split(/[/?#]/)[0] ?? "";
+  if (PERSONAL_ONLY_SUFFIXES.has(first)) {
+    return `/dashboard/${clean}`;
+  }
+  return `${base}/${clean}`;
+}
+
+/**
+ * Team-aware link builder. `dash("/posts")` → `/dashboard/posts` on personal
+ * routes and `/dashboard/teams/:teamId/posts` inside a team. Account-level
+ * pages (billing, teams, workspaces, feedback) always resolve to personal.
+ */
 export function useDashboardPath() {
   const base = useDashboardBasePath();
-  return (suffix = "") => {
-    const clean = suffix.replace(/^\//, "");
-    if (!clean) return `${base}/composer`;
-    const first = clean.split("/")[0] ?? "";
-    if (PERSONAL_ONLY_SUFFIXES.has(first)) {
-      return `/dashboard/${clean}`;
-    }
-    return `${base}/${clean}`;
-  };
+  return useCallback((suffix = "") => dashboardPathFor(base, suffix), [base]);
 }
 
 /** Remap current relative page onto a new base (personal ↔ team). */
@@ -101,7 +123,7 @@ export function mapPathToBase(pathname: string, base: string): string {
       const newTeamId = base.replace(/^\/dashboard\/teams\//, "").split("/")[0];
       if (newTeamId) return `/dashboard/teams/${newTeamId}/settings`;
     }
-    return "/dashboard/composer";
+    return `/dashboard/${DASHBOARD_HOME_SEGMENT}`;
   }
 
   const relative = getDashboardRelativePath(pathname);

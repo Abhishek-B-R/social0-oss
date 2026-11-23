@@ -1,5 +1,6 @@
 
 import { useState, useEffect, useRef } from "react";
+import { Toggle } from "@/components/app/Toggle";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import {
   getResurfacePlatforms,
@@ -149,21 +150,12 @@ function AutoPlugPanelInner({
               Reply automatically when this post hits a milestone.
             </p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={enabled}
-            onClick={() => setEnabled((e) => !e)}
-            className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
-              enabled ? "bg-emerald-600" : "bg-muted"
-            }`}
-          >
-            <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-background shadow transition-transform ${
-                enabled ? "translate-x-5" : "translate-x-0.5"
-              } mt-0.5`}
-            />
-          </button>
+          <Toggle
+            checked={enabled}
+            onCheckedChange={setEnabled}
+            aria-label="Auto-Plug"
+            className="shrink-0"
+          />
         </div>
       )}
 

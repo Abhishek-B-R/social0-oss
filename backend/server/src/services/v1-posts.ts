@@ -2,21 +2,44 @@ import { and, desc, eq, ilike, inArray, isNull, or, sql } from "drizzle-orm";
 import { coerceDate } from "@/lib/coerce-date.js";
 import type { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
+import { listTotal } from "../lib/list-total.js";
 import {
   connectedAccounts,
   mediaUploads,
   postPublications,
   posts,
 } from "../db/schema.js";
-import { reserveFreePost } from "../lib/plan-limits.js";
+import { releaseFreePost, reserveFreePost } from "../lib/plan-limits.js";
 import { getPostDetail } from "../lib/posts-list/posts-list-data.js";
 import { getValidToken } from "../lib/token-refresh.js";
 import { isValidUUID } from "../lib/validation.js";
-import { emitUserWebhookEvent } from "../lib/user-webhook-delivery.js";
+import {
+  emitPostDeletedWebhook,
+  emitPostScheduledWebhook,
+} from "../lib/post-lifecycle-webhooks.js";
+import { sanitizePostMetadata } from "../lib/post-metadata-sanitize.js";
+import {
+  checkSelectedAccounts,
+  SELECTED_ACCOUNT_OVER_PLAN_LIMIT_ERROR,
+} from "../lib/post-account-refs.js";
+import {
+  checkPostMediaOwnership,
+  validatePostMediaCounts,
+} from "../lib/post-media-refs.js";
+import {
+  carryPostSource,
+  withPostSource,
+  type StoredPostSource,
+} from "../lib/post-source.js";
 import {
   createPublishTrackingId,
   enqueuePublishPost,
 } from "../services/enqueue.js";
+import {
+  PostClaimLostError,
+  PublishNotDispatchedError,
+  PublishPartiallyDispatchedError,
+} from "../services/publish-enqueue.js";
 
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const SCHEDULE_FUTURE_GRACE_MS = 120_000;
@@ -55,7 +78,7 @@ async function validateOwnedAccounts(
   }
   const normalizedIds = normalizeUuidList(accountIds);
   const owned = await db
-    .select({ id: connectedAccounts.id })
+    .select({ id: connectedAccounts.id, isActive: connectedAccounts.isActive })
     .from(connectedAccounts)
     .where(
       and(
@@ -64,12 +87,29 @@ async function validateOwnedAccounts(
         inArray(connectedAccounts.id, normalizedIds),
       ),
     );
-  const ownedSet = new Set(owned.map((a) => a.id));
-  const unique = [...new Set(normalizedIds)];
-  if (unique.length !== ownedSet.size || !unique.every((id) => ownedSet.has(id))) {
-    return "One or more accounts are invalid or do not belong to you";
+  const check = checkSelectedAccounts(normalizedIds, owned);
+  if (!check.ok) {
+    return check.reason === "over_limit"
+      ? SELECTED_ACCOUNT_OVER_PLAN_LIMIT_ERROR
+      : "One or more accounts are invalid or do not belong to you";
   }
   return null;
+}
+
+/**
+ * Media ids in the compiled metadata (thread parts, accountMedia) get the same
+ * ownership check as `media`: the publish engine reads them too, and
+ * `metadata` is taken from the request as-is.
+ */
+async function validateMetadataMedia(
+  userId: string,
+  metadata: Record<string, unknown> | null | undefined,
+): Promise<string | null> {
+  const check = await checkPostMediaOwnership(userId, [], metadata);
+  if (check.ok) return null;
+  return check.reason === "invalid_format"
+    ? "Invalid media ID format"
+    : "One or more media files are invalid or do not belong to you";
 }
 
 async function validateOwnedMedia(
@@ -518,9 +558,16 @@ async function compilePlatformOptions(input: {
   return { ok: true, metadata: Object.keys(metadata).length ? metadata : null };
 }
 
+/** Server-side context for creation; never read from the request body. */
+export type V1CreateOptions = {
+  /** Who is creating the post (API key / CLI / MCP); stamped on metadata.source. */
+  source?: StoredPostSource | null;
+};
+
 export async function v1CreateDraft(
   userId: string,
   input: V1CreatePostInput,
+  opts: V1CreateOptions = {},
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const content = input.content?.trim() ?? "";
   if (!content && (!input.media || input.media.length === 0)) {
@@ -546,31 +593,46 @@ export async function v1CreateDraft(
     platformOptions: input.platform_options,
   });
   if (!compiled.ok) return compiled;
+  const metadataMediaErr = await validateMetadataMedia(userId, compiled.metadata);
+  if (metadataMediaErr) return { ok: false, error: metadataMediaErr };
+  // Same ceiling the publish engine applies: fail on save, not at publish.
+  const mediaCountErr = validatePostMediaCounts(mediaIds, compiled.metadata);
+  if (mediaCountErr) return { ok: false, error: mediaCountErr };
 
-  const [row] = await db
-    .insert(posts)
-    .values({
-      userId,
-      workspaceId: null,
-      originalContent: content,
-      finalContent: content,
-      status: "draft",
-      mediaIds,
-      metadata: compiled.metadata,
-    })
-    .returning({ id: posts.id });
+  // Pipeline claim keys and `source` are server-owned: strip what the caller
+  // sent, then stamp who actually made this post.
+  const cleaned = carryPostSource(sanitizePostMetadata(compiled.metadata), null);
+  // One transaction, like the dashboard's createPost: a failure between the
+  // two inserts used to leave a post with no publications, which nothing can
+  // publish and every list shows as a draft with no networks.
+  const id = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(posts)
+      .values({
+        userId,
+        createdByUserId: userId,
+        workspaceId: null,
+        originalContent: content,
+        finalContent: content,
+        status: "draft",
+        mediaIds,
+        metadata: opts.source ? withPostSource(cleaned, opts.source) : cleaned,
+      })
+      .returning({ id: posts.id });
+    if (!row) return null;
 
-  if (!row) return { ok: false, error: "Failed to create post" };
+    await tx.insert(postPublications).values(
+      uniqueAccounts.map((connectedAccountId) => ({
+        postId: row.id,
+        connectedAccountId,
+        status: "pending" as const,
+      })),
+    );
+    return row.id;
+  });
 
-  await db.insert(postPublications).values(
-    uniqueAccounts.map((connectedAccountId) => ({
-      postId: row.id,
-      connectedAccountId,
-      status: "pending" as const,
-    })),
-  );
-
-  return { ok: true, id: row.id };
+  if (!id) return { ok: false, error: "Failed to create post" };
+  return { ok: true, id };
 }
 
 export async function v1ListPosts(
@@ -626,29 +688,29 @@ export async function v1ListPosts(
 
   const where = and(...conditions);
 
-  const [rows, countRow] = await Promise.all([
-    db
-      .select({
-        id: posts.id,
-        content: posts.finalContent,
-        status: posts.status,
-        scheduledAt: posts.scheduledAt,
-        createdAt: posts.createdAt,
-        updatedAt: posts.updatedAt,
-        mediaIds: posts.mediaIds,
-      })
-      .from(posts)
-      .where(where)
-      .orderBy(desc(posts.createdAt))
-      .limit(limit)
-      .offset(offset),
-    db
+  const rows = await db
+    .select({
+      id: posts.id,
+      content: posts.finalContent,
+      status: posts.status,
+      scheduledAt: posts.scheduledAt,
+      createdAt: posts.createdAt,
+      updatedAt: posts.updatedAt,
+      mediaIds: posts.mediaIds,
+    })
+    .from(posts)
+    .where(where)
+    .orderBy(desc(posts.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  const total = await listTotal(offset, limit, rows.length, async () => {
+    const [countRow] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(posts)
-      .where(where),
-  ]);
-
-  const total = countRow[0]?.count ?? 0;
+      .where(where);
+    return countRow?.count ?? 0;
+  });
 
   return {
     data: rows.map((p) => ({
@@ -772,23 +834,60 @@ export async function v1UpdateDraft(
       platformOptions: input.platform_options,
     });
     if (!compiled.ok) return compiled;
-    updates.metadata = compiled.metadata;
+    const metadataMediaErr = await validateMetadataMedia(userId, compiled.metadata);
+    if (metadataMediaErr) return { ok: false, error: metadataMediaErr };
+    // Replacing metadata must not drop (or let the caller rewrite) `source`
+    // or the pipeline's one-shot claim keys.
+    updates.metadata = carryPostSource(
+      sanitizePostMetadata(compiled.metadata),
+      existing.metadata,
+    );
   }
 
-  await db.update(posts).set(updates).where(eq(posts.id, postId));
-
-  if (input.platforms) {
-    const uniqueAccounts = [...new Set(normalizeUuidList(input.platforms))];
-    await db
-      .delete(postPublications)
-      .where(eq(postPublications.postId, postId));
-    await db.insert(postPublications).values(
-      uniqueAccounts.map((connectedAccountId) => ({
-        postId,
-        connectedAccountId,
-        status: "pending" as const,
-      })),
+  if (updates.mediaIds !== undefined || updates.metadata !== undefined) {
+    const nextMetadata = updates.metadata ?? existing.metadata;
+    const mediaCountErr = validatePostMediaCounts(
+      updates.mediaIds ?? existing.mediaIds,
+      nextMetadata && typeof nextMetadata === "object"
+        ? (nextMetadata as Record<string, unknown>)
+        : null,
     );
+    if (mediaCountErr) return { ok: false, error: mediaCountErr };
+  }
+
+  const uniqueAccounts = input.platforms
+    ? [...new Set(normalizeUuidList(input.platforms))]
+    : null;
+  const previousStatus = existing.status;
+  // Conditional on the status read above, as the dashboard's edit is: a
+  // scheduled post the cron claimed in the meantime (now `publishing`, its
+  // publication ids dispatched) must not have those rows deleted and replaced
+  // by `pending` ones nobody sends. One transaction, so a failed insert (an
+  // account disconnected meanwhile) cannot leave the post with no targets.
+  const updated = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(posts)
+      .set(updates)
+      .where(and(eq(posts.id, postId), eq(posts.status, previousStatus)))
+      .returning({ id: posts.id });
+    if (!row) return false;
+
+    if (uniqueAccounts) {
+      await tx
+        .delete(postPublications)
+        .where(eq(postPublications.postId, postId));
+      await tx.insert(postPublications).values(
+        uniqueAccounts.map((connectedAccountId) => ({
+          postId,
+          connectedAccountId,
+          status: "pending" as const,
+        })),
+      );
+    }
+    return true;
+  });
+  if (!updated) {
+    return { ok: false, error: "Only draft or scheduled posts can be updated" };
   }
 
   return { ok: true };
@@ -797,6 +896,8 @@ export async function v1UpdateDraft(
 export async function v1DeletePost(
   userId: string,
   postId: string,
+  /** `false` when rolling back a post the caller never got to see. */
+  opts: { notify?: boolean } = {},
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
@@ -811,10 +912,36 @@ export async function v1DeletePost(
     return { ok: false, error: "Only draft or scheduled posts can be deleted" };
   }
 
-  await db.delete(postPublications).where(eq(postPublications.postId, postId));
-  await db.delete(posts).where(eq(posts.id, postId));
+  // The status check above is a read: the cron (or a publish call) can claim
+  // the post before the delete runs. Lock the row with the status re-checked,
+  // as the dashboard's delete does, so a post that just started publishing
+  // keeps its publications, and a claim racing this delete waits and then
+  // matches nothing. One transaction, so a failure part-way leaves the post
+  // whole.
+  const deleted = await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({ id: posts.id })
+      .from(posts)
+      .where(
+        and(
+          eq(posts.id, postId),
+          eq(posts.userId, userId),
+          isNull(posts.workspaceId),
+          inArray(posts.status, ["draft", "scheduled"]),
+        ),
+      )
+      .for("update");
+    if (!locked) return false;
 
-  emitUserWebhookEvent(userId, "post.deleted", { post_id: postId });
+    await tx.delete(postPublications).where(eq(postPublications.postId, postId));
+    await tx.delete(posts).where(eq(posts.id, postId));
+    return true;
+  });
+  if (!deleted) {
+    return { ok: false, error: "Only draft or scheduled posts can be deleted" };
+  }
+
+  if (opts.notify !== false) emitPostDeletedWebhook(userId, postId);
 
   return { ok: true };
 }
@@ -847,37 +974,71 @@ export async function v1SchedulePost(
   }
 
   const at = coerceDate(scheduledAt)!;
-  await db
-    .update(posts)
-    .set({
-      status: "scheduled",
-      scheduledAt: at,
-      updatedAt: new Date(),
-    })
-    .where(eq(posts.id, postId));
+  // Conditional on the status read above: a post the cron (or a publish call)
+  // claimed in the meantime is `publishing` and must not be reset to
+  // `scheduled` under its running deliveries. A concurrent schedule of the
+  // same draft also loses here, so only one of them keeps its free post.
+  let rescheduled: { id: string } | undefined;
+  try {
+    [rescheduled] = await db
+      .update(posts)
+      .set({
+        status: "scheduled",
+        scheduledAt: at,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(posts.id, postId), eq(posts.status, existing.status)))
+      .returning({ id: posts.id });
+  } catch (err) {
+    if (scheduleQuota?.ok) await releaseFreePost(scheduleQuota.reservation, userId);
+    throw err;
+  }
+  if (!rescheduled) {
+    if (scheduleQuota?.ok) await releaseFreePost(scheduleQuota.reservation, userId);
+    return { ok: false, error: "Only draft or scheduled posts can be scheduled" };
+  }
 
-  emitUserWebhookEvent(userId, "post.scheduled", {
-    post_id: postId,
-    scheduled_at: at.toISOString(),
-  });
+  emitPostScheduledWebhook(userId, postId, at);
 
   return { ok: true, scheduled_at: at.toISOString() };
 }
+
+const POST_ALREADY_PUBLISHING = "Post is already publishing";
+const POST_NOT_PUBLISHABLE = "Post not found or not publishable";
+
+/** Nothing went out; the post is where it was, so retrying is safe. */
+export const V1_PUBLISH_NOT_DISPATCHED_ERROR =
+  "Couldn't reach the publishing service. Nothing was published; try again.";
+
+export const V1_PARTIAL_FAN_OUT_WARNING =
+  "Some accounts couldn't be queued. They're marked failed on the post, so retry them from there; the rest are publishing under this job.";
+
+export type V1PublishResult =
+  | {
+      ok: true;
+      tracking_id: string;
+      status: string;
+      stream_url: string;
+      /** Set when only part of the fan-out went out; see `V1_PARTIAL_FAN_OUT_WARNING`. */
+      warning?: string;
+    }
+  | {
+      ok: false;
+      error: string;
+      /**
+       * The publish service could not be reached and nothing went out. The
+       * route answers 503 (not stored under an Idempotency-Key), since a retry
+       * is safe and is what the client should do.
+       */
+      unavailable?: true;
+    };
 
 export async function v1PublishPost(
   app: FastifyInstance,
   userId: string,
   postId: string,
   connectedAccountIds?: string[],
-): Promise<
-  | {
-      ok: true;
-      tracking_id: string;
-      status: string;
-      stream_url: string;
-    }
-  | { ok: false; error: string }
-> {
+): Promise<V1PublishResult> {
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
   const [existing] = await db
@@ -887,18 +1048,35 @@ export async function v1PublishPost(
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };
+  // Its deliveries are already queued or running: a client retrying this call
+  // after a timeout must not fan them out a second time.
+  if (existing.status === "publishing") {
+    return { ok: false, error: POST_ALREADY_PUBLISHING };
+  }
 
   const publishQuota =
     existing.status === "draft" ? await reserveFreeQuota(userId) : null;
   if (publishQuota && !publishQuota.ok) {
     return { ok: false, error: publishQuota.error };
   }
+  const refund = async () => {
+    if (!publishQuota?.ok) return;
+    await releaseFreePost(publishQuota.reservation, userId).catch((err) =>
+      console.error("v1PublishPost: free post release failed", err),
+    );
+  };
 
   const trackingId = createPublishTrackingId();
+  const queued = {
+    ok: true as const,
+    tracking_id: trackingId,
+    status: "queued",
+    stream_url: `/v1/jobs/${trackingId}/stream`,
+  };
 
-  // Nothing is refunded past this point: the post is publishable, and
-  // `/v1/posts/:id/publish` can be retried, so a refund would hand out a free
-  // publish rather than undo a charge.
+  // Only a publish that sent nothing and left the post a draft is refunded:
+  // the next Publish charges that draft again. Once anything is in flight, or
+  // the post was failed (retried for free), the charge stands.
   try {
     const job = await enqueuePublishPost(
       app,
@@ -906,38 +1084,65 @@ export async function v1PublishPost(
       { trackingId },
     );
     if (job.enqueued === 0) {
-      return { ok: false, error: "Post not found or not publishable" };
+      return { ok: false, error: POST_NOT_PUBLISHABLE };
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to enqueue publish";
-    if (message.includes("No publication targets")) {
-      return { ok: false, error: "Post not found or not publishable" };
+    // Another request (or the scheduled cron) claimed the post between the
+    // read above and the claim: this call sent nothing, so its charge goes back.
+    if (err instanceof PostClaimLostError) {
+      await refund();
+      return { ok: false, error: POST_ALREADY_PUBLISHING };
+    }
+    // Part of the fan-out went out (e.g. a server-side X/TikTok job started
+    // before the next platform's CF enqueue failed). The rest are failed on
+    // the post and it stays `publishing`. Answering 5xx here sent clients to
+    // resubmit — and `POST /v1/posts/publish` then created a second post and
+    // published it again to the accounts the first one reached. Hand back the
+    // job to follow instead, as the dashboard does (`enqueueCommittedPost`).
+    if (err instanceof PublishPartiallyDispatchedError) {
+      console.error("v1PublishPost: partial fan-out", postId, err);
+      return { ...queued, warning: V1_PARTIAL_FAN_OUT_WARNING };
+    }
+    if (err instanceof PublishNotDispatchedError) {
+      if (err.postStatus === "draft" || err.postStatus === "unchanged") {
+        await refund();
+      }
+      if (err.message.includes("No publication targets")) {
+        return { ok: false, error: POST_NOT_PUBLISHABLE };
+      }
+      console.error("v1PublishPost: nothing dispatched", postId, err);
+      return { ok: false, error: V1_PUBLISH_NOT_DISPATCHED_ERROR, unavailable: true };
     }
     throw err;
   }
 
-  return {
-    ok: true,
-    tracking_id: trackingId,
-    status: "queued",
-    stream_url: `/v1/jobs/${trackingId}/stream`,
-  };
+  return queued;
 }
 
 export async function v1CreateAndPublish(
   app: FastifyInstance,
   userId: string,
   input: V1CreatePostInput,
+  opts: V1CreateOptions = {},
 ): Promise<
-  | { ok: true; post_id: string; tracking_id: string; stream_url: string }
-  | { ok: false; error: string }
+  | {
+      ok: true;
+      post_id: string;
+      tracking_id: string;
+      stream_url: string;
+      warning?: string;
+    }
+  | Extract<V1PublishResult, { ok: false }>
 > {
-  const created = await v1CreateDraft(userId, input);
+  const created = await v1CreateDraft(userId, input, opts);
   if (!created.ok) return created;
 
+  // Every `ok: false` from `v1PublishPost` means nothing of this post went
+  // out (and its free post was refunded), so the draft it was made for goes
+  // too: a retry creates a fresh one instead of leaving an orphan behind.
   const published = await v1PublishPost(app, userId, created.id);
   if (!published.ok) {
-    await v1DeletePost(userId, created.id);
+    await v1DeletePost(userId, created.id, { notify: false });
     return published;
   }
 
@@ -946,12 +1151,14 @@ export async function v1CreateAndPublish(
     post_id: created.id,
     tracking_id: published.tracking_id,
     stream_url: published.stream_url,
+    ...(published.warning ? { warning: published.warning } : {}),
   };
 }
 
 export async function v1CreateAndSchedule(
   userId: string,
   input: V1CreatePostInput & { scheduledAt: string },
+  opts: V1CreateOptions = {},
 ): Promise<
   | { ok: true; post_id: string; scheduled_at: string }
   | { ok: false; error: string }
@@ -959,12 +1166,12 @@ export async function v1CreateAndSchedule(
   const scheduleErr = validateScheduledAt(input.scheduledAt);
   if (scheduleErr) return { ok: false, error: scheduleErr };
 
-  const created = await v1CreateDraft(userId, input);
+  const created = await v1CreateDraft(userId, input, opts);
   if (!created.ok) return created;
 
   const scheduled = await v1SchedulePost(userId, created.id, input.scheduledAt);
   if (!scheduled.ok) {
-    await v1DeletePost(userId, created.id);
+    await v1DeletePost(userId, created.id, { notify: false });
     return scheduled;
   }
 

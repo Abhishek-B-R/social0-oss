@@ -4,23 +4,33 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle, CircleNotch } from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
 import { SkeletonBone } from "@/components/ui/skeleton-bone";
+import { ArrowLeft } from "lucide-react";
+import { PageContainer, PageHeader } from "@/components/app";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 
-function PickerHeader({
+/**
+ * Header for the post-OAuth connect pages (account pickers, LinkedIn select,
+ * load errors): same left edge as every page, with the way back to Accounts.
+ */
+export function PickerHeader({
   title,
   subtitle,
 }: {
   title: string;
   subtitle?: string;
 }) {
+  const dash = useDashboardPath();
   return (
-    <>
-      <h1 className="mb-2 dash-page-title">
-        {title}
-      </h1>
-      {subtitle ? (
-        <p className="text-sm leading-snug text-text-muted">{subtitle}</p>
-      ) : null}
-    </>
+    <PageHeader
+      title={title}
+      subtitle={subtitle}
+      breadcrumb={
+        <Link href={dash("connections")} className="inline-flex items-center gap-1.5 hover:text-text">
+          <ArrowLeft className="size-3.5" aria-hidden />
+          Accounts
+        </Link>
+      }
+    />
   );
 }
 
@@ -49,13 +59,13 @@ export function AccountPickerSkeleton({
   subtitle?: string;
 }) {
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <PageContainer>
       <PickerHeader title={title} subtitle={subtitle} />
-      <div className="mt-8 space-y-2">
+      <div className="max-w-xl space-y-2">
         <SkeletonBone className="h-[4.25rem] w-full rounded-xl" />
         <SkeletonBone className="h-[4.25rem] w-full rounded-xl" />
       </div>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -71,12 +81,12 @@ export function AccountPickerEmpty({
   cancelLabel?: string;
 }) {
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <PageContainer>
       <PickerHeader title={title} subtitle={message} />
-      <Button asChild variant="outline" className="mt-6">
+      <Button asChild variant="outline">
         <Link href={cancelHref}>{cancelLabel}</Link>
       </Button>
-    </div>
+    </PageContainer>
   );
 }
 
@@ -100,10 +110,10 @@ export function AccountPicker({
   };
 
   return (
-    <div className="mx-auto w-full max-w-xl">
+    <PageContainer>
       <PickerHeader title={title} subtitle={subtitle} />
 
-      <form onSubmit={handleSubmit} className="mt-8">
+      <form onSubmit={handleSubmit} className="max-w-xl">
         <div className="space-y-2" role="radiogroup" aria-label={title}>
           {accounts.map((account) => {
             const selected = selectedId === account.id;
@@ -174,6 +184,6 @@ export function AccountPicker({
           </Button>
         </div>
       </form>
-    </div>
+    </PageContainer>
   );
 }

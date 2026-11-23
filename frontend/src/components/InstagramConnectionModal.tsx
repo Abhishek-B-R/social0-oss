@@ -1,4 +1,13 @@
-import { createPortal } from "react-dom";
+import { ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type InstagramConnectionModalProps = {
   isOpen: boolean;
@@ -7,8 +16,8 @@ type InstagramConnectionModalProps = {
   onSelectFacebookPage: () => void;
 };
 
-const backdropClass =
-  "fixed inset-0 z-[100] flex items-center justify-center bg-black/45 backdrop-blur-md";
+const optionClass =
+  "group flex w-full items-start gap-3 rounded-xl border border-border bg-bg-elevated p-4 text-left transition-colors hover:border-accent/60 hover:bg-bg-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40";
 
 export function InstagramConnectionModal({
   isOpen,
@@ -16,128 +25,54 @@ export function InstagramConnectionModal({
   onSelectDirect,
   onSelectFacebookPage,
 }: InstagramConnectionModalProps) {
-  if (!isOpen) return null;
-
-  return createPortal(
-    <div className={backdropClass} role="presentation" onClick={onClose}>
-      <div
-        className="mx-4 w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-900"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="instagram-connect-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2
-            id="instagram-connect-title"
-            className="text-xl font-bold text-gray-900 dark:text-gray-100"
-          >
-            Connect Instagram
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            aria-label="Close"
-          >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => (open ? null : onClose())}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Connect Instagram</DialogTitle>
+          <DialogDescription>Choose how to connect your Instagram account.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2.5">
+          <button type="button" onClick={onSelectDirect} className={optionClass}>
+            <span className="min-w-0 flex-1">
+              <span className="mb-1 flex flex-wrap items-center gap-2">
+                <span className="font-semibold text-text">Connect via Instagram</span>
+                <span className="rounded-full bg-ok-soft px-2 py-0.5 text-xs font-medium text-ok">
+                  Recommended
+                </span>
+              </span>
+              <span className="block text-sm text-text-muted">
+                Connect directly with your Instagram Business or Creator account.
+                Requires your Instagram account to be linked to a Facebook Page.
+              </span>
+            </span>
+            <ChevronRight
+              className="mt-0.5 size-4 shrink-0 text-text-muted group-hover:text-accent"
+              aria-hidden
+            />
+          </button>
+          <button type="button" onClick={onSelectFacebookPage} className={optionClass}>
+            <span className="min-w-0 flex-1">
+              <span className="mb-1 block font-semibold text-text">
+                Connect via Facebook Page
+              </span>
+              <span className="block text-sm text-text-muted">
+                Connect through your Facebook Page. If you have multiple Pages with
+                Instagram accounts, you can choose which one to connect.
+              </span>
+            </span>
+            <ChevronRight
+              className="mt-0.5 size-4 shrink-0 text-text-muted group-hover:text-accent"
+              aria-hidden
+            />
           </button>
         </div>
-        <p className="mb-6 text-sm text-gray-600 dark:text-gray-400">
-          Choose how you want to connect your Instagram account:
-        </p>
-        <div className="mb-6 space-y-3">
-          <button
-            type="button"
-            onClick={onSelectDirect}
-            className="group w-full rounded-xl border-2 border-gray-200 p-4 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-50/50 dark:border-gray-600 dark:hover:border-emerald-500 dark:hover:bg-emerald-950/50"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="mb-1 flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                    Connect via Instagram
-                  </h3>
-                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300">
-                    Recommended
-                  </span>
-                </div>
-                <p className="text-sm text-gray-600 group-hover:text-gray-800 dark:text-gray-400 dark:group-hover:text-gray-200">
-                  Connect directly with your Instagram Business or Creator
-                  account. Requires your Instagram account to be linked to a
-                  Facebook Page.
-                </p>
-              </div>
-              <svg
-                className="mt-0.5 h-5 w-5 shrink-0 text-gray-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={onSelectFacebookPage}
-            className="group w-full rounded-xl border-2 border-gray-200 p-4 text-left transition-colors hover:border-emerald-500 hover:bg-emerald-50/50 dark:border-gray-600 dark:hover:border-emerald-500 dark:hover:bg-emerald-950/50"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1">
-                <div className="mb-1 flex items-center gap-2">
-                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">
-                    Connect via Facebook Page
-                  </h3>
-                </div>
-                <p className="text-sm text-gray-600 group-hover:text-gray-800 dark:text-gray-400 dark:group-hover:text-gray-200">
-                  Connect through your Facebook Page. If you have multiple Pages
-                  with Instagram accounts, you can choose which one to connect.
-                </p>
-              </div>
-              <svg
-                className="mt-0.5 h-5 w-5 shrink-0 text-gray-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5l7 7-7 7"
-                />
-              </svg>
-            </div>
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>,
-    document.body,
+        <DialogFooter>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

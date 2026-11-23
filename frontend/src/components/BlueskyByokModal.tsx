@@ -1,7 +1,18 @@
 import { fetchApi } from "@/lib/fetch-api";
 import { useState } from "react";
-import { createPortal } from "react-dom";
+import { ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type BlueskyByokModalProps = {
   isOpen: boolean;
@@ -9,21 +20,15 @@ type BlueskyByokModalProps = {
   onSuccess: (username: string) => void;
 };
 
-const backdropClass =
-  "fixed inset-0 z-[100] flex items-center justify-center bg-black/45 backdrop-blur-md";
+const EMPTY_FORM = { handle: "", appPassword: "" };
 
 export function BlueskyByokModal({
   isOpen,
   onClose,
   onSuccess,
 }: BlueskyByokModalProps) {
-  const [formData, setFormData] = useState({
-    handle: "",
-    appPassword: "",
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,125 +70,80 @@ export function BlueskyByokModal({
       setFormData((prev) => ({ ...prev, [field]: e.target.value }));
     };
 
-  return createPortal(
-    <div
-      className={backdropClass}
-      role="presentation"
-      onClick={() => {
-        if (!isSubmitting) onClose();
+  return (
+    <Dialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open && !isSubmitting) onClose();
       }}
     >
-      <div
-        className="mx-4 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-xl dark:border-gray-700 dark:bg-gray-900"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="bluesky-connect-title"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2
-            id="bluesky-connect-title"
-            className="text-xl font-bold text-gray-900 dark:text-gray-100"
-          >
-            Connect Bluesky
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            disabled={isSubmitting}
-            aria-label="Close"
-          >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <p className="mb-4 text-sm text-gray-600 dark:text-gray-400">
-          Requires your handle and an App Password. Do not use your main
-          password. Generate an App Password in Bluesky Settings → App
-          Passwords.
-        </p>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Connect Bluesky</DialogTitle>
+          <DialogDescription>
+            Requires your handle and an app password. Don&apos;t use your main
+            password: create an app password in Bluesky under Settings, App
+            passwords.
+          </DialogDescription>
+        </DialogHeader>
         <a
           href="https://bsky.app/settings/app-passwords"
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-4 inline-block text-sm font-medium text-emerald-600 hover:underline"
+          className="inline-flex w-fit items-center gap-1 rounded text-sm font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
         >
-          bsky.app/settings/app-passwords →
+          bsky.app/settings/app-passwords
+          <ExternalLink className="size-3.5" aria-hidden />
         </a>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label
-              htmlFor="handle"
-              className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
-              Bluesky Handle
-            </label>
-            <input
-              id="handle"
+          <div className="space-y-1.5">
+            <Label htmlFor="bluesky-handle">Bluesky handle</Label>
+            <Input
+              id="bluesky-handle"
               type="text"
               value={formData.handle}
               onChange={handleChange("handle")}
               required
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
               placeholder="@username.bsky.social"
+              aria-describedby="bluesky-handle-hint"
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Format: @username.bsky.social or username.bsky.social
+            <p id="bluesky-handle-hint" className="text-xs text-text-muted">
+              @username.bsky.social or username.bsky.social
             </p>
           </div>
 
-          <div>
-            <label
-              htmlFor="appPassword"
-              className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
-              App Password
-            </label>
-            <input
-              id="appPassword"
+          <div className="space-y-1.5">
+            <Label htmlFor="bluesky-app-password">App password</Label>
+            <Input
+              id="bluesky-app-password"
               type="password"
               value={formData.appPassword}
               onChange={handleChange("appPassword")}
               required
-              className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-gray-900 placeholder-gray-500 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+              autoComplete="off"
               placeholder="xxxx-xxxx-xxxx-xxxx"
             />
           </div>
 
-          <div className="flex gap-3">
-            <button
+          <DialogFooter>
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300"
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {isSubmitting ? "Connecting..." : "Connect"}
-            </button>
-          </div>
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Connecting…" : "Connect"}
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>,
-    document.body,
+      </DialogContent>
+    </Dialog>
   );
 }

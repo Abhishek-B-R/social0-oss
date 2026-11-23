@@ -1,30 +1,43 @@
-import { auth } from "../lib/auth.js";
+import { getRouteSession } from "../lib/session.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
+import { reconnectedAtPatch } from "../lib/account-reconnect.js";
 import { eq, and, isNull } from "drizzle-orm";
-import { headers } from "../lib/http/request-cookies.js";
 import { encryptToken } from "@social0/shared";
 import { checkAccountLimits } from "../lib/plan-limits.js";
+import { queueAgencyExtraAccountsSync } from "../lib/extra-accounts.js";
 import crypto from "crypto";
 import { z } from "zod";
 import { AppRequest } from "../lib/http/http.js";
 import { blueskyByokLimiter, enforceRateLimit } from "../lib/ratelimit.js";
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 
+/** Invisible characters pasted along with a handle (zero-width, bidi marks). */
+const INVISIBLE_CHARS = /[\u200B-\u200D\uFEFF\u202A-\u202E]/g;
+
+/**
+ * A Bluesky handle is a domain name: `alice.bsky.social`, or a custom domain
+ * such as `alice.com`. A bare `alice` is expanded to `alice.bsky.social`
+ * below. A leading `@` is optional.
+ */
+const HANDLE_PATTERN =
+  /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
+
 const byokSchema = z.object({
   handle: z
     .string()
     .min(1, "Handle is required")
     .refine(
-      (val) => val.startsWith("@") || val.includes(".bsky.social"),
-      "Handle should be in format @username.bsky.social",
+      (val) =>
+        HANDLE_PATTERN.test(val.trim().replace(INVISIBLE_CHARS, "").replace(/^@/, "")),
+      "Enter your Bluesky handle, like alice.bsky.social or your own domain",
     ),
   appPassword: z.string().min(1, "App password is required"),
 });
 
 export async function blueskyByok(req: AppRequest) {
   try {
-    const session = await auth.api.getSession({ headers: await headers() });
+    const session = await getRouteSession();
 
     if (!session) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -52,9 +65,7 @@ export async function blueskyByok(req: AppRequest) {
     const validated = byokSchema.parse(body);
 
     // Normalize handle (remove @ if present, ensure it's a full handle)
-    let handle = validated.handle
-      .trim()
-      .replace(/[\u200B-\u200D\uFEFF\u202A-\u202E]/g, "");
+    let handle = validated.handle.trim().replace(INVISIBLE_CHARS, "");
     if (handle.startsWith("@")) {
       handle = handle.slice(1);
     }
@@ -182,7 +193,8 @@ export async function blueskyByok(req: AppRequest) {
     );
 
     if (existing) {
-      // Update existing account (reconnect: set isActive so it shows in UI)
+      // Update existing account. isActive stays as stored: the plan cap owns
+      // it (syncConnectedAccountsToLimit), a reconnect does not grant it.
       await db
         .update(connectedAccounts)
         .set({
@@ -191,7 +203,7 @@ export async function blueskyByok(req: AppRequest) {
           platformUserId: userInfo.id,
           platformUsername: userInfo.username,
           profileImageUrl,
-          isActive: true,
+          platformMetadata: reconnectedAtPatch(),
           updatedAt: new Date(),
         })
         .where(eq(connectedAccounts.id, existing.id));
@@ -227,6 +239,8 @@ export async function blueskyByok(req: AppRequest) {
         tokenExpiresAt: null, // App passwords don't expire
         isActive: true,
       });
+      // Agency bills accounts above 59: update the add-on (never blocks).
+      queueAgencyExtraAccountsSync(resourceUserId, "connect");
 
       return Response.json({
         success: true,
@@ -236,9 +250,12 @@ export async function blueskyByok(req: AppRequest) {
     }
   } catch (err) {
     if (err instanceof z.ZodError) {
+      // The connect dialog shows `message` (then `error`) as-is.
+      const message = err.errors[0]?.message ?? "Check your handle and app password.";
       return Response.json(
         {
-          error: "Validation error",
+          error: message,
+          message,
           details: err.errors,
         },
         { status: 400 },

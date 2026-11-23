@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
-    "build": "tsc -b && node scripts/generate-sitemap.mjs && vite build",
+    "build": "tsc -b && node scripts/generate-sitemap.mjs && node scripts/generate-crawler-pages.mjs && vite build && node scripts/prerender-landing.mjs",
     "test": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",

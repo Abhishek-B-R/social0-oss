@@ -1,3 +1,8 @@
+# The dev site is served by a static Worker (no Pages middleware), so keep it
+# out of search indexes here. Production hosts don't match this rule.
+https://dev.social0.app/*
+  X-Robots-Tag: noindex, nofollow
+
 # Hashed Vite assets are immutable — long cache is safe.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
@@ -57,3 +62,4 @@
 /*
   Cache-Control: public, max-age=0, must-revalidate
   Vary: Accept, Accept-Encoding
+  Strict-Transport-Security: max-age=31536000

@@ -21,7 +21,18 @@ export type DodoSubscriptionSummary = {
   productId: string;
   customerId: string | null;
   previousBillingDate: string | null;
+  /** Checkout stamps the buyer's user id here; absent on legacy subscriptions. */
+  metadata: Record<string, string> | null;
+  customerEmail: string | null;
 };
+
+/** Dodo metadata values may be numbers or booleans; ownership checks read strings. */
+function stringMetadata(
+  metadata: Record<string, string | number | boolean> | null | undefined,
+): Record<string, string> | null {
+  if (!metadata) return null;
+  return Object.fromEntries(Object.entries(metadata).map(([k, v]) => [k, String(v)]));
+}
 
 function dodoClient(): DodoPayments | null {
   const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
@@ -32,10 +43,17 @@ function dodoClient(): DodoPayments | null {
   });
 }
 
-/** Open Dodo subscriptions for this customer/email (active, on_hold, pending). */
+/**
+ * Open Dodo subscriptions for this customer/email (active, on_hold, pending).
+ *
+ * Best-effort by default: a failed list page is skipped. Pass
+ * `{ throwOnError: true }` when an incomplete answer is unsafe (account
+ * deletion must not proceed on a list it could not finish).
+ */
 export async function listOpenDodoSubscriptions(
   email: string,
   customerId?: string | null,
+  opts?: { throwOnError?: boolean },
 ): Promise<DodoSubscriptionSummary[]> {
   const client = dodoClient();
   if (!client) return [];
@@ -69,9 +87,12 @@ export async function listOpenDodoSubscriptions(
             productId: sub.product_id ?? productId,
             customerId: sub.customer?.customer_id ?? null,
             previousBillingDate: sub.previous_billing_date ?? null,
+            metadata: stringMetadata(sub.metadata),
+            customerEmail: sub.customer?.email ?? null,
           });
         }
-      } catch {
+      } catch (e) {
+        if (opts?.throwOnError) throw e;
         // Best-effort - checkout still guarded by DB state if Dodo list fails.
       }
     }
@@ -299,13 +320,22 @@ export async function getLatestSubscriptionPayment(
   }
 }
 
+/** Allowed clock difference between Dodo's payment time and our database. */
+const PLAN_CHANGE_CLOCK_SLACK_MS = 60_000;
+
 /**
  * Upgrade unlock gate: the chronologically latest payment must be succeeded
  * with amount > 0. Skips older succeeded charges (e.g. original signup) when a
  * newer upgrade payment is still processing.
+ *
+ * `planChangedAt` is user_settings.subscription_updated_at. When set, the
+ * payment must be newer than the last plan change, so a charge from before a
+ * downgrade cannot unlock the higher tier again. Null (rows from before the
+ * column existed) skips that check.
  */
 export async function findRecentPaidUpgradePayment(
   subscriptionId: string,
+  planChangedAt: Date | null = null,
 ): Promise<DodoPaymentRow | null> {
   const latest = await getLatestSubscriptionPayment(subscriptionId);
   if (!latest) return null;
@@ -313,5 +343,17 @@ export async function findRecentPaidUpgradePayment(
   const amount =
     typeof latest.total_amount === "number" ? latest.total_amount : 0;
   if (amount <= 0) return null;
+  if (planChangedAt) {
+    const paidAt =
+      typeof latest.created_at === "string"
+        ? Date.parse(latest.created_at)
+        : NaN;
+    if (
+      !Number.isFinite(paidAt) ||
+      paidAt < planChangedAt.getTime() - PLAN_CHANGE_CLOCK_SLACK_MS
+    ) {
+      return null;
+    }
+  }
   return latest;
 }

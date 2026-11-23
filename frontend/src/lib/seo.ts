@@ -217,7 +217,7 @@ export function buildSoftwareApplicationJsonLd() {
 }
 
 export const homePageTitle =
-  "Social0 — AI Agents & Multi-Platform Social Scheduling";
+  "Social0: Social Media Scheduler and API for AI Agents";
 
 export const homePageDescription =
   "Publish and schedule across 9 platforms from one dashboard — or let ChatGPT, Claude, and your agents ship via MCP, API, and CLI. Start free.";

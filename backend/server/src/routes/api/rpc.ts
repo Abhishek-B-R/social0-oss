@@ -9,6 +9,9 @@ import {
   rpcMutationLimiter,
 } from "../../lib/ratelimit.js";
 import * as dashboardData from "../../services/dashboard-data.js";
+import * as dashboardHome from "../../services/dashboard-home.js";
+import * as dashboardAgents from "../../services/dashboard-agents.js";
+import * as dashboardAutomations from "../../services/dashboard-automations.js";
 import * as onboarding from "../../services/onboarding.js";
 import * as posts from "../../services/posts.js";
 import * as publish from "../../services/publish.js";
@@ -22,12 +25,15 @@ type RpcHandler = (...args: never[]) => Promise<unknown>;
 const RPC_MUTATION_HANDLERS = new Set([
   "posts.createPost",
   "posts.deletePost",
+  "posts.deletePosts",
+  "posts.duplicatePosts",
   "posts.postAgain",
   "posts.updatePost",
   "posts.updateScheduledPostAutoFeatures",
   "posts.deleteDraft",
   "posts.updateDraft",
   "posts.updateAndPublish",
+  "posts.reschedule",
   "publish.publishPost",
   "resurface.createAutoPlug",
   "resurface.createResurfaceSchedule",
@@ -78,11 +84,17 @@ const RPC_HANDLERS: Record<string, RpcHandler> = Object.assign(
     "dashboard-data.loadPostDetailCoreData": dashboardData.loadPostDetailCoreData,
     "dashboard-data.loadPostDetailMediaData": dashboardData.loadPostDetailMediaData,
     "dashboard-data.loadAdjacentPosts": dashboardData.loadAdjacentPosts,
+    "dashboard.getHome": dashboardHome.getHome,
+    "dashboard.listAgentConnections": dashboardAgents.listAgentConnections,
+    "dashboard.listAutomations": dashboardAutomations.listAutomations,
     "onboarding.getOnboardingStatus": onboarding.getOnboardingStatus,
     "onboarding.setOnboardingGoal": onboarding.setOnboardingGoal,
     "onboarding.setOnboardingCompleted": onboarding.setOnboardingCompleted,
+    "posts.loadEditPostPageData": posts.loadEditPostPageData,
     "posts.createPost": posts.createPost,
     "posts.deletePost": posts.deletePost,
+    "posts.deletePosts": posts.deletePosts,
+    "posts.duplicatePosts": posts.duplicatePosts,
     "posts.postAgain": posts.postAgain,
     "posts.updatePost": posts.updatePost,
     "posts.updateScheduledPostAutoFeatures":
@@ -93,7 +105,7 @@ const RPC_HANDLERS: Record<string, RpcHandler> = Object.assign(
     "posts.deleteDraft": posts.deleteDraft,
     "posts.updateDraft": posts.updateDraft,
     "posts.updateAndPublish": posts.updateAndPublish,
-    "posts.loadEditPostPageData": posts.loadEditPostPageData,
+    "posts.reschedule": posts.reschedulePost,
     "publish.getPostPublicationList": publish.getPostPublicationList,
     "publish.publishPost": publish.publishPost,
     "resurface.createAutoPlug": resurface.createAutoPlug,

@@ -1,12 +1,5 @@
-import { Queue } from "bullmq";
 import type { FastifyInstance } from "fastify";
-import {
-  JOB_NAMES,
-  getRedisUrl,
-  platformPublishQueueName,
-  type PublishPostJob,
-  type PublishPlatformJob,
-} from "@social0/shared";
+import type { PublishPostJob } from "@social0/shared";
 import {
   createPublishTrackingId,
   dispatchPublishPost,
@@ -15,11 +8,10 @@ import {
   assertPublishDispatchConfigured,
 } from "./publish-dispatch.js";
 import {
-  initPublishJobTracking,
   prepareAndEnqueuePublish,
+  PublishNotDispatchedError,
+  type PublishBackend,
 } from "./publish-enqueue.js";
-import { loadPublicationTargets } from "../lib/publish-load-targets.js";
-import { resolveJobProgressStore } from "../lib/publish-job-tracking.js";
 
 export {
   createPublishTrackingId,
@@ -27,89 +19,52 @@ export {
   useCloudflarePublishDispatch,
 };
 
+/**
+ * Publish now. There is no delayed publish: scheduling is a `scheduled_at`
+ * write that the `publish-scheduled` cron picks up.
+ */
 export async function enqueuePublishPost(
   app: FastifyInstance,
   data: PublishPostJob,
-  opts?: { delay?: number; trackingId?: string },
+  opts?: { trackingId?: string; onlyFromStatus?: "draft" },
 ) {
-  const priority =
-    opts?.delay && opts.delay > 0 ? ("scheduled" as const) : ("now" as const);
-  return dispatchPublishPost(app, data, { ...opts, priority });
+  return dispatchPublishPost(app, data, { ...opts, priority: "now" });
 }
 
-/** Enqueue from BFF/RPC - returns immediately; never runs executePublish inline. */
+/**
+ * Enqueue from BFF/RPC - returns immediately; never runs executePublish inline.
+ * Same fan-out as every other publish (`prepareAndEnqueuePublish`), whichever
+ * backend runs the platform jobs.
+ */
 export async function enqueuePublishPostStandalone(
   data: PublishPostJob,
   opts?: { trackingId?: string },
 ): Promise<{
   trackingId?: string;
-  backend: "cloudflare" | "bullmq";
+  backend: PublishBackend;
   streamUrl?: string;
 }> {
-  assertPublishDispatchConfigured();
+  try {
+    assertPublishDispatchConfigured();
+  } catch (err) {
+    // Nothing was written: the post is exactly as the caller left it.
+    throw new PublishNotDispatchedError(err, "unchanged");
+  }
 
   const trackingId =
     opts?.trackingId ?? data.trackingId ?? createPublishTrackingId();
 
-  if (useCloudflarePublishDispatch()) {
-    const result = await prepareAndEnqueuePublish(
-      null,
-      { ...data, trackingId },
-      {
-        priority: "now",
-        trackingId,
-      },
-    );
-    return {
+  const result = await prepareAndEnqueuePublish(
+    null,
+    { ...data, trackingId },
+    {
+      priority: "now",
       trackingId,
-      backend: result.backend,
-      streamUrl: `/api/jobs/${trackingId}/stream`,
-    };
-  }
-
-  const connection = { url: getRedisUrl() };
-  const targets = await loadPublicationTargets({ ...data, trackingId });
-  if (targets.length === 0) {
-    throw new Error(`No publication targets for post ${data.postId}`);
-  }
-
-  await initPublishJobTracking({
-    trackingId,
-    postId: data.postId,
-    userId: data.userId,
-    total: targets.length,
-  });
-
-  const progress = await resolveJobProgressStore(null);
-  await progress.initJob({
-    trackingId,
-    postId: data.postId,
-    userId: data.userId,
-    total: targets.length,
-  });
-
-  for (const t of targets) {
-    const platformJob: PublishPlatformJob = {
-      postId: data.postId,
-      userId: data.userId,
-      trackingId,
-      publicationId: t.publicationId,
-      connectedAccountId: t.connectedAccountId,
-      platform: t.platform,
-    };
-    const queueName = platformPublishQueueName(t.platform);
-    const queue = new Queue<PublishPlatformJob>(queueName, { connection });
-    await queue.add(JOB_NAMES.PUBLISH_PLATFORM, platformJob, {
-      jobId: `platform-${t.publicationId}`,
-      attempts: 5,
-      backoff: { type: "exponential", delay: 10_000 },
-    });
-    await queue.close();
-  }
-
+    },
+  );
   return {
     trackingId,
-    backend: "bullmq",
+    backend: result.backend,
     streamUrl: `/api/jobs/${trackingId}/stream`,
   };
 }

@@ -5,15 +5,19 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "@/components/AppLink";
 import { toast } from "sonner";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { completeConnectSelect } from "@/lib/connect-select-response";
 import { stripSensitiveQueryParams } from "@/lib/sanitize-analytics-url";
+import { SelectLoadError } from "./SelectLoadError";
 import {
   AccountPickerEmpty,
   AccountPickerSkeleton,
+  PickerHeader,
 } from "@/components/AccountPicker";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, CircleNotch } from "@/icons/phosphor";
 import { cn } from "@/lib/utils";
+import { PageContainer } from "@/components/app";
 
 type PersonalProfile = {
   id: string;
@@ -29,15 +33,17 @@ type CompanyPage = {
 
 export default function LinkedInSelectPage() {
   const [searchParams] = useSearchParams();
+  const dash = useDashboardPath();
   const token = searchParams.get("token");
   const returnTo =
-    sanitizeReturnToPath(searchParams.get("returnTo")) ??
-    "/dashboard/connections";
+    sanitizeReturnToPath(searchParams.get("returnTo")) ?? dash("connections");
 
   const [personalProfile, setPersonalProfile] =
     useState<PersonalProfile | null>(null);
   const [companyPages, setCompanyPages] = useState<CompanyPage[]>([]);
   const [loading, setLoading] = useState(() => Boolean(token));
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [submitLoading, setSubmitLoading] = useState(false);
 
   const [selectedPersonal, setSelectedPersonal] = useState(true);
@@ -50,10 +56,7 @@ export default function LinkedInSelectPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      toast.error("Missing token");
-      return;
-    }
+    if (!token) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -69,11 +72,10 @@ export default function LinkedInSelectPage() {
         if (cancelled) return;
         setPersonalProfile(data.personalProfile ?? null);
         setCompanyPages(data.companyPages ?? []);
+        setLoadError(null);
       } catch (err) {
         if (!cancelled) {
-          toast.error(
-            err instanceof Error ? err.message : "Failed to load accounts",
-          );
+          setLoadError(err instanceof Error ? err.message : "Failed to load accounts");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -82,7 +84,12 @@ export default function LinkedInSelectPage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, loadAttempt]);
+
+  const retryLoad = useCallback(() => {
+    setLoading(true);
+    setLoadAttempt((n) => n + 1);
+  }, []);
 
   const toggleCompany = useCallback((urn: string) => {
     setSelectedCompanyIds((prev) => {
@@ -132,6 +139,20 @@ export default function LinkedInSelectPage() {
     (selectedPersonal && Boolean(personalProfile)) ||
     selectedCompanyIds.size > 0;
 
+  if (!token || loadError) {
+    return (
+      <SelectLoadError
+        title="Connect LinkedIn"
+        message="Couldn't load your LinkedIn profiles and pages. The sign-in link may have expired."
+        detail={loadError}
+        hasToken={Boolean(token)}
+        onRetry={retryLoad}
+        retrying={loading}
+        startOverHref={dash("connections?connect=linkedin")}
+      />
+    );
+  }
+
   if (loading) {
     return (
       <AccountPickerSkeleton
@@ -152,15 +173,13 @@ export default function LinkedInSelectPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-xl">
-      <h1 className="mb-2 dash-page-title">
-        Connect LinkedIn
-      </h1>
-      <p className="text-sm leading-snug text-text-muted">
-        Pick the profiles and pages you want to connect.
-      </p>
+    <PageContainer>
+      <PickerHeader
+        title="Connect LinkedIn"
+        subtitle="Pick the profiles and pages you want to connect."
+      />
 
-      <form onSubmit={handleSubmit} className="mt-8">
+      <form onSubmit={handleSubmit} className="max-w-xl">
         <div className="space-y-6">
           {personalProfile ? (
             <div>
@@ -272,6 +291,6 @@ export default function LinkedInSelectPage() {
           </Button>
         </div>
       </form>
-    </div>
+    </PageContainer>
   );
 }

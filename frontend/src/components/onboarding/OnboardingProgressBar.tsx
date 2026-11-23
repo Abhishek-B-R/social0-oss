@@ -1,85 +1,74 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const STEPS = [
-  { num: 1, label: "Welcome" },
-  { num: 2, label: "Connect" },
-  { num: 3, label: "Plan" },
-  { num: 4, label: "Ready" },
-] as const;
+import { ONBOARDING_STEPS } from "@/features/onboarding/lib/paths";
 
 type OnboardingProgressBarProps = {
-  currentStep: number; // 1–4
+  /** 1–3. */
+  currentStep: number;
 };
 
+/** Three-step progress: Goal · Connect · How you'll post. */
 export function OnboardingProgressBar({
   currentStep,
 }: OnboardingProgressBarProps) {
-  const clamped = Math.min(4, Math.max(1, currentStep));
-  const progressPct = ((clamped - 1) / (STEPS.length - 1)) * 100;
+  const total = ONBOARDING_STEPS.length;
+  const clamped = Math.min(total, Math.max(1, currentStep));
 
   return (
-    <nav className="w-full max-w-md" aria-label="Onboarding progress">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
-        {STEPS.map((step) => {
+    <nav className="w-full max-w-md" aria-label="Setup progress">
+      <ol className="flex items-center gap-2">
+        {ONBOARDING_STEPS.map((step, i) => {
           const isCurrent = step.num === clamped;
           const isPast = step.num < clamped;
           return (
-            <span
+            <li
               key={step.num}
-              className={cn(
-                "flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center",
-              )}
+              className="flex min-w-0 flex-1 items-center gap-2"
+              aria-current={isCurrent ? "step" : undefined}
             >
               <span
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold transition-colors",
-                  isPast &&
-                    "bg-emerald-500 text-[#04140c] shadow-[0_0_0_3px_rgba(16,185,129,0.18)]",
-                  isCurrent &&
-                    "bg-emerald-500 text-[#04140c] shadow-[0_0_16px_rgba(16,185,129,0.35)]",
+                  "flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition-colors motion-reduce:transition-none",
+                  isPast && "bg-accent text-accent-foreground",
+                  isCurrent && "bg-foreground text-background",
                   !isPast &&
                     !isCurrent &&
-                    "border border-border bg-background/80 text-muted-foreground",
+                    "border border-border bg-background text-muted-foreground",
                 )}
-                aria-current={isCurrent ? "step" : undefined}
-                aria-label={`${step.num}. ${step.label}${isPast ? " (completed)" : ""}`}
               >
                 {isPast ? (
-                  <Check className="h-3.5 w-3.5" strokeWidth={3} aria-hidden />
+                  <Check className="h-3 w-3" strokeWidth={3} aria-hidden />
                 ) : (
                   step.num
                 )}
               </span>
               <span
                 className={cn(
-                  "hidden truncate text-[11px] font-medium sm:block",
-                  isCurrent
-                    ? "text-foreground"
-                    : isPast
-                      ? "text-emerald-700 dark:text-emerald-400"
-                      : "text-muted-foreground",
+                  "hidden truncate text-[12px] font-medium sm:block",
+                  isCurrent ? "text-foreground" : "text-muted-foreground",
                 )}
               >
                 {step.label}
+                <span className="sr-only">
+                  {isPast ? " (done)" : isCurrent ? " (current step)" : ""}
+                </span>
               </span>
-            </span>
+              {i < total - 1 ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-px min-w-3 flex-1",
+                    isPast ? "bg-accent" : "bg-border",
+                  )}
+                />
+              ) : null}
+            </li>
           );
         })}
-      </div>
-      <div
-        className="h-1 overflow-hidden rounded-full bg-border/80"
-        role="progressbar"
-        aria-valuenow={clamped}
-        aria-valuemin={1}
-        aria-valuemax={4}
-        aria-label={`Step ${clamped} of 4`}
-      >
-        <div
-          className="h-full rounded-full bg-emerald-500 transition-[width] duration-300 ease-out"
-          style={{ width: `${progressPct}%` }}
-        />
-      </div>
+      </ol>
+      <p className="sr-only">
+        Step {clamped} of {total}
+      </p>
     </nav>
   );
 }

@@ -10,10 +10,14 @@ import { publishLimiter, enforceRateLimit } from "@/lib/ratelimit";
 import { requireWorkspaceSession } from "@/lib/workspace/session";
 import { postScopeCondition } from "@/lib/workspace/context";
 import { isValidPostId } from "@/lib/publish-validation";
+import type { PublicationErrorKind } from "@/lib/publication-error-kind";
+import { releaseFreePost, type FreePostReservation } from "@/lib/plan-limits";
 import { maybeFinalizePostPublish } from "../publish/finalize-post.js";
+import { reserveFreePostQuota } from "./posts.js";
 import {
   executePublish as executePublishCore,
   getPostPublicationList as getPostPublicationListCore,
+  type PublishControl,
   type PublishOptions,
   type PublishResult,
 } from "../publish/execute-publish.js";
@@ -33,6 +37,7 @@ export async function getPostPublicationList(postId: string): Promise<
     publicationStatus: string;
     platformPostUrl: string | null;
     lastError: string | null;
+    errorKind: PublicationErrorKind | null;
   }[]
 > {
   const ws = await requireWorkspaceSession("view_posts");
@@ -57,12 +62,14 @@ export async function executePublish(
   userId?: string,
   publicationIdFilter?: string,
   options?: PublishOptions,
+  control?: PublishControl,
 ): Promise<PublishResult> {
   const result = await executePublishCore(
     postId,
     userId,
     publicationIdFilter,
     options,
+    control,
   );
 
   // Dashboard composer uses inline executePublish — finalize owns webhooks + failure email.
@@ -114,7 +121,7 @@ export async function publishPost(
   }
 
   const [owned] = await db
-    .select({ id: posts.id })
+    .select({ id: posts.id, status: posts.status })
     .from(posts)
     .where(and(eq(posts.id, postId), postScopeCondition(ws.ctx)))
     .limit(1);
@@ -126,5 +133,71 @@ export async function publishPost(
     };
   }
 
-  return executePublish(postId, userId, publicationIdFilter, options);
+  // A person retrying one delivery from the dashboard may take over a run
+  // that was interrupted: the row tells them it may already be live, so the
+  // click is their decision. A whole-post publish never does.
+  const control: PublishControl = {
+    takeOverInterrupted: typeof publicationIdFilter === "string",
+  };
+
+  // Publishing a draft is a "Publish now" submission and costs one free post,
+  // same as updateAndPublish. Every other call here (retries, per-platform
+  // progress, a post already submitted) is free.
+  if (owned.status === "draft") {
+    const charged = await chargeDraftPublish(postId, userId);
+    if (!charged.ok) {
+      return { success: false, error: charged.error, results: [] };
+    }
+    const result = await executePublish(
+      postId,
+      userId,
+      publicationIdFilter,
+      options,
+      control,
+    );
+    // Nothing was attempted (no publication it could reach): hand the draft
+    // and the free post back instead of leaving both spent.
+    if (result.results.length === 0) {
+      await db
+        .update(posts)
+        .set({ status: "draft", updatedAt: new Date() })
+        .where(and(eq(posts.id, postId), eq(posts.status, "publishing")));
+      await releaseFreePost(charged.reservation, userId);
+    }
+    return result;
+  }
+
+  return executePublish(postId, userId, publicationIdFilter, options, control);
+}
+
+/**
+ * Charge one free post for publishing a draft and move it out of `draft` in the
+ * same step. The conditional status update is the claim: two racing clicks both
+ * reserve, but only one moves the draft; the loser gives its post back and
+ * stops, so the post is not published twice either.
+ */
+async function chargeDraftPublish(
+  postId: string,
+  userId: string,
+): Promise<
+  | { ok: true; reservation: FreePostReservation }
+  | { ok: false; error: string }
+> {
+  const quota = await reserveFreePostQuota(userId, postId);
+  if (!quota.ok) return { ok: false, error: quota.error };
+
+  try {
+    const claimed = await db
+      .update(posts)
+      .set({ status: "publishing", updatedAt: new Date() })
+      .where(and(eq(posts.id, postId), eq(posts.status, "draft")))
+      .returning({ id: posts.id });
+    if (claimed.length > 0) return { ok: true, reservation: quota.reservation };
+  } catch (err) {
+    await releaseFreePost(quota.reservation, userId);
+    throw err;
+  }
+
+  await releaseFreePost(quota.reservation, userId);
+  return { ok: false, error: "This post is already publishing." };
 }

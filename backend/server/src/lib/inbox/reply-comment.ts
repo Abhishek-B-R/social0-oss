@@ -4,6 +4,7 @@ import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { fetchAllowedMedia } from "../media-fetch.js";
 import { jsonGet } from "../http-json.js";
+import { prepareImageForPlatform } from "../publish-platforms/media.js";
 import { uploadTwitterImage, uploadTwitterVideo } from "../twitter-media.js";
 import { inboxAllowsMedia } from "./media-capabilities.js";
 import { blueskySession, blueskySessionAfter401 } from "./bluesky-session.js";
@@ -192,20 +193,30 @@ async function replyTwitter(input: ReplyInput): Promise<ReplyResult> {
   }
 }
 
+/**
+ * Bluesky rejects image blobs over 1,000,000 bytes, while uploads allow up to
+ * 50 MB. Re-encode through the same helper the publish path uses so an
+ * ordinary phone photo still fits. Inbox mutations run on the API process,
+ * where sharp is available.
+ */
 async function uploadBlueskyReplyBlob(
   jwt: string,
   mediaUrl: string,
+  mimeType: string,
 ): Promise<unknown> {
   const res = await fetchAllowedMedia(mediaUrl);
   if (!res.ok) throw new Error("Could not fetch image for Bluesky reply.");
-  const buffer = Buffer.from(await res.arrayBuffer());
-  const contentType = res.headers.get("content-type") || "image/jpeg";
+  const { buffer, contentType } = await prepareImageForPlatform(
+    await res.arrayBuffer(),
+    "bluesky",
+    res.headers.get("content-type") || mimeType,
+  );
   const uploadRes = await fetch(
     "https://bsky.social/xrpc/com.atproto.repo.uploadBlob",
     {
       method: "POST",
       headers: { "Content-Type": contentType, Authorization: `Bearer ${jwt}` },
-      body: buffer,
+      body: new Uint8Array(buffer),
       signal: AbortSignal.timeout(REPLY_UPLOAD_TIMEOUT_MS),
     },
   );
@@ -297,7 +308,11 @@ async function replyBluesky(input: ReplyInput): Promise<ReplyResult> {
     });
 
   if (input.mediaUrl && input.mediaMimeType?.startsWith("image/")) {
-    const blob = await uploadBlueskyReplyBlob(session.accessJwt, input.mediaUrl);
+    const blob = await uploadBlueskyReplyBlob(
+      session.accessJwt,
+      input.mediaUrl,
+      input.mediaMimeType,
+    );
     record.embed = {
       $type: "app.bsky.embed.images",
       images: [{ alt: "", image: blob }],

@@ -1,9 +1,17 @@
-import { Navigate, useLocation, useParams } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { ALTERNATIVE_SLUGS } from "@/lib/content/alternatives";
 
-/** 301-equivalent client redirect: /alternative-to-:slug -> /alternatives/:slug */
+const ALTERNATIVE_TO_PREFIX = "/alternative-to-";
+
+/**
+ * 301-equivalent client redirect: /alternative-to-:slug -> /alternatives/:slug.
+ * React Router only treats `:param` after a "/" as dynamic, so this renders
+ * from the catch-all route and reads the slug from the pathname.
+ */
 export function AlternativeToRedirect() {
-  const { slug = "" } = useParams();
+  const slug = useLocation()
+    .pathname.slice(ALTERNATIVE_TO_PREFIX.length)
+    .replace(/\/$/, "");
   if (ALTERNATIVE_SLUGS.includes(slug)) {
     return <Navigate to={`/alternatives/${slug}`} replace />;
   }

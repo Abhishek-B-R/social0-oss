@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, hydrateRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AppRouter } from "@/routes/router";
@@ -27,7 +27,8 @@ if (syncAppBuild()) {
     },
   });
 
-  createRoot(document.getElementById("root")!).render(
+  const rootEl = document.getElementById("root")!;
+  const app = (
     <StrictMode>
       <VemetricAnalytics />
       <HelmetProvider>
@@ -35,6 +36,13 @@ if (syncAppBuild()) {
           <AppRouter />
         </QueryClientProvider>
       </HelmetProvider>
-    </StrictMode>,
+    </StrictMode>
   );
+  // "/" arrives with the landing page already rendered (functions/_middleware.ts
+  // + scripts/prerender-landing.mjs): hydrate it so the painted hero stays.
+  if (rootEl.dataset.ssr === "landing" && window.location.pathname === "/") {
+    hydrateRoot(rootEl, app);
+  } else {
+    createRoot(rootEl).render(app);
+  }
 }

@@ -3,7 +3,7 @@ import { verification } from "../db/schema.js";
 import { and, eq, gt } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { redis } from "./redis.js";
-import { sleep, type PaidPlanTier } from "@social0/shared";
+import { isActiveTier, sleep, type PaidPlanTier } from "@social0/shared";
 
 const PENDING_CHECKOUT_TTL_SEC = 3600;
 const CHECKOUT_LOCK_TTL_SEC = 30;
@@ -11,6 +11,8 @@ const CHECKOUT_LOCK_TTL_SEC = 30;
 export type PendingCheckout = {
   plan: PaidPlanTier;
   interval?: "monthly" | "yearly";
+  /** Agency extra accounts in the cart (absent on sessions saved before it). */
+  extraAccounts?: number;
   sessionId: string;
   url: string;
   trialPeriodDays: number;
@@ -35,10 +37,7 @@ function parsePending(raw: unknown): PendingCheckout | null {
     const data =
       typeof raw === "string" ? (JSON.parse(raw) as PendingCheckout) : (raw as PendingCheckout);
     if (
-      (data.plan === "starter" ||
-        data.plan === "growth" ||
-        data.plan === "pro" ||
-        data.plan === "max") &&
+      isActiveTier(data.plan) &&
       typeof data.url === "string" &&
       typeof data.sessionId === "string"
     ) {
@@ -120,9 +119,14 @@ function pendingMatches(
   pending: PendingCheckout,
   plan: PaidPlanTier,
   interval: "monthly" | "yearly",
+  extraAccounts: number,
 ): boolean {
   const pendingInterval = pending.interval ?? "monthly";
-  return pending.plan === plan && pendingInterval === interval;
+  return (
+    pending.plan === plan &&
+    pendingInterval === interval &&
+    (pending.extraAccounts ?? 0) === extraAccounts
+  );
 }
 
 export type ResolveCheckoutResult =
@@ -130,7 +134,8 @@ export type ResolveCheckoutResult =
   | { ok: false; code: "checkout_in_progress"; error: string };
 
 /**
- * Returns an existing open checkout for this user+plan+interval, or creates one.
+ * Returns an existing open checkout for this user+plan+interval+extra
+ * accounts, or creates one.
  * A pending session for a *different* plan/interval is superseded (cleared) so
  * plan buttons always open the product the user actually clicked.
  * Concurrent same-plan requests still serialize to a single Dodo session.
@@ -139,15 +144,18 @@ export async function resolveCheckoutSession(params: {
   userId: string;
   plan: PaidPlanTier;
   interval?: "monthly" | "yearly";
+  /** Agency extra accounts; a different quantity never reuses a session. */
+  extraAccounts?: number;
   trialPeriodDays: number;
   createSession: () => Promise<{ sessionId: string; url: string }>;
 }): Promise<ResolveCheckoutResult> {
   const { userId, plan, trialPeriodDays, createSession } = params;
   const interval = params.interval ?? "monthly";
+  const extraAccounts = params.extraAccounts ?? 0;
 
   const existing = await getPendingCheckout(userId);
   if (existing) {
-    if (pendingMatches(existing, plan, interval)) {
+    if (pendingMatches(existing, plan, interval, extraAccounts)) {
       return { ok: true, url: existing.url, reused: true };
     }
     // User switched plans — drop the stale session instead of forcing its URL.
@@ -159,10 +167,10 @@ export async function resolveCheckoutSession(params: {
     for (let i = 0; i < 20; i++) {
       await sleep(150);
       const raced = await getPendingCheckout(userId);
-      if (raced && pendingMatches(raced, plan, interval)) {
+      if (raced && pendingMatches(raced, plan, interval, extraAccounts)) {
         return { ok: true, url: raced.url, reused: true };
       }
-      if (raced && !pendingMatches(raced, plan, interval)) {
+      if (raced && !pendingMatches(raced, plan, interval, extraAccounts)) {
         // Another request created a different plan; wait for lock to supersede.
         continue;
       }
@@ -173,7 +181,7 @@ export async function resolveCheckoutSession(params: {
 
   if (!lockAcquired) {
     const raced = await getPendingCheckout(userId);
-    if (raced && pendingMatches(raced, plan, interval)) {
+    if (raced && pendingMatches(raced, plan, interval, extraAccounts)) {
       return { ok: true, url: raced.url, reused: true };
     }
     return {
@@ -185,7 +193,7 @@ export async function resolveCheckoutSession(params: {
 
   try {
     const again = await getPendingCheckout(userId);
-    if (again && pendingMatches(again, plan, interval)) {
+    if (again && pendingMatches(again, plan, interval, extraAccounts)) {
       return { ok: true, url: again.url, reused: true };
     }
     if (again) {
@@ -196,6 +204,7 @@ export async function resolveCheckoutSession(params: {
     const pending: PendingCheckout = {
       plan,
       interval,
+      extraAccounts,
       sessionId: session.sessionId,
       url: session.url,
       trialPeriodDays,

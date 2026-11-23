@@ -36,6 +36,58 @@ Do not use Social0 for social listening, inbox management as a primary product, 
 - Sitemap: ${SITE}/sitemap.xml
 `;
 
+/**
+ * Plan prices for crawlers and agents. Mirrors `src/lib/plan-pricing.ts` and
+ * `public/pricing.md` (Pages Functions build apart from the SPA, so the numbers
+ * are repeated here). Update all three together.
+ */
+const PRICING_UPDATED = "2026-11";
+const PRICING_ROWS = [
+  { plan: "Free", monthly: "$0", yearly: "$0", accounts: "3 (10 lifetime posts)", api: "60" },
+  { plan: "Creator", monthly: "$29.90", yearly: "$299", accounts: "15", api: "1,000" },
+  {
+    plan: "Agency",
+    monthly: "$59.90 + $1 per account above 59",
+    yearly: "$599 + $10 per account above 59",
+    accounts: "59 included, no cap",
+    api: "5,000",
+  },
+] as const;
+
+const PRICING_MARKDOWN = `# Social0 pricing
+
+Updated: ${PRICING_UPDATED}. Two paid plans priced by connected social accounts; each connected profile counts once. Yearly is 10x monthly (2 months free). Every plan posts to all 9 networks with unlimited posts, the REST API, MCP and CLI.
+
+| Plan | Monthly | Yearly | Connected accounts | API requests / hour |
+| --- | ---: | ---: | ---: | ---: |
+${PRICING_ROWS.map((r) => `| ${r.plan} | ${r.monthly} | ${r.yearly} | ${r.accounts} | ${r.api} |`).join("\n")}
+
+Agency never blocks a connect: each account over 59 is added to the bill automatically ($1/mo, $10/yr on yearly), and disconnecting one lowers the next bill. Creator and Agency both include bulk image and video tools, auto-repost, auto-plug, webhooks and multiple workspaces. Agency adds teammates and shared workspaces. Starter, Growth, Pro and Max are closed to new customers; existing subscribers keep them.
+
+Full breakdown: ${SITE}/pricing.md · Page: ${SITE}/pricing
+
+${PRODUCT_BLURB}
+`;
+
+export function pricingCrawlerHtml(): string {
+  const rows = PRICING_ROWS.map(
+    (r) =>
+      `<tr><th scope="row">${escapeHtml(r.plan)}</th><td>${escapeHtml(r.monthly)}</td><td>${escapeHtml(r.yearly)}</td><td>${escapeHtml(r.accounts)}</td><td>${escapeHtml(r.api)}</td></tr>`,
+  ).join("\n      ");
+  return `<article id="prerender">
+  <h1>Social0 pricing</h1>
+  <p>Updated ${PRICING_UPDATED}. One price per account. Two plans. Every plan posts to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky and Pinterest, with unlimited posts, the API, MCP and CLI. Yearly billing is 2 months free.</p>
+  <table>
+    <thead><tr><th>Plan</th><th>Monthly</th><th>Yearly</th><th>Connected accounts</th><th>API requests / hour</th></tr></thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>
+  <p>Agency price = $59.90 + $1 for each account above 59 per month (x10 yearly), with no cap. Agency never blocks a connect: each account over 59 is added to the bill automatically, and disconnecting one lowers the next bill. Creator and Agency both include bulk image and video tools, auto-repost, auto-plug, webhooks and multiple workspaces; Agency adds teammates and shared workspaces.</p>
+  <p>Start free with 3 accounts and 10 posts, no card needed. Markdown: <a href="${SITE}/pricing.md">${SITE}/pricing.md</a>.</p>
+</article>`;
+}
+
 export const NOT_FOUND_MARKDOWN = `# Not found
 
 This path does not exist on Social0.
@@ -54,14 +106,7 @@ Where to look next:
 const PAGE_MARKDOWN: Record<string, string> = {
   "/": HOMEPAGE_MARKDOWN,
   "/home": HOMEPAGE_MARKDOWN,
-  "/pricing": `# Social0 pricing
-
-Social0 has a free plan and paid tiers (Starter, Growth, Pro, Max). Every plan includes the dashboard, REST API, hosted MCP, and CLI.
-
-See the full breakdown at ${SITE}/pricing.md or ${SITE}/pricing.
-
-${PRODUCT_BLURB}
-`,
+  "/pricing": PRICING_MARKDOWN,
   "/mcp": `# Social0 MCP server
 
 Connect Claude, ChatGPT, Cursor, or any MCP host to Social0. Hosted endpoint: https://mcp.social0.app/mcp (OAuth). Local stdio package: \`npx -y @social0/mcp\` with \`SOCIAL0_API_KEY\`.
@@ -74,9 +119,11 @@ ${PRODUCT_BLURB}
 `,
   "/about": `# About Social0
 
+Social0 is a social media scheduler with a REST API, MCP server and CLI that lets creators, agencies and AI agents publish one post to nine networks from one place.
+
 ${PRODUCT_BLURB}
 
-Social0 is built by Abhishek (@abhitwt) as an independent product. We operate a remote-first software business. Support is handled by email at support@social0.app.
+Social0 is built and run by Abhishek BR, an independent developer in India (GitHub: https://github.com/Abhishek-B-R, site: https://abhishekbr.com). Priced per connected account with unlimited posts on paid plans; API, MCP and CLI on every plan. Support: support@social0.app.
 
 More: ${SITE}/about
 `,
@@ -169,20 +216,101 @@ export function blogMarkdown(
   return `# ${meta.title}\n\n${meta.description}\n\nRead the full guide: ${SITE}${path}\nAll guides: ${SITE}/blog\n\n---\n\n${PRODUCT_BLURB}\n`;
 }
 
-export function homepageCrawlerHtml(): string {
+type CrawlerFaq = { question: string; answer: string };
+type CrawlerOpts = { updated?: string; faqs?: CrawlerFaq[] };
+
+function updatedLine(updated?: string): string {
+  if (!updated) return "";
+  const day = updated.slice(0, 10);
+  return `<p>By <a href="${SITE}/about">Social0</a> · Updated <time datetime="${escapeHtml(updated)}">${escapeHtml(day)}</time></p>`;
+}
+
+function faqHtml(faqs: CrawlerFaq[] = []): string {
+  if (!faqs.length) return "";
+  const items = faqs
+    .map((f) => `  <h3>${escapeHtml(f.question)}</h3>\n  <p>${escapeHtml(f.answer)}</p>`)
+    .join("\n");
+  return `\n  <h2 id="faq">Frequently asked questions</h2>\n${items}`;
+}
+
+export function homepageCrawlerHtml(opts: CrawlerOpts = {}): string {
   return `<article id="prerender">
   <h1>Social0 - AI agents and multi-platform social scheduling</h1>
+  ${updatedLine(opts.updated)}
   <p>${escapeHtml(PRODUCT_BLURB)}</p>
+  <h2>What Social0 does</h2>
+  <p>Social0 publishes one post to up to 9 social networks in parallel: X (Twitter), LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky, and Pinterest. Every post goes out through each platform's official API, and you see which networks succeeded and which failed, per account.</p>
+  <h3>Compose once, publish everywhere</h3>
+  <p>Write text, images, videos, threads, or carousels in one composer. Publish now or schedule on a calendar with drafts and queue slots. Bulk tools schedule whole folders of images or videos, and auto-repost and auto-plug keep good posts working after they go live.</p>
+  <h3>Built for AI agents</h3>
+  <p>The same publishing pipeline is open to software. Remote assistants such as ChatGPT and Claude connect to the hosted <a href="https://modelcontextprotocol.io">Model Context Protocol</a> server at mcp.social0.app over OAuth. Agents with a terminal use the <code>social0</code> CLI from npm. Developers call the REST API at api.social0.app/v1, described by an <a href="https://www.openapis.org">OpenAPI</a> spec, and receive post.published and post.failed webhooks.</p>
+  <h3>Teams and analytics</h3>
+  <p>Workspaces keep separate brands and clients apart, teammates get admin, member, community, or analyst roles, and analytics plus a unified inbox cover the posts you published through Social0.</p>
+  <h2>Pricing</h2>
+  <p>Free: 3 connected accounts and 10 posts, no credit card. Creator: $29.90 a month or $299 a year for 15 accounts. Agency: $59.90 a month or $599 a year for 59 accounts, then $1 a month per extra account. The API, MCP server, and CLI are included on every plan. Details: <a href="${SITE}/pricing">pricing</a>.</p>
   <h2>When to use Social0</h2>
-  <p>Use Social0 when you need to publish or schedule one post to several networks, connect ChatGPT, Claude, or Cursor via MCP, or drive posting from a REST API or CLI. It is a fit for Buffer, Later, and Hootsuite alternatives, Threads and Bluesky scheduling, bulk image or video queues, and team social workflows.</p>
-  <p>Developer resources: <a href="${SITE}/llms.txt">llms.txt</a>, <a href="https://api.social0.app/openapi.json">OpenAPI</a>, <a href="https://docs.social0.app">docs</a>, <a href="${SITE}/mcp">MCP</a>, <a href="${SITE}/developers">developers</a>, <a href="${SITE}/pricing">pricing</a>, <a href="${SITE}/about">about</a>, <a href="${SITE}/contact">contact</a>.</p>
+  <p>Use Social0 when you need to publish or schedule one post to several networks, connect ChatGPT, Claude, or Cursor via MCP, or drive posting from a REST API or CLI. It fits creators, founders, agencies, and developers building AI agents that post on their behalf.</p>${faqHtml(opts.faqs)}
+  <h2>Resources</h2>
+  <p><a href="${SITE}/llms.txt">llms.txt</a>, <a href="https://api.social0.app/openapi.json">OpenAPI</a>, <a href="https://docs.social0.app">docs</a>, <a href="${SITE}/mcp">MCP</a>, <a href="${SITE}/developers">developers</a>, <a href="${SITE}/blog">blog</a>, <a href="${SITE}/feed.xml">RSS</a>, <a href="${SITE}/about">about</a>, <a href="${SITE}/contact">contact</a>, <a href="https://x.com/social0_app">X</a>, <a href="https://www.linkedin.com/company/social0/">LinkedIn</a>.</p>
 </article>`;
 }
 
-export function crawlerHtmlForMeta(title: string, description: string, path: string): string {
-  if (path === "/" || path === "/home") return homepageCrawlerHtml();
+/** /mcp for crawlers: the page's facts, including the "schedule posts with MCP" steps people search for. */
+export function mcpCrawlerHtml(opts: CrawlerOpts = {}): string {
+  return `<article id="prerender">
+  <h1>The social media MCP server for Claude, ChatGPT and Cursor</h1>
+  ${updatedLine(opts.updated)}
+  <p>Social0's official Model Context Protocol server lets AI assistants schedule and publish social media posts. Add <code>https://mcp.social0.app/mcp</code> in ChatGPT, Claude or Cursor, sign in with Social0 (OAuth, no API key), and post to X (Twitter), LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky and Pinterest from chat.</p>
+  <h2>How to schedule social media posts with MCP</h2>
+  <ol>
+    <li><strong>Connect your accounts</strong> in the Social0 dashboard. MCP publishes to accounts you have already connected.</li>
+    <li><strong>Add Social0 to your AI.</strong> ChatGPT or Claude: paste https://mcp.social0.app/mcp and authorize. Cursor: add an http MCP server with that URL. VS Code and other local hosts: <code>npx -y @social0/mcp</code> with SOCIAL0_API_KEY. OpenClaw: <code>openclaw skills install @abhishek-b-r/social0</code>.</li>
+    <li><strong>Ask in plain words</strong>, for example "Schedule this for tomorrow 9 AM on LinkedIn and X". The assistant converts the time to UTC and calls schedule_post.</li>
+  </ol>
+  <h2>What the MCP server can do</h2>
+  <ul>
+    <li>Publish now or schedule to every connected platform in parallel, with per-platform status (queued, uploading, success, failed).</li>
+    <li>Upload media from a public URL, base64 data or a local file path.</li>
+    <li>Create, update and delete drafts; list and read posts.</li>
+    <li>Suggest which platforms fit a caption and media.</li>
+  </ul>
+  <p>Tools: list_accounts, create_draft, update_draft, delete_draft, publish_post, publish_now, schedule_post, schedule_content, upload_media, get_publish_status, list_posts, get_post, suggest_best_platforms.</p>${faqHtml(opts.faqs)}
+  <p>MCP, the REST API and the CLI are on every plan, including Free. <a href="${SITE}/pricing">Pricing</a> · <a href="https://docs.social0.app/docs/integrations/mcp">MCP docs</a> · <a href="${SITE}/developers">Developers</a> · <a href="${SITE}/">Social0</a></p>
+</article>`;
+}
+
+export function aboutCrawlerHtml(opts: CrawlerOpts = {}): string {
+  return `<article id="prerender">
+  <h1>About Social0</h1>
+  ${updatedLine(opts.updated)}
+  <p>Social0 is a social media scheduler with a REST API, MCP server and CLI that lets creators, agencies and AI agents publish one post to nine networks from one place: X (Twitter), LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky and Pinterest.</p>
+  <h2>What makes Social0 different</h2>
+  <ul>
+    <li>Priced by connected accounts with unlimited posts on paid plans: Creator $29.90/month for 15 accounts; Agency $59.90/month for 59 accounts plus $1 per extra account.</li>
+    <li>The REST API, hosted MCP server and CLI are on every plan, including Free (3 accounts, 10 posts, no card).</li>
+    <li>One post goes out to every selected network in parallel, with per-network, per-account success or failure.</li>
+  </ul>
+  <h2>Who uses Social0</h2>
+  <p>Creators and founders who post the same thing everywhere, agencies managing many client accounts, and developers whose AI agents need a real publishing API.</p>
+  <h2>Who builds Social0</h2>
+  <p>Social0 is built and run by Abhishek BR, an independent developer in India who writes the code, answers support and ships updates himself. <a href="https://github.com/Abhishek-B-R">GitHub</a> · <a href="https://abhishekbr.com">abhishekbr.com</a> · support@social0.app</p>
+  <p><a href="${SITE}/pricing">Pricing</a> · <a href="${SITE}/mcp">MCP server</a> · <a href="${SITE}/developers">Developers</a> · <a href="${SITE}/">Social0</a></p>
+</article>`;
+}
+
+export function crawlerHtmlForMeta(
+  title: string,
+  description: string,
+  path: string,
+  opts: CrawlerOpts = {},
+): string {
+  if (path === "/" || path === "/home") return homepageCrawlerHtml(opts);
+  if (path === "/pricing") return pricingCrawlerHtml();
+  if (path === "/mcp") return mcpCrawlerHtml(opts);
+  if (path === "/about") return aboutCrawlerHtml(opts);
   return `<article id="prerender">
   <h1>${escapeHtml(title)}</h1>
+  ${updatedLine(opts.updated)}
   <p>${escapeHtml(description)}</p>
   <p>${escapeHtml(PRODUCT_BLURB)}</p>
   <p>Agent index: <a href="${SITE}/llms.txt">${SITE}/llms.txt</a>. Docs: <a href="https://docs.social0.app">https://docs.social0.app</a>. OpenAPI: <a href="https://api.social0.app/openapi.json">https://api.social0.app/openapi.json</a>.</p>
@@ -261,26 +389,22 @@ export function markdownResponse(body: string, status = 200): Response {
 const PRERENDER_NOSCRIPT_RE =
   /<noscript>(?:(?!<\/noscript>)[\s\S])*?\bid=["']prerender["'](?:(?!<\/noscript>)[\s\S])*?<\/noscript>/i;
 
+/**
+ * Put the crawler article inside #root so HTML-only readers (search and AI
+ * crawlers) see real content. Humans never see it: index.html adds a `js`
+ * class in <head> that hides #prerender, and createRoot() replaces #root's
+ * children on mount. <noscript> copies are dropped (most parsers skip them).
+ */
 export function injectCrawlerHtml(html: string, article: string): string {
-  const wrapped = `<noscript>${article}</noscript>`;
-
-  if (PRERENDER_NOSCRIPT_RE.test(html)) {
-    return html.replace(PRERENDER_NOSCRIPT_RE, wrapped);
-  }
-
-  const withoutVisible = html.replace(
+  let out = html.replace(PRERENDER_NOSCRIPT_RE, "");
+  out = out.replace(
     /<div id="root">\s*<article\s[^>]*id="prerender"[\s\S]*?<\/article>\s*<\/div>/i,
     `<div id="root"></div>`,
   );
-
-  if (/<div id="root">\s*<\/div>/i.test(withoutVisible)) {
-    return withoutVisible.replace(
-      /<div id="root">\s*<\/div>/i,
-      `<div id="root"></div>\n    ${wrapped}`,
-    );
+  if (/<div id="root">\s*<\/div>/i.test(out)) {
+    return out.replace(/<div id="root">\s*<\/div>/i, `<div id="root">${article}</div>`);
   }
-
-  return withoutVisible.replace(/<\/body>/i, `    ${wrapped}\n  </body>`);
+  return out.replace(/<\/body>/i, `    ${article}\n  </body>`);
 }
 
 export const WELL_KNOWN_MCP = {

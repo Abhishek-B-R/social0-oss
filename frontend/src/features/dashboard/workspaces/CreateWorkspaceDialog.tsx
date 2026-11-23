@@ -20,6 +20,7 @@ import {
   type WorkspaceIconId,
 } from "@/lib/workspace-icon-options";
 import { cn } from "@/lib/utils";
+import { Toggle } from "@/components/app";
 
 export function CreateWorkspaceDialog({
   open,
@@ -149,12 +150,11 @@ export function CreateWorkspaceDialog({
             <p className="rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm text-text-muted">
               Creating workspaces needs a paid plan.{" "}
               <a
-                href="/dashboard/billing"
+                href="/dashboard/settings/billing"
                 className="font-medium text-accent hover:opacity-80"
               >
-                Upgrade
-              </a>{" "}
-              to unlock this.
+                See plans
+              </a>
             </p>
           ) : null}
 
@@ -164,7 +164,7 @@ export function CreateWorkspaceDialog({
                 Shared with a team
               </p>
               <p className="mt-0.5 text-sm text-text-muted">
-                Invite people later from team settings.
+                Invite people from Settings, Members.
               </p>
               {teamMode ? (
                 <p className="mt-1.5 text-xs text-text-muted">
@@ -172,13 +172,11 @@ export function CreateWorkspaceDialog({
                 </p>
               ) : null}
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={teamMode}
+            <Toggle
+              checked={teamMode}
               aria-label="Shared with a team"
               disabled={submitting}
-              onClick={() => {
+              onCheckedChange={() => {
                 const next = !teamMode;
                 setTeamMode(next);
                 if (next) {
@@ -192,19 +190,7 @@ export function CreateWorkspaceDialog({
                   setWorkspaceName("");
                 }
               }}
-              className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/20 disabled:opacity-60 ${
-                teamMode
-                  ? "border-accent bg-accent"
-                  : "border-gray-400 bg-bg-muted dark:border-gray-600"
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 rounded-full border border-gray-400 bg-gray-600 shadow ring-0 transition-transform dark:border-gray-600 dark:bg-gray-300 ${
-                  teamMode ? "translate-x-5" : "translate-x-0.5"
-                }`}
-                style={{ marginTop: "0.5px" }}
-              />
-            </button>
+            />
           </div>
 
           {teamMode ? (
@@ -267,7 +253,7 @@ export function CreateWorkspaceDialog({
                     <p className="text-xs text-text-muted">
                       {ownedTeamCount >= maxOwnedTeams
                         ? `You already have ${maxOwnedTeams} teams. Pick an existing one.`
-                        : "Creating teams requires Pro plan."}
+                        : "Teams come with Pro and Max."}
                     </p>
                   ) : null}
                 </div>

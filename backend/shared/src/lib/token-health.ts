@@ -15,6 +15,13 @@ import crypto from "crypto";
 const STRICT_RATE_LIMIT_PLATFORMS = new Set(["twitter_x", "instagram"]);
 const BATCH_SIZE = 5;
 const DELAY_MS = 200;
+/** Per-request ceiling for a verify call, so one hung host cannot stall a sweep. */
+const VERIFY_TIMEOUT_MS = 10_000;
+
+/** fetch for verify calls: bounded by VERIFY_TIMEOUT_MS. */
+function verifyFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(url, { ...init, signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS) });
+}
 
 /** BYOK / static credentials: never run health check, never mark expired. */
 export const BYOK_PLATFORMS = new Set(["bluesky"]);
@@ -66,14 +73,14 @@ async function verifyInstagramToken(
   // on Page tokens falsely marks every FB-linked IG account as expired.
   if (isInstagramFacebookPageAccount(account)) {
     if (!igUserId) return 401;
-    const r = await fetch(
+    const r = await verifyFetch(
       `https://graph.facebook.com/v21.0/${encodeURIComponent(igUserId)}?fields=id`,
       { headers },
     );
     return r.status;
   }
 
-  const direct = await fetch("https://graph.instagram.com/me?fields=id", {
+  const direct = await verifyFetch("https://graph.instagram.com/me?fields=id", {
     headers,
   });
   if (direct.status === 200) return 200;
@@ -84,7 +91,7 @@ async function verifyInstagramToken(
     igUserId &&
     (direct.status === 401 || direct.status === 403 || direct.status === 400)
   ) {
-    const viaFb = await fetch(
+    const viaFb = await verifyFetch(
       `https://graph.facebook.com/v21.0/${encodeURIComponent(igUserId)}?fields=id`,
       { headers },
     );
@@ -92,6 +99,28 @@ async function verifyInstagramToken(
   }
 
   return direct.status;
+}
+
+/**
+ * Google's tokeninfo answers 400 `invalid_token` for a dead token, so map the
+ * response onto the 200 / 401 / 403 contract here. Network failures and 5xx
+ * stay what they are (throw / other status) so the sweep leaves the account
+ * alone instead of reading an outage as an expired token.
+ */
+async function verifyYouTubeToken(accessToken: string): Promise<number> {
+  const trimmed = accessToken.trim();
+  if (!trimmed) return 401;
+  const r = await verifyFetch(
+    `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(trimmed)}`,
+  );
+  if (r.status >= 500 || r.status === 429) return r.status;
+  const body = (await r.json().catch(() => ({}))) as {
+    scope?: string;
+    error?: string;
+  };
+  if (!r.ok || body.error) return 401;
+  const { tokenInfoHasYouTubeUploadScope } = await import("./youtube-token.js");
+  return tokenInfoHasYouTubeUploadScope(body.scope) ? 200 : 403;
 }
 
 /** Cheapest validation request per platform. Returns response status (200, 401, 403, or other). */
@@ -103,14 +132,14 @@ async function verifyToken(
 ): Promise<number> {
   switch (platform) {
     case "linkedin": {
-      const r = await fetch("https://api.linkedin.com/v2/userinfo", {
+      const r = await verifyFetch("https://api.linkedin.com/v2/userinfo", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       return r.status;
     }
     case "twitter_x": {
       if (!accessSecret) {
-        const r = await fetch(
+        const r = await verifyFetch(
           "https://api.twitter.com/1.1/account/verify_credentials.json?skip_status=true",
           { headers: { Authorization: `Bearer ${accessToken}` } },
         );
@@ -134,14 +163,14 @@ async function verifyToken(
           { key: accessToken, secret: accessSecret },
         ),
       );
-      const r = await fetch(url, {
+      const r = await verifyFetch(url, {
         headers: authHeader as unknown as Record<string, string>,
       });
       return r.status;
     }
     case "instagram": {
       if (!account) {
-        const r = await fetch("https://graph.instagram.com/me?fields=id", {
+        const r = await verifyFetch("https://graph.instagram.com/me?fields=id", {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
         return r.status;
@@ -149,30 +178,28 @@ async function verifyToken(
       return verifyInstagramToken(accessToken, account);
     }
     case "facebook": {
-      const r = await fetch("https://graph.facebook.com/me?fields=id", {
+      const r = await verifyFetch("https://graph.facebook.com/me?fields=id", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       return r.status;
     }
     case "threads": {
-      const r = await fetch("https://graph.threads.net/me?fields=id", {
+      const r = await verifyFetch("https://graph.threads.net/me?fields=id", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       return r.status;
     }
-    case "youtube": {
-      const { isYouTubeAccessTokenUsable } = await import("./youtube-token.js");
-      return (await isYouTubeAccessTokenUsable(accessToken)) ? 200 : 401;
-    }
+    case "youtube":
+      return verifyYouTubeToken(accessToken);
     case "tiktok": {
-      const r = await fetch(
+      const r = await verifyFetch(
         "https://open.tiktokapis.com/v2/user/info/?fields=open_id",
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
       return r.status;
     }
     case "bluesky": {
-      const r = await fetch(
+      const r = await verifyFetch(
         "https://bsky.social/xrpc/com.atproto.server.getSession",
         { headers: { Authorization: `Bearer ${accessToken}` } },
       );
@@ -180,7 +207,7 @@ async function verifyToken(
     }
     case "pinterest": {
       // Use same base as rest of app (sandbox); sandbox tokens are invalid on production API
-      const r = await fetch("https://api.pinterest.com/v5/user_account", {
+      const r = await verifyFetch("https://api.pinterest.com/v5/user_account", {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       return r.status;
@@ -287,19 +314,44 @@ export async function runTokenHealthCheck(
           const { getValidToken } = await import("./token-refresh.js");
           await getValidToken(account.id, account.platform);
           toMarkActive.push(account.id);
-        } catch {
-          toMarkExpired.push(account.id);
+          continue;
+        } catch (err) {
+          // A failed refresh (provider 5xx/429, network reset, timeout, missing
+          // client credentials) says nothing about the token we already hold,
+          // which may have days left. Verify that token below and only mark the
+          // account expired if the provider rejects it and a forced refresh
+          // also fails.
+          console.warn(
+            "[token-health] proactive refresh failed; verifying current token",
+            {
+              accountId: account.id,
+              platform: account.platform,
+              error: err instanceof Error ? err.message : String(err),
+            },
+          );
         }
-        continue;
       }
     }
 
-    const status = await verifyToken(
-      account.platform,
-      accessToken,
-      accessSecret,
-      account,
-    );
+    let status: number;
+    try {
+      status = await verifyToken(
+        account.platform,
+        accessToken,
+        accessSecret,
+        account,
+      );
+    } catch (err) {
+      // Network failure or timeout says nothing about the token: treat it like
+      // any other non-auth status (leave the account as it is) rather than
+      // letting it abort the batch and drop the results already collected.
+      console.warn("[token-health] verify request failed", {
+        accountId: account.id,
+        platform: account.platform,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      continue;
+    }
 
     if (status === 200) {
       toMarkActive.push(account.id);

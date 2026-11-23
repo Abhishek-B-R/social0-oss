@@ -23,6 +23,9 @@ export function bootstrapWorkerRuntime(env: Env): void {
   process.env.SOCIAL0_PUBLISH_WORKER = "1";
   process.env.DATABASE_URL = env.HYPERDRIVE.connectionString;
   process.env.ENCRYPTION_KEY = env.ENCRYPTION_KEY;
+  if (env.ENCRYPTION_KEYS_PREVIOUS) {
+    process.env.ENCRYPTION_KEYS_PREVIOUS = env.ENCRYPTION_KEYS_PREVIOUS;
+  }
   process.env.NEXT_PUBLIC_APP_URL = env.APP_URL;
   process.env.APP_URL = env.APP_URL;
   process.env.BETTER_AUTH_URL = env.APP_URL;

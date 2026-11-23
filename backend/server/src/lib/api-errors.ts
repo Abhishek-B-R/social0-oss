@@ -8,6 +8,7 @@ export type ApiErrorCode =
   | "validation_error"
   | "rate_limit_exceeded"
   | "idempotency_conflict"
+  | "idempotency_key_reused"
   | "limit_exceeded"
   | "not_implemented"
   | "internal_error";

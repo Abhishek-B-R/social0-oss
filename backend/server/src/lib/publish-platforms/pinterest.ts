@@ -6,7 +6,12 @@ import { publishLog } from "@/lib/publish-log";
 
 import { truncate } from "@/lib/publish-validation";
 import type { Post, Pub, PublishPlatformResult } from "./types";
-import { fetchMediaBytes, getMediaWithUrlsAndThumbnail } from "./media";
+import {
+  bufferedMediaTooLargeError,
+  fetchMediaBytes,
+  getMediaByteSize,
+  getMediaWithUrlsAndThumbnail,
+} from "./media";
 
 const PINTEREST_API_BASE = "https://api.pinterest.com/v5";
 
@@ -18,7 +23,17 @@ async function uploadPinterestVideo(
   videoUrl: string,
   videoMimeType: string,
   accessToken: string,
+  recordedSizeBytes: number | null,
 ): Promise<string> {
+  // The S3 form upload needs the whole file in one request body. On the
+  // publish worker that is buffered in a 128 MB isolate, so refuse a file
+  // that cannot fit before registering media or downloading anything.
+  const tooLarge = bufferedMediaTooLargeError(
+    await getMediaByteSize(videoUrl, recordedSizeBytes),
+    "Pinterest",
+  );
+  if (tooLarge) throw new Error(tooLarge);
+
   const registerRes = await fetch(`${PINTEREST_API_BASE}/media`, {
     method: "POST",
     headers: {
@@ -155,6 +170,7 @@ export async function publishToPinterest(
         videoUrl,
         videoEntry.mimeType ?? "video/mp4",
         accessToken,
+        videoEntry.sizeBytes,
       );
       media_source = {
         source_type: "video_id",

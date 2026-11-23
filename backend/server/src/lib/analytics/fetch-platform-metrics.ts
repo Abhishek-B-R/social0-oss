@@ -1,13 +1,24 @@
 /**
  * Live per-publication metrics from each platform.
- * Failures degrade to status + error — never throw past the dispatcher.
+ * Failures degrade to status + error, except a platform throttle: that throws
+ * so `withPlatformReadCache` sets a cooldown and serves the saved copy.
  */
 
 import { TwitterApi } from "twitter-api-v2";
 import { env } from "../env.js";
 import { jsonGet } from "../http-json.js";
-import { extractHttpStatus } from "../twitter-errors.js";
-import { throwIfPlatformRateLimited } from "../platform-rate-limit.js";
+import {
+  graphApiError,
+  isGraphObjectGone,
+  isGraphPermissionError,
+  throwIfGraphRateLimited,
+  type GraphApiError,
+} from "../graph-api-errors.js";
+import {
+  rethrowIfRateLimited,
+  throwIfHttpRateLimited,
+  throwIfPlatformRateLimited,
+} from "../platform-rate-limit.js";
 import { calendarDayKey } from "../date-window.js";
 import {
   expiredTokenMessage,
@@ -26,8 +37,17 @@ import {
   isTikTokVideoId,
   parseTikTokJson,
   pickTikTokVideoByPublishTime,
+  TIKTOK_DEAD_PUBLISH_ID_CODES,
+  TIKTOK_PUBLISH_MATCH_TOLERANCE_MS,
   tiktokPublishIdFromStored,
+  type TikTokPublishMatchOptions,
 } from "../tiktok-post-id.js";
+
+/** What the TikTok publish-time backfill must know about the account's other publications. */
+export type TikTokBackfillContext = Pick<
+  TikTokPublishMatchOptions,
+  "claimedVideoIds" | "rivalPublishedAt"
+>;
 
 export type PlatformFetchInput = {
   platform: string;
@@ -45,6 +65,12 @@ export type PlatformFetchInput = {
   accountHandle?: string | null;
   /** When the publication went live; lets TikTok backfill a lost publish id. */
   publishedAt?: Date | null;
+  /**
+   * Loads the account's claimed video ids and unresolved publications. Only
+   * called when a dead TikTok publish id forces a backfill; without it the
+   * backfill is skipped, since a match could not be checked against them.
+   */
+  loadTikTokBackfillContext?: () => Promise<TikTokBackfillContext>;
 };
 
 export type PlatformFetchResult = {
@@ -97,6 +123,15 @@ function scopeError(
 
 function errResult(message: string): PlatformFetchResult {
   return { metrics: {}, status: "error", error: message };
+}
+
+/** A post deleted on the platform: an error, never a reconnect prompt. */
+const GONE_POST_MESSAGE = "Post is no longer available on the platform.";
+
+/** Final "no metrics" error for a Graph post: gone posts get plain copy. */
+function graphNoMetricsError(err: GraphApiError | null, fallback: string): PlatformFetchResult {
+  if (err && isGraphObjectGone(err)) return errResult(GONE_POST_MESSAGE);
+  return errResult(err?.message ?? fallback);
 }
 
 /**
@@ -183,7 +218,7 @@ async function fetchTwitterBatch(
         );
       }
     } catch (e) {
-      if (extractHttpStatus(e) === 429) throw e;
+      rethrowIfRateLimited(e);
       if (isPlatformAuthError(e)) {
         fillAll(
           out,
@@ -407,7 +442,10 @@ async function fetchFacebook(
   const base = `https://graph.facebook.com/v21.0/${id}`;
   const fieldsUrl = `${base}?fields=shares,likes.summary(true),comments.summary(true)&access_token=${encodeURIComponent(input.accessToken)}`;
   const fields = await jsonGet(fieldsUrl);
-  throwIfPlatformRateLimited("facebook", fields, { graph: true });
+  const fieldsErr = fields.ok
+    ? null
+    : graphApiError(fields.data, "No Facebook metrics available.");
+  if (fieldsErr) throwIfGraphRateLimited("facebook", fieldsErr, fields.status);
   const metrics: MetricMap = {};
   if (fields.ok) {
     const d = fields.data as {
@@ -437,13 +475,15 @@ async function fetchFacebook(
       }
     }
   } else {
-    const msg =
-      (insights.data as { error?: { message?: string; code?: number } })?.error
-        ?.message ?? "";
-    // Invalid/deprecated metric names are not a missing-scope problem.
-    if (/valid insights metric/i.test(msg)) {
+    const insightsErr = graphApiError(insights.data, "");
+    throwIfGraphRateLimited("facebook", insightsErr, insights.status);
+    const msg = insightsErr.message;
+    // Invalid/deprecated metric names are not a missing-scope problem, and
+    // neither is a post deleted on Facebook (Graph code 100 / subcode 33 says
+    // "...cannot be loaded due to missing permissions..." for those too).
+    if (/valid insights metric/i.test(msg) || isGraphObjectGone(insightsErr)) {
       // keep likes/comments/shares from the fields call
-    } else if (/insight|permission|(#10)|(#200)|read_insights/i.test(msg)) {
+    } else if (isGraphPermissionError(insightsErr, /read_insights/i)) {
       // Still return engagement if we got likes/comments
       if (Object.keys(metrics).length > 0 && hasDefinedMetrics(metrics)) {
         return {
@@ -458,10 +498,7 @@ async function fetchFacebook(
   }
 
   if (!hasDefinedMetrics(metrics)) {
-    return errResult(
-      (fields.data as { error?: { message?: string } })?.error?.message ??
-        "No Facebook metrics available.",
-    );
+    return graphNoMetricsError(fieldsErr, "No Facebook metrics available.");
   }
   return { status: "ok", metrics };
 }
@@ -473,7 +510,10 @@ async function fetchInstagram(
   const base = `https://graph.instagram.com/v21.0/${id}`;
   const mediaUrl = `${base}?fields=like_count,comments_count,media_type,timestamp&access_token=${encodeURIComponent(input.accessToken)}`;
   const media = await jsonGet(mediaUrl);
-  throwIfPlatformRateLimited("instagram", media, { graph: true });
+  const mediaErr = media.ok
+    ? null
+    : graphApiError(media.data, "No Instagram metrics available.");
+  if (mediaErr) throwIfGraphRateLimited("instagram", mediaErr, media.status);
   const metrics: MetricMap = {};
   if (media.ok) {
     const d = media.data as {
@@ -501,9 +541,13 @@ async function fetchInstagram(
       }
     }
   } else {
-    const msg =
-      (insights.data as { error?: { message?: string } })?.error?.message ?? "";
-    if (/insight|permission|manage_insights/i.test(msg)) {
+    const insightsErr = graphApiError(insights.data, "");
+    throwIfGraphRateLimited("instagram", insightsErr, insights.status);
+    const msg = insightsErr.message;
+    if (
+      !isGraphObjectGone(insightsErr) &&
+      isGraphPermissionError(insightsErr, /manage_insights/i)
+    ) {
       if (Object.keys(metrics).length > 0 && hasDefinedMetrics(metrics)) {
         return {
           status: "ok",
@@ -521,10 +565,7 @@ async function fetchInstagram(
   }
 
   if (!hasDefinedMetrics(metrics)) {
-    return errResult(
-      (media.data as { error?: { message?: string } })?.error?.message ??
-        "No Instagram metrics available.",
-    );
+    return graphNoMetricsError(mediaErr, "No Instagram metrics available.");
   }
   return { status: "ok", metrics };
 }
@@ -534,17 +575,15 @@ async function fetchThreads(
 ): Promise<PlatformFetchResult> {
   const id = encodeURIComponent(input.platformPostId);
   const url = `https://graph.threads.net/v1.0/${id}/insights?metric=views,likes,replies,reposts,quotes&access_token=${encodeURIComponent(input.accessToken)}`;
-  const threadsRes = await jsonGet(url);
-  throwIfPlatformRateLimited("threads", threadsRes, { graph: true });
-  const { ok, data } = threadsRes;
+  const { ok, data, status } = await jsonGet(url);
   if (!ok) {
-    const msg =
-      (data as { error?: { message?: string } })?.error?.message ??
-      "Threads insights failed";
-    if (/insight|permission|threads_manage_insights/i.test(msg)) {
-      return scopeError(["threads_manage_insights"], msg);
+    const gErr = graphApiError(data, "Threads insights failed");
+    throwIfGraphRateLimited("threads", gErr, status);
+    if (isGraphObjectGone(gErr)) return errResult(GONE_POST_MESSAGE);
+    if (isGraphPermissionError(gErr, /manage_insights/i)) {
+      return scopeError(["threads_manage_insights"], gErr.message);
     }
-    return errResult(msg);
+    return errResult(gErr.message);
   }
   const metrics: MetricMap = {};
   const rows = (data as { data?: Array<{ name?: string; values?: Array<{ value?: number }> }> })
@@ -575,13 +614,18 @@ const TIKTOK_VIDEO_LIST_PAGE_SIZE = 20;
  * `invalid_publish_id` the stored `ttpub:` id can never resolve, and every
  * analytics read failed the same way forever. The `video.list` scope the
  * metrics call already needs lists the account's videos with `create_time`,
- * so match the closest one to when we published. The caller persists the
- * match, after which reads go straight to `video.query`.
+ * so match the one video near when we published. Every page that can hold a
+ * candidate is read before picking, because the match must be unique (see
+ * pickTikTokVideoByPublishTime). The caller persists the match, after which
+ * reads go straight to `video.query`.
  */
 async function backfillTikTokVideoId(
   accessToken: string,
   publishedAt: Date,
+  context: TikTokBackfillContext,
 ): Promise<{ videoId: string } | { error: string } | null> {
+  const windowStartMs = publishedAt.getTime() - TIKTOK_PUBLISH_MATCH_TOLERANCE_MS;
+  const videos: Array<{ id?: unknown; create_time?: unknown }> = [];
   let cursor: number | undefined;
   for (let page = 0; page < TIKTOK_VIDEO_LIST_PAGES; page++) {
     const res = await fetch(
@@ -620,50 +664,72 @@ async function backfillTikTokVideoId(
           `TikTok video.list failed (${data.error?.code ?? res.status})`,
       };
     }
-    const videos = data.data?.videos ?? [];
-    const match = pickTikTokVideoByPublishTime(videos, publishedAt);
-    if (match) return { videoId: match };
-    // Pages are newest-first: once we are past the publish time, stop.
-    const oldest = videos.reduce<number | null>((acc, v) => {
+    const pageVideos = data.data?.videos ?? [];
+    videos.push(...pageVideos);
+    // Pages are newest-first: once a page reaches past the start of the
+    // match window, later pages cannot hold a candidate.
+    const oldest = pageVideos.reduce<number | null>((acc, v) => {
       const t = typeof v.create_time === "number" ? v.create_time : Number(v.create_time);
       if (!Number.isFinite(t)) return acc;
       return acc == null ? t : Math.min(acc, t);
     }, null);
-    if (oldest != null && oldest * 1000 < publishedAt.getTime()) break;
+    if (oldest != null && oldest * 1000 < windowStartMs) break;
     if (data.data?.has_more !== true) break;
     const next = Number(data.data?.cursor);
     if (!Number.isFinite(next)) break;
     cursor = next;
   }
-  return null;
+  const match = pickTikTokVideoByPublishTime(videos, publishedAt, context);
+  return match ? { videoId: match } : null;
 }
 
 async function resolveTikTokVideoId(
-  storedId: string,
-  accessToken: string,
-  publishedAt?: Date | null,
+  input: PlatformFetchInput,
 ): Promise<{ videoId: string } | { pending: true } | { error: string }> {
+  const storedId = input.platformPostId;
   if (isTikTokVideoId(storedId)) return { videoId: storedId };
   const direct = await resolveTikTokVideoIdFromPublishStatus(
     storedId,
-    accessToken,
+    input.accessToken,
   );
-  if ("videoId" in direct) return direct;
-  // Publish-status could not answer (expired publish id, still pending).
-  // Fall back to matching the account's videos by publish time.
-  if (publishedAt && Number.isFinite(publishedAt.getTime())) {
-    const backfilled = await backfillTikTokVideoId(accessToken, publishedAt);
+  if (!("deadPublishId" in direct)) return direct;
+  // The publish id is gone for good, so publish-status can never answer.
+  // Fall back to matching the account's videos by publish time. A pending,
+  // private, or failed publish never gets here: its video may not be listed
+  // yet, and the nearest listed video would belong to another post.
+  const publishedAt = input.publishedAt;
+  if (
+    publishedAt &&
+    Number.isFinite(publishedAt.getTime()) &&
+    input.loadTikTokBackfillContext
+  ) {
+    const context = await input.loadTikTokBackfillContext();
+    const backfilled = await backfillTikTokVideoId(
+      input.accessToken,
+      publishedAt,
+      context,
+    );
     if (backfilled && "videoId" in backfilled) return backfilled;
   }
-  return direct;
+  return { error: direct.error };
 }
 
 async function resolveTikTokVideoIdFromPublishStatus(
   storedId: string,
   accessToken: string,
-): Promise<{ videoId: string } | { pending: true } | { error: string }> {
+): Promise<
+  | { videoId: string }
+  | { pending: true }
+  | { error: string }
+  | { error: string; deadPublishId: true }
+> {
   const publishId = tiktokPublishIdFromStored(storedId);
-  if (!publishId) return { pending: true };
+  if (!publishId) {
+    return {
+      error: "No TikTok publish id is stored for this post.",
+      deadPublishId: true,
+    };
+  }
   const res = await fetch(
     "https://open.tiktokapis.com/v2/post/publish/status/fetch/",
     {
@@ -688,11 +754,12 @@ async function resolveTikTokVideoIdFromPublishStatus(
   }
   if (!isTikTokApiOk(data, res.ok)) {
     const code = data.error?.code ? ` (${data.error.code})` : "";
-    return {
-      error:
-        data.error?.message ??
-        `TikTok publish status failed${code || ` (${res.status})`}`,
-    };
+    const error =
+      data.error?.message ??
+      `TikTok publish status failed${code || ` (${res.status})`}`;
+    return TIKTOK_DEAD_PUBLISH_ID_CODES.has(data.error?.code ?? "")
+      ? { error, deadPublishId: true }
+      : { error };
   }
   const videoId = firstTikTokPublicVideoId(data.data?.publicaly_available_post_id);
   if (!videoId) return { pending: true };
@@ -702,11 +769,7 @@ async function resolveTikTokVideoIdFromPublishStatus(
 async function fetchTikTok(
   input: PlatformFetchInput,
 ): Promise<PlatformFetchResult> {
-  const resolved = await resolveTikTokVideoId(
-    input.platformPostId,
-    input.accessToken,
-    input.publishedAt,
-  );
+  const resolved = await resolveTikTokVideoId(input);
   if ("error" in resolved) return errResult(resolved.error);
   if ("pending" in resolved) {
     return {
@@ -731,7 +794,6 @@ async function fetchTikTok(
     }),
     signal: AbortSignal.timeout(PLATFORM_FETCH_TIMEOUT_MS),
   });
-  throwIfPlatformRateLimited("tiktok", res);
   const text = await res.text();
   let data: {
     error?: { code?: string; message?: string };
@@ -744,6 +806,7 @@ async function fetchTikTok(
   }
   if (!isTikTokApiOk(data, res.ok)) {
     const msg = data.error?.message ?? "TikTok video.query failed";
+    throwIfHttpRateLimited("tiktok", res.status, msg);
     if (/scope|permission|video\.list/i.test(msg) || data.error?.code === "scope_not_authorized") {
       return scopeError(["video.list"], msg);
     }
@@ -786,16 +849,15 @@ async function fetchPinterest(
     "metric_types",
     "IMPRESSION,PIN_CLICK,OUTBOUND_CLICK,SAVE,TOTAL_COMMENTS,TOTAL_REACTIONS",
   );
-  const pinRes = await jsonGet(url.toString(), {
+  const { ok, data, status } = await jsonGet(url.toString(), {
     Authorization: `Bearer ${input.accessToken}`,
   });
-  throwIfPlatformRateLimited("pinterest", pinRes);
-  const { ok, data, status } = pinRes;
   if (!ok) {
     const msg =
       (data as { message?: string; error?: { message?: string } })?.message ??
       (data as { error?: { message?: string } })?.error?.message ??
       `Pinterest analytics failed (${status})`;
+    throwIfHttpRateLimited("pinterest", status, msg);
     return errResult(msg);
   }
   type PinterestAnalyticsBlock = {
@@ -828,17 +890,16 @@ async function fetchLinkedIn(
     : `urn:li:share:${input.platformPostId}`;
   const encoded = encodeURIComponent(urn);
   const url = `https://api.linkedin.com/rest/socialActions/${encoded}`;
-  const liRes = await jsonGet(url, {
+  const { ok, data, status } = await jsonGet(url, {
     Authorization: `Bearer ${input.accessToken}`,
     "LinkedIn-Version": "202411",
     "X-Restli-Protocol-Version": "2.0.0",
   });
-  throwIfPlatformRateLimited("linkedin", liRes);
-  const { ok, data, status } = liRes;
   if (!ok) {
     const msg =
       (data as { message?: string })?.message ??
       `LinkedIn socialActions failed (${status})`;
+    throwIfHttpRateLimited("linkedin", status, msg);
     if (/403|permission|SCOPE|unauthorized/i.test(msg) || status === 403) {
       return {
         metrics: {},

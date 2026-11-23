@@ -4,6 +4,7 @@ import { user, userSettings } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import {
   claimPostMetadataKey,
+  FAILURE_EMAIL_SENT_KEY,
   releasePostMetadataKey,
 } from "@/lib/post-metadata-claim";
 import { env } from "@/lib/env";
@@ -16,9 +17,10 @@ export type PostFailureEmailItem = {
   error?: string | null;
 };
 
-const FAILURE_EMAIL_SENT_KEY = "_failureEmailSentAt";
-
-/** One failure email per post (queue retries / parallel finalize safe). */
+/**
+ * One failure email per publish attempt (queue retries / parallel finalize
+ * safe). A Retry re-arms it: see `rearmPublishOutcomeClaims`.
+ */
 function claimPostFailureEmail(postId: string): Promise<boolean> {
   return claimPostMetadataKey(postId, FAILURE_EMAIL_SENT_KEY);
 }

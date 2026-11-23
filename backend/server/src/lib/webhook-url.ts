@@ -9,9 +9,12 @@ import { isSafeResolvedOutboundUrl } from "./ssrf-resolve.js";
  * A webhook URL is stored once and then fetched by the server on every
  * publish, so it is exactly the input worth resolving before accepting.
  *
- * Delivery still runs the string guard on every redirect hop (`safeFetch`).
- * It cannot use this one: the Cloudflare publish worker shares that code and
- * `node:dns` is unavailable there even under nodejs_compat.
+ * Delivery re-checks on every attempt and redirect hop. On the API droplet
+ * the socket's DNS lookup rejects non-public addresses at connect time
+ * (`public-address-fetch.ts`), which also closes the DNS-rebinding window
+ * between this check and a later delivery. The Cloudflare publish worker has
+ * no `node:dns`, so it runs only the string guard per hop; the edge cannot
+ * reach the droplet's private network.
  */
 export function isAllowedWebhookUrl(url: string): Promise<boolean> {
   return isSafeResolvedOutboundUrl(url, {

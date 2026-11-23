@@ -18,6 +18,8 @@ import {
   type PublicationMetrics,
 } from "../lib/analytics/types.js";
 
+const TOP_POSTS_LIMIT = 10;
+
 /** API keys address the personal pool only (same rule as `/v1/accounts`). */
 function scopeFor(userId: string): AnalyticsScope {
   return { resourceUserId: userId, workspaceId: null };
@@ -116,7 +118,9 @@ export async function v1AnalyticsOverview(
       shares: point.shares,
       engagement: point.engagement,
     })),
-    top_posts: data.topPosts.map((post) => ({
+    // The core returns every sampled post (the dashboard re-ranks them by the
+    // picked metric); the public contract stays the top 10.
+    top_posts: data.topPosts.slice(0, TOP_POSTS_LIMIT).map((post) => ({
       post_id: post.postId,
       snippet: post.snippet,
       published_at: post.publishedAt,

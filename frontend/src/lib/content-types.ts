@@ -58,10 +58,3 @@ export const CONTENT_TYPES = [
     platforms: ["twitter_x", "threads", "instagram"],
   },
 ] as const;
-
-
-export function getContentTypeBySlug(
-  slug: string,
-): (typeof CONTENT_TYPES)[number] | undefined {
-  return CONTENT_TYPES.find((c) => c.slug === slug);
-}

@@ -11,6 +11,27 @@ export function isLikelyTikTokOpenId(id: string): boolean {
   return OPEN_ID_RE.test(t);
 }
 
+/**
+ * True when a TikTok row stored before open_id was saved (its platformUserId is
+ * a handle or a synthetic `tiktok-<ts>` id) is provably the account TikTok just
+ * returned: its stored handle or username equals the returned @handle. Without
+ * that tie a legacy row may be a different TikTok account, and adopting it
+ * would move the new account's tokens onto it.
+ */
+export function tiktokLegacyRowMatchesUsername(
+  row: { platformUserId: string; platformUsername: string | null },
+  returnedUsername: string | null,
+): boolean {
+  const normalize = (v: string | null | undefined) =>
+    (v ?? "").trim().replace(/^@/, "").toLowerCase();
+  const returned = normalize(returnedUsername);
+  if (!returned) return false;
+  return (
+    normalize(row.platformUserId) === returned ||
+    normalize(row.platformUsername) === returned
+  );
+}
+
 import type { TikTokOAuthTokens } from "@social0/shared/lib/tiktok-token";
 
 export type { TikTokOAuthTokens };

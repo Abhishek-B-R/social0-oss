@@ -34,7 +34,6 @@ export const DOCS_MCP_QUICKSTART_URL = docs("integrations/mcp/quickstart");
 
 // ─── Onboarding ─────────────────────────────────────────────────────────────
 
-export const DOCS_ONBOARDING_URL = docs("onboarding");
 export const DOCS_ONBOARDING_GOAL_URL = docs("onboarding/step2");
 export const DOCS_ONBOARDING_CONNECT_URL = docs("onboarding/step3");
 export const DOCS_ONBOARDING_COMPLETE_URL = docs("onboarding/step4");

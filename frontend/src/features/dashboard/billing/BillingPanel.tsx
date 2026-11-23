@@ -1,266 +1,67 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
-import { databullAttribution } from "@/lib/databull";
-import { fetchApi } from "@/lib/fetch-api";
-
-import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { usePostHog } from "@posthog/react";
-import { X } from "@/icons/phosphor";
 import { toast } from "sonner";
+import { CreditCard, FileText, PauseCircle, RotateCcw, XCircle } from "lucide-react";
+import { Banner, Meter } from "@/components/app";
+import { Button } from "@/components/ui/button";
+import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { fetchApi } from "@/lib/fetch-api";
+import { formatDate } from "@/lib/date-format";
+import {
+  AGENCY_INCLUDED_ACCOUNTS,
+  getPlanLimits,
+  isLegacyTier,
+  isSellableTier,
+  PLAN_NAMES,
+  type BillingInterval,
+  type PaidPlanTier,
+  type SellablePlanTier,
+} from "@/lib/plans";
+import {
+  AGENCY_EXTRA_ACCOUNT_NOTE,
+  AGENCY_EXTRA_ACCOUNT_PRICE,
+  agencyExtraAccounts,
+  formatMoney,
+} from "@/lib/plan-pricing";
 import type { SubscriptionState } from "@/lib/subscription";
 import type { AccountLimitResult } from "@/lib/plan-limits";
-import { formatDate } from "@/lib/date-format";
-import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
-import { Button } from "@/components/ui/button";
-import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
-import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import type { BillingInterval } from "@/lib/plans";
+  defaultAgencyAccounts,
+  isPaidPlan,
+  isUnlimitedAccounts,
+  legacyPlanSummary,
+  nextPlanAbove,
+  periodPrice,
+  planName,
+  shortPrice,
+  tierRank,
+} from "@/components/billing/plan-catalog";
+import { cn } from "@/lib/utils";
+import { BillingMenu, type BillingMenuItem } from "./BillingMenu";
 import {
-  formatEffectiveMonthly,
-  formatPlanPriceLabel,
-  getPlanPrice,
-} from "@/lib/plan-pricing";
+  CancelDialog,
+  DowngradeDialog,
+  SwitchIntervalDialog,
+  UpgradeTimingDialog,
+} from "./BillingDialogs";
+import { PlansGrid } from "./PlansGrid";
+import { useBillingFlows } from "./use-billing-flows";
+
 const POLL_INTERVAL_MS = 2000;
-const PAYMENT_DECLINED_MESSAGE =
-  "Your payment could not be processed. Please check your card details or try a different payment method.";
-
-function toFriendlyBillingError(raw: unknown, fallback: string): string {
-  if (typeof raw !== "string") return fallback;
-  const normalized = raw.trim().toLowerCase();
-  if (!normalized) return fallback;
-  if (
-    normalized.includes("generic_decline") ||
-    normalized.includes("payment_declined") ||
-    normalized.includes("declined")
-  ) {
-    return PAYMENT_DECLINED_MESSAGE;
-  }
-  return fallback;
-}
-
-/** Dodo preview summary: `currency`/`total_amount` = customer charge (may be INR); `settlement_*` = merchant settlement (often USD). */
-type PreviewChargeSummary = {
-  total_amount?: number;
-  totalAmount?: number;
-  currency?: string;
-  settlement_amount?: number;
-  settlementAmount?: number;
-  settlement_currency?: string;
-  settlementCurrency?: string;
-};
-
-function normalizePreviewSummary(raw: PreviewChargeSummary): {
-  totalMinor: number;
-  currency: string;
-  settlementMinor?: number;
-  settlementCurrency?: string;
-} {
-  const totalMinor =
-    typeof raw.total_amount === "number"
-      ? raw.total_amount
-      : typeof raw.totalAmount === "number"
-        ? raw.totalAmount
-        : 0;
-  const currency =
-    typeof raw.currency === "string" && raw.currency.trim()
-      ? raw.currency.trim()
-      : "usd";
-  const settlementMinor =
-    typeof raw.settlement_amount === "number"
-      ? raw.settlement_amount
-      : typeof raw.settlementAmount === "number"
-        ? raw.settlementAmount
-        : undefined;
-  const settlementCurrencyRaw =
-    typeof raw.settlement_currency === "string"
-      ? raw.settlement_currency
-      : typeof raw.settlementCurrency === "string"
-        ? raw.settlementCurrency
-        : undefined;
-  return {
-    totalMinor,
-    currency,
-    settlementMinor,
-    settlementCurrency: settlementCurrencyRaw?.trim() || undefined,
-  };
-}
-
-/** Show USD when Dodo reports settlement in USD (local charge may still be INR). */
-function formatPreviewAmount(raw: PreviewChargeSummary): string {
-  const s = normalizePreviewSummary(raw);
-  const c = (code: string) => code.toUpperCase();
-
-  if (
-    typeof s.settlementMinor === "number" &&
-    s.settlementCurrency &&
-    c(s.settlementCurrency) === "USD"
-  ) {
-    return `$${(s.settlementMinor / 100).toFixed(2)}`;
-  }
-  if (c(s.currency) === "USD") {
-    return `$${(s.totalMinor / 100).toFixed(2)}`;
-  }
-  const cur = c(s.currency);
-  const amount = (s.totalMinor / 100).toFixed(2);
-  return cur === "USD" ? `$${amount}` : `${cur} ${amount}`;
-}
-
-type PaidPlan = "starter" | "growth" | "pro" | "max";
-
-function tierRank(tier: string): number {
-  switch (tier) {
-    case "starter":
-      return 1;
-    case "growth":
-      return 2;
-    case "pro":
-      return 3;
-    case "max":
-      return 4;
-    default:
-      return 0;
-  }
-}
-
-function planTierLabel(plan: PaidPlan): string {
-  switch (plan) {
-    case "max":
-      return "Max";
-    case "pro":
-      return "Pro";
-    case "growth":
-      return "Growth";
-    default:
-      return "Starter";
-  }
-}
-
-function PlanButtonLabel({
-  loading,
-  loadingText = "Loading…",
-  children,
-}: {
-  loading: boolean;
-  loadingText?: string;
-  children: ReactNode;
-}) {
-  return <span>{loading ? loadingText : children}</span>;
-}
-
-const STARTER_BILLING_FEATURES = [
-  "Up to 5 connected accounts",
-  "Unlimited posts",
-  "Multiple accounts per platform",
-  "Workspaces (multi-brand)",
-  "All 9 platforms",
-  "Text, image & video posts",
-  "Threads (multi-post)",
-  "Collections & carousels",
-  "Per-platform captions",
-  "Schedule & content calendar",
-  "Posting queue",
-  "Parallel multi-platform publish",
-  "Live publish progress",
-  "REST API",
-  "MCP server",
-  "CLI",
-  "API keys",
-  "Outbound webhooks",
-];
-
-const GROWTH_BILLING_FEATURES = [
-  "Up to 15 connected accounts",
-  "Unlimited posts",
-  "Multiple accounts per platform",
-  "Workspaces (multi-brand)",
-  "Bulk image & video scheduling",
-  "Auto-plug (performance CTA replies)",
-  "Auto-repost / resurface",
-  "All 9 platforms",
-  "Text, image & video posts",
-  "Threads (multi-post)",
-  "Collections & carousels",
-  "Per-platform captions",
-  "Schedule & content calendar",
-  "Posting queue",
-  "Parallel multi-platform publish",
-  "Live publish progress",
-  "REST API",
-  "MCP server",
-  "CLI",
-  "API keys",
-  "Outbound webhooks",
-  "Human support",
-];
-
-const PRO_BILLING_FEATURES = [
-  "Up to 50 connected accounts",
-  "Unlimited posts",
-  "Team collaboration / invite teammates",
-  "Multiple accounts per platform",
-  "Workspaces (multi-brand)",
-  "Bulk image & video scheduling",
-  "Auto-plug (performance CTA replies)",
-  "Auto-repost / resurface",
-  "All 9 platforms",
-  "Text, image & video posts",
-  "Threads (multi-post)",
-  "Collections & carousels",
-  "Per-platform captions",
-  "Schedule & content calendar",
-  "Posting queue",
-  "Parallel multi-platform publish",
-  "Live publish progress",
-  "REST API",
-  "MCP server",
-  "CLI",
-  "API keys",
-  "Outbound webhooks",
-  "Priority support",
-  "Early access to new features",
-];
-
-const MAX_BILLING_FEATURES = [
-  "Unlimited connected accounts",
-  "Unlimited posts",
-  "Team collaboration / invite teammates",
-  "Multiple accounts per platform",
-  "Workspaces (multi-brand)",
-  "Bulk image & video scheduling",
-  "Auto-plug (performance CTA replies)",
-  "Auto-repost / resurface",
-  "All 9 platforms",
-  "Text, image & video posts",
-  "Threads (multi-post)",
-  "Collections & carousels",
-  "Per-platform captions",
-  "Schedule & content calendar",
-  "Posting queue",
-  "Parallel multi-platform publish",
-  "Live publish progress",
-  "REST API",
-  "MCP server",
-  "CLI",
-  "API keys",
-  "Outbound webhooks",
-  "Priority support",
-  "Early access to new features",
-  "10,000 API requests / hour",
-];
-
 const POLL_MAX_ATTEMPTS = 45; // ~1.5 min
+/** Where a brand-new subscriber lands once the plan is confirmed. */
+const AFTER_SUBSCRIBE_PATH = "/dashboard/new";
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+export type FreePostsUsage = { remaining: number; limit: number };
 
 type BillingPanelProps = {
   subscription: SubscriptionState;
   accountLimit: AccountLimitResult;
+  /** Free plan only: lifetime free posts left (from the layout query). */
+  freePosts?: FreePostsUsage | null;
   justSubscribed?: boolean;
   dateFormat?: string | null;
   timezone?: string | null;
@@ -268,210 +69,248 @@ type BillingPanelProps = {
   onBillingUpdated?: () => void | Promise<void>;
 };
 
-function redirectToComposer() {
-  window.location.href = "/dashboard/composer";
+function scrollToPlans() {
+  const reduce =
+    typeof window !== "undefined" &&
+    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  requestAnimationFrame(() => {
+    document
+      .getElementById("plans")
+      ?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+  });
 }
 
+/**
+ * Billing A · usage-first. Plan card (plan, price, renewal, Change plan, ⋯),
+ * usage meters, yearly nudge, invoices; the plans grid lives behind
+ * "Change plan". All provider flows are in `useBillingFlows`.
+ */
 export function BillingPanel({
   subscription,
   accountLimit,
+  freePosts = null,
   justSubscribed = false,
   dateFormat = "dd/MM/yyyy",
   timezone,
   onBillingUpdated,
 }: BillingPanelProps) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const invalidateQueries = useInvalidateQueries();
   const posthog = usePostHog();
 
-  // ponytail: invalidate RQ caches + reload BillingPage local `raw` state
   const refreshBilling = useCallback(() => {
     invalidateQueries();
     void onBillingUpdated?.();
   }, [invalidateQueries, onBillingUpdated]);
-  const [verifying, setVerifying] = useState(false);
-  const [loading, setLoading] = useState<
-    "portal" | "pause" | "cancel" | "undoCancel" | "cancelPending" | null
-  >(null);
-  const [pauseOpen, setPauseOpen] = useState(false);
-  const [cancelStep, setCancelStep] = useState<0 | 1 | 2>(0);
-  const [cancelReason, setCancelReason] = useState("");
-  const [downgradeStep, setDowngradeStep] = useState<0 | 1 | 2>(0);
-  const [downgradeReason, setDowngradeReason] = useState("");
-  const [targetDowngradePlan, setTargetDowngradePlan] = useState<
-    "starter" | "growth" | null
-  >(null);
-  const [loadingChangePlan, setLoadingChangePlan] = useState<PaidPlan | null>(
-    null,
+
+  const tier = subscription.tier;
+  const paid = isPaidPlan(tier);
+  const legacy = isLegacyTier(tier) ? tier : null;
+  /** Agency only: paid accounts above the 59 included. */
+  const extraAccounts = tier === "agency" ? Math.max(0, subscription.extraAccounts ?? 0) : 0;
+  const currentInterval: BillingInterval =
+    subscription.interval === "yearly" ? "yearly" : "monthly";
+
+  const renewalDate = subscription.expiresAt
+    ? formatDate(subscription.expiresAt, dateFormat, timezone)
+    : null;
+
+  const flows = useBillingFlows({ subscription, renewalDate, refreshBilling });
+
+  // ---- URL state ----------------------------------------------------------
+  const successParam = searchParams.get("success");
+  const statusParam = searchParams.get("status");
+  const upgradeParam = searchParams.get("upgrade");
+  const viewParam = searchParams.get("view");
+  const plansOpen = viewParam === "plans" || upgradeParam === "1";
+  // Choice carried over from the public pricing page
+  // (`?view=plans&plan=agency&interval=yearly&accounts=100`).
+  const planParam = searchParams.get("plan");
+  const intervalParam = searchParams.get("interval");
+
+  const [interval, setGridInterval] = useState<BillingInterval>(
+    intervalParam === "yearly" || intervalParam === "monthly"
+      ? intervalParam
+      : paid
+        ? currentInterval
+        : "monthly",
   );
-  const [upgradeConfirmOpen, setUpgradeConfirmOpen] = useState(false);
-  const [upgradeConfirmPlan, setUpgradeConfirmPlan] = useState<PaidPlan | null>(
-    null,
-  );
-  const [confirmUpgradeAction, setConfirmUpgradeAction] = useState<
-    "now" | "renewal" | null
-  >(null);
-  const [upgradePreview, setUpgradePreview] = useState<{
-    immediateCharge: { summary: PreviewChargeSummary };
-  } | null>(null);
-  const [showRenewedTodayBanner] = useState(false);
-  const [renewedOnDate] = useState<Date | null>(null);
-  const [upgradePending, setUpgradePending] = useState(false);
-  const [upgradeRecoveryMessage, setUpgradeRecoveryMessage] = useState<
-    string | null
-  >(null);
-  const [upgradeRecoveryAction, setUpgradeRecoveryAction] = useState<
-    "cancel_pending" | "portal" | null
-  >(null);
-  const [billingInterval, setBillingInterval] =
-    useState<BillingInterval>("monthly");
-  const [stuckCheckoutPlan, setStuckCheckoutPlan] = useState<PaidPlan | null>(
-    null,
+  const [highlight, setHighlight] = useState<SellablePlanTier | null>(() => {
+    const wanted = isSellableTier(upgradeParam) ? upgradeParam : planParam;
+    return isSellableTier(wanted) && tierRank(wanted) > tierRank(tier) ? wanted : null;
+  });
+  const [verifying, setVerifying] = useState(
+    successParam === "1" && statusParam !== "failed",
   );
   const [waitingForWebhook, setWaitingForWebhook] = useState(
-    Boolean(justSubscribed && subscription.tier === "free"),
+    Boolean(justSubscribed && tier === "free"),
   );
 
-  // After return from checkout (?success=1): verify plan actually changed by polling sync; stop after 3 attempts and clear URL
-  useEffect(() => {
-    const success = searchParams.get("success");
-    const status = searchParams.get("status");
+  const [downgradeTarget, setDowngradeTarget] = useState<{
+    plan: SellablePlanTier;
+    extraAccounts: number;
+  } | null>(null);
+  const [switchTarget, setSwitchTarget] = useState<{
+    plan: PaidPlanTier;
+    to: BillingInterval;
+  } | null>(null);
+  const [cancelOpen, setCancelOpen] = useState(false);
 
-    if (success === "1" && status === "failed") {
+  const setPlansOpen = useCallback(
+    (open: boolean, opts?: { highlight?: SellablePlanTier | null }) => {
+      if (opts && "highlight" in opts) setHighlight(opts.highlight ?? null);
+      setSearchParams(
+        (prev) => {
+          const p = new URLSearchParams(prev);
+          p.delete("upgrade");
+          if (open) p.set("view", "plans");
+          else p.delete("view");
+          return p;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
+
+  // Bring the grid into view whenever it opens (button, `?view=plans`, `?upgrade=`).
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (plansOpen && !wasOpenRef.current) scrollToPlans();
+    wasOpenRef.current = plansOpen;
+  }, [plansOpen]);
+
+  // ---- Return from checkout (?success=1): confirm the plan really changed --
+  useEffect(() => {
+    if (successParam === "1" && statusParam === "failed") {
       navigate("/dashboard/billing", { replace: true });
-      toast.error("Payment failed. Please try again.");
+      toast.error("Payment didn't go through. Try again or use a different card.");
       return;
     }
-
-    if (success !== "1") return;
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setVerifying(true);
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    const poll = async () => {
-      attempts++;
-
-      await fetchApi("/api/billing/sync", {
-        method: "POST",
-        credentials: "include",
-      });
-      refreshBilling();
-
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      if (attempts < maxAttempts) {
-        setTimeout(poll, 2000);
-      } else {
-        setVerifying(false);
-        navigate("/dashboard/billing", { replace: true });
+    if (successParam !== "1") return;
+    let cancelled = false;
+    void (async () => {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        await fetchApi("/api/billing/sync", { method: "POST" }).catch(() => undefined);
+        if (cancelled) return;
+        refreshBilling();
+        await sleep(attempt < 3 ? 3500 : 1500);
+        if (cancelled) return;
       }
+      setVerifying(false);
+      navigate("/dashboard/billing", { replace: true });
+    })();
+    return () => {
+      cancelled = true;
     };
+  }, [successParam, statusParam, navigate, refreshBilling]);
 
-    poll();
-  }, [searchParams, navigate, refreshBilling]);
-
+  // ---- First subscription: wait for the webhook, then start posting --------
   useEffect(() => {
     if (!waitingForWebhook) return;
-
     let attempts = 0;
+    let stopped = false;
+    let inFlight = false;
 
     const trySyncAndCheck = async () => {
       try {
-        // Sync from Dodo Payments by email (works even when webhook didn't reach localhost)
-        const syncRes = await fetchApi("/api/billing/sync", {
-          method: "POST",
-          credentials: "include",
-        });
-        const syncData = await syncRes.json().catch(() => ({}));
-        if (
-          syncData?.ok === true &&
-          (syncData.tier === "starter" ||
-            syncData.tier === "growth" ||
-            syncData.tier === "pro")
-        ) {
-          redirectToComposer();
-          return true;
-        }
-        const checkRes = await fetchApi("/api/auth/subscription-check", {
-          credentials: "include",
-        });
+        // Sync from Dodo by email (works even when the webhook didn't reach us).
+        const syncRes = await fetchApi("/api/billing/sync", { method: "POST" });
+        const syncData = (await syncRes.json().catch(() => ({}))) as {
+          ok?: boolean;
+          tier?: string;
+        };
+        if (syncData?.ok === true && isPaidPlan(syncData.tier)) return true;
+        const checkRes = await fetchApi("/api/auth/subscription-check");
         if (!checkRes.ok) return false;
-        const checkData = await checkRes.json();
-        if (checkData.hasSubscription === true) {
-          redirectToComposer();
-          return true;
-        }
+        const checkData = (await checkRes.json().catch(() => ({}))) as {
+          hasSubscription?: boolean;
+        };
+        return checkData.hasSubscription === true;
       } catch {
-        // ignore
+        return false;
       }
-      return false;
     };
 
     const run = async () => {
+      if (stopped || inFlight) return;
+      inFlight = true;
       attempts++;
       const done = await trySyncAndCheck();
-      if (done) return;
+      inFlight = false;
+      if (stopped) return;
+      if (done) {
+        stopped = true;
+        window.location.href = AFTER_SUBSCRIBE_PATH;
+        return;
+      }
       if (attempts >= POLL_MAX_ATTEMPTS) {
+        stopped = true;
         setWaitingForWebhook(false);
         refreshBilling();
       }
     };
 
-    run();
-    const id = setInterval(run, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
+    void run();
+    const id = window.setInterval(() => void run(), POLL_INTERVAL_MS);
+    return () => {
+      stopped = true;
+      window.clearInterval(id);
+    };
   }, [waitingForWebhook, refreshBilling]);
 
-  const tierLabel =
-    subscription.tier === "max"
-      ? "Max"
-      : subscription.tier === "pro"
-        ? "Pro"
-        : subscription.tier === "growth"
-          ? "Growth"
-          : subscription.tier === "starter"
-            ? "Starter (Lite)"
-            : "Free";
+  // ---- `?upgrade=<plan>` from LimitModal: open the grid and start the upgrade.
+  // Only Creator / Agency start an upgrade; an old plan name just opens the grid.
+  const upgradeStartedRef = useRef(false);
+  const { startUpgrade } = flows;
+  const connectedNow = accountLimit.currentTotal;
+  useEffect(() => {
+    if (upgradeStartedRef.current) return;
+    if (!isPaidPlan(upgradeParam)) return;
+    if (waitingForWebhook || verifying) return;
+    upgradeStartedRef.current = true;
+    const plan = upgradeParam;
+    setSearchParams(
+      (prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete("upgrade");
+        p.set("view", "plans");
+        return p;
+      },
+      { replace: true },
+    );
+    if (isSellableTier(plan) && tierRank(plan) > tierRank(tier)) {
+      const extras =
+        plan === "agency" ? agencyExtraAccounts(defaultAgencyAccounts(connectedNow)) : 0;
+      void startUpgrade(plan, interval, extras);
+    }
+  }, [
+    upgradeParam,
+    waitingForWebhook,
+    verifying,
+    setSearchParams,
+    startUpgrade,
+    tier,
+    interval,
+    connectedNow,
+  ]);
 
-  const currentInterval: BillingInterval =
-    subscription.interval === "yearly" || subscription.interval === "monthly"
-      ? subscription.interval
-      : "monthly";
-
-  const priceLabel =
-    subscription.tier === "starter" ||
-    subscription.tier === "growth" ||
-    subscription.tier === "pro" ||
-    subscription.tier === "max"
-      ? formatPlanPriceLabel(subscription.tier, currentInterval)
-      : "$0/month";
-
-  const starterPrice = getPlanPrice("starter", billingInterval);
-  const growthPrice = getPlanPrice("growth", billingInterval);
-  const proPrice = getPlanPrice("pro", billingInterval);
-  const maxPrice = getPlanPrice("max", billingInterval);
-
-  const renewalDate =
-    subscription.expiresAt && timezone
-      ? formatDate(subscription.expiresAt, dateFormat, timezone)
-      : subscription.expiresAt
-        ? formatDate(subscription.expiresAt, dateFormat)
-        : null;
-
+  // ---- Interstitial states -------------------------------------------------
   if (waitingForWebhook) {
     return (
-      <div className="rounded-xl border border-border bg-bg-elevated p-8 shadow-sm text-center">
-        <h2 className="text-lg font-semibold text-text">
-          Setting up your subscription
-        </h2>
-        <p className="mt-2 text-text-muted">Processing your payment.</p>
+      <div
+        role="status"
+        className="py-10 text-center"
+      >
+        <h2 className="text-lg font-semibold text-text">Setting up your subscription</h2>
         <p className="mt-2 text-sm text-text-muted">
-          We&apos;re confirming your subscription - this usually takes a few
-          seconds.
+          We&apos;re confirming your payment. This usually takes a few seconds.
         </p>
+        <div
+          aria-hidden
+          className="mx-auto mt-5 size-6 animate-spin rounded-full border-2 border-border border-t-accent motion-reduce:animate-none"
+        />
         <p className="mt-6 text-xs text-text-muted">
           Still here after a minute?{" "}
           <button
@@ -480,7 +319,7 @@ export function BillingPanel({
               setWaitingForWebhook(false);
               refreshBilling();
             }}
-            className="font-medium text-accent hover:underline"
+            className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
           >
             Refresh
           </button>{" "}
@@ -492,1486 +331,490 @@ export function BillingPanel({
 
   if (verifying) {
     return (
-      <div className="py-4 text-sm text-muted-foreground">
+      <div
+        role="status"
+        className="flex items-center gap-3 py-4 text-sm text-text-muted"
+      >
+        <span
+          aria-hidden
+          className="size-4 animate-spin rounded-full border-2 border-border border-t-accent motion-reduce:animate-none"
+        />
         Confirming your subscription…
       </div>
     );
   }
 
-  const handleChangePlan = async () => {
-    setLoading("portal");
-    try {
-      const res = await fetchApi("/api/billing/portal", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.url) {
-        if (!assignSafeRedirectUrl(data.url)) {
-          toast.error("Could not open billing portal. Try again.");
-        }
-        return;
-      }
-      toast.error(
-        toFriendlyBillingError(
-          data.error,
-          "Could not open billing portal. Try again.",
-        ),
-      );
-    } finally {
-      setLoading(null);
-    }
-  };
+  // ---- Derived copy --------------------------------------------------------
+  const pending = subscription.pendingPlanTier;
+  const pendingIsUpgrade = pending != null && tierRank(pending) > tierRank(tier);
+  const nextPlan = nextPlanAbove(tier);
+  const accountsUsed = accountLimit.currentTotal;
+  const accountsLimit = accountLimit.limitTotal;
+  const unlimited = isUnlimitedAccounts(accountsLimit);
+  const atAccountLimit = !unlimited && accountsLimit > 0 && accountsUsed >= accountsLimit;
+  const freeUsed = freePosts ? Math.max(0, freePosts.limit - freePosts.remaining) : null;
+  const freeOut = freePosts != null && freePosts.remaining <= 0;
 
-  const handlePause = async (months: 1 | 2 | 3) => {
-    setLoading("pause");
-    try {
-      const res = await fetchApi("/api/billing/pause", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ months }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        setPauseOpen(false);
-        refreshBilling();
-        return;
-      }
-      if (data.error === "not_supported") {
-        setPauseOpen(false);
-        navigate("/dashboard/feedback");
-        return;
-      }
-      toast.error(
-        toFriendlyBillingError(data.error, "Failed to pause subscription."),
-      );
-    } finally {
-      setLoading(null);
-    }
-  };
+  const showYearlyNudge =
+    paid &&
+    currentInterval === "monthly" &&
+    !subscription.cancelAtPeriodEnd &&
+    !subscription.paused &&
+    pending == null &&
+    !flows.upgradePending;
+  const yearlyPrice = paid ? periodPrice(tier, "yearly", extraAccounts) : 0;
+  const monthlyTimes12 = paid ? periodPrice(tier, "monthly", extraAccounts) * 12 : 0;
+  const onAgency = tier === "agency";
 
-  const handleCancel = async () => {
-    setLoading("cancel");
-    try {
-      const res = await fetchApi("/api/billing/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ reason: cancelReason }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        setCancelStep(0);
-        setCancelReason("");
-        if (data.immediate) {
-          toast.success(
-            "Subscription cancelled. You've been moved to the free plan.",
-          );
-          refreshBilling();
-          navigate("/dashboard/billing", { replace: true });
-        } else {
-          toast.info(
-            `You'll keep full access until ${renewalDate ?? "your period end"}. No further charges.`,
-          );
-          refreshBilling();
-        }
-        return;
-      }
-      toast.error(
-        toFriendlyBillingError(
-          data.error,
-          "Failed to cancel subscription. Please try again.",
-        ),
-      );
-    } finally {
-      setLoading(null);
-    }
-  };
+  const statusLine = paid
+    ? subscription.cancelAtPeriodEnd
+      ? `Ends ${renewalDate ?? "at the end of this period"} · no further charges`
+      : subscription.paused
+        ? "Paused"
+        : `${renewalDate ? `Renews ${renewalDate}` : "Renews at the end of this period"} · billed ${currentInterval}`
+    : `${getPlanLimits("free").maxConnectedAccounts} accounts and ${getPlanLimits("free").maxFreePosts} posts to try everything`;
 
-  const handleUndoCancel = async () => {
-    setLoading("undoCancel");
-    try {
-      const res = await fetchApi("/api/billing/undo-cancel", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        toast.success("Cancellation undone. Your subscription will continue.");
-        refreshBilling();
-        return;
-      }
-      toast.error(
-        toFriendlyBillingError(
-          data.error,
-          "Failed to undo cancellation. Please try again.",
-        ),
-      );
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleScheduleDowngrade = async () => {
-    if (!targetDowngradePlan) return;
-    setLoadingChangePlan(targetDowngradePlan);
-    try {
-      const res = await fetchApi("/api/billing/change-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          plan: targetDowngradePlan,
-          interval: billingInterval,
-          scheduleAtPeriodEnd: true,
-          reason: downgradeReason.trim(),
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success) {
-        setDowngradeStep(0);
-        setDowngradeReason("");
-        setTargetDowngradePlan(null);
-        toast.info(
-          `Downgrade scheduled. You'll move to ${targetDowngradePlan === "starter" ? "Starter" : "Growth"} on ${renewalDate ?? "your renewal date"}.`,
-        );
-        refreshBilling();
-        return;
-      }
-      if (res.status === 404 && data.error === "no_active_subscription") {
-        const result = await redirectToCheckoutForPlan(targetDowngradePlan);
-        if (result !== "failed") return;
-      }
-      toast.error(
-        toFriendlyBillingError(
-          data.error,
-          "Failed to schedule downgrade. Please try again.",
-        ),
-      );
-    } finally {
-      setLoadingChangePlan(null);
-    }
-  };
-
-  const handleCancelPendingPlanChange = async () => {
-    const pendingLabel =
-      subscription.pendingPlanTier === "pro"
-        ? "Pro"
-        : subscription.pendingPlanTier === "growth"
-          ? "Growth"
-          : subscription.pendingPlanTier === "max"
-            ? "Max"
-            : "Starter";
-    const isPendingUpgrade =
-      subscription.pendingPlanTier != null &&
-      ((subscription.tier === "starter" &&
-        (subscription.pendingPlanTier === "growth" ||
-          subscription.pendingPlanTier === "pro" ||
-          subscription.pendingPlanTier === "max")) ||
-        (subscription.tier === "growth" &&
-          (subscription.pendingPlanTier === "pro" ||
-            subscription.pendingPlanTier === "max")) ||
-        (subscription.tier === "pro" &&
-          subscription.pendingPlanTier === "max"));
-    setLoading("cancelPending");
-    try {
-      const res = await fetchApi("/api/billing/cancel-downgrade", {
-        method: "POST",
-        credentials: "include",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setUpgradePending(false);
-        setUpgradeRecoveryMessage(null);
-        setUpgradeRecoveryAction(null);
-        toast.success(
-          isPendingUpgrade
-            ? `Pending upgrade${pendingLabel !== "Starter" ? ` to ${pendingLabel}` : ""} cancelled. You can try again.`
-            : data.cancelledRivals
-              ? "Pending plan change cleared and duplicate subscriptions removed. You can try again."
-              : "Pending plan change cancelled.",
-        );
-        refreshBilling();
-      } else {
-        toast.error(
-          toFriendlyBillingError(
-            data.error,
-            "Failed to cancel plan change. Please try again.",
-          ),
-        );
-      }
-    } catch {
-      toast.error("Failed to cancel plan change. Please try again.");
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleUpgradePlan = async (plan: PaidPlan) => {
-    posthog?.capture("plan_upgrade_started", {
-      plan,
-      current_plan: subscription.tier,
+  const menuItems: BillingMenuItem[] = [
+    {
+      key: "portal",
+      label: "Billing portal",
+      hint: "Invoices, receipts and subscription details",
+      icon: <FileText />,
+      onSelect: () => void flows.openPortal(),
+    },
+  ];
+  if (paid) {
+    menuItems.push({
+      key: "payment",
+      label: "Update payment method",
+      icon: <CreditCard />,
+      onSelect: () => void flows.openPortal(),
     });
-    setLoadingChangePlan(plan);
-    try {
-      // Paid → higher paid: show preview so user picks Upgrade now vs on renewal.
-      const needsPreview =
-        subscription.tier !== "free" &&
-        tierRank(plan) > tierRank(subscription.tier);
-      if (needsPreview) {
-        const previewRes = await fetchApi("/api/billing/preview-plan-change", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ plan, interval: billingInterval }),
-        });
-        const previewData = await previewRes.json().catch(() => ({}));
-        if (previewRes.ok && previewData.immediateCharge) {
-          setUpgradePreview({
-            immediateCharge: previewData.immediateCharge,
-          });
-          setUpgradeConfirmPlan(plan);
-          setUpgradeConfirmOpen(true);
-          setLoadingChangePlan(null);
-          return;
-        }
-        // Preview failed - still open dialog without amount so user can schedule.
-        setUpgradePreview(null);
-        setUpgradeConfirmPlan(plan);
-        setUpgradeConfirmOpen(true);
-        setLoadingChangePlan(null);
-        return;
-      }
-
-      await executeUpgrade(plan, false);
-    } finally {
-      setLoadingChangePlan(null);
-    }
-  };
-
-  const executeUpgrade = async (
-    plan: PaidPlan,
-    scheduleAtPeriodEnd: boolean,
-  ) => {
-    const planLabel = planTierLabel(plan);
-    const res = await fetchApi("/api/billing/change-plan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        plan,
-        interval: billingInterval,
-        scheduleAtPeriodEnd,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-
-    if (res.ok && data.success && data.scheduled) {
-      setUpgradePending(false);
-      setUpgradeRecoveryMessage(null);
-      setUpgradeRecoveryAction(null);
-      toast.success(
-        `Upgrade to ${planLabel} scheduled for ${renewalDate ?? "your renewal date"}. No charge today.`,
-      );
-      refreshBilling();
-      return true;
-    }
-
-    if (res.ok && data.success) {
-      if (data.pending) {
-        setUpgradePending(true);
-        setUpgradeRecoveryAction("cancel_pending");
-        setUpgradeRecoveryMessage(
-          "Your upgrade charge is being processed. If this stays stuck for more than a few minutes, cancel the pending upgrade and try again.",
-        );
-        toast.info(
-          `You'll be charged on your saved payment method. Once payment succeeds, you'll move to ${planLabel} automatically. Track status anytime via Manage Subscription.`,
-        );
-      } else {
-        setUpgradePending(false);
-        setUpgradeRecoveryMessage(null);
-        setUpgradeRecoveryAction(null);
-        toast.success(`You're on ${planLabel}.`);
-        refreshBilling();
-      }
-      return true;
-    }
-
-    if (data.requireCheckout === true) {
-      const result = await redirectToCheckoutForPlan(plan);
-      if (result !== "failed") return true;
-    }
-    if (res.status === 409) {
-      if (data.code === "use_portal") {
-        setUpgradePending(true);
-        setUpgradeRecoveryAction("cancel_pending");
-        setUpgradeRecoveryMessage(
-          typeof data.error === "string"
-            ? `${data.error} Cancel the pending upgrade below, then try again.`
-            : "Your subscription payment needs attention. Cancel the pending upgrade below, then try again.",
-        );
-        toast.info(
-          typeof data.error === "string"
-            ? data.error
-            : "Payment issue detected.",
-        );
-        return true;
-      }
-      if (data.code === "use_change_plan") {
-        toast.info(
-          typeof data.error === "string"
-            ? data.error
-            : "You already have an active subscription.",
-        );
-        return true;
-      }
-      if (data.code === "cancel_pending") {
-        setUpgradePending(true);
-        setUpgradeRecoveryAction("cancel_pending");
-        setUpgradeRecoveryMessage(
-          typeof data.error === "string"
-            ? data.error
-            : "Your subscription needs attention. Cancel the pending upgrade below, then try again.",
-        );
-        toast.info(
-          typeof data.error === "string"
-            ? data.error
-            : "Cancel the pending upgrade and try again.",
-        );
-        return true;
-      }
-      if (data.code === "pending_plan_change") {
-        setUpgradePending(true);
-        setUpgradeRecoveryAction("cancel_pending");
-        setUpgradeRecoveryMessage(
-          typeof data.error === "string"
-            ? data.error
-            : "A previous plan change is still pending. Cancel it below, then try the upgrade again.",
-        );
-        toast.info(
-          typeof data.error === "string"
-            ? data.error
-            : "A previous plan change is still pending.",
-        );
-        return true;
-      }
-      setUpgradePending(true);
-      setUpgradeRecoveryAction("cancel_pending");
-      setUpgradeRecoveryMessage(
-        "Your upgrade payment is still being processed. If it stays stuck, cancel the pending upgrade below and try again.",
-      );
-      toast.info(
-        "Your upgrade payment is still being processed. You'll move to the new plan automatically once it succeeds. Track status anytime via Manage Subscription.",
-      );
-      return true;
-    }
-    if (res.status === 402) {
-      setUpgradePending(true);
-      setUpgradeRecoveryAction("cancel_pending");
-      setUpgradeRecoveryMessage(
-        "Your payment could not be processed. Cancel the pending upgrade below, then try again.",
-      );
-    }
-    if (res.status === 404 && data.error === "no_active_subscription") {
-      const result = await redirectToCheckoutForPlan(plan);
-      if (result !== "failed") return true;
-    }
-    toast.error(
-      toFriendlyBillingError(
-        data.error,
-        "Failed to change plan. Please try again.",
-      ),
-    );
-    return false;
-  };
-
-  const handleConfirmUpgradeNow = async () => {
-    if (!upgradeConfirmPlan) return;
-    setLoadingChangePlan(upgradeConfirmPlan);
-    setConfirmUpgradeAction("now");
-    try {
-      const ok = await executeUpgrade(upgradeConfirmPlan, false);
-      if (ok) {
-        setUpgradeConfirmOpen(false);
-        setUpgradeConfirmPlan(null);
-        setUpgradePreview(null);
-      }
-    } finally {
-      setLoadingChangePlan(null);
-      setConfirmUpgradeAction(null);
-    }
-  };
-
-  const handleConfirmUpgradeOnRenewal = async () => {
-    if (!upgradeConfirmPlan) return;
-    setLoadingChangePlan(upgradeConfirmPlan);
-    setConfirmUpgradeAction("renewal");
-    try {
-      const ok = await executeUpgrade(upgradeConfirmPlan, true);
-      if (ok) {
-        setUpgradeConfirmOpen(false);
-        setUpgradeConfirmPlan(null);
-        setUpgradePreview(null);
-      }
-    } finally {
-      setLoadingChangePlan(null);
-      setConfirmUpgradeAction(null);
-    }
-  };
-
-  const redirectToCheckoutForPlan = async (
-    plan: PaidPlan,
-    options?: { forceNewSession?: boolean },
-  ): Promise<"redirected" | "handled" | "failed"> => {
-    const res = await fetchApi("/api/billing/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({
-        plan,
-        interval: billingInterval,
-        successUrl: "/dashboard/billing?success=1",
-        forceNewSession: options?.forceNewSession === true,
-        ...databullAttribution(),
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    // Only follow URLs for a successful checkout (or an explicit portal handoff).
-    // Never redirect on checkout_in_progress — that used to reopen another plan's session.
-    if (res.ok && typeof data.url === "string") {
-      setStuckCheckoutPlan(null);
-      if (!assignSafeRedirectUrl(data.url)) {
-        toast.error("Failed to start checkout. Please try again.");
-        return "failed";
-      }
-      return "redirected";
-    }
-    if (res.status === 409 && data.code === "use_portal") {
-      toast.info(
-        typeof data.error === "string"
-          ? data.error
-          : "Opening the customer portal to update your payment method…",
-      );
-      if (typeof data.url === "string") {
-        if (!assignSafeRedirectUrl(data.url)) {
-          toast.error("Failed to open the customer portal. Please try again.");
-          return "failed";
-        }
-        return "redirected";
-      }
-      await handleChangePlan();
-      return "handled";
-    }
-    if (res.status === 409 && data.code === "checkout_in_progress") {
-      setStuckCheckoutPlan(plan);
-      toast.info(
-        typeof data.error === "string"
-          ? `${data.error} If it stays stuck, start a fresh checkout below.`
-          : "Checkout is already being prepared. If it stays stuck, start a fresh checkout below.",
-      );
-      return "handled";
-    }
-    if (res.status === 409 && data.code === "use_change_plan") {
-      toast.info(
-        typeof data.error === "string"
-          ? data.error
-          : "You already have a subscription on this account.",
-      );
-      return "handled";
-    }
-    return "failed";
-  };
-
-  const handleUpgradeFromFree = async (plan: PaidPlan) => {
-    setLoadingChangePlan(plan);
-    try {
-      const result = await redirectToCheckoutForPlan(plan);
-      if (result === "failed") {
-        toast.error("Failed to start checkout. Please try again.");
-      }
-    } finally {
-      setLoadingChangePlan(null);
-    }
-  };
-
-  const handleSwitchInterval = async (plan: PaidPlan) => {
-    setLoadingChangePlan(plan);
-    try {
-      await executeUpgrade(plan, false);
-    } finally {
-      setLoadingChangePlan(null);
-    }
-  };
-
-  const handleFreshCheckout = async () => {
-    if (!stuckCheckoutPlan) return;
-    setLoadingChangePlan(stuckCheckoutPlan);
-    try {
-      const result = await redirectToCheckoutForPlan(stuckCheckoutPlan, {
-        forceNewSession: true,
+    if (!subscription.cancelAtPeriodEnd && !subscription.paused) {
+      // Pausing isn't self-serve (the payment provider has no pause API), so
+      // this routes to feedback instead of promising a pause that can't happen.
+      menuItems.push({
+        key: "pause",
+        label: "Ask about pausing",
+        hint: "Tell us what you need and we'll sort it out",
+        icon: <PauseCircle />,
+        onSelect: () => navigate("/dashboard/feedback"),
       });
-      if (result === "failed") {
-        toast.error("Could not start a fresh checkout. Please try again.");
-      }
-    } finally {
-      setLoadingChangePlan(null);
     }
-  };
+    if (subscription.cancelAtPeriodEnd) {
+      menuItems.push({
+        key: "undo-cancel",
+        label: "Undo cancellation",
+        icon: <RotateCcw />,
+        onSelect: () => void flows.undoCancel(),
+      });
+    } else {
+      menuItems.push({
+        key: "cancel",
+        label: "Cancel subscription",
+        icon: <XCircle />,
+        tone: "danger",
+        onSelect: () => {
+          posthog?.capture("plan_cancellation_started", { current_plan: tier });
+          setCancelOpen(true);
+        },
+      });
+    }
+  }
+
+  const menuBusy = flows.busy !== null;
 
   return (
-    <div className="space-y-5">
-      <div className="rounded-xl border border-border bg-white p-6 dark:bg-bg-elevated">
-        <p className="text-sm text-muted-foreground">Current plan</p>
-        <h2 className="font-logo text-2xl font-normal tracking-tight text-foreground">{tierLabel}</h2>
-        {showRenewedTodayBanner && renewedOnDate && (
-          <p className="text-sm text-accent mt-1">
-            Your plan renewed on{" "}
-            {renewedOnDate.toLocaleDateString(undefined, {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-            .
-          </p>
-        )}
-        <p className="text-sm text-muted-foreground">
-          {subscription.cancelAtPeriodEnd
-            ? renewalDate
-              ? `Cancels on ${renewalDate}`
-              : "Cancels at period end"
-            : renewalDate
-              ? `Renews ${renewalDate}`
-              : "Renews -"}{" "}
-          · {priceLabel}
-        </p>
-
-        <div className="mt-4">
-          <p className="text-xs text-muted-foreground">Connected accounts</p>
-          <p className="text-2xl font-medium text-foreground">
-            {accountLimit.currentTotal} / {accountLimit.limitTotal}
-          </p>
-        </div>
-
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Button
-            onClick={handleChangePlan}
-            disabled={loading !== null}
-            className="min-w-44 justify-center"
-          >
-            <PlanButtonLabel
-              loading={loading === "portal"}
-              loadingText="Opening…"
-            >
-              Manage Subscription
-            </PlanButtonLabel>
-          </Button>
-
-          {subscription.tier !== "free" && !subscription.cancelAtPeriodEnd && (
+    <div className="space-y-4">
+      {/* ---- Notices: only things that need a decision ---- */}
+      {subscription.cancelAtPeriodEnd && paid ? (
+        <Banner
+          tier="blocking"
+          title="Your subscription is cancelled."
+          actions={
             <Button
+              size="sm"
               variant="outline"
-              onClick={() => {
-                posthog?.capture("plan_cancellation_started", {
-                  current_plan: subscription.tier,
-                });
-                setCancelStep(1);
-              }}
-              disabled={loading !== null}
-              className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => void flows.undoCancel()}
+              disabled={menuBusy}
             >
-              Cancel Subscription
+              {flows.busy === "undoCancel" ? "Undoing…" : "Undo cancellation"}
             </Button>
-          )}
-          {subscription.tier !== "free" && subscription.cancelAtPeriodEnd && (
-            <Button
-              variant="outline"
-              onClick={handleUndoCancel}
-              disabled={loading !== null}
-            >
-              Undo Cancel
-            </Button>
-          )}
-        </div>
-      </div>
+          }
+        >
+          You keep full access until {renewalDate ?? "the end of this billing period"}.
+        </Banner>
+      ) : null}
 
-      {subscription.cancelAtPeriodEnd && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-2">
-          <span>
-            Your subscription is cancelled. You have access until {renewalDate}.
-          </span>
-        </div>
-      )}
-
-      {(upgradePending || upgradeRecoveryMessage) && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-3">
-          <span>
-            {upgradeRecoveryMessage ??
-              "Upgrade payment is processing with your payment provider. You'll move to the new plan automatically once payment succeeds."}
-          </span>
-          {upgradeRecoveryAction === "cancel_pending" ? (
-            <Button
-              variant="outline"
-              onClick={() => void handleCancelPendingPlanChange()}
-              disabled={loading !== null}
-              className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
-            >
-              <PlanButtonLabel
-                loading={loading === "cancelPending"}
-                loadingText="Cancelling…"
+      {flows.upgradePending || flows.recoveryMessage ? (
+        <Banner
+          tier="blocking"
+          actions={
+            flows.recoveryAction === "cancel_pending" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void flows.cancelPendingChange()}
+                disabled={menuBusy}
               >
-                Cancel pending upgrade
-              </PlanButtonLabel>
-            </Button>
-          ) : upgradeRecoveryAction === "portal" ? (
-            <Button
-              variant="outline"
-              onClick={() => void handleChangePlan()}
-              disabled={loading !== null}
-              className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
-            >
-              <PlanButtonLabel
-                loading={loading === "portal"}
-                loadingText="Opening…"
+                {flows.busy === "cancelPending" ? "Cancelling…" : "Cancel pending upgrade"}
+              </Button>
+            ) : flows.recoveryAction === "portal" ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void flows.openPortal()}
+                disabled={menuBusy}
               >
-                Update payment method
-              </PlanButtonLabel>
-            </Button>
-          ) : null}
-        </div>
-      )}
+                {flows.busy === "portal" ? "Opening…" : "Update payment method"}
+              </Button>
+            ) : null
+          }
+        >
+          {flows.recoveryMessage ??
+            "Your upgrade payment is processing. You'll move to the new plan automatically once it succeeds."}
+        </Banner>
+      ) : null}
 
-      {stuckCheckoutPlan && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-3">
-          <span>
-            Your last checkout looks stuck. Start a fresh checkout to create a
-            new payment session and try again.
-          </span>
-          <Button
-            variant="outline"
-            onClick={() => void handleFreshCheckout()}
-            disabled={loadingChangePlan !== null}
-            className="border-amber-500/40 bg-white/80 text-amber-900 hover:bg-white dark:bg-transparent dark:text-amber-100"
-          >
-            <PlanButtonLabel
-              loading={loadingChangePlan === stuckCheckoutPlan}
-              loadingText="Starting…"
+      {flows.stuckCheckout ? (
+        <Banner
+          tier="blocking"
+          actions={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void flows.freshCheckout()}
+              disabled={flows.loadingPlan !== null}
             >
-              Start a fresh checkout
-            </PlanButtonLabel>
-          </Button>
-        </div>
-      )}
+              {flows.loadingPlan === flows.stuckCheckout.plan
+                ? "Starting…"
+                : "Start a fresh checkout"}
+            </Button>
+          }
+        >
+          Your last checkout looks stuck. Start a fresh checkout to create a new payment session.
+        </Banner>
+      ) : null}
 
-      {subscription.pendingPlanTier && subscription.tier !== "free" && (
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200 flex items-center justify-between flex-wrap gap-2">
-          <span>
-            {((subscription.tier === "starter" &&
-              (subscription.pendingPlanTier === "growth" ||
-                subscription.pendingPlanTier === "pro")) ||
-            (subscription.tier === "growth" &&
-              subscription.pendingPlanTier === "pro"))
-              ? "Your plan will upgrade to "
-              : "Your plan will downgrade to "}
-            {subscription.pendingPlanTier === "pro"
-              ? "Pro"
-              : subscription.pendingPlanTier === "growth"
-                ? "Growth"
-                : "Starter"}{" "}
-            on {renewalDate ?? "your renewal date"}.
-          </span>
-          <button
-            type="button"
-            onClick={handleCancelPendingPlanChange}
-            className="text-xs underline hover:no-underline ml-4"
-          >
-            {((subscription.tier === "starter" &&
-              (subscription.pendingPlanTier === "growth" ||
-                subscription.pendingPlanTier === "pro")) ||
-            (subscription.tier === "growth" &&
-              subscription.pendingPlanTier === "pro"))
-              ? "Cancel upgrade"
-              : "Cancel downgrade"}
-          </button>
-        </div>
-      )}
+      {pending && paid ? (
+        <Banner
+          tier="info"
+          actions={
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void flows.cancelPendingChange()}
+              disabled={menuBusy}
+            >
+              {flows.busy === "cancelPending"
+                ? "Cancelling…"
+                : pendingIsUpgrade
+                  ? "Cancel upgrade"
+                  : "Cancel downgrade"}
+            </Button>
+          }
+        >
+          Your plan will {pendingIsUpgrade ? "upgrade" : "downgrade"} to {planName(pending)} on{" "}
+          {renewalDate ?? "your renewal date"}.
+        </Banner>
+      ) : null}
 
-      <section className="mt-8">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-foreground">Plans</h2>
-          <BillingIntervalToggle
-            value={billingInterval}
-            onChange={setBillingInterval}
-            size="sm"
-          />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Starter card */}
-          <div
-            className={`rounded-2xl border-2 p-6 flex flex-col ${
-              subscription.tier === "starter"
-                ? "ring-1 ring-accent border-accent/30 bg-accent/5"
-                : "border-border bg-card"
-            }`}
-          >
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-              Starter
-            </div>
-            <div className="mb-2">
-              <PlanDiscountPrice
-                amount={starterPrice.price}
-                listAmount={starterPrice.listPrice}
-                period={billingInterval === "yearly" ? "/year" : "/month"}
-                size="sm"
-              />
-            </div>
-            {billingInterval === "yearly" ? (
-              <p className="mb-2 text-xs text-muted-foreground">
-                ≈ ${formatEffectiveMonthly("starter")}/month
+      {subscription.paused && paid ? (
+        <Banner tier="info" title="Your subscription is paused.">
+          Scheduled posts won&apos;t publish until it resumes. Open the billing portal to resume
+          early.
+        </Banner>
+      ) : null}
+
+      {upgradeParam === "1" ? (
+        <Banner
+          tier="info"
+          onDismiss={() => setPlansOpen(true)}
+          dismissLabel="Dismiss upgrade note"
+        >
+          {PLAN_NAMES.creator} gives you 15 accounts, bulk tools, auto-plug and auto-repost.{" "}
+          {PLAN_NAMES.agency} gives you {AGENCY_INCLUDED_ACCOUNTS} accounts (then +$
+          {formatMoney(AGENCY_EXTRA_ACCOUNT_PRICE.monthly)}/month each)
+          and teammates.
+        </Banner>
+      ) : null}
+
+      {/* ---- Plan: a settings section (heading + hairline rows), no card ---- */}
+      <section aria-labelledby="billing-plan-title" className="pt-2">
+        <h2 id="billing-plan-title" className="pb-3 text-[15px] font-semibold text-text">
+          Plan
+        </h2>
+        <div className="divide-y divide-border border-t border-border [&>*]:py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+            <div className="min-w-0">
+              <p className="text-base font-semibold tracking-tight text-text">
+                {planName(tier)}
+                {paid ? (
+                  <span className="font-normal text-text-muted">
+                    {" "}
+                    · {shortPrice(tier, currentInterval, extraAccounts)}
+                  </span>
+                ) : null}
               </p>
-            ) : null}
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
-              {STARTER_BILLING_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <span className="text-accent shrink-0">✓</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6">
-              {subscription.tier === "starter" ? (
-                currentInterval !== billingInterval ? (
-                  <Button
-                    className="w-full"
-                    disabled={loadingChangePlan !== null || upgradePending}
-                    onClick={() => void handleSwitchInterval("starter")}
-                  >
-                    <PlanButtonLabel loading={loadingChangePlan === "starter"}>
-                      Switch to{" "}
-                      {billingInterval === "yearly" ? "yearly" : "monthly"}
-                    </PlanButtonLabel>
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full" variant="outline">
-                    Current plan
-                  </Button>
-                )
-              ) : subscription.tier === "growth" ||
-                subscription.tier === "pro" ||
-                subscription.tier === "max" ? (
-                <Button disabled className="w-full" variant="outline">
-                  Included in{" "}
-                  {subscription.tier === "max"
-                    ? "Max"
-                    : subscription.tier === "pro"
-                      ? "Pro"
-                      : "Growth"}
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    className="w-full"
-                    disabled={loadingChangePlan !== null}
-                    onClick={() => handleUpgradeFromFree("starter")}
-                  >
-                    <PlanButtonLabel loading={loadingChangePlan === "starter"}>
-                      Upgrade to Starter
-                    </PlanButtonLabel>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Growth card */}
-          <div
-            className={`rounded-2xl border p-6 flex flex-col relative ${
-              subscription.tier === "growth"
-                ? "ring-1 ring-accent border-accent/30 bg-accent/5"
-                : "border-border bg-card"
-            }`}
-          >
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-              Growth
-            </div>
-            <div className="mb-2">
-              <PlanDiscountPrice
-                amount={growthPrice.price}
-                listAmount={growthPrice.listPrice}
-                period={billingInterval === "yearly" ? "/year" : "/month"}
-                size="sm"
-                badge={
-                  growthPrice.savePercent != null ? (
-                    <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
-                      Save {growthPrice.savePercent}%
-                    </span>
-                  ) : null
-                }
-              />
-            </div>
-            {billingInterval === "yearly" ? (
-              <p className="mb-2 text-xs text-muted-foreground">
-                ≈ ${formatEffectiveMonthly("growth")}/month
+              <p
+                className={cn(
+                  "mt-0.5 text-[13px]",
+                  subscription.cancelAtPeriodEnd ? "text-warning" : "text-text-muted",
+                )}
+              >
+                {statusLine}
               </p>
-            ) : null}
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
-              {GROWTH_BILLING_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <span className="text-accent shrink-0">✓</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6">
-              {subscription.tier === "growth" ? (
-                currentInterval !== billingInterval ? (
-                  <Button
-                    className="w-full"
-                    disabled={loadingChangePlan !== null || upgradePending}
-                    onClick={() => void handleSwitchInterval("growth")}
-                  >
-                    <PlanButtonLabel loading={loadingChangePlan === "growth"}>
-                      Switch to{" "}
-                      {billingInterval === "yearly" ? "yearly" : "monthly"}
-                    </PlanButtonLabel>
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full">
-                    Current plan
-                  </Button>
-                )
-              ) : subscription.tier === "pro" || subscription.tier === "max" ? (
-                <Button disabled className="w-full" variant="outline">
-                  Included in {subscription.tier === "max" ? "Max" : "Pro"}
-                </Button>
-              ) : subscription.tier === "starter" ? (
-                <Button
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                  disabled={loadingChangePlan !== null || upgradePending}
-                  onClick={() => handleUpgradePlan("growth")}
-                >
-                  <PlanButtonLabel loading={loadingChangePlan === "growth"}>
-                    Upgrade to Growth
-                  </PlanButtonLabel>
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                    disabled={loadingChangePlan !== null}
-                    onClick={() => handleUpgradeFromFree("growth")}
-                  >
-                    <PlanButtonLabel loading={loadingChangePlan === "growth"}>
-                      Upgrade to Growth
-                    </PlanButtonLabel>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Pro card */}
-          <div
-            className={`rounded-2xl border-2 p-6 flex flex-col ${
-              subscription.tier === "pro"
-                ? "ring-1 ring-accent border-accent/30 bg-accent/5"
-                : "border-border bg-card"
-            }`}
-          >
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-              Pro
-            </div>
-            <div className="mb-2">
-              <PlanDiscountPrice
-                amount={proPrice.price}
-                listAmount={proPrice.listPrice}
-                period={billingInterval === "yearly" ? "/year" : "/month"}
-                size="sm"
-                badge={
-                  proPrice.savePercent != null ? (
-                    <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
-                      Save {proPrice.savePercent}%
-                    </span>
-                  ) : null
-                }
-              />
-            </div>
-            {billingInterval === "yearly" ? (
-              <p className="mb-2 text-xs text-muted-foreground">
-                ≈ ${formatEffectiveMonthly("pro")}/month
-              </p>
-            ) : null}
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
-              {PRO_BILLING_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <span className="text-accent shrink-0">✓</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6">
-              {subscription.tier === "pro" ? (
-                currentInterval !== billingInterval ? (
-                  <Button
-                    className="w-full"
-                    disabled={loadingChangePlan !== null || upgradePending}
-                    onClick={() => void handleSwitchInterval("pro")}
-                  >
-                    <PlanButtonLabel loading={loadingChangePlan === "pro"}>
-                      Switch to{" "}
-                      {billingInterval === "yearly" ? "yearly" : "monthly"}
-                    </PlanButtonLabel>
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full">
-                    Current plan
-                  </Button>
-                )
-              ) : subscription.tier === "max" ? (
-                <Button disabled className="w-full" variant="outline">
-                  Included in Max
-                </Button>
-              ) : subscription.tier === "starter" ||
-                subscription.tier === "growth" ? (
-                <Button
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                  disabled={loadingChangePlan !== null || upgradePending}
-                  onClick={() => handleUpgradePlan("pro")}
-                >
-                  <PlanButtonLabel loading={loadingChangePlan === "pro"}>
-                    Upgrade to Pro
-                  </PlanButtonLabel>
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                    disabled={loadingChangePlan !== null}
-                    onClick={() => handleUpgradeFromFree("pro")}
-                  >
-                    <PlanButtonLabel loading={loadingChangePlan === "pro"}>
-                      Upgrade to Pro
-                    </PlanButtonLabel>
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Max card — hidden reveal on marketing; always available in billing */}
-          <div
-            className={`rounded-2xl border p-6 flex flex-col ${
-              subscription.tier === "max"
-                ? "ring-1 ring-accent border-accent/30 bg-accent/5"
-                : "border-border bg-card"
-            }`}
-          >
-            <div className="mb-2 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
-              Max
-            </div>
-            <div className="mb-2">
-              <PlanDiscountPrice
-                amount={maxPrice.price}
-                listAmount={maxPrice.listPrice}
-                period={billingInterval === "yearly" ? "/year" : "/month"}
-                size="sm"
-                badge={
-                  maxPrice.savePercent != null ? (
-                    <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-accent">
-                      Save {maxPrice.savePercent}%
-                    </span>
-                  ) : null
-                }
-              />
-            </div>
-            {billingInterval === "yearly" ? (
-              <p className="mb-2 text-xs text-muted-foreground">
-                ≈ ${formatEffectiveMonthly("max")}/month
-              </p>
-            ) : null}
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-muted-foreground">
-              {MAX_BILLING_FEATURES.map((f) => (
-                <li key={f} className="flex items-center gap-2">
-                  <span className="text-accent shrink-0">✓</span>
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6 space-y-2">
-              {subscription.tier === "max" ? (
-                currentInterval !== billingInterval ? (
-                  <Button
-                    className="w-full"
-                    disabled={loadingChangePlan !== null || upgradePending}
-                    onClick={() => void handleSwitchInterval("max")}
-                  >
-                    <PlanButtonLabel loading={loadingChangePlan === "max"}>
-                      Switch to{" "}
-                      {billingInterval === "yearly" ? "yearly" : "monthly"}
-                    </PlanButtonLabel>
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full">
-                    Current plan
-                  </Button>
-                )
-              ) : subscription.tier === "starter" ||
-                subscription.tier === "growth" ||
-                subscription.tier === "pro" ? (
-                <Button
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                  disabled={loadingChangePlan !== null || upgradePending}
-                  onClick={() => handleUpgradePlan("max")}
-                >
-                  <PlanButtonLabel loading={loadingChangePlan === "max"}>
-                    Upgrade to Max
-                  </PlanButtonLabel>
-                </Button>
-              ) : (
-                <Button
-                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                  disabled={loadingChangePlan !== null}
-                  onClick={() => handleUpgradeFromFree("max")}
-                >
-                  <PlanButtonLabel loading={loadingChangePlan === "max"}>
-                    Upgrade to Max
-                  </PlanButtonLabel>
-                </Button>
-              )}
-              {subscription.tier !== "max" ? (
-                <a
-                  href="https://cal.com/abhishekbr/30min"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full rounded-xl border border-border px-3 py-2.5 text-center text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                  Prefer a walkthrough?
-                </a>
+              {legacy ? (
+                <p className="mt-1.5 text-[13px] text-text-muted">
+                  {legacyPlanSummary(legacy)}. You&apos;re on a plan we no longer sell. You keep
+                  it and its price as long as you stay subscribed.
+                </p>
               ) : null}
             </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {paid ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPlansOpen(!plansOpen, { highlight: null })}
+                  aria-expanded={plansOpen}
+                  aria-controls="plans"
+                >
+                  {plansOpen ? "Hide plans" : "Change plan"}
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={() =>
+                    setPlansOpen(true, { highlight: highlight ?? "creator" })
+                  }
+                >
+                  Upgrade
+                </Button>
+              )}
+              <BillingMenu items={menuItems} disabled={menuBusy} />
+            </div>
           </div>
+
+          {/* Usage */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div>
+              {onAgency ? (
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="text-text">Connected accounts</span>
+                  <span className="tabular-nums text-text-muted">
+                    {accountsUsed} · {AGENCY_INCLUDED_ACCOUNTS} included
+                  </span>
+                </div>
+              ) : unlimited ? (
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="text-text">Connected accounts</span>
+                  <span className="text-text-muted">{accountsUsed} · Unlimited</span>
+                </div>
+              ) : (
+                <Meter
+                  value={accountsUsed}
+                  max={accountsLimit}
+                  label="Connected accounts"
+                  hint={`${accountsUsed} of ${accountsLimit}`}
+                  size="md"
+                />
+              )}
+              {atAccountLimit && nextPlan === "agency" && !onAgency ? (
+                <p className="mt-2 text-xs text-text-muted">
+                  You&apos;re at your limit. {planName("agency")} includes{" "}
+                  {AGENCY_INCLUDED_ACCOUNTS} accounts, then +$
+                  {formatMoney(AGENCY_EXTRA_ACCOUNT_PRICE.monthly)}/mo each, never a cap.{" "}
+                  <button
+                    type="button"
+                    disabled={flows.loadingPlan !== null || flows.busy !== null}
+                    onClick={() =>
+                      void flows.startUpgrade(
+                        "agency",
+                        interval,
+                        agencyExtraAccounts(accountsUsed),
+                      )
+                    }
+                    className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
+                  >
+                    Move to {planName("agency")}
+                  </button>
+                </p>
+              ) : atAccountLimit && nextPlan ? (
+                <p className="mt-2 text-xs text-text-muted">
+                  You&apos;re at your limit. {planName(nextPlan)} gives you{" "}
+                  {isUnlimitedAccounts(getPlanLimits(nextPlan).maxConnectedAccounts)
+                    ? "unlimited accounts"
+                    : `${getPlanLimits(nextPlan).maxConnectedAccounts} accounts`}
+                  .{" "}
+                  <button
+                    type="button"
+                    onClick={() => setPlansOpen(true, { highlight: nextPlan })}
+                    className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                  >
+                    See {planName(nextPlan)}
+                  </button>
+                </p>
+              ) : null}
+            </div>
+
+            <div>
+              {!paid && freePosts && freeUsed != null ? (
+                <>
+                  <Meter
+                    value={freeUsed}
+                    max={freePosts.limit}
+                    label="Free posts"
+                    hint={`${freeUsed} of ${freePosts.limit} used`}
+                    size="md"
+                  />
+                  {freeOut ? (
+                    <p className="mt-2 text-xs text-text-muted">
+                      You&apos;ve used your free posts. Drafts still save.{" "}
+                      <button
+                        type="button"
+                        onClick={() => setPlansOpen(true, { highlight: "creator" })}
+                        className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+                      >
+                        See {PLAN_NAMES.creator}
+                      </button>
+                    </p>
+                  ) : null}
+                </>
+              ) : (
+                <div className="flex items-baseline justify-between gap-2 text-xs">
+                  <span className="text-text">Posts</span>
+                  <span className="text-text-muted">{paid ? "Unlimited" : `${getPlanLimits("free").maxFreePosts} on Free`}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {onAgency ? (
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-text">Accounts</p>
+              <p className="mt-0.5 text-[13px] text-text-muted">
+                {AGENCY_INCLUDED_ACCOUNTS} included
+                {extraAccounts > 0
+                  ? `, ${extraAccounts} extra on your bill (+$${formatMoney(
+                      extraAccounts * AGENCY_EXTRA_ACCOUNT_PRICE[currentInterval],
+                    )}/${currentInterval === "yearly" ? "year" : "month"})`
+                  : ""}
+                . {AGENCY_EXTRA_ACCOUNT_NOTE} Disconnecting lowers your next bill; there are no
+                mid-cycle refunds.
+              </p>
+            </div>
+          ) : null}
+          {showYearlyNudge && paid ? (
+            <p className="text-[13px] text-text-muted">
+              Pay ${formatMoney(yearlyPrice)} a year instead of ${formatMoney(monthlyTimes12)} (
+              {Math.abs(monthlyTimes12 / 12 * 10 - yearlyPrice) < 0.005
+                ? "2 months free"
+                : `save $${formatMoney(Math.round((monthlyTimes12 - yearlyPrice) * 100) / 100)}`}
+              ).{" "}
+              <button
+                type="button"
+                disabled={flows.loadingPlan !== null}
+                onClick={() => setSwitchTarget({ plan: tier, to: "yearly" })}
+                className="font-medium text-accent hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-50"
+              >
+                Switch to yearly
+              </button>
+            </p>
+          ) : null}
+
+          {paid ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-text">Invoices &amp; payment method</p>
+                <p className="mt-0.5 text-[13px] text-text-muted">
+                  Download invoices and change your card in the billing portal.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={() => void flows.openPortal()}
+                disabled={menuBusy}
+              >
+                {flows.busy === "portal" ? "Opening…" : "Open billing portal"}
+              </Button>
+            </div>
+          ) : null}
         </div>
       </section>
 
-      <Dialog
-        open={upgradeConfirmOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setUpgradeConfirmOpen(false);
-            setUpgradeConfirmPlan(null);
-            setUpgradePreview(null);
-            setConfirmUpgradeAction(null);
+      {/* ---- Plans (behind Change plan) ---- */}
+      {plansOpen ? (
+        <PlansGrid
+          tier={tier}
+          extraAccounts={extraAccounts}
+          connectedAccounts={accountsUsed}
+          currentInterval={currentInterval}
+          interval={interval}
+          onIntervalChange={setGridInterval}
+          highlight={highlight}
+          pendingPlanTier={paid ? pending : null}
+          renewalDate={renewalDate}
+          loadingPlan={flows.loadingPlan}
+          upgradePending={flows.upgradePending}
+          onUpgrade={(plan, extras) =>
+            void (paid
+              ? flows.startUpgrade(plan, interval, extras)
+              : flows.startCheckout(plan, interval, extras))
           }
+          onDowngrade={(plan, extras) => setDowngradeTarget({ plan, extraAccounts: extras })}
+          onSwitchInterval={(plan) => setSwitchTarget({ plan, to: interval })}
+          onClose={() => setPlansOpen(false)}
+        />
+      ) : null}
+
+      {/* ---- Dialogs ---- */}
+      <UpgradeTimingDialog
+        confirm={flows.upgradeConfirm}
+        renewalDate={renewalDate}
+        cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
+        loading={flows.loadingPlan !== null}
+        action={flows.upgradeAction}
+        onConfirm={(when) => void flows.confirmUpgrade(when)}
+        onClose={flows.closeUpgradeConfirm}
+      />
+      <DowngradeDialog
+        target={downgradeTarget?.plan ?? null}
+        targetExtraAccounts={downgradeTarget?.extraAccounts ?? 0}
+        currentTier={tier}
+        currentExtraAccounts={extraAccounts}
+        interval={interval}
+        renewalDate={renewalDate}
+        cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
+        loading={flows.loadingPlan !== null}
+        onSchedule={(plan, reason) =>
+          flows.scheduleDowngrade(plan, interval, reason, downgradeTarget?.extraAccounts ?? 0)
+        }
+        onClose={() => setDowngradeTarget(null)}
+      />
+      <SwitchIntervalDialog
+        plan={switchTarget?.plan ?? null}
+        extraAccounts={switchTarget?.plan === "agency" ? extraAccounts : 0}
+        to={switchTarget?.to ?? "yearly"}
+        loading={flows.loadingPlan !== null}
+        renewalDate={renewalDate}
+        cancelAtPeriodEnd={subscription.cancelAtPeriodEnd}
+        onConfirm={async () => {
+          if (!switchTarget) return;
+          const ok = await flows.switchInterval(switchTarget.plan, switchTarget.to);
+          if (ok) setSwitchTarget(null);
         }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              Upgrade to{" "}
-              {upgradeConfirmPlan === "max"
-                ? "Max"
-                : upgradeConfirmPlan === "pro"
-                  ? "Pro"
-                  : upgradeConfirmPlan === "starter"
-                    ? "Starter"
-                    : "Growth"}
-            </DialogTitle>
-            <DialogDescription>
-              Choose when you want the upgrade to take effect.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={handleConfirmUpgradeNow}
-              disabled={loadingChangePlan !== null || !upgradeConfirmPlan}
-              className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50"
-            >
-              <p className="font-medium text-foreground">
-                <PlanButtonLabel
-                  loading={confirmUpgradeAction === "now"}
-                  loadingText="Processing…"
-                >
-                  Upgrade now
-                </PlanButtonLabel>
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {upgradePreview?.immediateCharge?.summary
-                  ? `Charge ${formatPreviewAmount(upgradePreview.immediateCharge.summary)} on your saved payment method`
-                  : "Charge the prorated difference on your saved payment method"}
-                . Access unlocks after payment succeeds — track it via Manage
-                Subscription.
-              </p>
-              {subscription.cancelAtPeriodEnd && (
-                <p className="mt-1 text-xs text-accent">
-                  Your cancellation will be removed after upgrade.
-                </p>
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirmUpgradeOnRenewal}
-              disabled={loadingChangePlan !== null || !upgradeConfirmPlan}
-              className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-accent/50 hover:bg-accent/5 disabled:opacity-50"
-            >
-              <p className="font-medium text-foreground">
-                <PlanButtonLabel
-                  loading={confirmUpgradeAction === "renewal"}
-                  loadingText="Scheduling…"
-                >
-                  Upgrade on renewal
-                </PlanButtonLabel>
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                No payment today · Starts on{" "}
-                {renewalDate ?? "your renewal date"}
-              </p>
-            </button>
-          </div>
-          <DialogFooter className="mt-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setUpgradeConfirmOpen(false);
-                setUpgradeConfirmPlan(null);
-                setUpgradePreview(null);
-              }}
-              disabled={loadingChangePlan !== null}
-            >
-              Cancel
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={downgradeStep !== 0}
-        onOpenChange={(open) => {
-          if (open) return;
-          setDowngradeStep(0);
-          setDowngradeReason("");
-          setTargetDowngradePlan(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-lg" showCloseButton={false}>
-          {downgradeStep === 1 ? (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground">
-                  STEP 1 OF 2
-                </p>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="rounded-md p-1 text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setDowngradeStep(0);
-                    setDowngradeReason("");
-                    setTargetDowngradePlan(null);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <DialogHeader>
-                <DialogTitle>Before you downgrade...</DialogTitle>
-                <DialogDescription>
-                  What made you decide to downgrade?
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-2">
-                <textarea
-                  value={downgradeReason}
-                  onChange={(e) => setDowngradeReason(e.target.value)}
-                  placeholder="Please share your reason..."
-                  className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                />
-                <p className="text-xs text-muted-foreground whitespace-pre-line">
-                  this helps me understand what&apos;s missing. i&apos;ll read
-                  every response and use it to improve Social0.{"\n"}- abhishek
-                  (the person who built + runs social0)
-                </p>
-              </div>
-
-              <DialogFooter className="mt-4 gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setDowngradeStep(0);
-                    setDowngradeReason("");
-                    setTargetDowngradePlan(null);
-                  }}
-                  disabled={loadingChangePlan !== null}
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={() => setDowngradeStep(2)}
-                  disabled={
-                    loadingChangePlan !== null ||
-                    downgradeReason.trim().length === 0
-                  }
-                >
-                  Continue
-                </Button>
-              </DialogFooter>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground">
-                  STEP 2 OF 2
-                </p>
-                <button
-                  type="button"
-                  aria-label="Close"
-                  className="rounded-md p-1 text-muted-foreground hover:text-foreground"
-                  onClick={() => {
-                    setDowngradeStep(0);
-                    setDowngradeReason("");
-                    setTargetDowngradePlan(null);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mt-2">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="w-14 h-14 rounded-full bg-amber-100 dark:bg-amber-950/30 flex items-center justify-center">
-                    <div className="w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-900/50 flex items-center justify-center">
-                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    </div>
-                  </div>
-                </div>
-
-                <h3 className="text-lg font-semibold text-foreground text-center">
-                  Downgrade to{" "}
-                  {targetDowngradePlan === "growth" ? "Growth" : "Starter"}?
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground text-center">
-                  You&apos;ll stay on {tierLabel} until{" "}
-                  {renewalDate ?? "your renewal date"}. After that, your plan
-                  switches to{" "}
-                  {targetDowngradePlan === "growth"
-                    ? `Growth (${formatPlanPriceLabel("growth", billingInterval)})`
-                    : `Starter (${formatPlanPriceLabel("starter", billingInterval)})`}
-                  . You won&apos;t be charged now.
-                </p>
-                {subscription.cancelAtPeriodEnd && (
-                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-300 text-center">
-                    Your cancellation will be replaced with a downgrade at the
-                    end of your billing cycle.
-                  </p>
-                )}
-
-                <div className="mt-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-left">
-                  <p className="text-sm font-medium mb-3">
-                    You&apos;ll lose access to:
-                  </p>
-                  <ul className="space-y-2">
-                    {(targetDowngradePlan === "growth"
-                      ? [
-                          "Up to 50 accounts (drops to 15)",
-                          "Team collaboration / invite teammates",
-                          "Priority support",
-                        ]
-                      : [
-                          "Up to 15 accounts (drops to 5)",
-                          "Auto-plug high performing tweets",
-                          "Auto-repost on autopilot",
-                          "Bulk scheduling tools",
-                          ...(subscription.tier === "pro"
-                            ? ["Team collaboration / invite teammates"]
-                            : []),
-                        ]
-                    ).map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-center gap-2 text-sm text-muted-foreground"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex items-center justify-between mt-6">
-                  <button
-                    onClick={() => setDowngradeStep(1)}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
-                    type="button"
-                    disabled={loadingChangePlan !== null}
-                  >
-                    Go Back
-                  </button>
-                  <button
-                    onClick={handleScheduleDowngrade}
-                    disabled={loadingChangePlan !== null}
-                    className="bg-amber-500 hover:bg-amber-600 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50"
-                    type="button"
-                  >
-                    Schedule Downgrade
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={pauseOpen} onOpenChange={setPauseOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Pause your subscription</DialogTitle>
-            <DialogDescription>
-              How long would you like to pause? You can resume anytime. Your
-              data and connections will be preserved.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid grid-cols-1 gap-2">
-            {[1, 2, 3].map((m) => (
-              <Button
-                key={m}
-                variant="outline"
-                onClick={() => handlePause(m as 1 | 2 | 3)}
-                disabled={loading !== null}
-              >
-                {`Pause for ${m} month${m > 1 ? "s" : ""}`}
-              </Button>
-            ))}
-          </div>
-
-          <DialogFooter className="mt-2">
-            <p className="text-xs text-muted-foreground">
-              Your data and settings will be preserved during the pause
-            </p>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={cancelStep !== 0} onOpenChange={() => setCancelStep(0)}>
-        <DialogContent className="sm:max-w-lg">
-          {cancelStep === 1 ? (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground">
-                  STEP 1 OF 2
-                </p>
-              </div>
-              <DialogHeader>
-                <DialogTitle>Please tell us how we can do better</DialogTitle>
-                <DialogDescription>
-                  What made you cancel your subscription?
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="space-y-2">
-                <textarea
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Please share your reason..."
-                  className="min-h-32 w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                />
-                <p className="text-xs text-muted-foreground whitespace-pre-line">
-                  the feedback you put here matters to me. i will pay attention
-                  and improve Social0 based on it, thank you for your time.
-                  {"\n"}- abhishek (the person who built + runs social0)
-                </p>
-              </div>
-
-              <DialogFooter className="mt-4 gap-2 sm:gap-0">
-                <Button
-                  variant="outline"
-                  onClick={() => setCancelStep(0)}
-                  disabled={loading !== null}
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={() => setCancelStep(2)}
-                  disabled={
-                    loading !== null || cancelReason.trim().length === 0
-                  }
-                >
-                  Continue
-                </Button>
-              </DialogFooter>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium tracking-wide text-muted-foreground">
-                  STEP 2 OF 2
-                </p>
-              </div>
-
-              <div className="mt-2">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-950/30 flex items-center justify-center">
-                    <div className="w-6 h-6 rounded-full bg-red-200 dark:bg-red-900/50 flex items-center justify-center">
-                      <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                    </div>
-                  </div>
-                </div>
-
-                <h3 className="text-lg font-semibold text-foreground text-center">
-                  Confirm Cancellation
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground text-center">
-                  Thank you for your feedback. Your subscription will be
-                  cancelled at the end of your current billing period.
-                  You&apos;ll continue to have access until then.
-                </p>
-
-                <div className="mt-5 rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 p-4 text-left">
-                  <p className="text-sm font-medium text-foreground mb-3">
-                    After your period ends, you&apos;ll lose access to:
-                  </p>
-                  <ul className="space-y-2">
-                    {[
-                      "Multi-platform posting (9 platforms)",
-                      "Content scheduling",
-                      "Bulk scheduling tools",
-                      "Auto-repost & Auto-plug",
-                      "Connected accounts get disconnected after 30 days",
-                    ].map((item) => (
-                      <li
-                        key={item}
-                        className="flex items-center gap-2 text-sm text-muted-foreground"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div className="flex items-center justify-between mt-6">
-                  <button
-                    onClick={() => setCancelStep(1)}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium"
-                    type="button"
-                  >
-                    Go Back
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    disabled={loading === "cancel"}
-                    className="bg-red-500 hover:bg-red-600 text-white rounded-xl px-6 py-3 text-sm font-medium transition-colors disabled:opacity-50"
-                    type="button"
-                  >
-                    Confirm Cancel
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+        onClose={() => setSwitchTarget(null)}
+      />
+      <CancelDialog
+        open={cancelOpen}
+        loading={flows.busy === "cancel"}
+        renewalDate={renewalDate}
+        onCancel={flows.cancel}
+        onClose={() => setCancelOpen(false)}
+      />
     </div>
   );
 }

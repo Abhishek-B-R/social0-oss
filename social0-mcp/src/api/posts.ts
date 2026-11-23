@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { idempotencyKeyFor } from "../lib/idempotency.js";
 import type { ListPostsResponse, PostDetail, PostSummary, ScheduleResult } from "../types/index.js";
 import { apiClient } from "./client.js";
 
@@ -46,8 +46,18 @@ function buildQuery(params: ListPostsParams): string {
   return qs ? `?${qs}` : "";
 }
 
-export async function createPost(payload: CreatePostPayload): Promise<{ id: string }> {
-  return apiClient.post<{ id: string }>("/posts", payload);
+/**
+ * Every create/publish call sends an Idempotency-Key: the caller's, or one
+ * derived from the request (see `idempotencyKeyFor`), so a retried tool call
+ * replays the first result instead of posting again.
+ */
+export async function createPost(
+  payload: CreatePostPayload,
+  idempotencyKey?: string,
+): Promise<{ id: string }> {
+  return apiClient.post<{ id: string }>("/posts", payload, {
+    idempotencyKey: idempotencyKeyFor("create_draft", payload, idempotencyKey),
+  });
 }
 
 export async function updatePost(postId: string, payload: UpdatePostPayload): Promise<PostDetail> {
@@ -66,13 +76,16 @@ export async function getPost(postId: string): Promise<PostDetail> {
   return apiClient.get<PostDetail>(`/posts/${postId}`);
 }
 
-export async function publishPost(postId: string): Promise<{
+export async function publishPost(
+  postId: string,
+  idempotencyKey?: string,
+): Promise<{
   tracking_id: string;
   status: string;
   stream_url: string;
 }> {
   return apiClient.post(`/posts/${postId}/publish`, undefined, {
-    idempotencyKey: randomUUID(),
+    idempotencyKey: idempotencyKeyFor("publish_post", { post_id: postId }, idempotencyKey),
   });
 }
 
@@ -83,19 +96,27 @@ export async function schedulePost(
   return apiClient.post(`/posts/${postId}/schedule`, payload);
 }
 
-export async function publishNow(payload: CreatePostPayload): Promise<{
+export async function publishNow(
+  payload: CreatePostPayload,
+  idempotencyKey?: string,
+): Promise<{
   post_id: string;
   tracking_id: string;
   status: string;
   stream_url: string;
 }> {
-  return apiClient.post("/posts/publish", payload, { idempotencyKey: randomUUID() });
+  return apiClient.post("/posts/publish", payload, {
+    idempotencyKey: idempotencyKeyFor("publish_now", payload, idempotencyKey),
+  });
 }
 
 export async function scheduleContent(
   payload: CreatePostPayload & SchedulePostPayload,
+  idempotencyKey?: string,
 ): Promise<ScheduleResult> {
-  return apiClient.post("/posts/schedule", payload);
+  return apiClient.post("/posts/schedule", payload, {
+    idempotencyKey: idempotencyKeyFor("schedule_content", payload, idempotencyKey),
+  });
 }
 
 export type { PostSummary };

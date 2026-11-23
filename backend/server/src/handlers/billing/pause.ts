@@ -8,7 +8,10 @@ import {
 
 
 export async function pauseSubscription(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  });
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

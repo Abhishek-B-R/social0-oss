@@ -8,6 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { friendlyAuthError } from "@/lib/auth-errors";
 import { toast } from "sonner";
 import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
+import { AuthNotice } from "@/components/auth/AuthNotice";
 
 
 function ResetPasswordContent() {
@@ -59,20 +60,13 @@ function ResetPasswordContent() {
 
   if (!email) {
     return (
-      <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
-        <main className="flex flex-1 items-center justify-center px-4">
-          <p className="text-muted-foreground">
-            Missing email.{" "}
-            <Link
-              href="/auth/forgot-password"
-              className="text-accent hover:opacity-80 hover:underline"
-            >
-              Request a reset
-            </Link>
-            .
-          </p>
-        </main>
-      </div>
+      <AuthNotice
+        title="Reset password"
+        actionHref="/auth/forgot-password"
+        actionLabel="Request a reset code"
+      >
+        This reset link is missing your email address. Request a new code to continue.
+      </AuthNotice>
     );
   }
 
@@ -105,7 +99,7 @@ function ResetPasswordContent() {
                   <OtpInputs
                     digits={otp}
                     onChange={setOtp}
-                    inputClassName={"w-11 h-12 text-center text-lg font-semibold rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"}
+                    inputClassName={"w-11 h-12 text-center text-lg font-semibold rounded-lg border border-border bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-white/10 dark:bg-[#0A0A0A]"}
                   />
                 </div>
                 <div>
@@ -178,7 +172,7 @@ function ResetPasswordContent() {
 
 function ResetPasswordFallback() {
   return (
-    <div className="landing flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+    <div className="landing landing-page flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
       <main className="flex flex-1 items-center justify-center px-4 py-12">
         <p className="text-muted-foreground">Loading…</p>
       </main>

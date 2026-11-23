@@ -1,0 +1,54 @@
+{
+  "name": "Social0",
+  "url": "https://social0.app",
+  "capabilities": [
+    "Publish one post to up to 9 social networks in parallel",
+    "Schedule posts with a calendar, drafts, and queue slots",
+    "Text, image, video, thread, and carousel content",
+    "Bulk image and video scheduling",
+    "Auto-repost and auto-plug replies",
+    "Teams and workspaces for multiple brands",
+    "Analytics and inbox for posts published through Social0"
+  ],
+  "platforms": [
+    "X (Twitter)",
+    "LinkedIn",
+    "Instagram",
+    "TikTok",
+    "YouTube",
+    "Facebook Pages",
+    "Threads",
+    "Bluesky",
+    "Pinterest"
+  ],
+  "interfaces": {
+    "dashboard": "https://social0.app/dashboard",
+    "rest_api": "https://api.social0.app/v1",
+    "openapi": "https://api.social0.app/openapi.json",
+    "mcp": "https://mcp.social0.app/mcp",
+    "cli": "npm install -g social0",
+    "webhooks": "https://social0.app/tools/webhooks"
+  },
+  "plans": [
+    {
+      "name": "Free",
+      "price_usd_month": 0,
+      "accounts": 3,
+      "posts": 10
+    },
+    {
+      "name": "Creator",
+      "price_usd_month": 29.9,
+      "price_usd_year": 299,
+      "accounts": 15
+    },
+    {
+      "name": "Agency",
+      "price_usd_month": 59.9,
+      "price_usd_year": 599,
+      "accounts": 59,
+      "extra_account_usd_month": 1
+    }
+  ],
+  "updated": "2026-11-19T12:15:26.557Z"
+}

@@ -1,8 +1,10 @@
 
 import Link from "@/components/AppLink";
+import { Banner } from "@/components/app";
 import { AccountPlatformMark } from "@/components/PlatformIcon";
 import { AccountAvatar } from "@/components/AccountAvatar";
 import { cn } from "@/lib/utils";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { AlertTriangle } from "lucide-react";
 
 type Account = {
@@ -63,18 +65,21 @@ export function AccountBubbleSelector({
   warningReasons,
   warningLabel = "May limit reach",
 }: AccountBubbleSelectorProps) {
+  // Team-scoped base inside a team tree: a hard-coded personal link would
+  // bounce through PersonalWorkspaceBoot instead of opening the team's Accounts.
+  const dash = useDashboardPath();
   if (accounts.length === 0) {
     const platformNames =
       supportedPlatforms?.map((id) => platformName(id)).filter(Boolean) ?? [];
     const platformList =
       platformNames.length > 0 ? platformNames.join(", ") : null;
     return (
-      <p className="rounded-xl border border-amber-100 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/40 p-4 text-sm text-amber-700 dark:text-amber-200">
+      <Banner tier="blocking">
         {platformList ? (
           <>
             Connect at least one account from the{" "}
             <Link
-              href="/dashboard/connections"
+              href={dash("connections")}
               className="font-medium underline hover:no-underline"
             >
               connections
@@ -87,7 +92,7 @@ export function AccountBubbleSelector({
           <>
             Connect at least one account from the{" "}
             <Link
-              href="/dashboard/connections"
+              href={dash("connections")}
               className="font-medium underline hover:no-underline"
             >
               connections
@@ -95,7 +100,7 @@ export function AccountBubbleSelector({
             page that supports this form to post.
           </>
         )}
-      </p>
+      </Banner>
     );
   }
 
@@ -110,8 +115,8 @@ export function AccountBubbleSelector({
   const bubbleGap = compact ? "gap-3" : "gap-3 sm:gap-4";
   const usernameMaxChars = compact ? 10 : 12;
   const usernameClass =
-    "mt-1 max-w-[4.5rem] truncate text-center text-[11px] font-medium leading-tight text-text sm:mt-1.5 sm:max-w-[80px] sm:text-xs";
-  const platformClass = "text-[10px] leading-tight text-text-muted sm:text-xs";
+    "mt-1 max-w-[4.5rem] truncate text-center text-xs font-medium leading-tight text-text sm:mt-1.5 sm:max-w-[80px]";
+  const platformClass = "text-xs leading-tight text-text-muted";
 
   return (
     <div className={cn("flex flex-wrap items-center", bubbleGap)}>
@@ -149,14 +154,14 @@ export function AccountBubbleSelector({
                 "relative flex shrink-0 items-center justify-center rounded-full border-2 transition-all duration-150",
                 avatarSize,
                 expired
-                  ? "cursor-not-allowed border-red-300 opacity-50 grayscale"
+                  ? "cursor-not-allowed border-danger opacity-50 grayscale"
                   : disabledByLimit
-                    ? "cursor-not-allowed border-amber-400 opacity-60 grayscale"
+                    ? "cursor-not-allowed border-warning opacity-60 grayscale"
                     : selected
-                      ? "border-emerald-500 opacity-100 grayscale-0"
+                      ? "border-accent opacity-100 grayscale-0"
                       : softWarn
                         ? // Warning-only: keep muted like unselected so it doesn’t look “selected”
-                          "border-amber-400/80 opacity-60 grayscale hover:opacity-80"
+                          "border-warning/80 opacity-60 grayscale hover:opacity-80"
                         : "border-transparent opacity-60 grayscale hover:opacity-80",
               )}
               title={disabledTitle ?? warningTitle}
@@ -166,7 +171,7 @@ export function AccountBubbleSelector({
                 onClick={() => !disabled && onToggleAccount(acc.id)}
                 disabled={disabled}
                 className={cn(
-                  "relative h-full w-full  rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:pointer-events-none",
+                  "relative h-full w-full  rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 disabled:pointer-events-none",
                   disabled && "cursor-not-allowed",
                 )}
                 aria-pressed={selected}
@@ -184,7 +189,7 @@ export function AccountBubbleSelector({
                 </div>
                 <AccountPlatformMark platform={acc.platform} compact />
                 {selected && !disabled && (
-                  <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                  <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-accent text-accent-foreground">
                     <svg
                       className="h-2.5 w-2.5"
                       fill="none"
@@ -202,23 +207,23 @@ export function AccountBubbleSelector({
                 )}
                 {expired && (
                   <span
-                    className="absolute inset-0 flex items-center justify-center rounded-full bg-red-900/40"
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-danger-soft/70"
                     aria-hidden
                   >
-                    <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-white drop-shadow-md" />
+                    <AlertTriangle className="h-5 w-5 text-danger sm:h-6 sm:w-6" />
                   </span>
                 )}
                 {disabledByLimit && !expired && (
                   <span
-                    className="absolute inset-0 flex items-center justify-center rounded-full bg-amber-500/50"
+                    className="absolute inset-0 flex items-center justify-center rounded-full bg-warning-soft/70"
                     aria-hidden
                   >
-                    <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-amber-950 drop-shadow-md" />
+                    <AlertTriangle className="h-5 w-5 text-warning sm:h-6 sm:w-6" />
                   </span>
                 )}
                 {softWarn && !disabled && (
                   <span
-                    className="absolute -top-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-amber-950"
+                    className="absolute -top-0.5 -left-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-warning-solid text-warning-solid-foreground"
                     aria-hidden
                     title={warningTitle}
                   >
@@ -236,7 +241,7 @@ export function AccountBubbleSelector({
             <span className={platformClass}>{platformName(acc.platform)}</span>
             {expired && (
               <span
-                className="mt-0.5 inline-block rounded bg-red-100 dark:bg-red-950/40 px-1.5 py-0.5 text-[9px] font-medium text-red-700 dark:text-red-200"
+                className="mt-0.5 inline-block rounded bg-danger-soft px-1.5 py-0.5 text-xs font-medium text-danger"
                 title="Token expired - reconnect in Connections page"
               >
                 Token expired
@@ -244,7 +249,7 @@ export function AccountBubbleSelector({
             )}
             {disabledByLimit && !expired && (
               <span
-                className="mt-0.5 inline-block rounded bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-200"
+                className="mt-0.5 inline-block rounded bg-warning-soft px-1.5 py-0.5 text-xs font-medium text-warning"
                 title={disabledTitle}
               >
                 Video too long
@@ -252,7 +257,7 @@ export function AccountBubbleSelector({
             )}
             {softWarn && !disabled && (
               <span
-                className="mt-0.5 inline-block rounded bg-amber-100 dark:bg-amber-950/50 px-1.5 py-0.5 text-[9px] font-medium text-amber-800 dark:text-amber-200"
+                className="mt-0.5 inline-block rounded bg-warning-soft px-1.5 py-0.5 text-xs font-medium text-warning"
                 title={warningTitle}
               >
                 {warningLabel}

@@ -1,14 +1,13 @@
-import { auth } from "../lib/auth.js";
+import { getRouteSession } from "../lib/session.js";
 import { db } from "../db/index.js";
 import { connectedAccounts } from "../db/schema.js";
 import { and, eq } from "drizzle-orm";
-import { headers } from "../lib/http/request-cookies.js";
 import { RouteResponse } from "../lib/http/http.js";
 import { refreshTwitterPremiumStatus } from "../lib/twitter-premium.js";
 import { twitterPremiumRefreshLimiter, enforceRateLimit } from "../lib/ratelimit.js";
 
 export async function refreshTwitterPremium() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

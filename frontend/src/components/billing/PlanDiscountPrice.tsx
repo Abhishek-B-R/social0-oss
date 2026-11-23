@@ -1,44 +1,25 @@
-import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 type PlanDiscountPriceProps = {
-  /** Struck original / list amount (omit when no discount). */
-  listAmount?: number | null;
-  /** Current / discounted amount. */
   amount: number;
   /** e.g. "/year" or "/month" */
   period: string;
   size?: "hero" | "md" | "sm";
   className?: string;
-  /** Extra badge beside the row (Save X%, etc.) */
-  badge?: ReactNode;
 };
 
 function formatAmount(amount: number): string {
-  if (Number.isInteger(amount)) return String(amount);
-  if (Math.abs(amount * 10 - Math.round(amount * 10)) < 1e-9) {
-    return amount.toFixed(1);
-  }
+  if (Number.isInteger(amount)) return amount.toLocaleString("en-US");
   return amount.toFixed(2);
 }
 
-/**
- * Launch / yearly discount display: list price first (same-color slash),
- * then sale price, then muted period — matches clean pricing card pattern.
- */
+/** Plan price: raised $, amount, muted period. No list / strike-through price. */
 export function PlanDiscountPrice({
-  listAmount,
   amount,
   period,
   size = "md",
   className,
-  badge,
 }: PlanDiscountPriceProps) {
-  const hasList =
-    listAmount != null &&
-    Number.isFinite(listAmount) &&
-    listAmount > amount;
-
   const priceClass =
     size === "hero"
       ? "font-sans text-[clamp(40px,7vw,56px)] font-bold leading-none tracking-tight tabular-nums text-foreground"
@@ -46,34 +27,13 @@ export function PlanDiscountPrice({
         ? "font-sans text-2xl font-bold leading-none tracking-tight tabular-nums text-foreground"
         : "font-sans text-3xl font-bold leading-none tracking-tight tabular-nums text-foreground";
 
-  const listClass =
-    size === "hero"
-      ? "font-sans text-[clamp(28px,5vw,36px)] font-semibold leading-none tracking-tight tabular-nums text-foreground/55"
-      : size === "sm"
-        ? "font-sans text-xl font-semibold leading-none tracking-tight tabular-nums text-foreground/55"
-        : "font-sans text-2xl font-semibold leading-none tracking-tight tabular-nums text-foreground/55";
-
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
-      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        {hasList ? (
-          <span className={listClass}>
-            {/* Strike digits only — raised $ sits above the line and looked underlined */}
-            <sup className="mr-0.5 text-[0.55em] font-medium top-[-0.35em]">
-              $
-            </sup>
-            <span className="line-through decoration-foreground/45 decoration-[1.5px]">
-              {formatAmount(listAmount!)}
-            </span>
-          </span>
-        ) : null}
-        <span className={priceClass}>
-          <sup className="mr-0.5 text-[0.55em] font-medium top-[-0.35em]">$</sup>
-          {formatAmount(amount)}
-        </span>
-        <span className="text-[13px] text-muted-foreground">{period}</span>
-        {badge}
-      </div>
+    <div className={cn("flex flex-wrap items-baseline gap-x-2.5 gap-y-1", className)}>
+      <span className={priceClass}>
+        <sup className="mr-0.5 text-[0.55em] font-medium top-[-0.35em]">$</sup>
+        {formatAmount(amount)}
+      </span>
+      <span className="text-[13px] text-muted-foreground">{period}</span>
     </div>
   );
 }

@@ -5,54 +5,49 @@ Social0 is a multi-platform social media scheduler for creators, founders, and A
 Source of truth for humans: https://social0.app/pricing
 Checkout: https://social0.app/dashboard/billing
 
-## Plan tiers (USD)
+Updated: 2026-11
 
-Early-adopter monthly prices. Yearly billing is listed beside each paid plan.
+## Plans (USD)
 
-| Plan | Monthly | Yearly | Connected accounts | Highlights |
-| --- | ---: | ---: | ---: | --- |
-| Free | $0 | $0 | 3 | 10 lifetime posts, REST API, MCP, CLI |
-| Starter | $9 | $99 | 5 | Unlimited posts on the plan, extra accounts, extra workspaces |
-| Growth | $19 (list $29) | $199 (list $299) | 15 | Bulk image/video tools, auto-repost, auto-plug |
-| Pro | $35 (list $49) | $349 (list $499) | 50 | Teams, higher limits |
-| Max | $59 (list $99) | $599 (list $999) | effectively unlimited | Highest API quota and account ceiling |
+Two paid plans, priced by connected social accounts. Each connected profile counts once (your Instagram and your client's Instagram are 2 accounts). Yearly billing is 10× monthly: 2 months free.
+
+| Plan | Monthly | Yearly | Connected accounts | API requests / hour |
+| --- | ---: | ---: | ---: | ---: |
+| Free | $0 | $0 | 3 (10 lifetime posts) | 60 |
+| Creator | $29.90 | $299 | 15 | 1,000 |
+| Agency | $59.90 + $1 per account above 59 | $599 + $10 per account above 59 | 59 included, no cap | 5,000 |
+
+Agency price = $59.90 + $1 × (accounts above 59) per month, or $599 + $10 × (accounts above 59) per year. Examples: 59 accounts $59.90/mo, 60 accounts $60.90/mo, 100 accounts $100.90/mo, 200 accounts $200.90/mo.
+
+Agency never blocks a connect. Each account over 59 is added to the bill automatically when it connects, charged pro rata for the rest of the billing period. Disconnecting one lowers the next bill (no mid-cycle refunds). Creator holds 15 accounts; connecting a 16th offers a one-click move to Agency. Free holds 3.
+
+Starter, Growth, Pro and Max are no longer offered to new customers. Existing subscribers keep their plan, limits and price.
 
 ## Feature breakdown
 
-### Included on every plan
+### Every paid plan (Creator and Agency)
 
-- Compose once and publish or schedule to X (Twitter), LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky, and Pinterest
+- All 9 networks: X (Twitter), LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky, and Pinterest
+- Unlimited posts and scheduling
 - Content types: text, image, video, threads, collections
 - Calendar, drafts, and posting queue
-- REST `/v1` API with API keys
-- Hosted MCP (OAuth) and local `@social0/mcp`
-- `social0` CLI
+- REST `/v1` API with API keys, hosted MCP (OAuth), local `@social0/mcp`, and the `social0` CLI
 - Webhooks for post.published, post.failed, post.scheduled, post.deleted
-- Free sign-up and self-serve API key generation at https://social0.app/dashboard/api-keys
+- Bulk image and video tools
+- Auto-repost and auto-plug (engagement replies)
+- Multiple workspaces (multi-brand)
 
-### Growth and above
+### Agency only
 
-- Bulk image tools
-- Bulk video tools
-- Auto-repost
-- Auto-plug (engagement replies)
+- 59 accounts included, then $1/month ($10/year) per extra account, no cap: extras are billed automatically as you connect them
+- Invite teammates into shared workspaces
+- Higher API limits: 5,000 requests/hour (Creator: 1,000)
 
-### Pro and Max
+### Free
 
-- Invite teammates into a shared workspace
-- Higher connected-account and API request limits
-
-## API request quotas (REST `/v1`)
-
-Approximate hourly request caps used for rate-limit headers:
-
-| Plan | Requests / hour |
-| --- | ---: |
-| Free | 60 |
-| Starter | 300 |
-| Growth | 1,000 |
-| Pro | 5,000 |
-| Max | 10,000 |
+- 3 connected accounts and 10 lifetime posts, no credit card
+- REST API, MCP and CLI (60 requests/hour)
+- Self-serve API key generation at https://social0.app/dashboard/api-keys
 
 429 responses include `Retry-After` plus `RateLimit` / `RateLimit-*` headers.
 
@@ -61,7 +56,7 @@ Approximate hourly request caps used for rate-limit headers:
 1. Sign up: https://social0.app/auth (free tier, no credit card)
 2. Connect accounts: https://social0.app/dashboard/connections
 3. Create an API key: https://social0.app/dashboard/api-keys
-4. Upgrade when you need more accounts, bulk tools, or teams: https://social0.app/dashboard/billing
+4. Upgrade to Creator or Agency when you need more accounts, bulk tools, or teams: https://social0.app/dashboard/billing
 
 ## MCP and CLI
 

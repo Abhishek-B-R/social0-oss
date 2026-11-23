@@ -62,9 +62,9 @@ frontend → POST /api/publish or RPC publish.*
 | `server/src/lib/publish-platforms/*` | Prefer new networks here |
 | `shared/src/lib/cf-publish-client.ts` | HMAC enqueue |
 
-`PUBLISH_DISPATCH=bullmq` = droplet-side platform queues (legacy / local fallback).
+`PUBLISH_DISPATCH=server` = no Cloudflare worker: every platform publishes on the API process, from publish-now and the cron alike (local / self-hosted). `bullmq` is the deprecated name for it; there are no BullMQ publish queues.
 
-**X + TikTok stay on the API by default** (`shared/src/constants/server-side-publish.ts`), not the CF worker. Kill switches: `TWITTER_PUBLISH_ON_CF=1`, `TIKTOK_PUBLISH_ON_CF=1` after the worker is current. Cron helper: `POST /api/cron/publish-platform`.
+**X, TikTok and Bluesky stay on the API by default** (`shared/src/constants/server-side-publish.ts`), not the CF worker. Bluesky needs sharp for its 1 MB image cap. Kill switches: `TWITTER_PUBLISH_ON_CF=1`, `TIKTOK_PUBLISH_ON_CF=1`, `BLUESKY_PUBLISH_ON_CF=1` after the worker is current. Cron helper: `POST /api/cron/publish-platform`.
 
 **Failure emails:** only from awaited `maybeFinalizePostPublish`. Never `void` sendEmail on the CF path (isolate kills in-flight work).
 
@@ -79,7 +79,7 @@ frontend → POST /api/publish or RPC publish.*
 
 Triggered by `cloudflare/cron-worker` → `POST /api/cron/*` + `CRON_SECRET`.
 
-Also HTTP (not BullMQ): `POST /api/cron/publish-platform` (X/TikTok in-process), `POST /api/cron/notify-legal-update`.
+Also HTTP (not BullMQ): `POST /api/cron/publish-platform` (X/TikTok/Bluesky in-process), `POST /api/cron/notify-legal-update`.
 
 ---
 
@@ -146,9 +146,9 @@ Do not run `npm run build` inside `server/` without installing at `backend/` fir
 | `NEXT_PUBLIC_APP_URL` / `APP_URL` | SPA origin |
 | `TRUSTED_APP_ORIGINS` / `CORS_ORIGINS` | CORS |
 | `ENCRYPTION_KEY` | 64 hex: match API + publish-worker |
-| `PUBLISH_DISPATCH` | `cloudflare` (default) or `bullmq` |
+| `PUBLISH_DISPATCH` | `cloudflare` (default) or `server` (`bullmq` = deprecated alias of `server`) |
 | `CF_PUBLISH_WORKER_URL`, `CF_PUBLISH_HMAC_SECRET` | CF publish |
-| `TWITTER_PUBLISH_ON_CF`, `TIKTOK_PUBLISH_ON_CF` | `1` sends X / TikTok to CF; unset = API |
+| `TWITTER_PUBLISH_ON_CF`, `TIKTOK_PUBLISH_ON_CF`, `BLUESKY_PUBLISH_ON_CF` | `1` sends X / TikTok / Bluesky to CF; unset = API |
 | `CRON_SECRET`, `ADMIN_API_KEY` | Cron + admin |
 | `RESEND_*` | Auth OTP + post-failure email |
 | `R2_*`, `DODO_*`, platform `*_CLIENT_*` | Media, billing, connect |
@@ -190,9 +190,9 @@ not newer than the last applied `created_at`), then `npm run db:migrate`.
 ## 9. Caveats
 
 - LinkedIn + X still partly inline in `execute-publish.ts` (not fully in `publish-platforms/`).
-- X + TikTok publish on the API by default (not CF). See `server-side-publish.ts`.
+- X, TikTok and Bluesky publish on the API by default (not CF). See `server-side-publish.ts`.
 - Schema duplication server ↔ background-worker.
 - CF scheduled posts: cron + scheduled queue (not BullMQ `delay` on the API for the wake-up).
-- `PUBLISH_DISPATCH=bullmq` is higher ops cost on the droplet.
+- `PUBLISH_DISPATCH=server` runs every upload on the droplet, which costs it CPU and memory, and a VM crash interrupts them (rows then need a person to retry).
 - `LIVE_PLATFORMS` is the only live-feature gate: SPA lists come from `analytics.listAccounts` / `inbox.listAccounts`. Do not duplicate in `frontend/`.
 - Inbox is live fetch (no inbox tables). Analytics may persist a resolved TikTok public video id onto `post_publications`.

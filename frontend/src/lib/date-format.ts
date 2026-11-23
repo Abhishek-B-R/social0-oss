@@ -1,4 +1,4 @@
-import { format } from "date-fns";
+import { format, formatDistanceToNowStrict } from "date-fns";
 
 /** Stored value in user_settings.date_format (date-fns pattern). */
 export type DateFormatKey = "dd/MM/yyyy" | "MM/dd/yyyy" | "yyyy-MM-dd";
@@ -131,42 +131,49 @@ export function formatDateTime(
   return format(date, `${pattern} ${timePattern}`);
 }
 
-/** Format for "MMM d, yyyy 'at' HH:mm" style used in schedule picker; date part follows user preference. */
-export function formatDateTimeAt(
-  date: Date,
-  options: {
-    dateFormat?: DateFormatKey | string | null;
-    use24HourTimeFormat?: boolean;
-    timezone?: string | null;
-  },
+export type RelativeTimeOptions = {
+  /** Returned for a missing or unparseable timestamp. Default "". */
+  fallback?: string;
+  /**
+   * Narrow form for dense list rows: "now", "5m", "3h", "4d", "2mo", "1y".
+   * No "ago" / "in" suffix. Default false.
+   */
+  compact?: boolean;
+};
+
+const COMPACT_UNIT: Record<string, string> = {
+  second: "s",
+  seconds: "s",
+  minute: "m",
+  minutes: "m",
+  hour: "h",
+  hours: "h",
+  day: "d",
+  days: "d",
+  month: "mo",
+  months: "mo",
+  year: "y",
+  years: "y",
+};
+
+/**
+ * The one relative timestamp used across the dashboard, so the same moment
+ * reads the same on every page: "just now", "5 minutes ago", "in 3 hours".
+ * Timestamps within a few seconds in the future (clock skew) also read
+ * "just now". Use `formatDateTime` for an absolute tooltip next to it.
+ */
+export function relativeTime(
+  value: string | number | Date | null | undefined,
+  options: RelativeTimeOptions = {},
 ): string {
-  const key = normalizeDateFormat(options.dateFormat ?? undefined);
-  if (
-    options.timezone &&
-    options.timezone.trim() &&
-    options.timezone.trim() !== "UTC"
-  ) {
-    try {
-      const dateStr = formatDateInZone(date, options.timezone.trim(), key);
-      const timeParts = new Intl.DateTimeFormat("en-US", {
-        timeZone: options.timezone.trim(),
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: !options.use24HourTimeFormat,
-      }).formatToParts(date);
-      const hour = timeParts.find((p) => p.type === "hour")?.value ?? "";
-      const minute = timeParts.find((p) => p.type === "minute")?.value ?? "";
-      const dayPeriod =
-        timeParts.find((p) => p.type === "dayPeriod")?.value ?? "";
-      const timeStr = options.use24HourTimeFormat
-        ? `${hour}:${minute}`
-        : `${hour}:${minute} ${dayPeriod}`;
-      return `${dateStr} at ${timeStr}`;
-    } catch {
-      // fallback below
-    }
-  }
-  const timePart = options.use24HourTimeFormat ? "HH:mm" : "h:mm a";
-  const datePart = format(date, key);
-  return `${datePart} at ${format(date, timePart)}`;
+  const { fallback = "", compact = false } = options;
+  if (value == null || value === "") return fallback;
+  const d = value instanceof Date ? value : new Date(value);
+  const t = d.getTime();
+  if (Number.isNaN(t)) return fallback;
+  const ageMs = Date.now() - t;
+  if (ageMs > -5_000 && ageMs < 45_000) return compact ? "now" : "just now";
+  if (!compact) return formatDistanceToNowStrict(d, { addSuffix: true });
+  const [n, unit] = formatDistanceToNowStrict(d).split(" ");
+  return `${n}${COMPACT_UNIT[unit ?? ""] ?? ""}`;
 }

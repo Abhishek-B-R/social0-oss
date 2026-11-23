@@ -9,6 +9,7 @@ import {
   jsonb,
   pgEnum,
   index,
+  uniqueIndex,
   unique,
   check,
 } from "drizzle-orm/pg-core";
@@ -210,13 +211,17 @@ export const posts = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
-  () => ({
+  (table) => ({
     // CHECK constraint: at least one of finalContent (non-empty) or mediaIds (non-empty)
     // This ensures posts have either text content or media (or both)
     contentOrMediaCheck: check(
       "content_or_media_check",
       sql`(trim(final_content) != '' OR array_length(media_ids, 1) > 0)`,
     ),
+    /** The scheduled-publish scan (every 5 minutes, cloudflare/cron-worker/src/index.ts). */
+    statusScheduledAtIdx: index("posts_status_scheduled_at_idx")
+      .on(table.status, table.scheduledAt)
+      .where(sql`status IN ('scheduled', 'publishing')`),
   }),
 );
 
@@ -249,6 +254,15 @@ export const postPublications = pgTable(
   },
   (table) => ({
     uniquePublication: unique().on(table.postId, table.connectedAccountId),
+    /** One platform post id per account (concurrent TikTok backfills). */
+    accountPlatformPostUnique: uniqueIndex(
+      "post_publications_account_platform_post_unique",
+    )
+      .on(table.connectedAccountId, table.platformPostId)
+      .where(sql`platform_post_id IS NOT NULL`),
+    connectedAccountPublishedIdx: index(
+      "post_publications_connected_account_published_idx",
+    ).on(table.connectedAccountId, table.publishedAt.desc()),
   }),
 );
 
@@ -451,39 +465,60 @@ export const webhookDeliveries = pgTable(
 );
 
 // ===== USER SETTINGS =====
-export const userSettings = pgTable("user_settings", {
-  userId: text("user_id")
-    .references(() => user.id)
-    .primaryKey(),
-  timezone: text("timezone").default("UTC"),
-  defaultPlatforms: platformEnum("default_platforms").array(),
-  emailNotifications: boolean("email_notifications").default(true),
-  automationEmails: boolean("automation_emails").default(true),
-  emailOnPostFailed: boolean("email_on_post_failed").default(true),
-  useFilenameAsCaption: boolean("use_filename_as_caption").default(false),
-  use24HourTimeFormat: boolean("use_24_hour_time_format").default(false),
-  dateFormat: text("date_format").default("dd/MM/yyyy"), // dd/MM/yyyy | MM/dd/yyyy | yyyy-MM-dd
-  weeklyPostingGoal: integer("weekly_posting_goal").default(3),
-  subscriptionTier: text("subscription_tier").default("free"), // free | starter | growth | pro | max
-  subscriptionExpiresAt: timestamp("subscription_expires_at"),
-  subscriptionId: text("subscription_id"), // Payment provider subscription ID (portal/cancel)
-  customerId: text("customer_id"), // Payment provider customer ID
-  hasUsedTrial: boolean("has_used_trial").default(false), // true once user has ever had a paid plan (trial or paid); used for messaging when limit is 0
-  onboardingCompleted: boolean("onboarding_completed").default(false),
-  onboardingGoal: text("onboarding_goal"),
-  /** Scheduled downgrade: target tier at period end (starter | growth). Cleared when cancelled or after switch. */
-  pendingPlanTier: text("pending_plan_tier"),
-  /** Downgrade feedback (captured before scheduling downgrade). */
-  downgradeReason: text("downgrade_reason"),
-  /** True when user cancelled; access until subscription_expires_at. Cleared when sub ends or user undoes cancel. */
-  subscriptionCancelAtPeriodEnd: boolean(
-    "subscription_cancel_at_period_end",
-  ).default(false),
-  /** Lifetime posts used on the free tier (no reset). */
-  freePostsUsed: integer("free_posts_used").default(0).notNull(),
-  /** Active Teams workspace for collaboration context (nullable). */
-  activeWorkspaceId: uuid("active_workspace_id"),
-});
+export const userSettings = pgTable(
+  "user_settings",
+  {
+    userId: text("user_id")
+      .references(() => user.id)
+      .primaryKey(),
+    timezone: text("timezone").default("UTC"),
+    defaultPlatforms: platformEnum("default_platforms").array(),
+    emailNotifications: boolean("email_notifications").default(true),
+    automationEmails: boolean("automation_emails").default(true),
+    emailOnPostFailed: boolean("email_on_post_failed").default(true),
+    useFilenameAsCaption: boolean("use_filename_as_caption").default(false),
+    use24HourTimeFormat: boolean("use_24_hour_time_format").default(false),
+    dateFormat: text("date_format").default("dd/MM/yyyy"), // dd/MM/yyyy | MM/dd/yyyy | yyyy-MM-dd
+    weeklyPostingGoal: integer("weekly_posting_goal").default(3),
+    subscriptionTier: text("subscription_tier").default("free"), // free | creator | agency | legacy: starter | growth | pro | max
+    subscriptionExpiresAt: timestamp("subscription_expires_at"),
+    subscriptionId: text("subscription_id"), // Payment provider subscription ID (portal/cancel)
+    /**
+     * When subscription_tier or subscription_id last changed. Set by the
+     * user_settings_subscription_updated_at trigger (0049), never by app code.
+     */
+    subscriptionUpdatedAt: timestamp("subscription_updated_at", {
+      withTimezone: true,
+    }),
+    customerId: text("customer_id"), // Payment provider customer ID
+    hasUsedTrial: boolean("has_used_trial").default(false), // true once user has ever had a paid plan (trial or paid); used for messaging when limit is 0
+    onboardingCompleted: boolean("onboarding_completed").default(false),
+    onboardingGoal: text("onboarding_goal"),
+    /** Scheduled downgrade: target tier at period end (starter | growth). Cleared when cancelled or after switch. */
+    pendingPlanTier: text("pending_plan_tier"),
+    /** Downgrade feedback (captured before scheduling downgrade). */
+    downgradeReason: text("downgrade_reason"),
+    /** True when user cancelled; access until subscription_expires_at. Cleared when sub ends or user undoes cancel. */
+    subscriptionCancelAtPeriodEnd: boolean(
+      "subscription_cancel_at_period_end",
+    ).default(false),
+    /** Lifetime posts used on the free tier (no reset). */
+    freePostsUsed: integer("free_posts_used").default(0).notNull(),
+    /**
+     * Agency accounts paid above the 59 included (quantity of the Dodo
+     * extra-account add-on). Synced from the Dodo webhook; 0 on other plans.
+     */
+    extraAccounts: integer("extra_accounts").default(0).notNull(),
+    /** Active Teams workspace for collaboration context (nullable). */
+    activeWorkspaceId: uuid("active_workspace_id"),
+  },
+  (table) => ({
+    /** One subscription belongs to one user. */
+    subscriptionIdUnique: uniqueIndex("user_settings_subscription_id_unique")
+      .on(table.subscriptionId)
+      .where(sql`subscription_id IS NOT NULL`),
+  }),
+);
 
 // ===== TEAMS / WORKSPACES =====
 /** Collaboration org. Owner is the Pro billing subscriber. Max 5 per owner. */

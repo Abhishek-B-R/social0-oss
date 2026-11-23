@@ -29,7 +29,7 @@ export type WorkspaceContext = {
   ownerUserId: string | null;
   role: WorkspaceRole | null;
   isOwner: boolean;
-  /** Owner currently has Pro (allowTeams). Teammates need this to collaborate;
+  /** Owner currently has a Teams plan (allowTeams: Agency, legacy Pro/Max). Teammates need this to collaborate;
    * owners keep access to their own workspaces either way. */
   teamsEnabled: boolean;
   /** True when the actor is inside a team workspace (owned or joined). */

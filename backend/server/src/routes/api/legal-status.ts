@@ -1,10 +1,9 @@
-import { auth } from "../../lib/auth.js";
+import { getRouteSession } from "../../lib/session.js";
 import { getLegalStatus } from "../../lib/legal.js";
-import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
 
 export async function legalStatus() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

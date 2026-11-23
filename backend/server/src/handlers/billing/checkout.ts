@@ -3,11 +3,14 @@ import { headers } from "../../lib/http/request-cookies.js";
 import { RouteResponse } from "../../lib/http/http.js";
 import DodoPayments from "dodopayments";
 import {
+  getExtraAccountAddonId,
   getProductId,
+  isLegacyTier,
+  isSellableTier,
   parseBillingInterval,
-  parsePaidPlanTier,
   sanitizeReturnToPath,
 } from "@social0/shared";
+import { agencyExtraAccountsForUser } from "../../lib/extra-accounts.js";
 import { resolveAppUrlFromRequest } from "../../lib/app-url.js";
 import { env } from "../../lib/env.js";
 import { checkoutLimiter, enforceRateLimit } from "../../lib/ratelimit.js";
@@ -52,7 +55,10 @@ function databullMetadata(
 }
 
 export async function createCheckout(request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  });
   if (!session?.user) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -63,22 +69,44 @@ export async function createCheckout(request: Request) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const planTier = parsePaidPlanTier(body.plan);
   const interval = parseBillingInterval(body.interval);
   const forceNewSession = body.forceNewSession === true;
   const successUrl =
     typeof body.successUrl === "string" ? body.successUrl.trim() : null;
-  if (!planTier) {
+  if (isLegacyTier(body.plan)) {
     return RouteResponse.json(
-      { error: "Invalid plan. Use 'starter', 'growth', 'pro', or 'max'." },
+      {
+        error:
+          "This plan is no longer offered. Choose 'creator' or 'agency'.",
+        code: "plan_not_offered",
+      },
       { status: 400 },
     );
   }
+  if (!isSellableTier(body.plan)) {
+    return RouteResponse.json(
+      { error: "Invalid plan. Use 'creator' or 'agency'." },
+      { status: 400 },
+    );
+  }
+  const planTier = body.plan;
+
+  // Agency bills the accounts already connected above the 59 included; any
+  // more are added as they connect. The client never picks the number.
+  const extraAccounts =
+    planTier === "agency" ? await agencyExtraAccountsForUser(session.user.id) : 0;
 
   const productId = getProductId(planTier, interval);
   if (!productId) {
     return RouteResponse.json(
       { error: "Billing is not configured for this plan." },
+      { status: 503 },
+    );
+  }
+  const addonId = extraAccounts > 0 ? getExtraAccountAddonId(interval) : "";
+  if (extraAccounts > 0 && !addonId) {
+    return RouteResponse.json(
+      { error: "Billing is not configured for extra accounts." },
       { status: 503 },
     );
   }
@@ -136,10 +164,19 @@ export async function createCheckout(request: Request) {
       userId: session.user.id,
       plan: planTier,
       interval,
+      extraAccounts,
       trialPeriodDays: eligibility.trialPeriodDays,
       createSession: async () => {
         const sessionResponse = await client.checkoutSessions.create({
-          product_cart: [{ product_id: productId, quantity: 1 }],
+          product_cart: [
+            {
+              product_id: productId,
+              quantity: 1,
+              ...(extraAccounts > 0
+                ? { addons: [{ addon_id: addonId, quantity: extraAccounts }] }
+                : {}),
+            },
+          ],
           customer: {
             email: userEmail,
             name: session.user.name ?? undefined,

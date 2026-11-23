@@ -21,9 +21,13 @@ import { socialMediaImageSizes } from "./blog-posts/social-media-image-sizes";
 import { socialMediaPostingApiGuide } from "./blog-posts/social-media-posting-api-guide";
 import { socialMediaVideoSpecs } from "./blog-posts/social-media-video-specs";
 import { whyScheduledPostsFail } from "./blog-posts/why-scheduled-posts-fail";
+import { howToCancelBuffer } from "./blog-posts/how-to-cancel-buffer";
+import { howToCancelHootsuite } from "./blog-posts/how-to-cancel-hootsuite";
 
 /** Newest first. The index page and sitemap both read this order. */
 export const BLOG_POSTS: BlogPost[] = [
+  howToCancelBuffer,
+  howToCancelHootsuite,
   instagramHashtagLimit,
   instagramAlgorithmGuide,
   tiktokAlgorithmGuide,

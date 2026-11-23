@@ -36,6 +36,18 @@ export async function runPlatformJobOnServer(
         r.connectedAccountId === job.connectedAccountId ||
         r.platform === job.platform,
     );
+    // Another live run holds this delivery (a duplicate job, or Publish now
+    // racing the cron). This run did nothing, so it has nothing to record:
+    // writing "failed" would demote the row mid-upload, and the owning run
+    // records the result and finalizes the post.
+    if (pubResult?.inProgressElsewhere) {
+      console.warn(
+        "[runPlatformJobOnServer] publication owned by another run, skipping",
+        job.platform,
+        job.publicationId,
+      );
+      return;
+    }
     const success = pubResult?.status === "published";
     const failureMessage =
       pubResult?.error ??
@@ -56,8 +68,19 @@ export async function runPlatformJobOnServer(
     const message =
       err instanceof Error ? err.message : "Platform publish failed";
     console.error("[runPlatformJobOnServer] failed", job.platform, err);
+    // Best effort, as on the CF worker: a throw here (a DB blip) used to skip
+    // the finalize below, the one step that sends the failure email and
+    // webhook and settles the queue slot.
     if (job.trackingId) {
-      await recordPlatformResultServer(app, job, false, message);
+      try {
+        await recordPlatformResultServer(app, job, false, message);
+      } catch (recordErr) {
+        console.error(
+          "[runPlatformJobOnServer] record result failed",
+          job.platform,
+          recordErr,
+        );
+      }
     }
     try {
       await maybeFinalizePostPublish(job.postId, job.userId);

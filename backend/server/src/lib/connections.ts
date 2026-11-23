@@ -1,28 +1,22 @@
-import { db } from "../db/index.js";
-import { connectedAccounts } from "../db/schema.js";
-import { eq, and, sql } from "drizzle-orm";
-import { getSubscriptionForUser } from "./subscription.js";
-import { getPlanLimits } from "@social0/shared";
+import type { AccountLimitResult } from "./plan-limits.js";
+
+const NO_PLAN_MESSAGE =
+  "You need an active plan to connect accounts and post content.";
 
 /**
- * Returns how many more accounts the user can connect (0 = at or over limit).
- * Uses subscription tier: free = 0, starter = 5, growth = 15.
- * Counts only active connected accounts.
+ * Text for a `limit_reached` 403 from an account picker (`checkAccountLimits`
+ * result). Only a plan with no account slots at all is told to get a plan; a
+ * paid plan at its cap is told the cap, and a pick that would overshoot the
+ * slots left says how many fit.
  */
-export async function getRemainingSlots(userId: string): Promise<number> {
-  const sub = await getSubscriptionForUser(userId);
-  const limits = getPlanLimits(sub.tier);
-
-  const [totalRow] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(connectedAccounts)
-    .where(
-      and(
-        eq(connectedAccounts.userId, userId),
-        eq(connectedAccounts.isActive, true),
-      ),
-    );
-
-  const currentTotal = totalRow?.count ?? 0;
-  return Math.max(0, limits.maxConnectedAccounts - currentTotal);
+export function accountLimitMessage(
+  limit: Pick<AccountLimitResult, "currentTotal" | "limitTotal">,
+  requested = 1,
+): string {
+  if (limit.limitTotal <= 0) return NO_PLAN_MESSAGE;
+  const left = Math.max(0, limit.limitTotal - limit.currentTotal);
+  if (left === 0 || requested <= 1) {
+    return `Plan limit: up to ${limit.limitTotal} connected accounts. Upgrade to add more.`;
+  }
+  return `You have ${left} account slot${left === 1 ? "" : "s"} left on your plan. Pick ${left} or fewer, or upgrade.`;
 }

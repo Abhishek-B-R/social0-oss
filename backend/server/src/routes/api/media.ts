@@ -11,6 +11,7 @@ import { db } from "../../db/index.js";
 import { mediaUploads } from "../../db/schema.js";
 import { env } from "../../lib/env.js";
 import {
+  deleteR2Object,
   getPresignedUploadUrl,
   getR2ObjectByteRange,
   getR2ObjectMetadata,
@@ -24,6 +25,7 @@ import {
   isGeneratedStorageFilename,
   MAX_IMAGE_SIZE_BYTES,
   MAX_VIDEO_SIZE_BYTES,
+  storedContentTypeMatches,
 } from "../../lib/media-upload-policy.js";
 import { sanitizeFilename } from "../../lib/validation.js";
 
@@ -38,6 +40,36 @@ const SIZE_TOLERANCE_BYTES = 1024;
 function parseFileSize(value: unknown): number | null {
   if (typeof value !== "number" || !Number.isSafeInteger(value)) return null;
   return value > 0 ? value : null;
+}
+
+/**
+ * Remove an uploaded object that confirm rejected for good (wrong size, bytes
+ * that do not match the declared type). It can never be confirmed, so nothing
+ * would ever reference or delete it, and each presign allows up to 500 MB.
+ *
+ * Skipped when a media row already points at the key: an earlier confirm of
+ * the same object succeeded, and a later bad confirm must not delete media a
+ * post may be using. Best-effort: the rejection stands either way.
+ */
+async function discardRejectedUpload(
+  log: { warn: (obj: unknown, msg: string) => void },
+  userId: string,
+  storageFilename: string,
+  key: string,
+) {
+  try {
+    const confirmed = await db.query.mediaUploads.findFirst({
+      where: and(
+        eq(mediaUploads.userId, userId),
+        eq(mediaUploads.filename, storageFilename),
+      ),
+      columns: { id: true },
+    });
+    if (confirmed) return;
+    await deleteR2Object(key);
+  } catch (err) {
+    log.warn({ err, key }, "Could not delete rejected upload");
+  }
 }
 
 async function requireMediaUploadSession(actor: RequestActor) {
@@ -228,14 +260,23 @@ export async function registerMediaApiRoutes(app: FastifyInstance) {
     }
 
     if (Math.abs(metadata.contentLength - fileSize) > SIZE_TOLERANCE_BYTES) {
+      await discardRejectedUpload(request.log, userId, storageFilename, key);
       return reply.status(400).send({
         error: "Uploaded file size does not match",
+      });
+    }
+
+    if (!storedContentTypeMatches(metadata.contentType, contentType)) {
+      await discardRejectedUpload(request.log, userId, storageFilename, key);
+      return reply.status(400).send({
+        error: "File content does not match declared type",
       });
     }
 
     try {
       const magicBytes = await getR2ObjectByteRange(key, 0, 15);
       if (!contentTypeMatchesMagicBytes(contentType, magicBytes)) {
+        await discardRejectedUpload(request.log, userId, storageFilename, key);
         return reply.status(400).send({
           error: "File content does not match declared type",
         });

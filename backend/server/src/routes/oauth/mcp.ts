@@ -1,37 +1,82 @@
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { env } from "../../lib/env.js";
 import {
   approveMcpOAuthSession,
   createMcpOAuthSession,
   denyMcpOAuthSession,
+  displayMcpClientName,
   exchangeMcpAuthorizationCode,
   getMcpOAuthClient,
   getMcpOAuthMetadata,
   getMcpOAuthSessionDetails,
   getMcpProtectedResourceMetadata,
+  boundMcpResource,
+  grantedMcpScopes,
   introspectMcpAccessToken,
+  mcpBaseUrl,
+  invalidMcpAuthorizeParams,
+  MCP_CLIENT_REGISTRATION_LIMIT_KEY,
+  mcpAuthorizeClientLimiter,
+  mcpAuthorizeIpLimiter,
+  McpClientMetadataError,
+  type McpClientRegistration,
+  mcpClientRegistrationIpLimiter,
+  mcpClientRegistrationLimiter,
+  mcpOAuthCallerBucket,
   mintMcpConsentToken,
+  normalizeMcpClientRegistration,
   refreshMcpAccessToken,
   registerMcpOAuthClient,
+  resolveMcpOAuthCallerIp,
   revokeMcpToken,
   verifyMcpIntrospectSecret,
 } from "../../lib/mcp-oauth.js";
+import { enforceRateLimit, type RateLimitResult } from "../../lib/ratelimit.js";
 import { requireSessionUserId } from "../../middleware/auth.js";
 import { getAuthApiBaseUrl } from "../../lib/env.js";
 import { getApiProtectedResourceMetadata } from "../../lib/api-scopes.js";
 
-const MAX_REDIRECT_URIS = 10;
-const MAX_REDIRECT_URI_LENGTH = 2048;
-
-function mcpBaseUrl(): string {
-  return (process.env.MCP_BASE_URL ?? "https://mcp.social0.app").replace(/\/$/, "");
-}
+/** Same cap the mcp-worker proxy applies; a valid registration is a few KB at most. */
+const REGISTER_BODY_LIMIT_BYTES = 64 * 1024;
 
 function oauthError(reply: FastifyReply, error: string, description?: string, status = 400) {
   return reply.status(status).send({
     error,
     ...(description ? { error_description: description } : {}),
   });
+}
+
+/** Rate-limit bucket for the caller of an unauthenticated MCP OAuth route. */
+function callerBucket(request: FastifyRequest): string {
+  return mcpOAuthCallerBucket(
+    resolveMcpOAuthCallerIp({
+      headers: request.headers,
+      ip: request.ip,
+      secret: process.env.MCP_OAUTH_INTROSPECT_SECRET,
+    }),
+  );
+}
+
+/** First budget the request does not fit in, or null when it fits all of them. */
+async function spendBudgets(
+  budgets: ReadonlyArray<readonly [Parameters<typeof enforceRateLimit>[0], string]>,
+): Promise<Extract<RateLimitResult, { allowed: false }> | null> {
+  for (const [limiter, key] of budgets) {
+    const budget = await enforceRateLimit(limiter, key);
+    if (!budget.allowed) return budget;
+  }
+  return null;
+}
+
+function rateLimited(
+  reply: FastifyReply,
+  budget: Extract<RateLimitResult, { allowed: false }>,
+) {
+  if (budget.reset) {
+    const retryAfter = Math.max(1, Math.ceil((budget.reset - Date.now()) / 1000));
+    reply.header("Retry-After", String(retryAfter));
+  }
+  return oauthError(reply, "temporarily_unavailable", budget.error, budget.status);
 }
 
 function parseFormBody(body: unknown): Record<string, string> {
@@ -79,7 +124,13 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
   });
 
   app.get("/oauth/authorize", async (request, reply) => {
-    const query = request.query as Record<string, string | undefined>;
+    const rawQuery = (request.query ?? {}) as Record<string, unknown>;
+    // A repeated key parses to an array (RFC 6749 §3.1 forbids repeats), and
+    // an array must never reach the session record or the redirect.
+    if (Object.values(rawQuery).some((value) => typeof value !== "string")) {
+      return oauthError(reply, "invalid_request", "Each parameter may appear only once");
+    }
+    const query = rawQuery as Record<string, string | undefined>;
     const clientId = query.client_id;
     const redirectUri = query.redirect_uri;
     const codeChallenge = query.code_challenge;
@@ -97,6 +148,25 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
     if (query.code_challenge_method && query.code_challenge_method !== "S256") {
       return oauthError(reply, "invalid_request", "Only S256 PKCE is supported");
     }
+    // Everything below is copied into a Redis session record, so it is bounded
+    // before any Redis call is spent on the request.
+    const invalid = invalidMcpAuthorizeParams({ clientId, codeChallenge, state, scope, resource });
+    if (invalid) {
+      return oauthError(reply, "invalid_request", invalid);
+    }
+    if (grantedMcpScopes(scope) === null) {
+      return oauthError(reply, "invalid_scope", "None of the requested scopes is supported");
+    }
+    if (boundMcpResource(resource) === null) {
+      return oauthError(
+        reply,
+        "invalid_target",
+        "resource must be this server's MCP resource",
+      );
+    }
+
+    const callerBlocked = await spendBudgets([[mcpAuthorizeIpLimiter, callerBucket(request)]]);
+    if (callerBlocked) return rateLimited(reply, callerBlocked);
 
     const client = await getMcpOAuthClient(clientId);
     if (!client) {
@@ -106,12 +176,17 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
       return oauthError(reply, "invalid_request", "redirect_uri is not registered for this client");
     }
 
+    // Per client too, so many addresses cannot pile sessions onto one client.
+    const clientBlocked = await spendBudgets([[mcpAuthorizeClientLimiter, `client:${clientId}`]]);
+    if (clientBlocked) return rateLimited(reply, clientBlocked);
+
+    const clientName = displayMcpClientName(client.client_name);
     try {
       const sessionId = await createMcpOAuthSession({
         clientId,
         redirectUri,
         codeChallenge,
-        ...(client.client_name ? { clientName: client.client_name } : {}),
+        ...(clientName ? { clientName } : {}),
         ...(state ? { state } : {}),
         ...(scope ? { scope } : {}),
         ...(resource ? { resource } : {}),
@@ -127,57 +202,43 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
   });
 
   // Dynamic client registration is unauthenticated by design (RFC 7591). It is
-  // deliberately not capped per IP: connectors reach it through the mcp-worker
-  // proxy, which does not forward the client address, so every registration
-  // would share the worker's bucket and a few connects would lock out everyone.
-  app.post("/oauth/register", async (request, reply) => {
-    const body = request.body as {
-      redirect_uris?: string[];
-      client_name?: string;
-      token_endpoint_auth_method?: string;
-      grant_types?: string[];
-      response_types?: string[];
-    };
-
-    if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
-      return oauthError(reply, "invalid_client_metadata", "redirect_uris required");
-    }
-    if (
-      body.redirect_uris.length > MAX_REDIRECT_URIS ||
-      body.redirect_uris.some(
-        (uri) => typeof uri !== "string" || uri.length > MAX_REDIRECT_URI_LENGTH,
-      )
-    ) {
-      return oauthError(
-        reply,
-        "invalid_client_metadata",
-        `Provide at most ${MAX_REDIRECT_URIS} redirect_uris of up to ${MAX_REDIRECT_URI_LENGTH} characters each`,
-      );
-    }
-
-    try {
-      const client = await registerMcpOAuthClient({
-        redirect_uris: body.redirect_uris,
-        ...(body.client_name ? { client_name: body.client_name } : {}),
-        ...(body.token_endpoint_auth_method
-          ? { token_endpoint_auth_method: body.token_endpoint_auth_method }
-          : {}),
-        ...(body.grant_types ? { grant_types: body.grant_types } : {}),
-        ...(body.response_types ? { response_types: body.response_types } : {}),
-      });
-      return reply.status(201).send(client);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Registration failed";
-      if (
-        message.includes("redirect_uri") ||
-        message.includes("redirect_uris") ||
-        message.includes("Invalid redirect")
-      ) {
-        return oauthError(reply, "invalid_client_metadata", message);
+  // budgeted per caller address (the mcp-worker proxy forwards it signed), so
+  // one machine cannot spend the budget every real host needs to connect; the
+  // app-wide ceiling sits far above real traffic. The lib stores only
+  // validated, bounded metadata, because this route is also reachable directly.
+  app.post(
+    "/oauth/register",
+    { bodyLimit: REGISTER_BODY_LIMIT_BYTES },
+    async (request, reply) => {
+      let metadata: McpClientRegistration;
+      try {
+        metadata = normalizeMcpClientRegistration(request.body);
+      } catch (error) {
+        if (error instanceof McpClientMetadataError) {
+          return oauthError(reply, "invalid_client_metadata", error.message);
+        }
+        throw error;
       }
-      return oauthError(reply, "server_error", message, 503);
-    }
-  });
+
+      // Caller first: a caller over its own budget never draws on the ceiling.
+      const blocked = await spendBudgets([
+        [mcpClientRegistrationIpLimiter, callerBucket(request)],
+        [mcpClientRegistrationLimiter, MCP_CLIENT_REGISTRATION_LIMIT_KEY],
+      ]);
+      if (blocked) return rateLimited(reply, blocked);
+
+      try {
+        const client = await registerMcpOAuthClient(metadata);
+        return reply.status(201).send(client);
+      } catch (error) {
+        if (error instanceof McpClientMetadataError) {
+          return oauthError(reply, "invalid_client_metadata", error.message);
+        }
+        const message = error instanceof Error ? error.message : "Registration failed";
+        return oauthError(reply, "server_error", message, 503);
+      }
+    },
+  );
 
   app.post("/oauth/token", async (request, reply) => {
     const body = parseFormBody(request.body);
@@ -194,6 +255,7 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
           redirectUri: body.redirect_uri,
           ...(body.client_secret ? { clientSecret: body.client_secret } : {}),
           ...(body.code_verifier ? { codeVerifier: body.code_verifier } : {}),
+          ...(body.resource ? { resource: body.resource } : {}),
         });
         return reply.send(tokens);
       }
@@ -206,6 +268,7 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
           refreshToken: body.refresh_token,
           clientId: body.client_id,
           ...(body.client_secret ? { clientSecret: body.client_secret } : {}),
+          ...(body.resource ? { resource: body.resource } : {}),
         });
         return reply.send(tokens);
       }
@@ -218,6 +281,9 @@ export async function registerMcpOAuthRoutes(app: FastifyInstance) {
       }
       if (message === "invalid_grant") {
         return oauthError(reply, "invalid_grant", undefined, 400);
+      }
+      if (message === "invalid_target") {
+        return oauthError(reply, "invalid_target", undefined, 400);
       }
       return oauthError(reply, "server_error", message, 503);
     }

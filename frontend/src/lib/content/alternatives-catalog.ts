@@ -171,12 +171,11 @@ function faqFor(name: string) {
 export function buildAlternativePage(def: CompetitorDef): AlternativePage {
   const { slug, name, angle, knownFor } = def;
   const hero = angleHero(name, angle);
-  const year = new Date().getFullYear();
 
   return {
     slug,
     competitorName: name,
-    metaTitle: `${name} Alternative - Social0 | Multi-Platform Scheduler ${year}`,
+    metaTitle: `${name} Alternative - Social0 | Multi-Platform Scheduler`,
     metaDescription: `Looking for a ${name} alternative? Social0 lets you compose once and publish to ${SOCIAL0_PLATFORMS} - with MCP, API, and CLI for AI agents. Start free.`,
     keywords: [
       `${name.toLowerCase()} alternative`,

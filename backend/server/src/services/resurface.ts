@@ -93,7 +93,7 @@ export async function createAutoPlug(
     return {
       success: false,
       error:
-        "Auto-plug is available on the Growth plan. Upgrade to use this feature.",
+        "Auto-plug is available on the Creator and Agency plans. Upgrade to use this feature.",
     };
   }
 
@@ -249,7 +249,7 @@ export async function createResurfaceSchedule(
     return {
       success: false,
       error:
-        "Resurface / auto-repost is available on the Growth plan. Upgrade to use this feature.",
+        "Resurface / auto-repost is available on the Creator and Agency plans. Upgrade to use this feature.",
     };
   }
 
@@ -397,10 +397,23 @@ export async function disableResurfaceSchedule(
   }
 
   try {
-    await db
-      .update(resurfaceSchedules)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(resurfaceSchedules.id, scheduleId));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(resurfaceSchedules)
+        .set({ isActive: false, updatedAt: new Date() })
+        .where(eq(resurfaceSchedules.id, scheduleId));
+      // Drop the queued run so it isn't recorded as a failed run when it comes
+      // due; resuming (updateResurfaceSchedule) queues a fresh one.
+      await tx
+        .update(resurfaceEvents)
+        .set({ status: "cancelled" })
+        .where(
+          and(
+            eq(resurfaceEvents.scheduleId, scheduleId),
+            eq(resurfaceEvents.status, "pending"),
+          ),
+        );
+    });
     return { success: true };
   } catch (e) {
     console.error("[disableResurfaceSchedule]", e);
@@ -431,7 +444,7 @@ export async function updateAutoPlug(
     return {
       success: false,
       error:
-        "Auto-plug is available on the Growth plan. Upgrade to use this feature.",
+        "Auto-plug is available on the Creator and Agency plans. Upgrade to use this feature.",
     };
   }
 
@@ -498,7 +511,7 @@ export async function cancelAutoPlug(
     return { success: false, error: ws.error };
   }
 
-  // Allow turning off even if the user downgraded - no Growth plan check.
+  // Allow turning off even if the user downgraded - no plan check.
 
   const [row] = await db
     .select({ id: autoPlugs.id })
@@ -554,7 +567,7 @@ export async function updateResurfaceSchedule(
     return {
       success: false,
       error:
-        "Resurface / auto-repost is available on the Growth plan. Upgrade to use this feature.",
+        "Resurface / auto-repost is available on the Creator and Agency plans. Upgrade to use this feature.",
     };
   }
 

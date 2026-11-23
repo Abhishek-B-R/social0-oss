@@ -53,6 +53,26 @@ export function isAllowedMediaContentType(
   return (ALLOWED_MEDIA_TYPES as readonly string[]).includes(contentType);
 }
 
+/** `image/png; charset=x` / `IMAGE/PNG` → `image/png`. */
+export function baseMimeType(value: string): string {
+  return (value.split(";")[0] ?? "").trim().toLowerCase();
+}
+
+/**
+ * Presign signs the Content-Type into the PUT, so R2 stores the type the
+ * uploader asked for then. A confirm that declares a different one is trying
+ * to re-label the object (an HTML/SVG upload as an image, or a video-sized
+ * upload as an image). An object stored with no type is served as opaque
+ * bytes, so only a present, different type is a mismatch.
+ */
+export function storedContentTypeMatches(
+  storedContentType: string | undefined,
+  declaredContentType: string,
+): boolean {
+  if (!storedContentType) return true;
+  return baseMimeType(storedContentType) === baseMimeType(declaredContentType);
+}
+
 /** Match declared MIME to file magic bytes (first bytes of object). */
 export function contentTypeMatchesMagicBytes(
   contentType: string,

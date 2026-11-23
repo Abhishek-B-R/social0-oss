@@ -1,7 +1,14 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { auth } from "../../lib/auth.js";
 import { getAuthApiBaseUrl } from "../../lib/env.js";
-import { isBlockedNativeSignUpPath } from "../../lib/block-native-sign-up.js";
+import {
+  isBlockedNativeSignUpPath,
+  isBlockedOtpSignInRequest,
+} from "../../lib/block-native-sign-up.js";
+import {
+  enforceAuthEmailRateLimit,
+  recordAuthEmailOutcome,
+} from "../../lib/auth-email-rate-limit.js";
 import { runRouteHandler } from "../../lib/run-route-handler.js";
 import { signUpDev, signUpWithTurnstile } from "./auth-sign-up.js";
 import { checkEmail } from "./auth-check-email.js";
@@ -21,6 +28,35 @@ async function handleBetterAuth(
     return reply.send({
       error: "Email sign-up must use POST /api/auth/sign-up.",
       code: "USE_SIGN_UP_ENDPOINT",
+    });
+  }
+
+  if (isBlockedOtpSignInRequest(request.method, url.pathname, request.body)) {
+    reply.status(403);
+    return reply.send({
+      error: "Sign-in by email code is not available.",
+      code: "OTP_SIGN_IN_DISABLED",
+    });
+  }
+
+  const emailRate = await enforceAuthEmailRateLimit(
+    request.method,
+    url.pathname,
+    request.body,
+    request.ip,
+  );
+  if (!emailRate.allowed) {
+    reply.status(emailRate.status);
+    if (emailRate.reset !== undefined) {
+      const retryAfter = Math.max(
+        1,
+        Math.ceil((emailRate.reset - Date.now()) / 1000),
+      );
+      reply.header("x-retry-after", String(retryAfter));
+    }
+    return reply.send({
+      code: "TOO_MANY_REQUESTS",
+      message: emailRate.error,
     });
   }
 
@@ -47,6 +83,14 @@ async function handleBetterAuth(
   }
 
   const response = await auth.handler(new Request(url.toString(), init));
+  // Password sign-in is charged only when it fails (see auth-email-rate-limit).
+  await recordAuthEmailOutcome(
+    request.method,
+    url.pathname,
+    request.body,
+    request.ip,
+    response.status,
+  );
   reply.status(response.status);
   response.headers.forEach((value, key) => {
     reply.header(key, value);

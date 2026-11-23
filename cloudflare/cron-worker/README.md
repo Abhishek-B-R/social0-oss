@@ -22,7 +22,7 @@ npm run deploy
 |------|------|
 | `*/5 * * * *` | `publish-scheduled`, `autoplug` |
 | `*/10 * * * *` | `repost` |
-| `0 6 * * *` | `token-health`, `billing-zombie-cleanup` |
+| `0 6 * * *` | `token-health`, `billing-zombie-cleanup`, `agency-extra-accounts` |
 
 ## Manual test
 

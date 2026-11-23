@@ -1,3 +1,5 @@
+import type { InboxNotice } from "./types.js";
+
 /** Collapse inbox fetch failures so one missing account cannot paint 200 red lines. */
 
 export function isGonePlatformPost(error: string): boolean {
@@ -37,13 +39,50 @@ export function isInboxFetchNotice(error: string): boolean {
 }
 
 export function noteFetchNotice(
-  list: Array<{ platform: string; message: string }>,
-  item: { platform: string; message: string },
+  list: InboxNotice[],
+  item: InboxNotice,
 ): void {
   const message = item.message.trim().slice(0, 180);
   if (!message) return;
-  if (list.some((n) => n.platform === item.platform && n.message === message)) {
+  const existing = list.find((n) => n.platform === item.platform && n.message === message);
+  if (existing) {
+    // Several accounts on one network: keep the oldest saved time and the
+    // latest retry time so the notice stays honest.
+    if (item.cachedAt && (!existing.cachedAt || item.cachedAt < existing.cachedAt)) {
+      existing.cachedAt = item.cachedAt;
+    }
+    if (item.retryAt && (!existing.retryAt || item.retryAt > existing.retryAt)) {
+      existing.retryAt = item.retryAt;
+    }
     return;
   }
-  list.push({ platform: item.platform, message });
+  list.push({ ...item, message });
+}
+
+/** Notice for a read served from saved data because of a rate limit. */
+export function staleNotice(
+  platform: string,
+  what: "comments" | "DMs",
+  cachedAt: number | undefined,
+): InboxNotice {
+  return {
+    platform,
+    kind: "stale",
+    message: `Showing saved ${what}. New ones appear once the network lets us check again.`,
+    ...(cachedAt ? { cachedAt: new Date(cachedAt).toISOString() } : {}),
+  };
+}
+
+/** Notice for a read that has nothing saved yet and will retry by itself. */
+export function retryNotice(
+  platform: string,
+  what: "comments" | "DMs",
+  retryAt: number,
+): InboxNotice {
+  return {
+    platform,
+    kind: "retry",
+    message: `Loading ${what}. This network limits how often we can check, so it may take a minute.`,
+    retryAt: new Date(retryAt).toISOString(),
+  };
 }

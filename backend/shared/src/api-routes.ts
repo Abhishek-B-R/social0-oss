@@ -114,7 +114,6 @@ export const FRONTEND_API_ROUTES: ApiRouteDef[] = [
   { method: "PATCH", path: "/api/queue/slots/:id", note: "sync" },
   { method: "DELETE", path: "/api/queue/slots/:id", note: "sync" },
   { method: "GET", path: "/api/queue/next-slot", note: "sync" },
-  { method: "POST", path: "/api/queue/add", note: "sync" },
 
   // Pinterest
   { method: "GET", path: "/api/pinterest/boards", note: "sync" },

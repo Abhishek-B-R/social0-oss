@@ -7,6 +7,7 @@
 import { TwitterApi } from "twitter-api-v2";
 import { formatTwitterMediaError } from "@/lib/twitter-errors";
 import { fetchAllowedMedia } from "@/lib/media-fetch";
+import { prepareImageForPlatform } from "@/lib/publish-platforms/media";
 import {
   isPublishWorkerRuntime,
   uploadTwitterImageFetch,
@@ -27,6 +28,28 @@ function getTwitterClient(accessToken: string, accessSecret: string): TwitterApi
   });
 }
 
+function isGif(bytes: Buffer, contentType: string | null): boolean {
+  if (contentType?.toLowerCase().startsWith("image/gif")) return true;
+  return bytes.subarray(0, 4).toString("latin1") === "GIF8";
+}
+
+/**
+ * Fit an image under X's 5 MB still-image limit. Uploads allow up to 50 MB
+ * and the composer promises per-platform compression, so oversized JPEG/PNG/
+ * WebP files are re-encoded here. GIFs pass through untouched: X takes them up
+ * to 15 MB, and re-encoding to JPEG would drop the animation.
+ */
+export async function prepareTwitterImage(
+  bytes: ArrayBuffer,
+  contentType: string | null,
+): Promise<{ buffer: Buffer; contentType: string }> {
+  const buf = Buffer.from(bytes);
+  if (isGif(buf, contentType)) {
+    return { buffer: buf, contentType: "image/gif" };
+  }
+  return prepareImageForPlatform(bytes, "twitter_x", contentType ?? undefined);
+}
+
 /**
  * Upload an image to X/Twitter and return the media_id
  * Uses OAuth 1.0a User Context (access token + access secret).
@@ -41,8 +64,10 @@ export async function uploadTwitterImage(
     throw new Error(`Failed to fetch image from storage: ${imageRes.statusText}`);
   }
 
-  const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
-  const contentType = imageRes.headers.get("content-type") || "image/jpeg";
+  const { buffer: imageBuffer, contentType } = await prepareTwitterImage(
+    await imageRes.arrayBuffer(),
+    imageRes.headers.get("content-type"),
+  );
 
   if (isPublishWorkerRuntime()) {
     try {

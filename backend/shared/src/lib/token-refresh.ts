@@ -10,6 +10,20 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
 const TEN_MIN_MS = 10 * 60 * 1000;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * Per-request ceiling for a provider refresh call. Without it a hung host
+ * stalls the caller (a publish job, the health sweep) and outlives the 30s
+ * refresh lock, letting a second caller race the rotation the lock guards.
+ */
+const REFRESH_FETCH_TIMEOUT_MS = 10_000;
+
+/** fetch for provider refresh calls: bounded by REFRESH_FETCH_TIMEOUT_MS. */
+function refreshFetch(url: string, init: RequestInit): Promise<Response> {
+  return fetch(url, {
+    ...init,
+    signal: AbortSignal.timeout(REFRESH_FETCH_TIMEOUT_MS),
+  });
+}
 
 /** Platforms that can silently renew access tokens (no reconnect UX). */
 export const REFRESHABLE_PLATFORMS = new Set([
@@ -138,7 +152,7 @@ async function refreshTokenUnlocked(
 
   if (platform === "instagram") {
     const url = `https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(accessToken)}`;
-    const response = await fetch(url, { method: "GET" });
+    const response = await refreshFetch(url, { method: "GET" });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error("Instagram token refresh failed:", {
@@ -159,7 +173,7 @@ async function refreshTokenUnlocked(
 
   if (platform === "threads") {
     const url = `https://graph.threads.net/refresh_access_token?grant_type=th_refresh_token&access_token=${encodeURIComponent(accessToken)}`;
-    const response = await fetch(url, { method: "GET" });
+    const response = await refreshFetch(url, { method: "GET" });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error("Threads token refresh failed:", {
@@ -182,7 +196,7 @@ async function refreshTokenUnlocked(
     // Page tokens from long-lived user tokens typically don't expire.
     // If we have an expiry clock and hit the buffer, try Meta's refresh endpoint.
     const url = `https://graph.facebook.com/refresh_access_token?grant_type=fb_refresh_token&access_token=${encodeURIComponent(accessToken)}`;
-    const response = await fetch(url, { method: "GET" });
+    const response = await refreshFetch(url, { method: "GET" });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error("Facebook token refresh failed:", {
@@ -218,7 +232,7 @@ async function refreshTokenUnlocked(
       account.encryptedRefreshToken,
       account.id,
     );
-    const response = await fetch(
+    const response = await refreshFetch(
       "https://open.tiktokapis.com/v2/oauth/token/",
       {
         method: "POST",
@@ -268,7 +282,7 @@ async function refreshTokenUnlocked(
       account.encryptedRefreshToken,
       account.id,
     );
-    const response = await fetch(
+    const response = await refreshFetch(
       "https://www.linkedin.com/oauth/v2/accessToken",
       {
         method: "POST",
@@ -321,7 +335,7 @@ async function refreshTokenUnlocked(
     const basic = Buffer.from(
       `${process.env.PINTEREST_CLIENT_ID}:${process.env.PINTEREST_CLIENT_SECRET}`,
     ).toString("base64");
-    const response = await fetch("https://api.pinterest.com/v5/oauth/token", {
+    const response = await refreshFetch("https://api.pinterest.com/v5/oauth/token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",

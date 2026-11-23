@@ -1,10 +1,12 @@
-import { auth } from "../lib/auth.js";
+import { getRouteSession } from "../lib/session.js";
 import { db } from "../db/index.js";
 import { verification, connectedAccounts } from "../db/schema.js";
+import { withReconnectedAt } from "../lib/account-reconnect.js";
 import { eq, and, isNull } from "drizzle-orm";
-import { headers } from "../lib/http/request-cookies.js";
 import { decryptToken, encryptToken } from "@social0/shared";
-import { getRemainingSlots } from "../lib/connections.js";
+import { accountLimitMessage } from "../lib/connections.js";
+import { checkAccountLimits } from "../lib/plan-limits.js";
+import { queueAgencyExtraAccountsSync } from "../lib/extra-accounts.js";
 import { AppRequest } from "../lib/http/http.js";
 import crypto from "crypto";
 import { connectSelectSuccessUrl } from "../lib/app-url.js";
@@ -12,7 +14,7 @@ import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-pr
 import { FACEBOOK_INSTAGRAM_PAGE_SCOPES } from "../lib/facebook-oauth.js";
 
 export async function igFbSelectGet(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -81,7 +83,7 @@ export async function igFbSelectGet(req: AppRequest) {
 }
 
 export async function igFbSelectPost(req: AppRequest) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getRouteSession();
   if (!session) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -197,25 +199,22 @@ export async function igFbSelectPost(req: AppRequest) {
         platformUsername:
           pageData.instagramUsername ?? existing.platformUsername,
         profileImageUrl,
-        platformMetadata: {
+        platformMetadata: withReconnectedAt({
           facebookPageId: pageData.pageId,
           instagramBusinessAccountId: pageData.instagramAccountId,
           connectionMethod: "facebook-page",
-        },
-        isActive: true,
+        }),
+        // isActive stays as stored: the plan cap owns it
+        // (syncConnectedAccountsToLimit), a reconnect does not grant it.
         scopes: FACEBOOK_INSTAGRAM_PAGE_SCOPES,
         updatedAt: new Date(),
       })
       .where(eq(connectedAccounts.id, existing.id));
   } else {
-    const remaining = await getRemainingSlots(resourceUserId);
-    if (remaining <= 0) {
+    const limitCheck = await checkAccountLimits(resourceUserId, "instagram");
+    if (!limitCheck.allowed) {
       return Response.json(
-        {
-          error: "limit_reached",
-          message:
-            "You need an active plan to connect accounts and post content.",
-        },
+        { error: "limit_reached", message: accountLimitMessage(limitCheck) },
         { status: 403 },
       );
     }
@@ -248,6 +247,8 @@ export async function igFbSelectPost(req: AppRequest) {
         connectionMethod: "facebook-page",
       },
     });
+    // Agency bills accounts above 59: update the add-on (never blocks).
+    queueAgencyExtraAccountsSync(resourceUserId, "connect");
   }
 
   await db.delete(verification).where(eq(verification.id, token));

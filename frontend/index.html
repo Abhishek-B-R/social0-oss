@@ -75,6 +75,12 @@
     />
     <meta name="twitter:image" content="https://social0.app/og-image.jpg" />
     <link rel="canonical" href="https://social0.app/" />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Social0 Blog"
+      href="https://social0.app/feed.xml"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -89,7 +95,14 @@
         rel="stylesheet"
       />
     </noscript>
+    <!-- Crawler text in #prerender is for HTML-only readers; JS users never see it. -->
+    <style>
+      html.js #prerender {
+        display: none;
+      }
+    </style>
     <script>
+      document.documentElement.classList.add("js");
       (function () {
         try {
           var theme = localStorage.getItem("theme");
@@ -115,8 +128,7 @@
     ></script>
   </head>
   <body class="font-sans antialiased">
-    <div id="root"></div>
-    <noscript>
+    <div id="root">
       <article id="prerender">
         <h1>Social0 - AI agents and multi-platform social scheduling</h1>
         <p>
@@ -143,7 +155,7 @@
           <a href="https://social0.app/pricing">pricing</a>.
         </p>
       </article>
-    </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <!-- 100% privacy-first analytics -->
     <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>

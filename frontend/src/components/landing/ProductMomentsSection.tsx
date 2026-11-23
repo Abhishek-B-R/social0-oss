@@ -367,8 +367,8 @@ export function ProductMomentsSection({
                 <MomentDemoVideo
                   src="/videos/composer-light.mp4"
                   darkSrc="/videos/composer-dark.mp4"
-                  poster="/demos/composer-light-preview.png"
-                  darkPoster="/demos/composer-dark-preview.png"
+                  poster="/demos/composer-light-preview.webp"
+                  darkPoster="/demos/composer-dark-preview.webp"
                   placeholderLabel="Composer demo — drop videos here later"
                   className="rounded-none"
                 />
@@ -403,8 +403,8 @@ export function ProductMomentsSection({
                 <MomentDemoVideo
                   src="/videos/schedule-effortlessly-light.mp4"
                   darkSrc="/videos/schedule-effortlessly-dark.mp4"
-                  poster="/demos/schedule-effortlessly-light-preview.png"
-                  darkPoster="/demos/schedule-effortlessly-dark-preview.png"
+                  poster="/demos/schedule-effortlessly-light-preview.webp"
+                  darkPoster="/demos/schedule-effortlessly-dark-preview.webp"
                   className="rounded-none"
                 />
               </VisualShell>
@@ -439,8 +439,8 @@ export function ProductMomentsSection({
                 <MomentDemoVideo
                   src="/videos/calendar-control-light.mp4"
                   darkSrc="/videos/calendar-control-dark.mp4"
-                  poster="/demos/calendar-control-light-preview.png"
-                  darkPoster="/demos/calendar-control-dark-preview.png"
+                  poster="/demos/calendar-control-light-preview.webp"
+                  darkPoster="/demos/calendar-control-dark-preview.webp"
                   className="rounded-none"
                 />
               </VisualShell>
@@ -474,8 +474,8 @@ export function ProductMomentsSection({
                 <MomentDemoVideo
                   src="/videos/workspaces-light.mp4"
                   darkSrc="/videos/workspaces-dark.mp4"
-                  poster="/demos/workspaces-light-preview.png"
-                  darkPoster="/demos/workspaces-dark-preview.png"
+                  poster="/demos/workspaces-light-preview.webp"
+                  darkPoster="/demos/workspaces-dark-preview.webp"
                   placeholderLabel="Workspaces demo — drop videos here later"
                   className="rounded-none"
                 />

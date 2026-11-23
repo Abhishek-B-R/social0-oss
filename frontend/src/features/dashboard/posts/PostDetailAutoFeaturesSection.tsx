@@ -1,12 +1,15 @@
 
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
+import { PLAN_NAMES } from "@/lib/plans";
 import { useCallback, useState, type ReactNode } from "react";
 import Link from "@/components/AppLink";
 import { Settings } from "lucide-react";
 import { toast } from "sonner";
 import { useAccountsForForm } from "@/features/dashboard/create/useAccountsForForm";
 import { cn } from "@/lib/utils";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { Button } from "@/components/ui/button";
+import { Toggle } from "@/components/app";
 import {
   Dialog,
   DialogContent,
@@ -43,22 +46,18 @@ import {
 /** Loading state that mirrors the two-row layout (not the account grid). */
 function PostDetailAutoFeaturesSkeleton() {
   return (
-    <div className="rounded-2xl border border-border/80 bg-bg-elevated p-5 shadow-sm dark:border-white/8 dark:bg-[#121212]/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
+    <div className="rounded-xl border border-border bg-bg-elevated p-4">
       <div className="space-y-1.5 mb-4">
         <div
           className="h-5 w-56 max-w-[85%] rounded-md bg-muted animate-pulse"
           aria-hidden
         />
-        <div
-          className="h-3.5 w-full max-w-lg rounded bg-muted/70 animate-pulse"
-          aria-hidden
-        />
       </div>
-      <div className="space-y-2">
+      <div className="divide-y divide-border">
         {[0, 1].map((i) => (
           <div
             key={i}
-            className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-bg-muted/40 dark:bg-[#1a1a1a]/90 dark:border-white/6 px-3.5 py-3 min-h-13"
+            className="flex items-center justify-between gap-3 py-3 min-w-0"
           >
             <div className="space-y-2 min-w-0 flex-1">
               <div
@@ -86,10 +85,6 @@ function PostDetailAutoFeaturesSkeleton() {
     </div>
   );
 }
-
-const TOGGLE_ON =
-  "bg-[#34a853] hover:bg-[#2d9047] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]";
-const TOGGLE_OFF = "bg-neutral-300 dark:bg-neutral-600";
 
 function toFullAutoPlug(
   p: Partial<AutoPlugConfig> | null | undefined,
@@ -127,7 +122,7 @@ function FeatureRowShell({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-bg-muted/40 dark:bg-[#1a1a1a]/90 dark:border-white/6 px-3.5 py-3 min-h-13 min-w-0 transition-colors",
+        "flex items-center justify-between gap-3 py-3 min-w-0",
         className,
       )}
     >
@@ -168,6 +163,7 @@ export function PostDetailAutoFeaturesSection({
   embedded?: boolean;
 }) {
   const invalidateQueries = useInvalidateQueries();
+  const dash = useDashboardPath();
   const { accounts, loading } = useAccountsForForm(null);
   const [plugModalOpen, setPlugModalOpen] = useState(false);
   const [resurfaceModalOpen, setResurfaceModalOpen] = useState(false);
@@ -554,18 +550,14 @@ export function PostDetailAutoFeaturesSection({
       className={
         embedded
           ? "space-y-4"
-          : "rounded-2xl border border-border/80 bg-bg-elevated p-5 shadow-sm space-y-4 dark:border-white/8 dark:bg-[#121212]/95 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]"
+          : "rounded-xl border border-border bg-bg-elevated p-4 space-y-4"
       }
     >
       {embedded ? null : (
       <div className="space-y-1">
-        <h2 className="text-base font-semibold tracking-tight text-foreground">
-          Auto-Plug &amp; Auto-Repost
+        <h2 className="text-sm font-semibold tracking-tight text-text">
+          Automations
         </h2>
-        <p className="text-[13px] leading-snug text-muted-foreground">
-          Same controls as the composer. Toggle on or off; the gear opens
-          details.
-        </p>
         {ageLocked && (
           <p className="text-[13px] text-muted-foreground pt-0.5">
             This post was published more than 24 hours ago - Auto-Plug and
@@ -584,9 +576,9 @@ export function PostDetailAutoFeaturesSection({
 
       {(!allowAutoPlug || !allowResurface) && (
         <p className="text-xs text-muted-foreground">
-          Growth plan features.{" "}
+          {PLAN_NAMES.creator} plan features.{" "}
           <Link
-            href="/dashboard/billing"
+            href={dash("billing")}
             className="font-medium text-accent hover:underline"
           >
             View billing
@@ -594,7 +586,7 @@ export function PostDetailAutoFeaturesSection({
         </p>
       )}
 
-      <div className="space-y-2">
+      <div className="divide-y divide-border">
         {resurfaceRowVisible && (
           <FeatureRowShell>
             <div className="flex flex-col gap-0.5 min-w-0 pr-2">
@@ -602,13 +594,13 @@ export function PostDetailAutoFeaturesSection({
                 Auto-Repost
               </span>
               {repostLocked && (
-                <span className="text-[11px] text-amber-600 dark:text-amber-400/90 mt-0.5">
+                <span className="text-xs text-warning mt-0.5">
                   Already ran - locked
                 </span>
               )}
               {!allowResurface && (
                 <Link
-                  href="/dashboard/billing"
+                  href={dash("billing")}
                   className="text-xs text-accent hover:text-accent-hover mt-0.5 w-fit"
                 >
                   Upgrade to use
@@ -622,58 +614,27 @@ export function PostDetailAutoFeaturesSection({
                     <button
                       type="button"
                       onClick={openResurfaceSettings}
-                      className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+                      className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                       aria-label="Auto-Repost settings"
                     >
                       <Settings className="h-4 w-4 stroke-[1.5]" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={resurfaceToggleOn}
-                    aria-label={
-                      resurfaceToggleOn
-                        ? "Disable Auto-Repost"
-                        : "Enable Auto-Repost"
-                    }
+                  <Toggle
+                    aria-label="Auto-Repost"
+                    checked={resurfaceToggleOn}
+                    pending={togglingResurface}
                     disabled={togglingResurface}
-                    onClick={() => void handleResurfaceToggle()}
-                    className={cn(
-                      "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors",
-                      resurfaceToggleOn ? TOGGLE_ON : TOGGLE_OFF,
-                      "disabled:opacity-60",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "inline-block h-4 w-4 transform rounded-full shadow-md transition-transform mt-0.5",
-                        resurfaceToggleOn
-                          ? "translate-x-4 bg-neutral-50 dark:bg-neutral-900"
-                          : "translate-x-0.5 bg-white dark:bg-neutral-200",
-                      )}
-                    />
-                  </button>
+                    onCheckedChange={() => void handleResurfaceToggle()}
+                  />
                 </>
               ) : (
-                <span
-                  role="switch"
-                  aria-checked={resurfaceToggleOn}
-                  aria-disabled="true"
-                  className={cn(
-                    "relative inline-flex h-5 w-9 shrink-0 rounded-full opacity-55 cursor-not-allowed",
-                    resurfaceToggleOn ? TOGGLE_ON : TOGGLE_OFF,
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "inline-block h-4 w-4 transform rounded-full shadow-md mt-0.5",
-                      resurfaceToggleOn
-                        ? "translate-x-4 bg-neutral-50 dark:bg-neutral-900"
-                        : "translate-x-0.5 bg-white dark:bg-neutral-200",
-                    )}
-                  />
-                </span>
+                <Toggle
+                  aria-label="Auto-Repost"
+                  checked={resurfaceToggleOn}
+                  disabled
+                  onCheckedChange={() => {}}
+                />
               )}
             </div>
           </FeatureRowShell>
@@ -686,7 +647,7 @@ export function PostDetailAutoFeaturesSection({
                 Auto-Plug
               </span>
               {plugLocked && (
-                <span className="text-[11px] text-amber-600 dark:text-amber-400/90 mt-0.5">
+                <span className="text-xs text-warning mt-0.5">
                   {autoPlugDetail?.status === "triggered"
                     ? "Already sent - locked"
                     : "No longer editable"}
@@ -694,7 +655,7 @@ export function PostDetailAutoFeaturesSection({
               )}
               {!allowAutoPlug && (
                 <Link
-                  href="/dashboard/billing"
+                  href={dash("billing")}
                   className="text-xs text-accent hover:text-accent-hover mt-0.5 w-fit"
                 >
                   Upgrade to use
@@ -708,56 +669,27 @@ export function PostDetailAutoFeaturesSection({
                     <button
                       type="button"
                       onClick={openPlugSettings}
-                      className="rounded-lg p-2 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-colors"
+                      className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                       aria-label="Auto-Plug settings"
                     >
                       <Settings className="h-4 w-4 stroke-[1.5]" />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={plugToggleOn}
-                    aria-label={
-                      plugToggleOn ? "Disable Auto-Plug" : "Enable Auto-Plug"
-                    }
+                  <Toggle
+                    aria-label="Auto-Plug"
+                    checked={plugToggleOn}
+                    pending={togglingPlug}
                     disabled={togglingPlug}
-                    onClick={() => void handlePlugToggle()}
-                    className={cn(
-                      "relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors",
-                      plugToggleOn ? TOGGLE_ON : TOGGLE_OFF,
-                      "disabled:opacity-60",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "inline-block h-4 w-4 transform rounded-full shadow-md transition-transform mt-0.5",
-                        plugToggleOn
-                          ? "translate-x-4 bg-neutral-50 dark:bg-neutral-900"
-                          : "translate-x-0.5 bg-white dark:bg-neutral-200",
-                      )}
-                    />
-                  </button>
+                    onCheckedChange={() => void handlePlugToggle()}
+                  />
                 </>
               ) : (
-                <span
-                  role="switch"
-                  aria-checked={plugToggleOn}
-                  aria-disabled="true"
-                  className={cn(
-                    "relative inline-flex h-5 w-9 shrink-0 rounded-full opacity-55 cursor-not-allowed",
-                    plugToggleOn ? TOGGLE_ON : TOGGLE_OFF,
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "inline-block h-4 w-4 transform rounded-full shadow-md mt-0.5",
-                      plugToggleOn
-                        ? "translate-x-4 bg-neutral-50 dark:bg-neutral-900"
-                        : "translate-x-0.5 bg-white dark:bg-neutral-200",
-                    )}
-                  />
-                </span>
+                <Toggle
+                  aria-label="Auto-Plug"
+                  checked={plugToggleOn}
+                  disabled
+                  onCheckedChange={() => {}}
+                />
               )}
             </div>
           </FeatureRowShell>

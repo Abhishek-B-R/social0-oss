@@ -1,13 +1,10 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
-import {
-  decryptToken,
-  isSafeOutboundUrl,
-  safeFetch,
-  sleep,
-} from "@social0/shared";
+import { decryptToken, isSafeOutboundUrl, sleep } from "@social0/shared";
 import { db } from "../db/index.js";
 import { userWebhookSubscriptions, webhookDeliveries } from "../db/schema.js";
+import { NON_PUBLIC_ADDRESS_CODE } from "./ssrf-resolve.js";
+import { isPublishWorkerRuntime } from "./twitter-media-upload-fetch.js";
 
 /** Events a user can subscribe to. */
 export const WEBHOOK_EVENTS = [
@@ -53,6 +50,8 @@ export type WebhookDeliveryOutcome = {
 
 /** Per-attempt wall-clock budget, including redirect hops. */
 const ATTEMPT_TIMEOUT_MS = 10_000;
+/** Redirect hops followed per attempt, each one re-validated. */
+const MAX_REDIRECTS = 5;
 /** First attempt + this many retries. */
 const MAX_ATTEMPTS = 3;
 /** Backoff before retry N (index 0 = before the 2nd attempt). */
@@ -90,9 +89,71 @@ type AttemptResult = {
   retryable: boolean;
 };
 
+type WebhookFetch = (url: string, init: RequestInit) => Promise<Response>;
+
 /**
- * One POST to a customer endpoint. `safeFetch` re-validates every redirect hop,
- * so an endpoint cannot bounce us onto a private address; the AbortController
+ * How one hop leaves this process.
+ *
+ * On the API droplet (Node) the socket's own DNS lookup refuses non-public
+ * addresses, so a hostname that resolves — or is rebound, or redirects — to
+ * 10.x / 127.x / 169.254.x never gets a connection. The Cloudflare publish
+ * worker has no `node:dns`/`node:http` and cannot reach the droplet's private
+ * network anyway, so it keeps the platform `fetch` behind the string guard.
+ */
+async function webhookTransport(): Promise<WebhookFetch> {
+  if (isPublishWorkerRuntime()) return (url, init) => fetch(url, init);
+  const { publicAddressFetch } = await import("./public-address-fetch.js");
+  return publicAddressFetch;
+}
+
+type HopResult =
+  | { kind: "response"; res: Response }
+  | { kind: "unsafe-redirect" };
+
+/**
+ * POST and follow redirects by hand: every hop is re-checked against the
+ * string guard (scheme, literal private IPs, `localhost`, credentials) before
+ * the transport, which on Node also vets the resolved address, is called.
+ * Each redirect body is cancelled before the next hop so its socket is freed.
+ */
+async function postFollowingSafeRedirects(
+  transport: WebhookFetch,
+  url: string,
+  init: RequestInit,
+  httpsOnly: boolean,
+): Promise<HopResult> {
+  let current = url;
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+    if (!isSafeOutboundUrl(current, { httpsOnly })) {
+      return { kind: "unsafe-redirect" };
+    }
+    const res = await transport(current, { ...init, redirect: "manual" });
+    if (res.status < 300 || res.status >= 400) return { kind: "response", res };
+
+    const location = res.headers.get("location");
+    await res.body?.cancel().catch(() => undefined);
+    if (!location) return { kind: "unsafe-redirect" };
+    try {
+      current = new URL(location, current).href;
+    } catch {
+      return { kind: "unsafe-redirect" };
+    }
+  }
+  return { kind: "unsafe-redirect" };
+}
+
+function isNonPublicAddressError(err: unknown): boolean {
+  // Node's http stack surfaces lookup failures as-is, sometimes wrapped as
+  // `cause` by intermediate layers; check both.
+  for (let e: unknown = err, depth = 0; e && depth < 3; depth++) {
+    if ((e as { code?: unknown }).code === NON_PUBLIC_ADDRESS_CODE) return true;
+    e = (e as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
+/**
+ * One POST to a customer endpoint, redirects included. The AbortController
  * caps the whole hop chain rather than any single request.
  */
 async function attemptDelivery(
@@ -109,21 +170,26 @@ async function attemptDelivery(
   const signature = signWebhookPayload(secret, timestamp, body);
 
   try {
-    const res = await safeFetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": "Social0-Webhooks/1.0",
-        "X-Social0-Signature": `t=${timestamp},v1=${signature}`,
-        "X-Social0-Event": payload.type,
-        "X-Social0-Delivery-Id": payload.id,
+    const transport = await webhookTransport();
+    const result = await postFollowingSafeRedirects(
+      transport,
+      url,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "Social0-Webhooks/1.0",
+          "X-Social0-Signature": `t=${timestamp},v1=${signature}`,
+          "X-Social0-Event": payload.type,
+          "X-Social0-Delivery-Id": payload.id,
+        },
+        body,
+        signal: controller.signal,
       },
-      body,
-      signal: controller.signal,
-      httpsOnly: process.env.NODE_ENV === "production",
-    });
+      process.env.NODE_ENV === "production",
+    );
 
-    if (!res) {
+    if (result.kind === "unsafe-redirect") {
       return {
         responseStatus: null,
         error:
@@ -132,6 +198,7 @@ async function attemptDelivery(
       };
     }
 
+    const { res } = result;
     // Nothing downstream reads the body; release the socket promptly.
     void res.body?.cancel().catch(() => undefined);
 
@@ -144,6 +211,16 @@ async function attemptDelivery(
       retryable: isRetryableStatus(res.status),
     };
   } catch (err) {
+    if (isNonPublicAddressError(err)) {
+      // Not transient: the hostname (or a redirect target) points inside a
+      // private network. No connection was opened.
+      return {
+        responseStatus: null,
+        error:
+          "Endpoint (or a URL it redirected to) resolves to an address that is not public.",
+        retryable: false,
+      };
+    }
     const aborted = controller.signal.aborted;
     return {
       responseStatus: null,

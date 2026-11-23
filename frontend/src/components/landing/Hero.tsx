@@ -6,8 +6,9 @@ import { PlatformStrip } from "./PlatformStrip";
 import { AgentHappyCustomers, AgentLogoStrip } from "./AgentLogoStrip";
 import { LandingModeToggle, useLandingMode } from "./landing-mode";
 
-function developersHref(pathname: string) {
-  return pathname === "/home" ? "/home#developers" : "/#developers";
+/** "/" sends a session to the dashboard, so signed-in visitors stay on /home. */
+function developersHref(pathname: string, signedIn: boolean) {
+  return pathname === "/home" || signedIn ? "/home#developers" : "/#developers";
 }
 
 const copy = {
@@ -51,7 +52,8 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
       <div className="relative z-10 mx-auto flex w-full max-w-270 flex-col items-center px-5 pb-10 pt-12 text-center sm:w-[92%] sm:px-6 sm:pb-12 sm:pt-14 lg:w-[88%] lg:max-w-280 lg:px-8 lg:pb-14 lg:pt-16">
         <PlatformStrip variant="hero" className="mb-9 w-full sm:mb-10" />
 
-        <AnimatePresence mode="wait">
+        {/* initial={false}: the h1 is the LCP element; render it visible on first paint and only animate mode switches. */}
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={mode}
             className="w-full max-w-210"
@@ -105,7 +107,7 @@ export function Hero({ signedIn = false }: { signedIn?: boolean }) {
           <LandingModeToggle />
           {mode === "agent" ? (
             <Link
-              href={developersHref(pathname)}
+              href={developersHref(pathname, signedIn)}
               className="text-[13px] text-muted-foreground/80 underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50"
             >
               See API, MCP &amp; CLI docs &#8599;

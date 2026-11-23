@@ -6,5 +6,10 @@ export {
   readMcpResource,
   registerMcpResources,
 } from "./resources.js";
-export { runWithApiKey, runWithApiKeyAsync, getRequestApiKey } from "./request-context.js";
+export {
+  runWithApiKey,
+  runWithApiKeyAsync,
+  getRequestApiKey,
+  getRequestMcpClient,
+} from "./request-context.js";
 export { isValidApiKey } from "./config.js";

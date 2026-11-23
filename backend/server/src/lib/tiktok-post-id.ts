@@ -73,28 +73,59 @@ export function isTikTokApiOk(
 export const TIKTOK_PUBLISH_MATCH_TOLERANCE_MS = 15 * 60 * 1000;
 
 /**
- * Pick the video whose `create_time` (unix seconds) is closest to when we
- * published, within tolerance. Used to backfill a publication whose short-
- * lived publish id can no longer be resolved. Returns the id as a string so
- * 64-bit ids survive (see parseTikTokJson).
+ * `publish/status/fetch` error codes that mean the publish id itself is gone
+ * (expired or never known). Only these justify matching by publish time: a
+ * pending, private, or failed publish must keep its `ttpub:` id.
+ */
+export const TIKTOK_DEAD_PUBLISH_ID_CODES: ReadonlySet<string> = new Set([
+  "invalid_publish_id",
+]);
+
+export type TikTokPublishMatchOptions = {
+  toleranceMs?: number;
+  /** Video ids already stored on another publication of the same account. */
+  claimedVideoIds?: ReadonlySet<string>;
+  /**
+   * Publish times of the account's other publications that still have no
+   * video id. A candidate near one of them could be theirs, so it is not ours.
+   */
+  rivalPublishedAt?: readonly Date[];
+};
+
+/**
+ * Pick the one video whose `create_time` (unix seconds) sits within tolerance
+ * of when we published. Used to backfill a publication whose short-lived
+ * publish id can no longer be resolved. The match must be unambiguous: videos
+ * already claimed by another publication are skipped, two unclaimed
+ * candidates in the window return null, and so does a candidate that another
+ * unresolved publication of the account could equally own. A wrong match is
+ * persisted for good, so keeping the `ttpub:` id beats guessing. Returns the
+ * id as a string so 64-bit ids survive (see parseTikTokJson).
  */
 export function pickTikTokVideoByPublishTime(
   videos: Array<{ id?: unknown; create_time?: unknown }>,
   publishedAt: Date,
-  toleranceMs = TIKTOK_PUBLISH_MATCH_TOLERANCE_MS,
+  options: TikTokPublishMatchOptions = {},
 ): string | null {
+  const toleranceMs = options.toleranceMs ?? TIKTOK_PUBLISH_MATCH_TOLERANCE_MS;
   const target = publishedAt.getTime();
   if (!Number.isFinite(target)) return null;
-  let best: { id: string; distance: number } | null = null;
+  const candidates = new Map<string, number>();
   for (const v of videos) {
     const id = firstTikTokPublicVideoId(v.id);
-    if (!id) continue;
+    if (!id || options.claimedVideoIds?.has(id)) continue;
     const created =
       typeof v.create_time === "number" ? v.create_time : Number(v.create_time);
     if (!Number.isFinite(created)) continue;
-    const distance = Math.abs(created * 1000 - target);
-    if (distance > toleranceMs) continue;
-    if (!best || distance < best.distance) best = { id, distance };
+    const createdMs = created * 1000;
+    if (Math.abs(createdMs - target) > toleranceMs) continue;
+    candidates.set(id, createdMs);
   }
-  return best?.id ?? null;
+  if (candidates.size !== 1) return null;
+  const [[id, createdMs]] = [...candidates];
+  const contested = (options.rivalPublishedAt ?? []).some((rival) => {
+    const t = rival.getTime();
+    return Number.isFinite(t) && Math.abs(createdMs - t) <= toleranceMs;
+  });
+  return contested ? null : id;
 }

@@ -12,7 +12,10 @@ const apiKey = process.env.DODO_PAYMENTS_API_KEY ?? "";
  * Updates DB so the app shows the correct plan (e.g. after payment when webhook didn't run).
  */
 export async function syncBilling(_request: Request) {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  });
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -3,8 +3,22 @@ const THEME_KEY = "theme";
 const RELOAD_ATTEMPT = "social0-build-reload-attempt";
 const CHUNK_RELOAD_ATTEMPT = "social0-chunk-reload-attempt";
 
-/** Prefixes preserved across deploy cache clears (auth is cookie-based). */
-const PRESERVE_LS_PREFIXES = ["social0.", "social0-"] as const;
+/**
+ * Prefixes preserved across deploy cache clears (auth is cookie-based).
+ * Every key the app writes as user state must match one of these, or the
+ * next deploy silently erases it: Inbox "Done" marks and hidden posts
+ * (`s0:inbox:*`), remembered composer / bulk-import accounts and
+ * auto-repost settings (`remembered-*`), and per-account Pinterest board and
+ * link defaults have no server copy.
+ */
+const PRESERVE_LS_PREFIXES = [
+  "social0.",
+  "social0-",
+  "s0:",
+  "remembered-",
+  "pinterest-board-",
+  "pinterest-link-",
+] as const;
 
 let chunkReloadAttempted = false;
 

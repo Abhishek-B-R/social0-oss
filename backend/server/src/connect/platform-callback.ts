@@ -1,7 +1,9 @@
 import { PLATFORM_OAUTH_CONFIG, Platform } from "../lib/platforms.js";
 import { db } from "../db/index.js";
 import { connectedAccounts, verification } from "../db/schema.js";
+import { reconnectedAtPatch, withReconnectedAt } from "../lib/account-reconnect.js";
 import { checkAccountLimits } from "../lib/plan-limits.js";
+import { queueAgencyExtraAccountsSync } from "../lib/extra-accounts.js";
 import { logConnectBlocked } from "@social0/shared";
 import { syncSubscriptionForUserId } from "../lib/billing-sync.js";
 import { eq, and, isNull } from "drizzle-orm";
@@ -23,6 +25,7 @@ import {
   isLikelyTikTokOpenId,
   parseTikTokTokenResponse,
   resolveTikTokConnectUser,
+  tiktokLegacyRowMatchesUsername,
 } from "../lib/tiktok-connect.js";
 import {
   isYouTubeAccessTokenUsable,
@@ -32,9 +35,16 @@ import {
 import { mirrorProfileImageToR2, resolveProfileImageUrl } from "../lib/mirror-profile-image.js";
 import { grantedScopesForConnect } from "../lib/oauth-granted-scopes.js";
 import {
+  instagramMeIdentityIds,
   normalizeInstagramTokenResponse,
   parseInstagramMeResponse,
 } from "../lib/instagram-oauth.js";
+import {
+  checkReauthIdentity,
+  isSyntheticPlatformUserId,
+  reauthIdentityAllowsUpdate,
+  reauthRefusedPath,
+} from "../lib/reauth-identity.js";
 
 function normalizeWorkspaceId(value: unknown): string | null {
   return typeof value === "string" ? value : null;
@@ -288,6 +298,24 @@ export async function platformCallback(
             ),
           });
 
+      // Reconnect must not move another X account's tokens onto this row.
+      if (existing && secretDecrypted.reauthAccountId) {
+        const verdict = checkReauthIdentity({
+          platform: "twitter_x",
+          storedPlatformUserId: existing.platformUserId,
+          returnedPlatformUserId: userInfo.id,
+        });
+        if (!reauthIdentityAllowsUpdate(verdict)) {
+          console.warn("[connect] reconnect refused: identity check failed", {
+            platform: "twitter_x",
+            accountId: existing.id,
+            verdict,
+          });
+          const refused = reauthRefusedPath("twitter_x", verdict);
+          return safeRedirect(refused, "/dashboard/connections");
+        }
+      }
+
       const accountId = existing?.id ?? crypto.randomUUID();
       const encryptedAccess = encryptToken(accessToken, accountId);
       const encryptedSecret = encryptToken(accessSecret, accountId);
@@ -307,10 +335,16 @@ export async function platformCallback(
             encryptedAccessToken: encryptedAccess,
             encryptedRefreshToken: encryptedSecret,
             tokenExpiresAt: null,
-            platformUserId: userInfo.id,
+            tokenStatus: "active",
+            // Never replace a real id with the lookup-failed placeholder.
+            platformUserId: isSyntheticPlatformUserId("twitter_x", userInfo.id)
+              ? existing.platformUserId
+              : userInfo.id,
             platformUsername: userInfo.username,
             profileImageUrl,
-            isActive: true,
+            // isActive stays as stored: it is the plan cap's flag
+            // (syncConnectedAccountsToLimit), not something a reconnect grants.
+            platformMetadata: reconnectedAtPatch(),
             updatedAt: new Date(),
           })
           .where(eq(connectedAccounts.id, existing.id));
@@ -347,6 +381,8 @@ export async function platformCallback(
           tokenExpiresAt: null,
           isActive: true,
         });
+        // Agency bills accounts above 59: update the add-on (never blocks).
+        queueAgencyExtraAccountsSync(userId, "connect");
       }
       try {
         const { refreshTwitterPremiumStatus } =
@@ -770,9 +806,10 @@ export async function platformCallback(
             ),
             tokenExpiresAt,
             tokenStatus: "active",
-            isActive: true,
-            platformMetadata:
-              (existing.platformMetadata as Record<string, unknown>) ?? {},
+            // isActive stays as stored (plan cap flag; see X branch above).
+            platformMetadata: withReconnectedAt(
+              existing.platformMetadata as Record<string, unknown> | null,
+            ),
             ...(pinterestScopes ? { scopes: pinterestScopes } : {}),
             updatedAt: new Date(),
           })
@@ -814,6 +851,8 @@ export async function platformCallback(
           platformMetadata: {},
           scopes: grantedScopesForConnect("pinterest", tokens),
         });
+        // Agency bills accounts above 59: update the add-on (never blocks).
+        queueAgencyExtraAccountsSync(userId, "connect");
       }
       return safeRedirect(successRedirect, successRedirect);
     }
@@ -914,6 +953,7 @@ export async function platformCallback(
       username: string | null;
       profileImageUrl: string | null;
       platformMetadata?: Record<string, unknown>;
+      aliasIds?: string[];
     };
 
     if (platform === "tiktok") {
@@ -946,6 +986,11 @@ export async function platformCallback(
         if (!userInfo.id || userInfo.id.startsWith(`${platform}-`)) {
           userInfo.id = tokens.user_id;
         }
+        // The token's user_id names the same account; accept it on reconnect.
+        userInfo.aliasIds = [
+          ...(userInfo.aliasIds ?? []),
+          String(tokens.user_id),
+        ];
       } catch (err) {
         rethrowRouteRedirect(err);
         console.error(`Failed to fetch ${platform} user info:`, err);
@@ -1108,22 +1153,69 @@ export async function platformCallback(
           })
         : null;
 
+    // Reconnect must not move another account's tokens onto this row.
+    const refuseIfDifferentIdentity = (row: {
+      id: string;
+      platformUserId: string;
+    }): void => {
+      const verdict = checkReauthIdentity({
+        platform,
+        storedPlatformUserId: row.platformUserId,
+        returnedPlatformUserId: userInfo.id,
+        returnedAliasIds: userInfo.aliasIds,
+      });
+      if (!reauthIdentityAllowsUpdate(verdict)) {
+        console.warn("[connect] reconnect refused: identity check failed", {
+          platform,
+          accountId: row.id,
+          verdict,
+        });
+        const refused = reauthRefusedPath(platform, verdict);
+        return safeRedirect(refused, "/dashboard/connections");
+      }
+    };
+    if (existing) refuseIfDifferentIdentity(existing);
+
     if (!existing) {
       existing = await db.query.connectedAccounts.findFirst({
-        where:
-          platform === "tiktok"
-            ? and(
-                eq(connectedAccounts.userId, userId),
-                eq(connectedAccounts.platform, platform),
-                connectedAccountWorkspaceCondition(workspaceId),
-              )
-            : and(
-                eq(connectedAccounts.userId, userId),
-                eq(connectedAccounts.platform, platform),
-                eq(connectedAccounts.platformUserId, userInfo.id),
-                connectedAccountWorkspaceCondition(workspaceId),
-              ),
+        where: and(
+          eq(connectedAccounts.userId, userId),
+          eq(connectedAccounts.platform, platform),
+          eq(connectedAccounts.platformUserId, userInfo.id),
+          connectedAccountWorkspaceCondition(workspaceId),
+        ),
       });
+    }
+
+    // TikTok rows from before open_id was stored carry a handle or synthetic
+    // id, so the open_id match above cannot find them. Upgrade such a row only
+    // when it is the single legacy TikTok row in this scope AND it is tied to
+    // the returned identity: an explicit Reconnect of that row, or its stored
+    // handle equals the returned @handle. The identity guard cannot help here
+    // (a non-open_id stored id is `stored_unknown`, which it allows), so
+    // without that tie connecting account B would turn legacy row A into B.
+    // Rows that already hold a real open_id belong to some other TikTok
+    // account and are left alone.
+    if (!existing && platform === "tiktok") {
+      const tiktokRows = await db.query.connectedAccounts.findMany({
+        where: and(
+          eq(connectedAccounts.userId, userId),
+          eq(connectedAccounts.platform, platform),
+          connectedAccountWorkspaceCondition(workspaceId),
+        ),
+      });
+      const legacyRows = tiktokRows.filter(
+        (row) => !isLikelyTikTokOpenId(row.platformUserId),
+      );
+      const legacyRow = legacyRows.length === 1 ? legacyRows[0] : undefined;
+      if (
+        legacyRow &&
+        ((isReauth && reauthAccountId === legacyRow.id) ||
+          tiktokLegacyRowMatchesUsername(legacyRow, userInfo.username))
+      ) {
+        existing = legacyRow;
+        refuseIfDifferentIdentity(existing);
+      }
     }
 
     if (existing) {
@@ -1152,7 +1244,6 @@ export async function platformCallback(
         platformUserId?: string;
         platformUsername: string | null;
         profileImageUrl: string | null;
-        isActive: boolean;
         platformMetadata?: Record<string, unknown>;
         scopes?: string | null;
         updatedAt: Date;
@@ -1175,12 +1266,16 @@ export async function platformCallback(
             existing.profileImageUrl,
           ) ??
           (!userInfo.profileImageUrl ? existing.profileImageUrl : null),
-        isActive: true,
+        // isActive stays as stored: the plan cap owns it
+        // (syncConnectedAccountsToLimit), a reconnect does not grant it.
         updatedAt: new Date(),
         ...(platform === "tiktok" && isLikelyTikTokOpenId(userInfo.id)
           ? { platformUserId: userInfo.id }
           : {}),
-        ...(platform === "youtube" ? { platformUserId: userInfo.id } : {}),
+        ...(platform === "youtube" &&
+        !isSyntheticPlatformUserId(platform, userInfo.id)
+          ? { platformUserId: userInfo.id }
+          : {}),
       };
 
       const grantedScopes = grantedScopesForConnect(platform, tokens);
@@ -1202,9 +1297,17 @@ export async function platformCallback(
         };
       }
 
+      // Stamp the reconnect (clears Home's auth-failure flag; see
+      // lib/account-reconnect.ts). Merge in SQL unless we're already
+      // rewriting the metadata above.
       await db
         .update(connectedAccounts)
-        .set(updateData)
+        .set({
+          ...updateData,
+          platformMetadata: updateData.platformMetadata
+            ? withReconnectedAt(updateData.platformMetadata)
+            : reconnectedAtPatch(),
+        })
         .where(eq(connectedAccounts.id, existing.id));
 
       const redirectUrl = isReauth
@@ -1291,6 +1394,8 @@ export async function platformCallback(
       platformMetadata,
       scopes: grantedScopesForConnect(platform, tokens),
     });
+    // Agency bills accounts above 59: update the add-on (never blocks).
+    queueAgencyExtraAccountsSync(userId, "connect");
 
     const insertRedirectUrl = isReauth
       ? successRedirect.includes("?")
@@ -1321,6 +1426,8 @@ async function fetchPlatformUserInfo(
   username: string | null;
   profileImageUrl: string | null;
   platformMetadata?: Record<string, unknown>;
+  /** Other ids the provider returned for this same account. */
+  aliasIds?: string[];
 }> {
   switch (platform) {
     case "linkedin": {
@@ -1403,6 +1510,7 @@ async function fetchPlatformUserInfo(
                 id: parsed.id,
                 username: parsed.username,
                 profileImageUrl: null,
+                aliasIds: instagramMeIdentityIds(fallbackData),
               };
             }
           }
@@ -1419,6 +1527,7 @@ async function fetchPlatformUserInfo(
           id: parsed.id,
           username: parsed.username,
           profileImageUrl: parsed.profileImageUrl,
+          aliasIds: instagramMeIdentityIds(data),
         };
       } catch (err) {
         rethrowRouteRedirect(err);

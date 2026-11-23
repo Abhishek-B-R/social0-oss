@@ -30,14 +30,6 @@ export async function getUserSettingsSnapshot(): Promise<SettingsSnapshot> {
   return rpc<SettingsSnapshot>("settings.getUserSettingsSnapshot");
 }
 
-export async function updateDisplayName(formData: FormData): Promise<void> {
-  await rpc("settings.updateDisplayName", formData);
-}
-
-export async function updateUserImage(imageUrl: string): Promise<{ error?: string }> {
-  return rpc<{ error?: string }>("settings.updateUserImage", imageUrl);
-}
-
 export async function updateConnectionAvatar(
   connectedAccountId: string,
   profileImageUrl: string,
@@ -57,10 +49,6 @@ export async function updateTimezone(
   formData: FormData,
 ): Promise<{ error?: string }> {
   return (await rpc("settings.updateTimezone", formData)) ?? {};
-}
-
-export async function signOutAllDevices(): Promise<void> {
-  await rpc("settings.signOutAllDevices");
 }
 
 export async function deleteAccount(

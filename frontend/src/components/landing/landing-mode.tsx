@@ -61,7 +61,8 @@ export function LandingModeProvider({ children }: { children: ReactNode }) {
           nextParams.set("mode", modeToParam(next));
           return nextParams;
         },
-        { replace: true },
+        // Same page, different copy: don't let RootLayout scroll to the top.
+        { replace: true, state: { keepScroll: true } },
       );
     },
     [setSearchParams],

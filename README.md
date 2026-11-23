@@ -200,8 +200,8 @@ Scheduled posts only publish if something calls `/api/cron/*` on a schedule. In 
 | Media | Cloudflare R2 |
 | Queues and rate limits | Cloudflare Queues and Redis |
 
-Publishing defaults to the Cloudflare worker (`PUBLISH_DISPATCH=cloudflare`) and falls back to
-BullMQ on the API host. X and TikTok deliberately publish from the API process, where chunked video
+Publishing defaults to the Cloudflare worker (`PUBLISH_DISPATCH=cloudflare`); `PUBLISH_DISPATCH=server`
+publishes every platform from the API host instead. X and TikTok deliberately publish from the API process, where chunked video
 upload and 64-bit permalinks are handled.
 
 ## Documentation

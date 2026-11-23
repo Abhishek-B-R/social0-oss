@@ -17,8 +17,30 @@
  */
 export const TOKEN_EXPIRED_MARKER = "token_expired";
 
+/**
+ * Message shapes of a dead token. Meta (Facebook / Instagram / Threads)
+ * answers a dead token with HTTP 400 + OAuthException code 190, so the
+ * message is all publishers keep: "Error validating access token: Session
+ * has expired on ...", "... The session has been invalidated because the
+ * user changed their password ...", "... The user has not authorized
+ * application ...", "Invalid OAuth access token - Cannot parse access token".
+ * TikTok sends "The access token is invalid or not found in the request."
+ * (code `access_token_invalid`).
+ */
 const AUTH_MESSAGE_RE =
-  /\b401\b|unauthori[sz]ed|invalid or expired token|invalid credentials|could not authenticate|token (?:has )?expired|invalid_token|invalid access token|authentication (?:credentials|failed)|not authenticated/i;
+  /\b401\b|unauthori[sz]ed|invalid or expired token|invalid credentials|could not authenticate|token (?:has )?expired|invalid_token|invalid access token|authentication (?:credentials|failed)|not authenticated|error validating access token|invalid oauth (?:2\.0 )?access token|session has (?:expired|been invalidated)|has not authori[sz]ed application|access[ _]token[ _](?:is )?invalid|access_token_invalid/i;
+
+/**
+ * A refresh that failed in `getValidToken` (shared token-refresh.ts /
+ * youtube-token.ts): "Failed to refresh YouTube token. Please reconnect your
+ * account from Connections.", "TikTok refresh failed. Please reconnect your
+ * account.", "No refresh token available. Please reconnect ...". These come
+ * from the token step, before any platform API call, so no status code is
+ * attached; the message is the only signal. Each one already tells the user
+ * to reconnect, so the reconnect path is what they must trigger.
+ */
+const TOKEN_REFRESH_FAILED_RE =
+  /\b(?:failed to refresh \w+ token|refresh failed|no refresh token available)\b[\s\S]*\breconnect\b/i;
 
 /** X API v1.1/v2 error codes that mean the user token is no longer valid. */
 const X_AUTH_ERROR_CODES = new Set([32, 89, 215]);
@@ -52,7 +74,7 @@ export function isPlatformAuthError(e: unknown, status?: number): boolean {
   if (xErrorCodes(e).some((c) => X_AUTH_ERROR_CODES.has(c))) return true;
   const message =
     typeof e === "string" ? e : e instanceof Error ? e.message : "";
-  return AUTH_MESSAGE_RE.test(message);
+  return AUTH_MESSAGE_RE.test(message) || TOKEN_REFRESH_FAILED_RE.test(message);
 }
 
 /** Copy shown next to the reconnect hint for an expired token. */

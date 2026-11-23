@@ -1,16 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "@/components/AppLink";
-import { loadAdjacentPosts } from "@/api/dashboard-data";
-import { useDashboardPath } from "@/lib/dashboard-base-path";
-import {
-  resolvePostListNavContext,
-  type PostDetailLocationState,
-} from "@/lib/post-detail-back";
 import { cn } from "@/lib/utils";
+import type { PostNavState } from "./post-nav";
 
 const EDGE_PX_MIN = 40;
 const EDGE_PX_MAX = 56;
@@ -21,6 +14,13 @@ function edgeWidthPx(mainWidth: number): number {
   if (mainWidth < 1000) return 48;
   return EDGE_PX_MAX;
 }
+/** A gutter narrower than this gets no strip: too thin to aim at. */
+const MIN_GUTTER_PX = 24;
+/** Below this width a strip shows its chevron only; the word would overflow. */
+const LABEL_MIN_PX = 44;
+/** Resting on one of these never arms a strip. */
+const INTERACTIVE_SELECTOR =
+  "a, button, input, textarea, select, label, summary, [role='button'], [role='link'], [role='menuitem'], [contenteditable='true']";
 /** Dwell before showing — left is longer so sidebar aims don’t flash. */
 const SHOW_DELAY_LEFT_MS = 200;
 const SHOW_DELAY_RIGHT_MS = 120;
@@ -44,117 +44,85 @@ function useDesktopPointer(): boolean {
   return ok;
 }
 
-type MainBounds = { left: number; right: number; top: number; bottom: number };
-
-function isTypingTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false;
-  const tag = target.tagName;
-  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
-  if (target.isContentEditable) return true;
-  return Boolean(target.closest("[contenteditable='true']"));
-}
+type Strip = { x: number; width: number };
+type Zones = { top: number; bottom: number; left: Strip | null; right: Strip | null };
 
 /**
- * Desktop-only (mouse/trackpad) edge strips on the dashboard main pane.
+ * Desktop-only (mouse/trackpad) edge strips in the empty gutters of the
+ * dashboard main pane, between its inner edges (scrollbar excluded) and the
+ * page container. They never cover page content (the Back link, the ⋯ button,
+ * a delivery's Retry) or the main pane's scrollbar: a strip is at most as wide
+ * as its gutter, and a gutter too narrow to aim at gets none.
  * Neighbors follow the list context the user came from (status + filters + sort).
  * Hitting either extreme shows both sides. Missing neighbors stay visible
  * but unclickable. ←/→ when not typing. Left = prev in list, right = next.
  */
-export function PostAdjacentNav({ postId }: { postId: string }) {
+export function PostAdjacentNav({
+  prevHref,
+  nextHref,
+  state: preservedState,
+}: {
+  prevHref: string | null;
+  nextHref: string | null;
+  state: PostNavState;
+}) {
   const desktopPointer = useDesktopPointer();
-  const dash = useDashboardPath();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const navState = (location.state as PostDetailLocationState | null) ?? null;
-  const from = navState?.from;
-  const list = resolvePostListNavContext(navState);
-  const preservedState = useMemo(
-    (): PostDetailLocationState => ({ from, list }),
-    [
-      from,
-      list.statusFilter,
-      list.sort,
-      list.platform,
-      list.time,
-      list.account,
-    ],
-  );
-
-  const [bounds, setBounds] = useState<MainBounds | null>(null);
+  const anchorRef = useRef<HTMLSpanElement | null>(null);
+  const [bounds, setBounds] = useState<Zones | null>(null);
   const [atEdge, setAtEdge] = useState(false);
   const showTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingSideRef = useRef<"left" | "right" | null>(null);
   const atEdgeRef = useRef(false);
 
-  const clearShowTimer = () => {
+  const clearShowTimer = useCallback(() => {
     if (showTimerRef.current != null) {
       clearTimeout(showTimerRef.current);
       showTimerRef.current = null;
     }
     pendingSideRef.current = null;
-  };
+  }, []);
 
-  const hideEdge = () => {
+  const hideEdge = useCallback(() => {
     clearShowTimer();
     atEdgeRef.current = false;
     setAtEdge(false);
-  };
-
-  const { data } = useQuery({
-    queryKey: [
-      "adjacent-posts",
-      postId,
-      list.statusFilter ?? null,
-      list.sort ?? "newest",
-      list.platform ?? null,
-      list.time ?? null,
-      list.account ?? null,
-    ],
-    queryFn: () =>
-      loadAdjacentPosts({
-        postId,
-        statusFilter: list.statusFilter ?? null,
-        sort: list.sort ?? "newest",
-        platform: list.platform ?? null,
-        time: list.time ?? null,
-        account: list.account ?? null,
-      }),
-    enabled: desktopPointer && !!postId,
-    staleTime: 30_000,
-  });
-
-  const prevId =
-    data?.ok && data.data.prevId && data.data.prevId !== postId
-      ? data.data.prevId
-      : null;
-  const nextId =
-    data?.ok && data.data.nextId && data.data.nextId !== postId
-      ? data.data.nextId
-      : null;
+  }, [clearShowTimer]);
 
   useEffect(() => {
-    if (!desktopPointer) {
-      setBounds(null);
-      return;
-    }
+    if (!desktopPointer) return;
     const main =
       document.querySelector<HTMLElement>("[data-dashboard-main]") ??
       document.querySelector("main");
-    if (!main) return;
+    const container = anchorRef.current?.closest<HTMLElement>("[data-page-container]") ?? null;
+    if (!main || !container) return;
 
     const update = () => {
       const r = main.getBoundingClientRect();
+      const c = container.getBoundingClientRect();
+      // client* excludes the main pane's own scrollbars.
+      const innerLeft = r.left + main.clientLeft;
+      const innerRight = innerLeft + main.clientWidth;
+      const top = r.top + main.clientTop;
+      const cap = edgeWidthPx(main.clientWidth);
+      const leftGutter = c.left - innerLeft;
+      const rightGutter = innerRight - c.right;
+      const leftWidth = Math.min(cap, leftGutter);
+      const rightWidth = Math.min(cap, rightGutter);
       setBounds({
-        left: r.left,
-        right: r.right,
-        top: r.top,
-        bottom: r.bottom,
+        top,
+        bottom: top + main.clientHeight,
+        left: leftGutter >= MIN_GUTTER_PX ? { x: innerLeft, width: leftWidth } : null,
+        right:
+          rightGutter >= MIN_GUTTER_PX
+            ? { x: innerRight - rightWidth, width: rightWidth }
+            : null,
       });
     };
     update();
 
     const ro = new ResizeObserver(update);
     ro.observe(main);
+    ro.observe(container);
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => {
@@ -166,7 +134,8 @@ export function PostAdjacentNav({ postId }: { postId: string }) {
 
   useEffect(() => {
     if (!desktopPointer || !bounds) return;
-    const edgePx = edgeWidthPx(bounds.right - bounds.left);
+    const within = (x: number, strip: Strip | null) =>
+      !!strip && x >= strip.x && x <= strip.x + strip.width;
 
     const onMove = (e: MouseEvent) => {
       const { clientX, clientY } = e;
@@ -174,10 +143,8 @@ export function PostAdjacentNav({ postId }: { postId: string }) {
         hideEdge();
         return;
       }
-      const onLeft =
-        clientX >= bounds.left && clientX <= bounds.left + edgePx;
-      const onRight =
-        clientX >= bounds.right - edgePx && clientX <= bounds.right;
+      const onLeft = within(clientX, bounds.left);
+      const onRight = within(clientX, bounds.right);
       const hovering = onLeft || onRight;
 
       if (!hovering) {
@@ -187,6 +154,12 @@ export function PostAdjacentNav({ postId }: { postId: string }) {
 
       // Already visible — keep it while still on an edge.
       if (atEdgeRef.current) return;
+
+      // Something clickable under the pointer (a popover, a toast) wins.
+      if (e.target instanceof Element && e.target.closest(INTERACTIVE_SELECTOR)) {
+        clearShowTimer();
+        return;
+      }
 
       const side: "left" | "right" = onLeft ? "left" : "right";
       // Same side already counting down — don’t reset (feels sticky).
@@ -213,113 +186,116 @@ export function PostAdjacentNav({ postId }: { postId: string }) {
       window.removeEventListener("blur", clear);
       document.documentElement.removeEventListener("mouseleave", clear);
     };
-  }, [desktopPointer, bounds]);
+  }, [desktopPointer, bounds, hideEdge, clearShowTimer]);
 
-  useEffect(() => {
-    hideEdge();
-  }, [postId]);
-
-  useEffect(() => {
-    if (!desktopPointer) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (isTypingTarget(e.target)) return;
-      if (e.key === "ArrowLeft" && prevId) {
-        e.preventDefault();
-        navigate(dash(`posts/${prevId}`), { state: preservedState });
-      } else if (e.key === "ArrowRight" && nextId) {
-        e.preventDefault();
-        navigate(dash(`posts/${nextId}`), { state: preservedState });
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [desktopPointer, prevId, nextId, dash, navigate, preservedState]);
-
-  if (!desktopPointer || !bounds || !atEdge || typeof document === "undefined") {
-    return null;
-  }
-
-  const height = Math.max(0, bounds.bottom - bounds.top);
-  const edgePx = edgeWidthPx(bounds.right - bounds.left);
-  const stripClass = (enabled: boolean) =>
-    cn(
-      "fixed z-[60] flex flex-col items-center justify-center gap-1 px-0.5",
-      "bg-black/[0.08] dark:bg-white/[0.10]",
-      enabled
-        ? "cursor-pointer text-text"
-        : "pointer-events-none cursor-default text-text/30",
-    );
-  const iconClass =
-    edgePx <= 40 ? "size-5 shrink-0" : edgePx <= 48 ? "size-6 shrink-0" : "size-7 shrink-0";
-  const labelClass =
-    "max-w-full text-center text-[9px] font-medium leading-tight tracking-wide";
-
-  const leftStyle = {
-    left: bounds.left,
-    top: bounds.top,
-    width: edgePx,
-    height,
-  };
-  const rightStyle = {
-    left: bounds.right - edgePx,
-    top: bounds.top,
-    width: edgePx,
-    height,
-  };
-
-  const prevLabel = edgePx <= 48 ? "Previous" : "Previous post";
-  const nextLabel = edgePx <= 48 ? "Next" : "Next post";
-
-  const node = (
+  const showing = desktopPointer && bounds && atEdge && typeof document !== "undefined";
+  return (
     <>
-      {prevId ? (
-        <Link
-          href={dash(`posts/${prevId}`)}
-          state={preservedState}
-          aria-label="Previous post"
-          className={stripClass(true)}
-          style={leftStyle}
-        >
-          <ChevronLeft className={iconClass} strokeWidth={1.75} />
-          <span className={labelClass}>{prevLabel}</span>
-        </Link>
-      ) : (
-        <div
-          aria-label="No previous post"
-          aria-disabled="true"
-          className={stripClass(false)}
-          style={leftStyle}
-        >
-          <ChevronLeft className={iconClass} strokeWidth={1.75} />
-          <span className={labelClass}>{prevLabel}</span>
-        </div>
-      )}
-
-      {nextId ? (
-        <Link
-          href={dash(`posts/${nextId}`)}
-          state={preservedState}
-          aria-label="Next post"
-          className={stripClass(true)}
-          style={rightStyle}
-        >
-          <ChevronRight className={iconClass} strokeWidth={1.75} />
-          <span className={labelClass}>{nextLabel}</span>
-        </Link>
-      ) : (
-        <div
-          aria-label="No next post"
-          aria-disabled="true"
-          className={stripClass(false)}
-          style={rightStyle}
-        >
-          <ChevronRight className={iconClass} strokeWidth={1.75} />
-          <span className={labelClass}>{nextLabel}</span>
-        </div>
-      )}
+      {/* Marks this page's container; the gutters are measured from it. */}
+      <span ref={anchorRef} hidden />
+      {showing && bounds
+        ? createPortal(
+            <EdgeStrips
+              zones={bounds}
+              prevHref={prevHref}
+              nextHref={nextHref}
+              state={preservedState}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
+}
 
-  return createPortal(node, document.body);
+const stripClass = (enabled: boolean) =>
+  cn(
+    "fixed z-[60] flex flex-col items-center justify-center gap-1 px-0.5",
+    "bg-bg-muted/80",
+    enabled
+      ? "cursor-pointer text-text"
+      : "pointer-events-none cursor-default text-text/30",
+  );
+const iconClass = (w: number) =>
+  w <= 40 ? "size-5 shrink-0" : w <= 48 ? "size-6 shrink-0" : "size-7 shrink-0";
+const labelClass = "max-w-full text-center text-[11px] font-medium leading-tight";
+
+function EdgeStrip({
+  strip,
+  top,
+  height,
+  href,
+  state,
+  side,
+}: {
+  strip: Strip;
+  top: number;
+  height: number;
+  href: string | null;
+  state: PostNavState;
+  side: "prev" | "next";
+}) {
+  const style = { left: strip.x, top, width: strip.width, height };
+  const Icon = side === "prev" ? ChevronLeft : ChevronRight;
+  const label =
+    strip.width < LABEL_MIN_PX ? null : (
+      <span className={labelClass}>
+        {side === "prev"
+          ? strip.width <= 48 ? "Previous" : "Previous post"
+          : strip.width <= 48 ? "Next" : "Next post"}
+      </span>
+    );
+  const content = (
+    <>
+      <Icon className={iconClass(strip.width)} strokeWidth={1.75} />
+      {label}
+    </>
+  );
+  if (href) {
+    return (
+      <Link
+        href={href}
+        state={state}
+        aria-label={side === "prev" ? "Previous post" : "Next post"}
+        className={stripClass(true)}
+        style={style}
+      >
+        {content}
+      </Link>
+    );
+  }
+  return (
+    <div
+      aria-label={side === "prev" ? "No previous post" : "No next post"}
+      aria-disabled="true"
+      className={stripClass(false)}
+      style={style}
+    >
+      {content}
+    </div>
+  );
+}
+
+function EdgeStrips({
+  zones,
+  prevHref,
+  nextHref,
+  state,
+}: {
+  zones: Zones;
+  prevHref: string | null;
+  nextHref: string | null;
+  state: PostNavState;
+}) {
+  const height = Math.max(0, zones.bottom - zones.top);
+  return (
+    <>
+      {zones.left ? (
+        <EdgeStrip strip={zones.left} top={zones.top} height={height} href={prevHref} state={state} side="prev" />
+      ) : null}
+      {zones.right ? (
+        <EdgeStrip strip={zones.right} top={zones.top} height={height} href={nextHref} state={state} side="next" />
+      ) : null}
+    </>
+  );
 }

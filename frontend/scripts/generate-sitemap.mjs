@@ -49,7 +49,7 @@ function extractFeatureEntries() {
     ),
   ].map((m) => ({
     slug: m[1],
-    label: m[2] ?? m[3]?.split("-")[0]?.trim() ?? m[1],
+    label: m[2] ?? m[3]?.split(" - ")[0]?.trim() ?? m[1],
   }));
 }
 
@@ -77,12 +77,64 @@ function extractCatalogEntries() {
   ].map((m) => ({ slug: m[1], name: m[2] }));
 }
 
+/**
+ * Title / description templates from `buildAlternativePage` in
+ * alternatives-catalog.ts, so the edge meta matches what the page renders
+ * (one source of truth: no hand-copied template here).
+ */
+const catalogMetaTemplates = (() => {
+  const text = readText("alternatives-catalog.ts");
+  const platforms = text.match(/const SOCIAL0_PLATFORMS\s*=\s*\n?\s*"([^"]+)"/)?.[1];
+  const title = text.match(/metaTitle:\s*`([^`]+)`/)?.[1];
+  const description = text.match(/metaDescription:\s*`([^`]+)`/)?.[1];
+  if (!platforms || !title || !description) {
+    throw new Error(
+      "alternatives-catalog.ts: couldn't read SOCIAL0_PLATFORMS or the metaTitle / metaDescription templates",
+    );
+  }
+  return { platforms, title, description };
+})();
+
+function fillCatalogTemplate(template, vars) {
+  return template.replace(/\$\{(\w+)\}/g, (whole, key) => {
+    if (!(key in vars)) {
+      throw new Error(`alternatives-catalog.ts: unknown template variable ${whole}`);
+    }
+    return vars[key];
+  });
+}
+
+/**
+ * Generated (catalog) alternative pages that stay indexed: Search Console
+ * showed at least 1 click or 1,000+ impressions (2026-08-14 to 2026-11-14).
+ * Every other catalog page is near-duplicate template text, so it gets
+ * noindex and stays out of sitemap.xml and llms.txt. Hand-written pages in
+ * alternatives.ts are always indexed. Rewrite a page by hand, then add it here.
+ */
+const INDEXED_CATALOG_SLUGS = new Set([
+  "nuelink",
+  "dlvr-it",
+  "napoleoncat",
+  "oneup",
+  "postbridge",
+  "postsyncer",
+  "social-champ",
+  "upload-post",
+  "postflow",
+  "planoly",
+]);
+
 function buildCatalogMeta({ slug, name }) {
-  const year = new Date().getFullYear();
+  const vars = {
+    name,
+    year: String(new Date().getFullYear()),
+    SOCIAL0_PLATFORMS: catalogMetaTemplates.platforms,
+  };
   return {
     slug,
-    title: `${name} Alternative — Social0 | Multi-Platform Scheduler ${year}`,
-    description: `Looking for a ${name} alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest — with MCP, API, and CLI for AI agents. Start free.`,
+    title: fillCatalogTemplate(catalogMetaTemplates.title, vars),
+    description: fillCatalogTemplate(catalogMetaTemplates.description, vars),
+    ...(INDEXED_CATALOG_SLUGS.has(slug) ? {} : { noindex: true }),
   };
 }
 
@@ -123,45 +175,98 @@ function extractBlogEntries() {
     .sort((a, b) => (b.published ?? "").localeCompare(a.published ?? ""));
 }
 
+/**
+ * Homepage FAQs from the landing FAQ list (what the page renders), for the
+ * edge FAQPage JSON-LD, crawler HTML and /ai/faq.json. Skips the catch-all
+ * "another question" entry, the competitor comparison and the security
+ * answer (its audit claim isn't something we publish to machines).
+ */
+const FAQ_SKIP = new Set([
+  "I have another question",
+  "Is my data secure?",
+]);
+function extractHomeFaqs() {
+  const text = fs.readFileSync(
+    path.join(root, "src/components/landing/landing-faqs.ts"),
+    "utf8",
+  );
+  return [
+    ...text.matchAll(/question:\s*"([^"]+)",\s*answer:\s*\n?\s*"([^"]+)"/g),
+  ]
+    .map((m) => ({ question: m[1], answer: m[2].replace(/`/g, "") }))
+    .filter((f) => !FAQ_SKIP.has(f.question) && !/buffer|hootsuite/i.test(f.question));
+}
+
 const PSEO_PAGES_ENABLED = readText("pseo-enabled.ts").includes(
   "PSEO_PAGES_ENABLED = true",
 );
 
 const FEATURE_SLUGS = extractSlugs("features.ts");
+const HAND_WRITTEN_ALTERNATIVE_SLUGS = new Set(extractSlugs("alternatives.ts"));
+const isIndexedAlternative = (slug) =>
+  HAND_WRITTEN_ALTERNATIVE_SLUGS.has(slug) || INDEXED_CATALOG_SLUGS.has(slug);
 const ALTERNATIVE_SLUGS = [
   ...new Set([
     ...extractSlugs("alternatives.ts"),
     ...extractCatalogEntries().map((e) => e.slug),
   ]),
-];
+].filter(isIndexedAlternative);
 const TOOL_SLUGS = extractSlugs("tools.ts");
 const featureEntries = extractFeatureEntries();
-const alternativeEntries = extractAlternativeEntries();
+const alternativeEntries = extractAlternativeEntries().filter((e) =>
+  isIndexedAlternative(e.slug),
+);
 const toolEntries = extractToolEntries();
 const featureMeta = extractMetaEntries("features.ts");
 const alternativeMeta = [
   ...extractMetaEntries("alternatives.ts"),
-  ...extractCatalogEntries().map(buildCatalogMeta),
+  // A hand-written page in alternatives.ts replaces the catalog page with the same slug.
+  ...extractCatalogEntries()
+    .filter((e) => !extractSlugs("alternatives.ts").includes(e.slug))
+    .map(buildCatalogMeta),
 ];
 const toolMeta = extractMetaEntries("tools.ts");
 const blogEntries = extractBlogEntries();
+const homeFaqs = extractHomeFaqs();
 
 /** Static marketing routes (edge middleware + sitemap source of truth) */
 const STATIC_ROUTE_META = {
   "/": {
-    title: "Social0 — AI Agents & Multi-Platform Social Scheduling",
+    title: "Social0: Social Media Scheduler and API for AI Agents",
     description:
       "Publish and schedule across 9 platforms from one dashboard — or let ChatGPT, Claude, and your agents ship via MCP, API, and CLI. Start free.",
   },
   "/pricing": {
-    title: "Pricing — Social0",
+    title: "Social0 Pricing: Free, Creator $29.90, Agency $59.90",
     description:
-      "Simple Social0 pricing. Start free, then upgrade to Starter, Growth, or Pro. Every plan includes REST API, MCP, and CLI.",
+      "Start free with 3 accounts. Creator $29.90/mo for 15 accounts, Agency $59.90/mo for 59 (+$1 per extra). Unlimited posts, API, MCP and CLI on every plan.",
   },
   "/mcp": {
-    title: "Social0 MCP Server — Manage social media from your AI",
+    title: "Social Media MCP Server for Claude, ChatGPT & Cursor | Social0",
     description:
-      "Connect Claude, Cursor, or VS Code to Social0 with the official MCP server. Publish, schedule, and track posts across every platform from natural language.",
+      "Schedule and publish social media posts from Claude, ChatGPT or Cursor. Add mcp.social0.app/mcp, sign in, then post to X, LinkedIn, Instagram, TikTok and 5 more.",
+    faqs: [
+      {
+        question: "How do I schedule social media posts with MCP?",
+        answer:
+          "Connect your social accounts in Social0, add https://mcp.social0.app/mcp to Claude, ChatGPT or Cursor and sign in, then ask in plain words, for example: schedule this for tomorrow 9 AM on LinkedIn and X. The assistant calls schedule_post and Social0 publishes at that time.",
+      },
+      {
+        question: "Which AI assistants work with the Social0 MCP server?",
+        answer:
+          "ChatGPT, Claude (web, desktop and Claude Code) and Cursor connect to the hosted server over OAuth. VS Code and other local MCP hosts use npx @social0/mcp with an API key. OpenClaw and Hermes use the Social0 skill.",
+      },
+      {
+        question: "Which platforms can it post to?",
+        answer:
+          "X (Twitter), LinkedIn, Instagram, TikTok, YouTube, Facebook Pages, Threads, Bluesky and Pinterest: whichever accounts you have connected in Social0.",
+      },
+      {
+        question: "Do I need a separate plan for MCP?",
+        answer:
+          "No. MCP, the REST API and the CLI are on every plan, including Free, with the same posting limits as the dashboard.",
+      },
+    ],
   },
   "/features": {
     title: "Social0 — Platform features",
@@ -204,9 +309,9 @@ const STATIC_ROUTE_META = {
       "How to delete your Social0 account or request deletion of your account data.",
   },
   "/about": {
-    title: "About Social0 - multi-platform scheduler for humans and agents",
+    title: "About Social0: who builds it and what makes it different",
     description:
-      "Social0 is an independent social media scheduler for creators, founders, and AI agents. Compose once and publish to nine networks via dashboard, MCP, API, or CLI.",
+      "Social0 is a social media scheduler with an API, MCP server and CLI, built by Abhishek BR. Priced per account, unlimited posts, on 9 networks.",
   },
   "/contact": {
     title: "Contact Social0 - support, legal, and privacy",
@@ -223,7 +328,7 @@ const STATIC_ROUTE_META = {
     description: "Machine-readable product summary for AI systems.",
   },
   "/home": {
-    title: "Social0 — AI Agents & Multi-Platform Social Scheduling",
+    title: "Social0: Social Media Scheduler and API for AI Agents",
     description:
       "Publish and schedule across 9 platforms from one dashboard — or let ChatGPT, Claude, and your agents ship via MCP, API, and CLI. Start free.",
     noindex: true,
@@ -232,7 +337,14 @@ const STATIC_ROUTE_META = {
 
 function metaRecord(entries) {
   return Object.fromEntries(
-    entries.map((e) => [e.slug, { title: e.title, description: e.description }]),
+    entries.map((e) => [
+      e.slug,
+      {
+        title: e.title,
+        description: e.description,
+        ...(e.noindex ? { noindex: true } : {}),
+      },
+    ]),
   );
 }
 
@@ -243,8 +355,140 @@ function generateRouteMetaJson() {
     features: metaRecord(featureMeta),
     alternatives: metaRecord(alternativeMeta),
     tools: metaRecord(toolMeta),
-    blog: metaRecord(blogEntries),
+    blog: Object.fromEntries(
+      blogEntries.map((e) => [
+        e.slug,
+        {
+          title: e.title,
+          description: e.description,
+          ...(e.published ? { datePublished: e.published } : {}),
+          ...(e.modified ? { dateModified: e.modified } : {}),
+        },
+      ]),
+    ),
+    homeFaqs,
   };
+}
+
+function escapeXml(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** RSS 2.0 feed of blog guides (linked from <head> as rel=alternate). */
+function generateRssFeed() {
+  const items = blogEntries
+    .map((b) => {
+      const url = `${base}/blog/${b.slug}`;
+      const date = b.published
+        ? new Date(`${b.published}T00:00:00Z`).toUTCString()
+        : null;
+      return `    <item>
+      <title>${escapeXml(b.title)}</title>
+      <link>${url}</link>
+      <guid isPermaLink="true">${url}</guid>
+      <description>${escapeXml(b.description)}</description>${date ? `\n      <pubDate>${date}</pubDate>` : ""}
+    </item>`;
+    })
+    .join("\n");
+  const latest = blogEntries
+    .map((b) => b.modified ?? b.published)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Social0 Blog</title>
+    <link>${base}/blog</link>
+    <atom:link href="${base}/feed.xml" rel="self" type="application/rss+xml" />
+    <description>Platform specs, publishing strategy, and AI agent workflows for multi-platform social media publishing.</description>
+    <language>en</language>${latest ? `\n    <lastBuildDate>${new Date(`${latest}T00:00:00Z`).toUTCString()}</lastBuildDate>` : ""}
+${items}
+  </channel>
+</rss>
+`;
+}
+
+const PLATFORMS = [
+  "X (Twitter)",
+  "LinkedIn",
+  "Instagram",
+  "TikTok",
+  "YouTube",
+  "Facebook Pages",
+  "Threads",
+  "Bluesky",
+  "Pinterest",
+];
+
+/** Small machine-readable files some AI engines look for under /ai/. */
+function generateAiFiles() {
+  const summary = {
+    name: "Social0",
+    url: base,
+    description:
+      "Multi-platform social media scheduler for creators, founders, and AI agents. Compose once and publish or schedule to 9 networks from one dashboard, or through MCP, the REST API, and the CLI.",
+    category: "Social media scheduling software",
+    platforms: PLATFORMS,
+    pricing: `${base}/pricing`,
+    docs: "https://docs.social0.app",
+    llms: `${base}/llms.txt`,
+    contact: "support@social0.app",
+    updated: now,
+  };
+  const faq = {
+    name: "Social0 FAQ",
+    url: `${base}/#faq`,
+    updated: now,
+    faqs: homeFaqs,
+  };
+  const service = {
+    name: "Social0",
+    url: base,
+    capabilities: [
+      "Publish one post to up to 9 social networks in parallel",
+      "Schedule posts with a calendar, drafts, and queue slots",
+      "Text, image, video, thread, and carousel content",
+      "Bulk image and video scheduling",
+      "Auto-repost and auto-plug replies",
+      "Teams and workspaces for multiple brands",
+      "Analytics and inbox for posts published through Social0",
+    ],
+    platforms: PLATFORMS,
+    interfaces: {
+      dashboard: `${base}/dashboard`,
+      rest_api: "https://api.social0.app/v1",
+      openapi: "https://api.social0.app/openapi.json",
+      mcp: "https://mcp.social0.app/mcp",
+      cli: "npm install -g social0",
+      webhooks: `${base}/tools/webhooks`,
+    },
+    plans: [
+      { name: "Free", price_usd_month: 0, accounts: 3, posts: 10 },
+      { name: "Creator", price_usd_month: 29.9, price_usd_year: 299, accounts: 15 },
+      {
+        name: "Agency",
+        price_usd_month: 59.9,
+        price_usd_year: 599,
+        accounts: 59,
+        extra_account_usd_month: 1,
+      },
+    ],
+    updated: now,
+  };
+  const aiDir = path.join(outDir, "ai");
+  fs.mkdirSync(aiDir, { recursive: true });
+  for (const [name, body] of [
+    ["summary.json", summary],
+    ["faq.json", faq],
+    ["service.json", service],
+  ]) {
+    fs.writeFileSync(path.join(aiDir, name), `${JSON.stringify(body, null, 2)}\n`);
+  }
 }
 
 function generateLlmsTxt() {
@@ -288,7 +532,7 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - Developers (API, MCP, CLI, OpenAPI): ${base}/developers
 - Developers (markdown): ${base}/developers.md
 - Auth docs: ${base}/auth.md
-- Pricing (Free, Starter, Growth, Pro, Max): ${base}/pricing
+- Pricing (Free, Creator $29.90/mo, Agency $59.90/mo + $1 per account above 59): ${base}/pricing
 - Pricing (markdown): ${base}/pricing.md
 - MCP server for AI assistants: ${base}/mcp
 - Agent instructions: ${base}/agent.txt
@@ -344,7 +588,7 @@ ${blogLines.join("\n")}
 - Content types: text, image, video, threads, collections
 - Parallel publishing to all selected accounts at once
 - Scheduling calendar, drafts, queue slots, and bulk image/video tools
-- Auto-repost and auto-plug (engagement replies) on Growth+ plans
+- Auto-repost and auto-plug (engagement replies) on every paid plan
 - Teams and workspaces for agencies and multi-brand workflows
 - Developer surface: REST /v1 API, webhooks, npm CLI, MCP server
 
@@ -418,8 +662,7 @@ ${entries
   .map(
     (e) => `  <url>
     <loc>${e.loc}</loc>
-    <lastmod>${e.lastmod ?? now}</lastmod>
-    <changefreq>${e.changefreq}</changefreq>
+${e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>\n` : ""}    <changefreq>${e.changefreq}</changefreq>
     <priority>${e.priority}</priority>
   </url>`,
   )
@@ -430,7 +673,13 @@ ${entries
 fs.mkdirSync(outDir, { recursive: true });
 fs.mkdirSync(functionsDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, "sitemap.xml"), xml);
-fs.writeFileSync(path.join(outDir, "llms.txt"), generateLlmsTxt());
+// llms.txt spec: list entries are markdown links ("- [Label](url)").
+fs.writeFileSync(
+  path.join(outDir, "llms.txt"),
+  generateLlmsTxt().replace(/^- (.+): (https?:\/\/\S+)$/gm, "- [$1]($2)"),
+);
+fs.writeFileSync(path.join(outDir, "feed.xml"), generateRssFeed());
+generateAiFiles();
 const openapiSrc = path.resolve(root, "../backend/server/openapi/openapi.json");
 if (fs.existsSync(openapiSrc)) {
   fs.copyFileSync(openapiSrc, path.join(outDir, "openapi.json"));
@@ -440,5 +689,5 @@ fs.writeFileSync(
   `${JSON.stringify(generateRouteMetaJson(), null, 2)}\n`,
 );
 console.log(
-  `Wrote sitemap.xml (${entries.length} URLs), llms.txt, openapi.json copy, and route-meta.generated.json`,
+  `Wrote sitemap.xml (${entries.length} URLs), llms.txt, feed.xml, ai/*.json, openapi.json copy, and route-meta.generated.json`,
 );

@@ -15,18 +15,3 @@ export type PublicationRow = {
   publishedAt: Date | null;
   platformMetadata?: Record<string, unknown> | null;
 };
-
-export type StatusFilter = "draft" | "scheduled" | "published" | null;
-
-export type PostsListParams = {
-  userId: string;
-  statusFilter?: StatusFilter;
-  sort?: "newest" | "oldest";
-  platform?: string | null;
-  time?: string | null;
-  account?: string | null;
-  /** 1-based page number; used with limit/offset for pagination */
-  page?: number;
-  limit?: number;
-  offset?: number;
-};

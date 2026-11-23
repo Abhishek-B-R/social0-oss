@@ -54,7 +54,12 @@ describe("api-rate-limits", () => {
   it("assigns tier limits", async () => {
     const { apiRequestsPerHour } = await import("../lib/api-rate-limits.js");
     expect(apiRequestsPerHour("free")).toBe(60);
+    expect(apiRequestsPerHour("creator")).toBe(1000);
+    expect(apiRequestsPerHour("agency")).toBe(5000);
+    // Legacy plans keep what they were sold with.
+    expect(apiRequestsPerHour("starter")).toBe(300);
     expect(apiRequestsPerHour("growth")).toBe(1000);
     expect(apiRequestsPerHour("pro")).toBe(5000);
+    expect(apiRequestsPerHour("max")).toBe(10000);
   });
 });

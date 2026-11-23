@@ -215,13 +215,13 @@ export const TOOLS: ToolPage[] = [
     label: "Bulk image tools",
     metaTitle: "Bulk Image Scheduling | Social0",
     metaDescription:
-      "Upload many images and schedule them across days. Growth+ bulk image tools in Social0.",
+      "Upload many images and schedule them across days. Bulk image tools on every paid Social0 plan.",
     keywords: ["bulk image scheduling", "batch schedule images", "social0 bulk tools"],
     heroHeadline: "Schedule a week of images in one sitting",
     heroSubheadline:
       "Bulk image tools for creators who batch-shoot and want the calendar filled fast.",
     intro:
-      "Upload a set of images, map captions and accounts, and drop them onto your schedule. Built for Growth and higher plans.",
+      "Upload a set of images, map captions and accounts, and drop them onto your schedule. Included on every paid plan.",
     benefits: [
       {
         title: "Many files at once",
@@ -244,7 +244,7 @@ export const TOOLS: ToolPage[] = [
       {
         step: 1,
         title: "Open bulk tools",
-        description: "Dashboard → Bulk tools → Images (Growth+).",
+        description: "Dashboard → Bulk tools → Images (paid plans).",
       },
       {
         step: 2,
@@ -259,8 +259,13 @@ export const TOOLS: ToolPage[] = [
     ],
     faq: [
       {
+        question: "Which social media tool supports bulk image uploads for scheduling?",
+        answer:
+          "Social0 does: upload a batch of images, map a caption and accounts to each, and spread them across your calendar in one go. It posts them to every connected network that accepts images, and bulk image tools are on every paid plan (Creator from $29.90/month).",
+      },
+      {
         question: "Which plan includes bulk image tools?",
-        answer: "Bulk tools are available on Growth and higher plans.",
+        answer: "Bulk tools are included on every paid plan (Creator and Agency).",
       },
     ],
     ctaHref: "/dashboard/bulk-tools",
@@ -272,7 +277,7 @@ export const TOOLS: ToolPage[] = [
     label: "Bulk video tools",
     metaTitle: "Bulk Video Scheduling | Social0",
     metaDescription:
-      "Batch upload and schedule videos across platforms. Social0 bulk video tools (Growth+).",
+      "Batch upload and schedule videos across platforms. Social0 bulk video tools (paid plans).",
     keywords: ["bulk video scheduling", "batch schedule videos", "shorts scheduler"],
     heroHeadline: "Batch schedule Shorts, Reels, and TikToks",
     heroSubheadline:
@@ -293,8 +298,8 @@ export const TOOLS: ToolPage[] = [
         description: "When it goes live, platforms are updated in parallel like any other post.",
       },
       {
-        title: "Growth+ feature",
-        description: "Included with Growth and Pro plan tiers.",
+        title: "Paid-plan feature",
+        description: "Included on Creator and Agency.",
       },
     ],
     howItWorks: [
@@ -351,8 +356,8 @@ export const TOOLS: ToolPage[] = [
         description: "Resurfaces are scheduled work — not surprise spam at random hours.",
       },
       {
-        title: "Growth automation",
-        description: "Available on Growth and higher tiers.",
+        title: "Paid-plan automation",
+        description: "Included on every paid plan.",
       },
     ],
     howItWorks: [
@@ -380,7 +385,7 @@ export const TOOLS: ToolPage[] = [
       },
     ],
     ctaHref: "/pricing",
-    ctaLabel: "See Growth plan",
+    ctaLabel: "See pricing",
   },
   {
     slug: "auto-plug",
@@ -408,8 +413,8 @@ export const TOOLS: ToolPage[] = [
         description: "Enable only on posts where a CTA makes sense.",
       },
       {
-        title: "Growth automation",
-        description: "Included on Growth and higher plans.",
+        title: "Paid-plan automation",
+        description: "Included on every paid plan.",
       },
     ],
     howItWorks: [
@@ -437,7 +442,7 @@ export const TOOLS: ToolPage[] = [
       },
     ],
     ctaHref: "/pricing",
-    ctaLabel: "See Growth plan",
+    ctaLabel: "See pricing",
   },
   {
     slug: "calendar",
@@ -549,7 +554,7 @@ export const TOOLS: ToolPage[] = [
         answer: "Yes. Queue is optional — pick an exact datetime whenever you want.",
       },
     ],
-    ctaHref: "/dashboard/settings",
+    ctaHref: "/dashboard/settings/schedule",
     ctaLabel: "Configure queue",
     docsHref: "https://docs.social0.app/docs/dashboard/queue",
   },

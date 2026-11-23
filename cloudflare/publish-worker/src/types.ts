@@ -17,6 +17,11 @@ export type PublishPlatformJob = {
   publicationId: string;
   connectedAccountId: string;
   platform: SupportedPlatform;
+  /**
+   * Times this job found the publish caps full and was requeued. Set only by
+   * this worker when it requeues; `/enqueue` never accepts it.
+   */
+  slotWaits?: number;
 };
 
 export type PublishEnqueueRequest = {
@@ -30,6 +35,8 @@ export type PublishResultItem = {
   status: "published" | "failed";
   platformPostUrl?: string | null;
   error?: string;
+  /** Another live run holds this delivery; this run neither published nor failed it. */
+  inProgressElsewhere?: true;
 };
 
 export type PublishResult = {

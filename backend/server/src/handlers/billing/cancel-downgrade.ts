@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { env } from "../../lib/env.js";
 import { listOpenDodoSubscriptions } from "../../lib/billing-guards.js";
 import { forceCancelDodoSubscription } from "../../lib/billing-zombie-utils.js";
+import { clearAfterUpgradeMarker } from "../../lib/billing-after-upgrade.js";
 
 const apiKey = env.DODO_PAYMENTS_API_KEY ?? "";
 const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
@@ -22,7 +23,10 @@ const environment = env.DODO_PAYMENTS_ENVIRONMENT ?? "test_mode";
  * Does not require pendingPlanTier in DB — call whenever upgrade recovery is needed.
  */
 export async function cancelDowngrade() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  });
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -86,6 +90,11 @@ export async function cancelDowngrade() {
     .update(userSettings)
     .set({ pendingPlanTier: null, downgradeReason: null })
     .where(eq(userSettings.userId, session.user.id));
+  // The user dropped the pending change: a failed "Upgrade now" charge must not
+  // re-schedule the change it had replaced.
+  await clearAfterUpgradeMarker(canonicalSubId).catch((e) =>
+    console.warn("[billing/cancel-downgrade] clear after-upgrade marker:", e),
+  );
 
   return RouteResponse.json({
     success: true,

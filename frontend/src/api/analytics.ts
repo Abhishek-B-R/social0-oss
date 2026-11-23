@@ -44,6 +44,8 @@ export type AnalyticsOverview = {
   range: AnalyticsRange;
   since: string;
   until: string;
+  /** IANA zone the server bucketed days in (the workspace owner's setting). */
+  timeZone?: string;
   totals: MetricMap;
   byPlatform: Array<{
     platform: string;
@@ -111,8 +113,14 @@ export function getAnalyticsOverview(input: {
   return rpc<AnalyticsOverview>("analytics.getOverview", input);
 }
 
-export function getPostAnalytics(postId: string): Promise<PostAnalyticsResult> {
-  return rpc<PostAnalyticsResult>("analytics.getPostAnalytics", { postId });
+export function getPostAnalytics(
+  postId: string,
+  opts?: { fresh?: boolean },
+): Promise<PostAnalyticsResult> {
+  return rpc<PostAnalyticsResult>("analytics.getPostAnalytics", {
+    postId,
+    ...(opts?.fresh ? { fresh: true } : {}),
+  });
 }
 
 export function listAnalyticsAccounts(): Promise<AnalyticsAccount[]> {

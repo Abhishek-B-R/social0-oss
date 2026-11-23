@@ -3,6 +3,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { fetchApi } from "@/lib/fetch-api";
+import { PageContainer, PageHeader } from "@/components/app";
 
 declare global {
   interface Window {
@@ -201,9 +202,9 @@ export function FeedbackBoard() {
 
   if (loadFailed) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
+      <PageContainer className="flex min-h-0 flex-1 flex-col">
         <FeedbackHeader />
-        <div className="mt-6 flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border border-border bg-bg-elevated p-8 text-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border border-border bg-bg-elevated p-8 text-center">
           <p className="max-w-md text-muted-foreground">
             We couldn&apos;t load the feedback board here-you can share feedback
             directly on Canny. Or you can always email us at{" "}
@@ -224,14 +225,14 @@ export function FeedbackBoard() {
             Open feedback board
           </a>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <PageContainer className="flex min-h-0 flex-1 flex-col">
       <FeedbackHeader />
-      <div className="relative mt-6 min-h-0 flex-1 rounded-xl border border-border bg-bg-elevated">
+      <div className="relative min-h-0 flex-1 rounded-xl border border-border bg-bg-elevated">
         {isLoading && (
           <div
             className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-xl bg-background/80 backdrop-blur-sm"
@@ -252,27 +253,22 @@ export function FeedbackBoard() {
           className="h-full min-h-[min(70vh,560px)] min-w-0 p-2 sm:p-4"
         />
       </div>
-    </div>
+    </PageContainer>
   );
 }
 
 export function FeedbackHeader() {
   return (
-    <header className="shrink-0 border-b border-border bg-bg-elevated px-4 py-4 sm:px-6">
-      <h1 className="mb-2 dash-page-title">
-        Feedback or Feature Request
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Vote on features, report bugs, and suggest improvements. Or you can
-        always email us at{" "}
+    <PageHeader
+      title="Feedback"
+      actions={
         <a
           href="mailto:support@social0.app"
-          className="text-accent hover:underline"
+          className="text-sm font-medium text-text-muted transition-colors hover:text-text"
         >
-          support@social0.app
+          Email us
         </a>
-        .
-      </p>
-    </header>
+      }
+    />
   );
 }

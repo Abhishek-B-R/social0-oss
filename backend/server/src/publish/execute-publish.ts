@@ -4,17 +4,18 @@ import {
   postPublications,
   connectedAccounts,
   mediaUploads,
-  resurfaceSchedules,
-  resurfaceEvents,
-  autoPlugs,
 } from "../db/schema.js";
-import { and, eq, inArray, notInArray } from "drizzle-orm";
-import { decryptToken } from "@social0/shared";
+import { and, eq, inArray, isNull, ne, notInArray, or } from "drizzle-orm";
+import { decryptToken, INTERRUPTED_PUBLISH_ERROR } from "@social0/shared";
+import { idlePublicationSql } from "../lib/stuck-publishing.js";
+import { startPublicationHeartbeat } from "../lib/publication-lease.js";
+import { rearmPublishOutcomeClaims } from "../lib/post-metadata-claim.js";
 import {
   uploadLinkedInImage,
   uploadLinkedInVideo,
 } from "../lib/linkedin-media.js";
 import { publishToPlatform } from "../lib/publish-platforms/index.js";
+import type { PlatformPublishOptions } from "../lib/publish-platforms/types.js";
 import {
   isValidPostId,
   validateCollectionMedia,
@@ -23,10 +24,6 @@ import {
 } from "../lib/publish-validation.js";
 import { truncateCaptionForPlatform } from "@social0/shared";
 import { NEVER_EXPIRES_PLATFORMS } from "../lib/token-health.js";
-import {
-  checkAutoPlugAllowed,
-  checkResurfaceAllowed,
-} from "../lib/plan-limits.js";
 import {
   uploadTwitterImage,
   uploadTwitterVideo,
@@ -38,11 +35,22 @@ import {
   type CreateTwitterTweetPayload,
 } from "../lib/twitter-tweet-fetch.js";
 import { publishLog } from "../lib/publish-log.js";
+import { ACCOUNT_OVER_PLAN_LIMIT_ERROR } from "../lib/post-account-refs.js";
 import {
-  clampInt,
-  clampNumber,
-  coerceTrimmedString,
-} from "../lib/coerce-number.js";
+  partialThreadError,
+  readThreadProgress,
+  saveThreadProgress,
+  threadFingerprint,
+} from "../lib/publish-platforms/thread-progress.js";
+import {
+  collectPostMediaIds,
+  ownedMediaIdSet,
+  restrictPostMediaIds,
+} from "../lib/post-media-refs.js";
+import {
+  classifyPublicationError,
+  type PublicationErrorKind,
+} from "../lib/publication-error-kind.js";
 
 /** Extract a readable error from LinkedIn API response (status, message, serviceErrorCode). */
 function parseLinkedInError(
@@ -71,6 +79,13 @@ export type PublishResult = {
     status: "published" | "failed";
     platformPostUrl?: string | null;
     error?: string;
+    /**
+     * Another live run holds this delivery: this run did not publish it and
+     * did not fail it. Job runners must not record it as a platform failure
+     * (that would mark the other run's row `failed` mid-upload) and must leave
+     * finalizing to the run that owns it.
+     */
+    inProgressElsewhere?: true;
   }[];
 };
 
@@ -84,6 +99,23 @@ export type PublishOptions = {
     /** When true, let TikTok auto-add recommended music for photo posts. */
     autoAddMusic?: boolean;
   };
+};
+
+/**
+ * Server-decided controls for one publish run. Never built from client input:
+ * `PublishOptions` is what the dashboard sends, this is what the server knows
+ * about who is asking.
+ */
+export type PublishControl = {
+  /**
+   * A signed-in person asked to retry this specific delivery. Only then may a
+   * delivery whose earlier run was interrupted be sent again: that run may
+   * have reached the platform, and the person can check before retrying.
+   * Automatic re-entries (queue redelivery, cron, an API client calling
+   * publish again) leave it alone, so an interruption never turns into a
+   * duplicate post on its own.
+   */
+  takeOverInterrupted?: boolean;
 };
 
 /**
@@ -102,6 +134,8 @@ export async function getPostPublicationList(
     publicationStatus: string;
     platformPostUrl: string | null;
     lastError: string | null;
+    /** Which fix to offer for a failed row (same mapping as every other surface). */
+    errorKind: PublicationErrorKind | null;
   }[]
 > {
   try {
@@ -121,6 +155,7 @@ export async function getPostPublicationList(
         publicationStatus: postPublications.status,
         platformPostUrl: postPublications.platformPostUrl,
         lastError: postPublications.lastError,
+        tokenStatus: connectedAccounts.tokenStatus,
       })
       .from(postPublications)
       .innerJoin(
@@ -128,15 +163,24 @@ export async function getPostPublicationList(
         eq(postPublications.connectedAccountId, connectedAccounts.id),
       )
       .where(eq(postPublications.postId, postId));
-    return list.map((r) => ({
-      publicationId: r.publicationId,
-      connectedAccountId: r.connectedAccountId,
-      platform: r.platform,
-      platformUsername: r.platformUsername,
-      publicationStatus: r.publicationStatus ?? "pending",
-      platformPostUrl: r.platformPostUrl,
-      lastError: r.lastError,
-    }));
+    return list.map((r) => {
+      const publicationStatus = r.publicationStatus ?? "pending";
+      return {
+        publicationId: r.publicationId,
+        connectedAccountId: r.connectedAccountId,
+        platform: r.platform,
+        platformUsername: r.platformUsername,
+        publicationStatus,
+        platformPostUrl: r.platformPostUrl,
+        lastError: r.lastError,
+        errorKind: classifyPublicationError({
+          error: r.lastError,
+          status: publicationStatus,
+          tokenStatus: r.tokenStatus,
+          platform: r.platform,
+        }),
+      };
+    });
   } catch (err) {
     publishLog.error("[getPostPublicationList] failed, returning empty:", err);
     return [];
@@ -154,6 +198,7 @@ export async function executePublish(
   userId?: string,
   publicationIdFilter?: string,
   options?: PublishOptions,
+  control: PublishControl = {},
 ): Promise<PublishResult> {
   publishLog.info(
     "[executePublish] called - options:",
@@ -170,7 +215,7 @@ export async function executePublish(
     ? and(eq(posts.id, postId), eq(posts.userId, userId))
     : eq(posts.id, postId);
 
-  const [post] = await db
+  const [loadedPost] = await db
     .select({
       id: posts.id,
       userId: posts.userId,
@@ -183,7 +228,7 @@ export async function executePublish(
     .where(postWhere)
     .limit(1);
 
-  if (!post) {
+  if (!loadedPost) {
     return {
       success: false,
       error: userId ? "Post not found or access denied" : "Post not found",
@@ -191,8 +236,21 @@ export async function executePublish(
     };
   }
 
+  // Media ids come from client-supplied metadata too (thread parts,
+  // accountMedia), and every lookup below is by id alone. Keep only the
+  // post owner's uploads: a foreign or malformed id is treated like a deleted
+  // upload instead of publishing another tenant's file or throwing 22P02.
+  const post = restrictPostMediaIds(
+    loadedPost,
+    await ownedMediaIdSet(
+      loadedPost.userId,
+      collectPostMediaIds(loadedPost.mediaIds, loadedPost.metadata),
+    ),
+  );
+
   // Free-tier quota is charged once when the user submits the post
-  // (createPost / updatePost / updateAndPublish / postAgain) - never here.
+  // (createPost / updatePost / updateAndPublish / postAgain, and
+  // services/publish.ts publishPost on a draft) - never here.
   // This function runs multiple times per post (per-platform progress calls,
   // safety-net republish, retries, cron) and must not gate or count quota.
 
@@ -200,6 +258,7 @@ export async function executePublish(
     .select({
       publicationId: postPublications.id,
       publicationStatus: postPublications.status,
+      publicationLastError: postPublications.lastError,
       platformPostUrl: postPublications.platformPostUrl,
       connectedAccountId: connectedAccounts.id,
       platform: connectedAccounts.platform,
@@ -212,6 +271,8 @@ export async function executePublish(
       tokenStatus: connectedAccounts.tokenStatus,
       platformMetadata: connectedAccounts.platformMetadata,
       isTwitterPremium: connectedAccounts.isTwitterPremium,
+      accountIsActive: connectedAccounts.isActive,
+      publicationIdle: idlePublicationSql,
     })
     .from(postPublications)
     .innerJoin(
@@ -246,6 +307,9 @@ export async function executePublish(
    * Fifteen call sites wrote this out, so how a failed publication is persisted
    * was fifteen decisions instead of one. The caller still controls what
    * happens next — most return, some fall through to the next platform.
+   *
+   * `live` is what is already on the platform: a thread that stopped partway
+   * keeps its root post's id and URL, so the row still links to it.
    */
   async function failPublication(
     pub: {
@@ -254,10 +318,19 @@ export async function executePublish(
       connectedAccountId: string;
     },
     error: string,
+    live?: { platformPostId: string; platformPostUrl: string | null },
   ): Promise<void> {
     await db
       .update(postPublications)
-      .set({ status: "failed", lastError: error, updatedAt: new Date() })
+      .set({
+        status: "failed",
+        lastError: error,
+        ...(live && {
+          platformPostId: live.platformPostId,
+          platformPostUrl: live.platformPostUrl,
+        }),
+        updatedAt: new Date(),
+      })
       .where(eq(postPublications.id, pub.publicationId));
     results.push({
       platform: pub.platform,
@@ -266,40 +339,204 @@ export async function executePublish(
       error,
     });
   }
-  // Mark post and pending publications as "publishing" so UI shows progress and we avoid double-publish.
+  // Deliveries this run owns: only these are sent to a platform. Everything
+  // else is either already published or belongs to another live run.
+  const ownedPublicationIds = new Set<string>();
+
+  // Claim the deliveries that are waiting (or failed and being retried). The
+  // snapshot above is stale by the time we act on it: two runs for the same
+  // publication — a client retrying POST /publish, two Retry clicks, cron vs
+  // Publish now — run in parallel isolates and can both read `pending`. The
+  // update re-checks the status and returns what it actually flipped, so of
+  // two racing runs exactly one gets each row; the loser skips it below as
+  // "already in progress" instead of posting the same content twice.
+  // (The column is nullable; a null status reads as "pending" everywhere.)
+  //
+  // A delivery failed as interrupted may already be live on the platform, so
+  // only an explicit per-delivery retry by a person claims it (see
+  // `PublishControl.takeOverInterrupted`). The SQL re-checks that too, so a
+  // row interrupted between our read and our claim is not swept up either.
+  const takeOverInterrupted = control.takeOverInterrupted === true;
+  const isInterruptedFailure = (p: {
+    publicationStatus: string | null;
+    publicationLastError: string | null;
+  }) =>
+    p.publicationStatus === "failed" &&
+    p.publicationLastError === INTERRUPTED_PUBLISH_ERROR;
+  // Deliveries this run reports as interrupted and leaves alone.
+  const interruptedPublicationIds = new Set<string>();
+  const claimablePublicationIds = publicationsWithAccounts
+    .filter(
+      (p) =>
+        p.publicationStatus == null ||
+        p.publicationStatus === "pending" ||
+        p.publicationStatus === "failed",
+    )
+    .filter((p) => takeOverInterrupted || !isInterruptedFailure(p))
+    .map((p) => p.publicationId);
+  if (claimablePublicationIds.length > 0) {
+    const failedClaimable = takeOverInterrupted
+      ? eq(postPublications.status, "failed")
+      : and(
+          eq(postPublications.status, "failed"),
+          or(
+            isNull(postPublications.lastError),
+            ne(postPublications.lastError, INTERRUPTED_PUBLISH_ERROR),
+          ),
+        );
+    const claimed = await db
+      .update(postPublications)
+      .set({ status: "publishing", lastError: null, updatedAt: new Date() })
+      .where(
+        and(
+          inArray(postPublications.id, claimablePublicationIds),
+          or(
+            eq(postPublications.status, "pending"),
+            failedClaimable,
+            isNull(postPublications.status),
+          ),
+        ),
+      )
+      .returning({ id: postPublications.id });
+    for (const r of claimed) ownedPublicationIds.add(r.id);
+  }
+  for (const p of publicationsWithAccounts) {
+    if (isInterruptedFailure(p) && !ownedPublicationIds.has(p.publicationId)) {
+      interruptedPublicationIds.add(p.publicationId);
+    }
+  }
+  // Deliveries left "publishing" by a run that died: a delivery untouched for
+  // `STUCK_PUBLISHING_MINUTES` is not running any more (deploy, PM2 restart, a
+  // killed CF isolate). Live runs renew `updatedAt` (`publication-lease.ts`),
+  // so idle really means abandoned. The dead run may have reached the platform
+  // before it stopped, so sending it again could post twice:
+  // - a person retrying this delivery takes it over (the posts list, post
+  //   detail and Home show it as failed with a Retry);
+  // - every other caller fails it as interrupted and leaves it for a person.
+  // Both updates re-check status and idleness, so of two runs racing for the
+  // same row only one acts on it; the other still skips it below.
+  const idlePublishingIds = publicationsWithAccounts
+    .filter((p) => p.publicationStatus === "publishing" && p.publicationIdle)
+    .map((p) => p.publicationId);
+  if (idlePublishingIds.length > 0 && !takeOverInterrupted) {
+    const interrupted = await db
+      .update(postPublications)
+      .set({
+        status: "failed",
+        lastError: INTERRUPTED_PUBLISH_ERROR,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          inArray(postPublications.id, idlePublishingIds),
+          eq(postPublications.status, "publishing"),
+          idlePublicationSql,
+        ),
+      )
+      .returning({ id: postPublications.id });
+    for (const r of interrupted) interruptedPublicationIds.add(r.id);
+    if (interrupted.length > 0) {
+      publishLog.warn(
+        `[executePublish] ${interrupted.length} interrupted publication(s) for post ${postId} need a person to retry`,
+      );
+    }
+  }
+  if (idlePublishingIds.length > 0 && takeOverInterrupted) {
+    const reclaimed = await db
+      .update(postPublications)
+      .set({ status: "publishing", lastError: null, updatedAt: new Date() })
+      .where(
+        and(
+          inArray(postPublications.id, idlePublishingIds),
+          eq(postPublications.status, "publishing"),
+          idlePublicationSql,
+        ),
+      )
+      .returning({ id: postPublications.id });
+    for (const r of reclaimed) ownedPublicationIds.add(r.id);
+    if (reclaimed.length > 0) {
+      publishLog.warn(
+        `[executePublish] reclaimed ${reclaimed.length} idle publishing publication(s) for post ${postId}`,
+      );
+    }
+  }
+
+  // This run starts an attempt on the rows it now owns. If the post already
+  // reported an outcome (a Retry after a failure, an edit that recreated the
+  // rows), that report covered the previous attempt: re-arm the failure email
+  // and publish webhook so this attempt's finalize can report its own. After
+  // the row claim on purpose, so a late finalize of the previous attempt sees
+  // these rows in flight and stands down. A no-op write on a first attempt.
+  // Never fatal: the rows are claimed now, and throwing here would strand
+  // them in "publishing"; a missed re-arm only costs this attempt's report.
+  if (ownedPublicationIds.size > 0) {
+    await rearmPublishOutcomeClaims(postId).catch((e) =>
+      publishLog.error("[executePublish] re-arm outcome claims failed:", e),
+    );
+  }
+
+  /**
+   * Fail the deliveries this run claimed but never finished. Conditional on
+   * `publishing`, so a row this run already finished keeps its outcome.
+   * Returns the ids it failed.
+   */
+  async function failOwnedStillPublishing(
+    error: string,
+    publicationIds: string[] = [...ownedPublicationIds],
+  ): Promise<Set<string>> {
+    if (publicationIds.length === 0) return new Set();
+    const failedRows = await db
+      .update(postPublications)
+      .set({ status: "failed", lastError: error, updatedAt: new Date() })
+      .where(
+        and(
+          inArray(postPublications.id, publicationIds),
+          eq(postPublications.status, "publishing"),
+        ),
+      )
+      .returning({ id: postPublications.id });
+    return new Set(failedRows.map((r) => r.id));
+  }
+
+  // Every delivery left is either done or owned by another live run: this call
+  // publishes nothing, so it must not touch the post either. Re-stamping it
+  // "publishing" (and its updatedAt) would restart the stuck clock, and the
+  // aggregate below would count the other run's rows as failed. A row this run
+  // does not own belongs to another run: it either read "publishing" already,
+  // or another run claimed it between our read and our claim.
+  const inProgressElsewhere = publicationsWithAccounts.some(
+    (p) =>
+      p.publicationStatus !== "published" &&
+      !ownedPublicationIds.has(p.publicationId) &&
+      !interruptedPublicationIds.has(p.publicationId),
+  );
+  const nothingToRun = ownedPublicationIds.size === 0;
+  const leavePostAlone = inProgressElsewhere && nothingToRun;
+
+  // Mark the post "publishing" so UI shows progress and we avoid double-publish.
   // Never demote an already published/partial post - follow-up calls on finished publications
   // (per-platform progress, safety-net republish) would otherwise erase the status that
   // marks the post as already counted against the free quota.
-  await db
-    .update(posts)
-    .set({ status: "publishing", updatedAt: new Date() })
-    .where(
-      and(
-        eq(posts.id, postId),
-        notInArray(posts.status, ["published", "partial"]),
-      ),
-    );
-  const pendingPublicationIds = publicationsWithAccounts
-    .filter((p) => p.publicationStatus === "pending")
-    .map((p) => p.publicationId);
-  const retryPublicationIds = publicationIdFilter
-    ? publicationsWithAccounts
-        .filter(
-          (p) =>
-            p.publicationId === publicationIdFilter &&
-            (p.publicationStatus === "failed" ||
-              p.publicationStatus === "pending"),
-        )
-        .map((p) => p.publicationId)
-    : [];
-  const publishingPublicationIds = [
-    ...new Set([...pendingPublicationIds, ...retryPublicationIds]),
-  ];
-  if (publishingPublicationIds.length > 0) {
-    await db
-      .update(postPublications)
-      .set({ status: "publishing", lastError: null, updatedAt: new Date() })
-      .where(inArray(postPublications.id, publishingPublicationIds));
+  if (!leavePostAlone) {
+    try {
+      await db
+        .update(posts)
+        .set({ status: "publishing", updatedAt: new Date() })
+        .where(
+          and(
+            eq(posts.id, postId),
+            notInArray(posts.status, ["published", "partial"]),
+          ),
+        );
+    } catch (e) {
+      // The rows claimed above are this run's to finish, and nothing else
+      // will: runners never demote a "publishing" row, since it may belong
+      // to another live run. Fail them here before giving up.
+      await failOwnedStillPublishing(
+        e instanceof Error ? e.message : "Publish failed",
+      ).catch(() => undefined);
+      throw e;
+    }
   }
 
   // For thread posts: non-Twitter platforms get clean text (no "---") so FB/Threads/Bluesky show readable content
@@ -356,14 +593,36 @@ export async function executePublish(
       });
       return;
     }
-    // Skip if already in progress (e.g. concurrent request); leave DB as "publishing" for other request to complete
-    if (pub.publicationStatus === "publishing") {
+    // Interrupted earlier and not taken over: report it, never send it.
+    if (interruptedPublicationIds.has(pub.publicationId)) {
+      results.push({
+        platform: pub.platform,
+        connectedAccountId: pub.connectedAccountId,
+        status: "failed",
+        error: INTERRUPTED_PUBLISH_ERROR,
+      });
+      return;
+    }
+    // Skip unless this run claimed (or reclaimed) the row above: another run
+    // owns it and will finish it, so leave the DB as "publishing" for it. The
+    // snapshot status cannot decide this — it was read before the claim.
+    if (!ownedPublicationIds.has(pub.publicationId)) {
       results.push({
         platform: pub.platform,
         connectedAccountId: pub.connectedAccountId,
         status: "failed",
         error: "Publish already in progress",
+        inProgressElsewhere: true,
       });
+      return;
+    }
+
+    // `syncConnectedAccountsToLimit` turns off the accounts past the plan's
+    // connection cap. Posts saved before a downgrade (scheduled, queued, or a
+    // retry) still point at them, and this is the one place every runner
+    // (CF worker, API, BullMQ) goes through.
+    if (pub.accountIsActive === false) {
+      await failPublication(pub, ACCOUNT_OVER_PLAN_LIMIT_ERROR);
       return;
     }
 
@@ -755,6 +1014,35 @@ export async function executePublish(
           return createTwitterTweetFetch(payload, accessToken, accessSecret);
         }
       };
+      const tweetUrl = (tweetId: string) =>
+        `https://twitter.com/${pub.platformUsername || pub.platformUserId}/status/${tweetId}`;
+      /**
+       * Every part is live. Deliberately outside the send's try/catch: a
+       * failed status write here is not a failed post, so it must not be
+       * recorded as one with no URL. It rejects the handler instead (the
+       * crash path settles the row), and the progress saved after each part
+       * lets the next run mark the row published without posting again.
+       */
+      const markTweetsPublished = async (rootTweetId: string | undefined) => {
+        const platformPostUrl = rootTweetId ? tweetUrl(rootTweetId) : null;
+        await db
+          .update(postPublications)
+          .set({
+            status: "published",
+            publishedAt: new Date(),
+            platformPostId: rootTweetId ?? null,
+            platformPostUrl,
+            lastError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(postPublications.id, pub.publicationId));
+        results.push({
+          platform: pub.platform,
+          connectedAccountId: pub.connectedAccountId,
+          status: "published",
+          platformPostUrl,
+        });
+      };
 
       const twitterThreadMeta = (() => {
         const md = post.metadata;
@@ -796,7 +1084,26 @@ export async function executePublish(
         // Skip 280 char validation - Premium users can post up to 25k chars.
         // If Twitter rejects, the API error will be surfaced to the user.
 
-        const uniqueDbMediaIds = [...new Set(parts.flatMap((p) => p.mediaIds))];
+        // A previous run that stopped partway left its live parts recorded:
+        // continue after them instead of posting the thread again.
+        const fingerprint = threadFingerprint(parts);
+        const saved = readThreadProgress(
+          post.metadata,
+          pub.publicationId,
+          fingerprint,
+          parts.length,
+        );
+        const startIndex = saved?.posted ?? 0;
+        if (saved) {
+          publishLog.info(
+            `[executePublish] X thread ${pub.publicationId}: ${saved.posted} of ${parts.length} parts already live, continuing`,
+          );
+        }
+
+        // Only the parts still to post need their media.
+        const uniqueDbMediaIds = [
+          ...new Set(parts.slice(startIndex).flatMap((p) => p.mediaIds)),
+        ];
         const mediaByDbId = new Map<
           string,
           { url: string | null; mimeType: string | null }
@@ -876,11 +1183,11 @@ export async function executePublish(
           return twitterMediaId;
         };
 
+        let posted = startIndex;
+        let firstTweetId: string | undefined = saved?.rootId;
+        let previousTweetId: string | undefined = saved?.lastId;
         try {
-          let firstTweetId: string | undefined;
-          let previousTweetId: string | undefined;
-
-          for (let i = 0; i < parts.length; i++) {
+          for (let i = startIndex; i < parts.length; i++) {
             const part = parts[i];
             const isFirst = i === 0;
 
@@ -940,31 +1247,14 @@ export async function executePublish(
             if (!id) throw new Error("Twitter did not return tweet ID");
             if (isFirst) firstTweetId = id;
             previousTweetId = id;
+            posted = i + 1;
+            await saveThreadProgress(post.id, pub.publicationId, {
+              fingerprint,
+              posted,
+              rootId: firstTweetId ?? id,
+              lastId: id,
+            });
           }
-
-          const platformPostUrl =
-            firstTweetId != null
-              ? `https://twitter.com/${pub.platformUsername || pub.platformUserId}/status/${firstTweetId}`
-              : null;
-
-          await db
-            .update(postPublications)
-            .set({
-              status: "published",
-              publishedAt: new Date(),
-              platformPostId: firstTweetId ?? null,
-              platformPostUrl,
-              lastError: null,
-              updatedAt: new Date(),
-            })
-            .where(eq(postPublications.id, pub.publicationId));
-
-          results.push({
-            platform: pub.platform,
-            connectedAccountId: pub.connectedAccountId,
-            status: "published",
-            platformPostUrl,
-          });
         } catch (e) {
           const errorMessage = getTwitterErrorMessage(e);
           publishLog.error(
@@ -972,15 +1262,54 @@ export async function executePublish(
             errorMessage,
             e,
           );
-          await failPublication(pub, errorMessage);
+          await failPublication(
+            pub,
+            partialThreadError(errorMessage, posted, parts.length),
+            firstTweetId
+              ? { platformPostId: firstTweetId, platformPostUrl: tweetUrl(firstTweetId) }
+              : undefined,
+          );
+          return;
         }
+
+        await markTweetsPublished(firstTweetId);
 
         return;
       }
+      // Twitter thread: split by "---" for native thread (reply chain)
+      const rawContent = resolvedContent || "";
+      const parts = rawContent
+        .split("---")
+        .map((p) => p.trim())
+        .filter(Boolean);
+
+      // A single tweet is a one-part chain: its progress is what lets a run
+      // whose status write failed be finished without tweeting it again.
+      // The post's media rides on part 1 only.
+      const fingerprint = threadFingerprint(
+        parts.map((text, i) => ({
+          text,
+          mediaIds: i === 0 ? (effectiveMediaIds ?? []) : [],
+        })),
+      );
+      const saved = readThreadProgress(
+        post.metadata,
+        pub.publicationId,
+        fingerprint,
+        parts.length,
+      );
+      const startIndex = saved?.posted ?? 0;
+      if (saved) {
+        publishLog.info(
+          `[executePublish] X post ${pub.publicationId}: ${saved.posted} of ${parts.length} parts already live, continuing`,
+        );
+      }
+
       const mediaIds: string[] = [];
 
-      // Fetch media in post order; Twitter supports up to 4 attachments (any mix of images and videos)
-      if (effectiveMediaIds && effectiveMediaIds.length > 0) {
+      // Fetch media in post order; Twitter supports up to 4 attachments (any mix of images and videos).
+      // Only part 1 carries it, so a run that resumes after part 1 needs none.
+      if (startIndex === 0 && effectiveMediaIds && effectiveMediaIds.length > 0) {
         const media = await db
           .select({
             id: mediaUploads.id,
@@ -1017,13 +1346,6 @@ export async function executePublish(
         }
         if (twitterUploadFailed) return;
       }
-
-      // Twitter thread: split by "---" for native thread (reply chain)
-      const rawContent = resolvedContent || "";
-      const parts = rawContent
-        .split("---")
-        .map((p) => p.trim())
-        .filter(Boolean);
 
       if (parts.length === 0) {
         await db
@@ -1067,82 +1389,61 @@ export async function executePublish(
                   ] as MediaIdsTuple)
                 : undefined;
 
+      let posted = startIndex;
+      let firstTweetId: string | undefined = saved?.rootId;
+      let previousTweetId: string | undefined = saved?.lastId;
       try {
-        let firstTweetId: string | undefined;
-
-        if (parts.length === 1) {
-          // Single tweet
-          const tweetText = truncateCaptionForPlatform(
-            parts[0],
+        // Part 1 carries the media; each later part replies to the one before.
+        for (let i = startIndex; i < parts.length; i++) {
+          const text = truncateCaptionForPlatform(
+            parts[i],
             "twitter_x",
             pub.isTwitterPremium ?? false,
           );
+          const isFirst = i === 0;
           const payload: {
             text: string;
             media?: { media_ids: MediaIdsTuple };
-          } = {
-            text: tweetText,
-          };
-          if (mediaTuple) payload.media = { media_ids: mediaTuple };
-          const tweetData = await sendTweet(payload);
-          firstTweetId = tweetData.data?.id ?? undefined;
-        } else {
-          // Thread: first tweet, then each part as reply to the previous tweet
-          let previousTweetId: string | undefined;
-          for (let i = 0; i < parts.length; i++) {
-            const text = truncateCaptionForPlatform(
-              parts[i],
-              "twitter_x",
-              pub.isTwitterPremium ?? false,
-            );
-            const isFirst = i === 0;
-            const payload: {
-              text: string;
-              media?: { media_ids: MediaIdsTuple };
-              reply?: { in_reply_to_tweet_id: string };
-            } = { text };
-            if (isFirst && mediaTuple) {
-              payload.media = { media_ids: mediaTuple };
-            }
-            if (!isFirst && previousTweetId) {
-              payload.reply = { in_reply_to_tweet_id: previousTweetId };
-            }
-            const tweetData = await sendTweet(payload);
-            const id = tweetData.data?.id;
-            if (!id) throw new Error("Twitter did not return tweet ID");
-            if (isFirst) firstTweetId = id;
-            previousTweetId = id;
+            reply?: { in_reply_to_tweet_id: string };
+          } = { text };
+          if (isFirst && mediaTuple) {
+            payload.media = { media_ids: mediaTuple };
           }
+          if (!isFirst && previousTweetId) {
+            payload.reply = { in_reply_to_tweet_id: previousTweetId };
+          }
+          const tweetData = await sendTweet(payload);
+          const id = tweetData.data?.id;
+          if (!id) {
+            // A lone tweet is live even without an id in the response (it
+            // was always recorded published); a thread cannot go on.
+            if (parts.length === 1) break;
+            throw new Error("Twitter did not return tweet ID");
+          }
+          if (isFirst) firstTweetId = id;
+          previousTweetId = id;
+          posted = i + 1;
+          await saveThreadProgress(post.id, pub.publicationId, {
+            fingerprint,
+            posted,
+            rootId: firstTweetId ?? id,
+            lastId: id,
+          });
         }
-
-        const platformPostUrl =
-          firstTweetId != null
-            ? `https://twitter.com/${pub.platformUsername || pub.platformUserId}/status/${firstTweetId}`
-            : null;
-
-        await db
-          .update(postPublications)
-          .set({
-            status: "published",
-            publishedAt: new Date(),
-            platformPostId: firstTweetId ?? null,
-            platformPostUrl,
-            lastError: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(postPublications.id, pub.publicationId));
-
-        results.push({
-          platform: pub.platform,
-          connectedAccountId: pub.connectedAccountId,
-          status: "published",
-          platformPostUrl,
-        });
       } catch (e) {
         const errorMessage = getTwitterErrorMessage(e);
         publishLog.error("[executePublish] Twitter post failed:", errorMessage, e);
-        await failPublication(pub, errorMessage);
+        await failPublication(
+          pub,
+          partialThreadError(errorMessage, posted, parts.length),
+          firstTweetId
+            ? { platformPostId: firstTweetId, platformPostUrl: tweetUrl(firstTweetId) }
+            : undefined,
+        );
+        return;
       }
+
+      await markTweetsPublished(firstTweetId);
       return;
     } else if (
       pub.platform === "facebook" ||
@@ -1228,9 +1529,21 @@ export async function executePublish(
           pub.platform,
           pub.isTwitterPremium ?? false,
         );
-        let platformOptions:
-          | { instagram?: { coverImageUrl?: string; isTrialReel: boolean } }
-          | undefined;
+        let platformOptions: PlatformPublishOptions | undefined;
+        if (pub.platform === "tiktok") {
+          // Publish-now passes the flag at runtime; scheduled / queued posts
+          // carry it in metadata (photo posts only; TikTok ignores it on video).
+          const savedAutoAddMusic =
+            post.metadata && typeof post.metadata === "object"
+              ? (post.metadata as Record<string, unknown>).tiktokAutoAddMusic
+              : undefined;
+          const autoAddMusic =
+            options?.tiktokConfig?.autoAddMusic ??
+            (typeof savedAutoAddMusic === "boolean" ? savedAutoAddMusic : undefined);
+          if (autoAddMusic !== undefined) {
+            platformOptions = { tiktok: { autoAddMusic } };
+          }
+        }
         if (pub.platform === "instagram") {
           const instagramMeta = (() => {
             const md = post.metadata;
@@ -1317,8 +1630,14 @@ export async function executePublish(
             publishedAt: isPublished
               ? (platformPostResult.publishedAt ?? new Date())
               : undefined,
-            platformPostId: platformPostResult.platformPostId ?? null,
-            platformPostUrl: platformPostResult.platformPostUrl ?? null,
+            // A failure that reports no post must not erase one an earlier
+            // run left live (a thread that stopped partway keeps its root).
+            ...(isPublished || platformPostResult.platformPostId != null
+              ? {
+                  platformPostId: platformPostResult.platformPostId ?? null,
+                  platformPostUrl: platformPostResult.platformPostUrl ?? null,
+                }
+              : {}),
             lastError: platformPostResult.lastError ?? null,
             updatedAt: new Date(),
           })
@@ -1365,11 +1684,45 @@ export async function executePublish(
     }
   }
 
-  const publishTasks = publicationsWithAccounts.map((pub) =>
-    handlePublication(pub),
-  );
+  // Hold the lease on every delivery this run owns while it uploads, so a
+  // slow upload is never mistaken for a dead one and taken over.
+  const stopHeartbeat = startPublicationHeartbeat(postId, [
+    ...ownedPublicationIds,
+  ]);
+  let settled: PromiseSettledResult<void>[];
+  try {
+    settled = await Promise.allSettled(
+      publicationsWithAccounts.map((pub) => handlePublication(pub)),
+    );
+  } finally {
+    stopHeartbeat();
+  }
 
-  await Promise.allSettled(publishTasks);
+  // A delivery whose handler threw before recording an outcome (a failed
+  // status write, say) is still "publishing" under this run's claim. Fail it
+  // now: no runner will, and it would otherwise sit until the stuck sweep.
+  const crashed = settled.flatMap((s, i) =>
+    s.status === "rejected"
+      ? [{ pub: publicationsWithAccounts[i]!, reason: s.reason as unknown }]
+      : [],
+  );
+  for (const { pub, reason } of crashed) {
+    if (!ownedPublicationIds.has(pub.publicationId)) continue;
+    const error =
+      reason instanceof Error ? reason.message : "Publish to platform failed";
+    publishLog.error(`[executePublish] ${pub.platform} handler threw:`, reason);
+    const failedIds = await failOwnedStillPublishing(error, [
+      pub.publicationId,
+    ]).catch(() => new Set<string>());
+    if (failedIds.has(pub.publicationId)) {
+      results.push({
+        platform: pub.platform,
+        connectedAccountId: pub.connectedAccountId,
+        status: "failed",
+        error,
+      });
+    }
+  }
 
   // Always update post status so we never leave it stuck on "publishing"
   publishLog.info("Publication results:", results);
@@ -1386,9 +1739,17 @@ export async function executePublish(
   const overallStatus =
     succeeded === 0 ? "failed" : failed === 0 ? "published" : "partial";
 
-  if (!publicationIdFilter) {
+  // Deliveries another live run holds are neither published nor failed yet.
+  const othersStillRunning = results.some((r) => r.inProgressElsewhere);
+
+  if (leavePostAlone) {
+    // Nothing ran: the run that owns the in-flight rows finalizes the post.
+  } else if (!publicationIdFilter) {
     let newPostStatus = post.status;
-    if (results.length > 0) {
+    // With another run still uploading, the post is not done: keep it
+    // "publishing" and let that run's finalize settle it. Counting its rows
+    // as failed showed the post failed (with Retry) mid-upload.
+    if (results.length > 0 && !othersStillRunning) {
       newPostStatus = overallStatus;
     }
     if (newPostStatus !== post.status) {
@@ -1398,15 +1759,8 @@ export async function executePublish(
         .where(eq(posts.id, postId));
     }
 
-    // Bulk tools: optional auto features for scheduled posts, applied after publish.
-    // Do not block publish flow if setup fails.
-    if (overallStatus === "published") {
-      await setupBulkAutoFeaturesIfPresent({
-        postId,
-        userId: post.userId,
-        metadata: post.metadata,
-      });
-    }
+    // Auto-Repost / Auto-Plug (`metadata.bulkAutoFeatures`) are set up by
+    // `maybeFinalizePostPublish`, which every publish path runs.
   } else {
     const allPubs = await db
       .select({
@@ -1459,205 +1813,4 @@ export async function executePublish(
     error: errorSummary,
     results,
   };
-}
-
-type BulkAutoFeaturesMetadata = {
-  bulkAutoFeatures?: {
-    autoRepostConfig?: {
-      intervalHours: number;
-      maxResurfaces: number;
-      plugComment?: string;
-    } | null;
-    autoPlugConfig?: {
-      metricType: "likes" | "retweets";
-      threshold: number;
-      plugComment: string;
-    } | null;
-  };
-};
-
-async function setupBulkAutoFeaturesIfPresent(args: {
-  postId: string;
-  userId: string;
-  metadata: unknown;
-}): Promise<void> {
-  const m = (args.metadata ?? null) as BulkAutoFeaturesMetadata | null;
-  const features = m?.bulkAutoFeatures;
-  if (!features) return;
-
-  const autoRepost = features.autoRepostConfig ?? null;
-  const autoPlug = features.autoPlugConfig ?? null;
-
-  if (autoRepost) {
-    try {
-      await trySetupResurface({
-        postId: args.postId,
-        userId: args.userId,
-        intervalHours: autoRepost.intervalHours,
-        maxResurfaces: autoRepost.maxResurfaces,
-        plugComment: (autoRepost.plugComment ?? "").trim() || null,
-      });
-    } catch (e) {
-      publishLog.error("[bulk-auto-features] resurface setup failed:", e);
-    }
-  }
-  if (autoPlug) {
-    try {
-      await trySetupAutoPlug({
-        postId: args.postId,
-        userId: args.userId,
-        metricType: autoPlug.metricType,
-        threshold: autoPlug.threshold,
-        plugComment: autoPlug.plugComment,
-      });
-    } catch (e) {
-      publishLog.error("[bulk-auto-features] auto-plug setup failed:", e);
-    }
-  }
-}
-
-async function trySetupResurface(args: {
-  postId: string;
-  userId: string;
-  intervalHours: number;
-  maxResurfaces: number;
-  plugComment: string | null;
-}): Promise<void> {
-  const allowed = await checkResurfaceAllowed(args.userId);
-  if (!allowed) return;
-
-  const [p] = await db
-    .select({ id: posts.id, status: posts.status })
-    .from(posts)
-    .where(and(eq(posts.id, args.postId), eq(posts.userId, args.userId)))
-    .limit(1);
-  if (!p || p.status !== "published") return;
-
-  const xPub = await db
-    .select({ id: postPublications.id })
-    .from(postPublications)
-    .innerJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .where(
-      and(
-        eq(postPublications.postId, args.postId),
-        eq(postPublications.status, "published"),
-        eq(connectedAccounts.platform, "twitter_x"),
-        eq(connectedAccounts.userId, args.userId),
-      ),
-    )
-    .limit(1);
-  if (xPub.length === 0) return;
-
-  const existing = await db
-    .select({ id: resurfaceSchedules.id })
-    .from(resurfaceSchedules)
-    .where(eq(resurfaceSchedules.postId, args.postId))
-    .limit(1);
-  if (existing.length > 0) return;
-
-  // `bulkAutoFeatures` rides on client-supplied post metadata, so the numbers
-  // can be anything. `Math.max(0.5, NaN)` is NaN, which would produce an
-  // Invalid Date for nextExecuteAt and a row the cron can never run.
-  const capped = clampInt(args.maxResurfaces, 1, 10, 1);
-  const interval = clampNumber(args.intervalHours, 0.5, 24 * 30, 1, 1);
-  const now = new Date();
-  const nextExecuteAt = new Date(now.getTime() + interval * 60 * 60 * 1000);
-
-  const [schedule] = await db
-    .insert(resurfaceSchedules)
-    .values({
-      postId: args.postId,
-      platform: "x",
-      intervalHours: interval,
-      maxResurfaces: capped,
-      plugComment: args.plugComment,
-      isActive: true,
-      resurfacesDone: 0,
-      updatedAt: now,
-    })
-    .returning({ id: resurfaceSchedules.id });
-  if (!schedule) return;
-
-  await db.insert(resurfaceEvents).values({
-    scheduleId: schedule.id,
-    platformReshareId: null,
-    plugCommentId: null,
-    executedAt: null,
-    nextExecuteAt,
-    status: "pending",
-  });
-}
-
-async function trySetupAutoPlug(args: {
-  postId: string;
-  userId: string;
-  metricType: "likes" | "retweets";
-  threshold: number;
-  plugComment: string;
-}): Promise<void> {
-  const allowed = await checkAutoPlugAllowed(args.userId);
-  if (!allowed) return;
-
-  const [p] = await db
-    .select({ id: posts.id, status: posts.status })
-    .from(posts)
-    .where(and(eq(posts.id, args.postId), eq(posts.userId, args.userId)))
-    .limit(1);
-  if (!p || p.status !== "published") return;
-
-  const xRow = await db
-    .select({
-      connectedAccountId: postPublications.connectedAccountId,
-      platformPostId: postPublications.platformPostId,
-      existingAutoPlugId: autoPlugs.id,
-    })
-    .from(postPublications)
-    .innerJoin(
-      connectedAccounts,
-      eq(postPublications.connectedAccountId, connectedAccounts.id),
-    )
-    .leftJoin(
-      autoPlugs,
-      and(
-        eq(autoPlugs.postId, args.postId),
-        eq(autoPlugs.connectedAccountId, postPublications.connectedAccountId),
-        inArray(autoPlugs.status, ["watching", "triggered"]),
-      ),
-    )
-    .where(
-      and(
-        eq(postPublications.postId, args.postId),
-        eq(postPublications.status, "published"),
-        eq(connectedAccounts.platform, "twitter_x"),
-        eq(connectedAccounts.userId, args.userId),
-      ),
-    )
-    .limit(1);
-
-  if (!xRow[0]?.connectedAccountId || !xRow[0].platformPostId) return;
-  if (xRow[0].existingAutoPlugId) return;
-
-  const plugComment = coerceTrimmedString(args.plugComment, 280);
-  if (!plugComment) return;
-  const metricType = args.metricType === "retweets" ? "retweets" : "likes";
-  const threshold = clampInt(args.threshold, 1, 10_000_000, 1);
-
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  await db.insert(autoPlugs).values({
-    postId: args.postId,
-    connectedAccountId: xRow[0].connectedAccountId,
-    platform: "x",
-    metricType,
-    metricThreshold: threshold,
-    plugComment,
-    status: "watching",
-    platformPostId: xRow[0].platformPostId,
-    plugTweetId: null,
-    expiresAt,
-    updatedAt: now,
-  });
 }

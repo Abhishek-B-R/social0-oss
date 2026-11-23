@@ -1,4 +1,10 @@
-import { S3Client, PutObjectCommand, HeadObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  HeadObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 function getR2Config() {
@@ -81,7 +87,21 @@ export async function uploadToR2(
 }
 
 /**
- * Generate a presigned PUT URL for direct client-to-R2 upload.
+ * The presigner leaves Content-Type out of the signature by default
+ * (`prepareRequest` adds it to `unsignableHeaders`), so whoever holds the URL
+ * could PUT the object as `text/html` or `image/svg+xml` and R2 would serve
+ * it that way from the public media origin. `signableHeaders` wins over that
+ * set, binding the type passed here into the URL: a PUT with any other
+ * Content-Type fails the signature check. A fresh Set per call: the
+ * presigner mutates the header sets it is handed.
+ */
+function presignedPutSignedHeaders(): Set<string> {
+  return new Set(["content-type"]);
+}
+
+/**
+ * Generate a presigned PUT URL for direct client-to-R2 upload. The uploader
+ * must send exactly `contentType` as its Content-Type header.
  * @param key - Object key (e.g. "uploads/userId/filename.ext")
  * @param contentType - MIME type
  * @param contentLength - File size in bytes
@@ -106,7 +126,10 @@ export async function getPresignedUploadUrl(
   });
   // Type assertion: client-s3 and s3-request-presigner bundle different @smithy/types, so Client/Command types are incompatible at compile time. Runtime is correct.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- smithy Client/Command type mismatch across AWS SDK packages
-  return getSignedUrl(client as any, command as any, { expiresIn });
+  return getSignedUrl(client as any, command as any, {
+    expiresIn,
+    signableHeaders: presignedPutSignedHeaders(),
+  });
 }
 
 function getR2BucketName(): string {
@@ -170,4 +193,11 @@ export async function getR2ObjectBytes(key: string): Promise<Uint8Array> {
     throw new Error("Empty object body");
   }
   return response.Body.transformToByteArray();
+}
+
+/** Delete an R2 object. Deleting a key that does not exist succeeds. */
+export async function deleteR2Object(key: string): Promise<void> {
+  const client = getR2Client();
+  const bucket = getR2BucketName();
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
 }

@@ -47,6 +47,38 @@
   --sidebar-menu-bg: #f7f5f1;
   --sidebar-menu-border: #e5e1da;
 
+  /* Status semantics (dashboard redesign). One hue per meaning, three
+     strengths each: `--x` text/icon/solid, `--x-soft` tinted surface,
+     `--x-border` hairline on that surface. Use via Tailwind:
+     text-warning, bg-warning-soft, border-warning-border, bg-warning … */
+  --ok: #047857;
+  --ok-soft: #ecfdf5;
+  --ok-border: #a7f3d0;
+  --warning: #b45309;
+  --warning-soft: #fffbeb;
+  --warning-border: #fcd34d;
+  --warning-solid: #d97706;
+  /* Text on --warning-solid (white fails contrast on amber in both themes). */
+  --warning-solid-foreground: #1c1917;
+  --danger: #b91c1c;
+  --danger-soft: #fef2f2;
+  --danger-border: #fecaca;
+  --info: #1d4ed8;
+  --info-soft: #eff6ff;
+  --info-border: #bfdbfe;
+  /* AI agents (MCP / API key sources, agent drafts) */
+  --agent: #6d28d9;
+  --agent-soft: #f5f3ff;
+  --agent-border: #ddd6fe;
+  /* Neutral pill/chip surface and the overlay used by drawers/palette */
+  --chip: #efece6;
+  --scrim: rgb(17 24 39 / 0.4);
+  /* Toggle knob. Its own token because the legacy `.dark .bg-white`
+     override below would paint `bg-white` knobs dark. */
+  --switch-thumb: #ffffff;
+  /* Off-state switch track: ≥3:1 against the white cards toggles sit on. */
+  --switch-off: #8e939c;
+
   --warm-bg: #f3f1ec;
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -194,6 +226,28 @@
   --color-sidebar-menu-bg: var(--sidebar-menu-bg);
   --color-sidebar-menu-border: var(--sidebar-menu-border);
 
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-ok-border: var(--ok-border);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-border: var(--warning-border);
+  --color-warning-solid: var(--warning-solid);
+  --color-warning-solid-foreground: var(--warning-solid-foreground);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-border: var(--danger-border);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-border: var(--info-border);
+  --color-agent: var(--agent);
+  --color-agent-soft: var(--agent-soft);
+  --color-agent-border: var(--agent-border);
+  --color-chip: var(--chip);
+  --color-scrim: var(--scrim);
+  --color-switch-thumb: var(--switch-thumb);
+  --color-switch-off: var(--switch-off);
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-accent: var(--accent);
@@ -331,6 +385,27 @@ html {
   /* Account popup — lifts a step above the rail */
   --sidebar-menu-bg: #1c1916;
   --sidebar-menu-border: #322e29;
+
+  --ok: #34d399;
+  --ok-soft: rgb(16 185 129 / 0.14);
+  --ok-border: rgb(52 211 153 / 0.35);
+  --warning: #fbbf24;
+  --warning-soft: rgb(245 158 11 / 0.14);
+  --warning-border: rgb(251 191 36 / 0.35);
+  --warning-solid: #f59e0b;
+  --danger: #f87171;
+  --danger-soft: rgb(239 68 68 / 0.14);
+  --danger-border: rgb(248 113 113 / 0.35);
+  --info: #60a5fa;
+  --info-soft: rgb(59 130 246 / 0.14);
+  --info-border: rgb(96 165 250 / 0.35);
+  --agent: #a78bfa;
+  --agent-soft: rgb(139 92 246 / 0.16);
+  --agent-border: rgb(167 139 250 / 0.35);
+  --chip: #1c1c1c;
+  --scrim: rgb(0 0 0 / 0.6);
+  --switch-thumb: #ffffff;
+  --switch-off: #636363;
 }
 
 @layer base {
@@ -387,22 +462,6 @@ html {
 .dashboard-sidebar[data-sidebar="dashboard"] a svg {
   color: var(--sidebar-text) !important;
   stroke: var(--sidebar-text);
-}
-/* Create post CTA: accent-foreground on accent bg; force higher contrast in dark mode */
-.dashboard-sidebar[data-sidebar="dashboard"] a.sidebar-create-post-cta {
-  color: var(--accent-foreground) !important;
-}
-.dashboard-sidebar[data-sidebar="dashboard"] a.sidebar-create-post-cta svg {
-  color: var(--accent-foreground) !important;
-  stroke: var(--accent-foreground);
-}
-.dark .dashboard-sidebar[data-sidebar="dashboard"] a.sidebar-create-post-cta,
-.dark
-  .dashboard-sidebar[data-sidebar="dashboard"]
-  a.sidebar-create-post-cta
-  svg {
-  color: var(--accent-foreground) !important;
-  stroke: var(--accent-foreground);
 }
 .dashboard-sidebar[data-sidebar="dashboard"] .sidebar-user-block p,
 .dashboard-sidebar[data-sidebar="dashboard"]
@@ -796,6 +855,10 @@ html {
      On lg the bar is hidden, so the total collapses to zero. */
   --bottom-nav-h: 60px;
   --bottom-nav-total: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom));
+  /* Height of the open FloatingBulkBar plus a gap, set inline on <html> by
+     the bar while it is visible. Bottom overlays that share its corner (the
+     publish tray) add it to their offset so they stack above the bar. */
+  --bulk-bar-clearance: 0px;
 }
 
 @media (min-width: 64rem) {
@@ -1002,18 +1065,91 @@ input[type="radio"] {
    scale-down of the desktop size — it buys back vertical space for the
    content below without hurting legibility. */
 .dash-page-title {
-  font-family: var(--font-logo);
-  font-weight: 400;
-  font-size: 1.6rem;
-  line-height: 1.15;
-  letter-spacing: -0.025em;
-  color: var(--foreground);
+  /* Dashboard redesign: DM Sans 600 only. Instrument Serif stays on the
+     marketing site and the brand wordmark. */
+  font-family: var(--font-geist-sans);
+  font-weight: 600;
+  font-size: 1.375rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 @media (min-width: 40rem) {
   .dash-page-title {
-    font-size: 2.35rem;
+    font-size: 1.625rem;
     line-height: 1.2;
+  }
+}
+
+/* Safety net: any leftover `font-logo` inside the dashboard shell renders as
+   a DM Sans title. Opt out with `.brand-wordmark` for the actual logo. */
+.dashboard-shell .font-logo:not(.brand-wordmark) {
+  font-family: var(--font-geist-sans);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Shared kit: drawer + command palette motion (Radix data-state). */
+@keyframes s0-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+@keyframes s0-drawer-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes s0-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+@keyframes s0-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+[data-slot="drawer-content"][data-state="open"] {
+  animation: s0-drawer-in 240ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+[data-slot="drawer-content"][data-state="closed"] {
+  animation: s0-drawer-out 180ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+[data-slot="drawer-overlay"][data-state="open"],
+[data-slot="palette-overlay"][data-state="open"] {
+  animation: s0-overlay-in 180ms ease-out;
+}
+[data-slot="drawer-overlay"][data-state="closed"],
+[data-slot="palette-overlay"][data-state="closed"] {
+  animation: s0-overlay-out 150ms ease-in;
+}
+[data-slot="palette-content"][data-state="open"] {
+  animation: s0-pop-in 160ms ease-out;
+}
+[data-slot="palette-content"][data-state="closed"] {
+  animation: s0-fade-out 120ms ease-in;
+}
+@keyframes s0-bar-in {
+  from {
+    opacity: 0;
+    /* Tailwind 4 centres with the standalone `translate` property, so only
+       the vertical offset belongs in `transform` here. */
+    transform: translateY(12px);
+  }
+}
+.s0-bulk-bar {
+  animation: s0-bar-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="drawer-content"][data-state],
+  [data-slot="drawer-overlay"][data-state],
+  [data-slot="palette-overlay"][data-state],
+  [data-slot="palette-content"][data-state],
+  .s0-bulk-bar {
+    animation-duration: 1ms;
   }
 }
 

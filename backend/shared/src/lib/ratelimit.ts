@@ -4,6 +4,97 @@ import { withRedisTimeout } from "./redis-safe.js";
 
 export { redis };
 
+type Window = Parameters<typeof Ratelimit.slidingWindow>[1];
+
+/** Budget of each limiter built by `slidingWindowLimiter`, for the local fallback. */
+const limiterBudgets = new WeakMap<Ratelimit, { tokens: number; windowMs: number; prefix: string }>();
+
+const WINDOW_UNITS_MS: Record<string, number> = {
+  ms: 1,
+  s: 1_000,
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+};
+
+/** "1 m", "10m", "24 h" as milliseconds. */
+export function windowToMs(window: Window): number {
+  const match = /^(\d+)\s*(ms|s|m|h|d)$/.exec(String(window).trim());
+  if (!match) throw new Error(`Unsupported rate limit window: ${String(window)}`);
+  return Number(match[1]) * WINDOW_UNITS_MS[match[2]!]!;
+}
+
+/**
+ * A sliding-window limiter on the shared Upstash Redis (null without Redis),
+ * whose budget is also recorded so `enforceRateLimit` can keep limiting from
+ * memory while Redis is failing.
+ */
+export function slidingWindowLimiter(
+  tokens: number,
+  window: Window,
+  prefix: string,
+): Ratelimit | null {
+  if (!redis) return null;
+  const limiter = new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(tokens, window), prefix });
+  limiterBudgets.set(limiter, { tokens, windowMs: windowToMs(window), prefix });
+  return limiter;
+}
+
+/**
+ * Fixed-window counters for when Redis does not answer. One Upstash database
+ * backs every limit, and failing closed turned a Redis incident into an API
+ * outage. This process (the API runs as one) keeps enforcing the same budget
+ * per key until Redis is back; across restarts it starts from zero, which is
+ * the price of not failing every request.
+ */
+const LOCAL_FALLBACK_MAX_KEYS = 50_000;
+const localWindows = new Map<string, { count: number; resetAt: number }>();
+
+function limitLocally(
+  budget: { tokens: number; windowMs: number; prefix: string },
+  key: string,
+  rate = 1,
+): RateLimitResult {
+  const now = Date.now();
+  const id = `${budget.prefix}:${key}`;
+  let window = localWindows.get(id);
+  if (!window || window.resetAt <= now) {
+    if (!window && localWindows.size >= LOCAL_FALLBACK_MAX_KEYS) {
+      for (const [k, w] of localWindows) {
+        if (w.resetAt <= now) localWindows.delete(k);
+      }
+      if (localWindows.size >= LOCAL_FALLBACK_MAX_KEYS) {
+        const oldest = localWindows.keys().next();
+        if (!oldest.done) localWindows.delete(oldest.value);
+      }
+    }
+    window = { count: 0, resetAt: now + budget.windowMs };
+    localWindows.set(id, window);
+  }
+  if (window.count + rate > budget.tokens) {
+    return {
+      allowed: false,
+      status: 429,
+      error: "Too many requests. Try again later.",
+      limit: budget.tokens,
+      remaining: 0,
+      reset: window.resetAt,
+    };
+  }
+  window.count += rate;
+  return {
+    allowed: true,
+    limit: budget.tokens,
+    remaining: budget.tokens - window.count,
+    reset: window.resetAt,
+  };
+}
+
+/** Test hook. */
+export function resetLocalRateLimits(): void {
+  localWindows.clear();
+}
+
 export function isRateLimitingEnabled(): boolean {
   return redis !== null;
 }
@@ -53,6 +144,10 @@ export async function enforceRateLimit(
     undefined,
   );
   if (result === undefined) {
+    // Redis did not answer. A limiter with a known budget keeps limiting
+    // from memory instead of failing every request.
+    const budget = limiterBudgets.get(limiter);
+    if (budget) return limitLocally(budget, key, options?.rate);
     if (failClosed && isRateLimitingRequired()) {
       return {
         allowed: false,
@@ -81,164 +176,56 @@ export async function enforceRateLimit(
 }
 
 // 400 uploads/hour per user (supports bulk sessions: ~50 images × 8 sessions)
-export const uploadLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(400, "1 h"),
-      prefix: "rl:upload",
-    })
-  : null;
+export const uploadLimiter = slidingWindowLimiter(400, "1 h", "rl:upload");
 
 // 60 publish actions/hour per user (one action may fan out to several platforms)
-export const publishLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(60, "1 h"),
-      prefix: "rl:publish",
-    })
-  : null;
+export const publishLimiter = slidingWindowLimiter(60, "1 h", "rl:publish");
 
 // 120 X/Twitter tweet publications/hour per user - anti-automation only; normal usage stays well below this
-export const twitterPublishLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(120, "1 h"),
-      prefix: "rl:twitter_publish",
-    })
-  : null;
+export const twitterPublishLimiter = slidingWindowLimiter(120, "1 h", "rl:twitter_publish");
 
 // Connect/reauth on dashboard/connections - generous for multi-platform setup + retries.
-export const oauthLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(120, "10 m"),
-      prefix: "rl:oauth",
-    })
-  : null;
+export const oauthLimiter = slidingWindowLimiter(120, "10 m", "rl:oauth");
 
 // Manual token refresh per platform (separate from OAuth connect quota).
-export const tokenRefreshLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(60, "1 h"),
-      prefix: "rl:token_refresh",
-    })
-  : null;
+export const tokenRefreshLimiter = slidingWindowLimiter(60, "1 h", "rl:token_refresh");
 
 // Twitter Premium status refresh (user-triggered, calls Twitter API).
-export const twitterPremiumRefreshLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(15, "5 m"),
-      prefix: "rl:twitter_premium_refresh",
-    })
-  : null;
+export const twitterPremiumRefreshLimiter = slidingWindowLimiter(15, "5 m", "rl:twitter_premium_refresh");
 
 // 10 checkout session creations per user per minute (prevents Dodo API quota abuse)
-export const checkoutLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, "1 m"),
-      prefix: "rl:checkout",
-    })
-  : null;
+export const checkoutLimiter = slidingWindowLimiter(10, "1 m", "rl:checkout");
 
 // Check-email (for sign-in "email not found" message): strict per-IP limit to reduce enumeration.
-export const checkEmailLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, "1 h"),
-      prefix: "rl:check_email",
-    })
-  : null;
+export const checkEmailLimiter = slidingWindowLimiter(10, "1 h", "rl:check_email");
 
 // Per-IP cap on check-email for the same address (slows enumeration of a target inbox).
-export const checkEmailPerEmailLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(5, "1 h"),
-      prefix: "rl:check_email_addr",
-    })
-  : null;
+export const checkEmailPerEmailLimiter = slidingWindowLimiter(5, "1 h", "rl:check_email_addr");
 
 // Change-email OTP: per user + per IP (prevents email bombing via OTP sends).
-export const changeEmailOtpLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(5, "1 h"),
-      prefix: "rl:change_email_otp_user",
-    })
-  : null;
+export const changeEmailOtpLimiter = slidingWindowLimiter(5, "1 h", "rl:change_email_otp_user");
 
-export const changeEmailOtpIpLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, "1 h"),
-      prefix: "rl:change_email_otp_ip",
-    })
-  : null;
+export const changeEmailOtpIpLimiter = slidingWindowLimiter(10, "1 h", "rl:change_email_otp_ip");
 
-export const changeEmailOtpTargetLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(3, "1 h"),
-      prefix: "rl:change_email_otp_target",
-    })
-  : null;
+export const changeEmailOtpTargetLimiter = slidingWindowLimiter(3, "1 h", "rl:change_email_otp_target");
 
 // Sign-up attempts per IP (applies to both Turnstile and non-Turnstile routes).
-export const signUpIpLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(10, "1 h"),
-      prefix: "rl:sign_up_ip",
-    })
-  : null;
+export const signUpIpLimiter = slidingWindowLimiter(10, "1 h", "rl:sign_up_ip");
 
 // Bluesky BYOK credential validation per user (connections page).
-export const blueskyByokLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(40, "1 h"),
-      prefix: "rl:bluesky_byok",
-    })
-  : null;
+export const blueskyByokLimiter = slidingWindowLimiter(40, "1 h", "rl:bluesky_byok");
 
 // Billing sync from Dodo per user.
-export const billingSyncLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(5, "1 m"),
-      prefix: "rl:billing_sync",
-    })
-  : null;
+export const billingSyncLimiter = slidingWindowLimiter(5, "1 m", "rl:billing_sync");
 
 /** General RPC calls per authenticated user. */
-export const rpcLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(120, "1 m"),
-      prefix: "rl:rpc",
-    })
-  : null;
+export const rpcLimiter = slidingWindowLimiter(120, "1 m", "rl:rpc");
 
 /** Expensive RPC mutations (publish, post writes). */
-export const rpcMutationLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(30, "1 m"),
-      prefix: "rl:rpc_mut",
-    })
-  : null;
+export const rpcMutationLimiter = slidingWindowLimiter(30, "1 m", "rl:rpc_mut");
 
 /**
  * Live platform reads (inbox + analytics). Separate from general RPC so a
  * chatty dashboard cannot burn platform egress via list/refetch storms.
  */
-export const rpcLiveReadLimiter = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(20, "1 m"),
-      prefix: "rl:rpc_live",
-    })
-  : null;
+export const rpcLiveReadLimiter = slidingWindowLimiter(20, "1 m", "rl:rpc_live");

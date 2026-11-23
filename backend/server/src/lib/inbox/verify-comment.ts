@@ -3,7 +3,11 @@
  * Fetches live (cached first) and rejects commentIds not on the publication thread.
  */
 
-import { withPlatformReadCache } from "../platform-api-cache.js";
+import {
+  PlatformApiCooldownError,
+  withPlatformReadCache,
+  type PlatformReadResult,
+} from "../platform-api-cache.js";
 import {
   fetchPublicationComments,
   type CommentFetchInput,
@@ -28,16 +32,28 @@ function inboxCommentThreadCacheSuffix(publicationId: string): string {
   return `thread:${publicationId}`;
 }
 
+/** Shown when the platform (or our outbound budget) says "not now". */
+export function verifyRateLimitedMessage(retryAt?: number, now = Date.now()): string {
+  const seconds = retryAt ? Math.ceil((retryAt - now) / 1000) : 0;
+  if (seconds > 90) {
+    return `This network is limiting requests right now. Try again in about ${Math.ceil(seconds / 60)} minutes.`;
+  }
+  return "This network is limiting requests right now. Try again in a minute.";
+}
+
 async function fetchCommentsForVerify(
   input: CommentFetchInput,
   fresh: boolean,
-): Promise<CommentFetchResult> {
-  const cached = await withPlatformReadCache({
+): Promise<PlatformReadResult<CommentFetchResult>> {
+  return withPlatformReadCache({
     platform: input.platform,
     accountId: input.accountId,
     kind: "inbox_comments",
     suffix: inboxCommentThreadCacheSuffix(input.publicationId),
     fresh,
+    // Own per-account budget: the inbox page that showed this comment has
+    // just spent the list budget, and a reply must not be refused for it.
+    purpose: "verify",
     // The retry pass must actually reach the platform. Under the default
     // soft-fresh floor a thread cached moments ago was served straight back,
     // so a comment posted since that read looked like it was not on the post
@@ -49,7 +65,6 @@ async function fetchCommentsForVerify(
         maxGraphPages: INBOX_MAX_PAGES,
       }),
   });
-  return cached.data;
 }
 
 export async function verifyCommentOnPublication(
@@ -64,7 +79,16 @@ export async function verifyCommentOnPublication(
   }
 
   for (const fresh of [false, true] as const) {
-    const result = await fetchCommentsForVerify(input, fresh);
+    let read: PlatformReadResult<CommentFetchResult>;
+    try {
+      read = await fetchCommentsForVerify(input, fresh);
+    } catch (e) {
+      if (e instanceof PlatformApiCooldownError) {
+        return { ok: false, error: verifyRateLimitedMessage(e.retryAt) };
+      }
+      throw e;
+    }
+    const result = read.data;
     if (commentInFetchResult(result, commentId)) {
       return { ok: true };
     }
@@ -86,6 +110,14 @@ export async function verifyCommentOnPublication(
         error: result.error ?? "Could not verify comment on this post.",
       };
     }
+    // A saved copy served because of a rate limit cannot prove the comment is
+    // missing, and a second pass would only hit the same limit.
+    if (read.rateLimited) {
+      return { ok: false, error: verifyRateLimitedMessage() };
+    }
+    // That was already a live read: a second call cannot see more and only
+    // spends another token.
+    if (!read.fromCache) break;
   }
 
   return {

@@ -28,7 +28,10 @@ async function resolvePortalLink(): Promise<
     response: RouteResponse.json({ error }, { status }),
   });
 
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await auth.api.getSession({
+    headers: await headers(),
+    query: { disableCookieCache: true },
+  });
   if (!session?.user?.id) return fail("Unauthorized", 401);
 
   const rate = await enforceRateLimit(checkoutLimiter, session.user.id);

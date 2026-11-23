@@ -58,6 +58,11 @@ vi.mock("../lib/inbox/hide-comment.js", async (importOriginal) => ({
 vi.mock("../lib/inbox/reply-dm.js", () => ({
   replyToDmOnPlatform: mockReplyDmOnPlatform,
 }));
+// A successful hide records the comment id in Redis; keep tests off Redis.
+vi.mock("../lib/inbox/hidden-comments.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/inbox/hidden-comments.js")>()),
+  rememberHiddenComment: vi.fn(async () => undefined),
+}));
 vi.mock("../lib/inbox/resolve-media.js", () => ({
   resolveInboxMedia: mockResolveInboxMedia,
 }));
@@ -266,14 +271,45 @@ describe("hideInboxComment", () => {
   });
 
   it("hides a verified comment", async () => {
-    mockDb.select.mockReturnValue(selectChain([publicationRow("instagram")]));
+    mockDb.select.mockReturnValue(selectChain([publicationRow("facebook")]));
     mockVerifyComment.mockResolvedValue({ ok: true });
     mockHideOnPlatform.mockResolvedValue({ ok: true });
     const out = await hideInboxCommentForScope(ctx, { publicationId: PUB, commentId: "c1" });
     expect(out).toEqual({ ok: true });
     expect(mockHideOnPlatform).toHaveBeenCalledWith(
-      expect.objectContaining({ platform: "instagram", commentId: "c1", accessToken: "token" }),
+      expect.objectContaining({ platform: "facebook", commentId: "c1", accessToken: "token" }),
     );
+  });
+});
+
+describe("comment mutations respect LIVE_PLATFORMS", () => {
+  // inboxComments.instagram / linkedin are off until App Review lands: naming
+  // one of their publications must not reach the platform, on RPC or /v1.
+  it("refuses to hide on a gated network before any platform call", async () => {
+    mockDb.select.mockReturnValue(selectChain([publicationRow("instagram")]));
+    const out = await hideInboxCommentForScope(ctx, { publicationId: PUB, commentId: "c1" });
+    expect(out).toEqual({ ok: false, error: "Comments are not available yet for Instagram." });
+    expect(mockResolveAccountAccess).not.toHaveBeenCalled();
+    expect(mockVerifyComment).not.toHaveBeenCalled();
+    expect(mockHideOnPlatform).not.toHaveBeenCalled();
+  });
+
+  it("refuses to like or reply on a gated network", async () => {
+    mockDb.select.mockReturnValue(selectChain([publicationRow("linkedin")]));
+    const liked = await likeInboxCommentForScope(ctx, { publicationId: PUB, commentId: "c1" });
+    expect(liked).toEqual({ ok: false, error: "Comments are not available yet for LinkedIn." });
+
+    mockDb.select.mockReturnValue(selectChain([publicationRow("instagram")]));
+    const replied = await replyToInboxCommentForScope(ctx, {
+      publicationId: PUB,
+      commentId: "c1",
+      text: "hi",
+    });
+    expect(replied).toEqual({ ok: false, error: "Comments are not available yet for Instagram." });
+
+    expect(mockVerifyComment).not.toHaveBeenCalled();
+    expect(mockLikeOnPlatform).not.toHaveBeenCalled();
+    expect(mockReplyOnPlatform).not.toHaveBeenCalled();
   });
 });
 

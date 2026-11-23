@@ -3,9 +3,8 @@ import { and, count, eq } from "drizzle-orm";
 import { resolveRequestActor, unauthorized } from "../../middleware/auth.js";
 import { db } from "../../db/index.js";
 import { connectedAccounts, postPublications } from "../../db/schema.js";
-import { decryptToken } from "@social0/shared";
-import { revokeTokenOnPlatform } from "../../lib/revoke-token.js";
-import type { Platform } from "../../lib/platforms.js";
+import { revokeAccountGrant } from "../../lib/revoke-account-grant.js";
+import { queueAgencyExtraAccountsSync } from "../../lib/extra-accounts.js";
 import { requireWorkspacePermissionForActor } from "../../lib/workspace/session.js";
 import { connectionScopeCondition } from "../../lib/workspace/context.js";
 
@@ -111,19 +110,14 @@ export async function registerAccountsRoutes(app: FastifyInstance) {
       return reply.status(404).send({ error: "Account not found" });
     }
 
-    try {
-      const accessToken = decryptToken(
-        account.encryptedAccessToken,
-        account.id,
-      );
-      await revokeTokenOnPlatform(account.platform as Platform, accessToken);
-    } catch {
-      // best effort
-    }
+    // Best effort; skipped while another row still uses the same grant.
+    await revokeAccountGrant(account);
 
     await db
       .delete(connectedAccounts)
       .where(eq(connectedAccounts.id, accountId));
+    // Agency: one account fewer to bill (never below 0, no mid-cycle refund).
+    queueAgencyExtraAccountsSync(account.userId, "disconnect");
 
     return { success: true };
   });

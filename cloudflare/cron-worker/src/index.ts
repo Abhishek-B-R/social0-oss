@@ -11,7 +11,7 @@ export interface Env {
 const CRON_JOBS: Record<string, readonly string[]> = {
   "*/5 * * * *": ["publish-scheduled", "autoplug"],
   "*/10 * * * *": ["repost"],
-  "0 6 * * *": ["token-health", "billing-zombie-cleanup"],
+  "0 6 * * *": ["token-health", "billing-zombie-cleanup", "agency-extra-accounts"],
 };
 
 async function hitCron(env: Env, job: string): Promise<Response> {

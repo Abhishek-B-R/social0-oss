@@ -1,0 +1,51 @@
+{
+  "name": "Social0 FAQ",
+  "url": "https://social0.app/#faq",
+  "updated": "2026-11-19T12:15:26.557Z",
+  "faqs": [
+    {
+      "question": "Does Social0 work with AI agents?",
+      "answer": "Yes. Connect via the MCP server at mcp.social0.app/mcp (ChatGPT, Claude, OpenClaw, and other MCP clients), use the REST API at api.social0.app/v1, or the official CLI (npm install -g social0). Agents draft, schedule, and publish through the same pipeline as the dashboard."
+    },
+    {
+      "question": "How do I connect ChatGPT or Claude via MCP?",
+      "answer": "Add Social0 as a remote MCP server (mcp.social0.app/mcp) with an API key from Dashboard → Developer. Once connected, ask your agent to draft, schedule, or publish — posts show up in Social0 like any other."
+    },
+    {
+      "question": "Does Social0 have an API and CLI?",
+      "answer": "Yes. REST API at api.social0.app/v1 (works great from Postman), MCP at mcp.social0.app/mcp, and npm install -g social0 for the CLI. Create API keys in Dashboard → Developer."
+    },
+    {
+      "question": "What platforms does Social0 support?",
+      "answer": "Nine platforms today: Twitter/X, Instagram, LinkedIn, YouTube, TikTok, Facebook, Threads, Bluesky, and Pinterest — for instant publish and scheduling. See the Platforms section on this page for the full list. Want another network? Email support@social0.app."
+    },
+    {
+      "question": "Is there a free plan?",
+      "answer": "Yes. Free includes 3 connected accounts and 10 posts. No credit card required."
+    },
+    {
+      "question": "How many social accounts can I connect?",
+      "answer": "Free connects 3, Creator 15, and Agency 59, then $1/month per extra account with no cap. Each connected profile counts once. See Pricing for the full breakdown."
+    },
+    {
+      "question": "What types of content can I post?",
+      "answer": "Text, images, videos, carousels (multi-image), and platform-native formats where supported — so you can share the same content types you already post manually."
+    },
+    {
+      "question": "Can I manage multiple brands or workspaces?",
+      "answer": "Yes on every paid plan. Create workspaces for separate brands or clients, connect accounts per workspace, and switch between them from the dashboard."
+    },
+    {
+      "question": "Will my posts get less reach using Social0?",
+      "answer": "No. Posts go out through each platform's official APIs — the same channels legitimate schedulers use — so reach matches posting from the native app. Algorithms change, but we don't throttle or shadow your content."
+    },
+    {
+      "question": "What happens if a platform fails to publish?",
+      "answer": "If one platform fails (for example due to an API error or rate limit), the other platforms will still publish normally. You'll see exactly which platforms succeeded and which failed."
+    },
+    {
+      "question": "Can I cancel anytime?",
+      "answer": "Yes. No contracts and no cancellation fees. Cancel anytime from Billing; you keep access until the end of the current billing period."
+    }
+  ]
+}

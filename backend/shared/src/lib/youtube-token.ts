@@ -7,6 +7,8 @@ export const YOUTUBE_UPLOAD_SCOPE =
   "https://www.googleapis.com/auth/youtube.upload";
 
 const REFRESH_BUFFER_MS = 5 * 60 * 1000;
+/** Per-request ceiling for Google token calls, so a hung host cannot stall a refresh. */
+const GOOGLE_FETCH_TIMEOUT_MS = 10_000;
 
 type GoogleTokenInfo = {
   scope?: string;
@@ -21,6 +23,7 @@ export async function fetchGoogleTokenInfo(
   try {
     const res = await fetch(
       `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken.trim())}`,
+      { signal: AbortSignal.timeout(GOOGLE_FETCH_TIMEOUT_MS) },
     );
     const body = (await res.json().catch(() => ({}))) as GoogleTokenInfo;
     if (!res.ok || body.error) return null;
@@ -79,6 +82,7 @@ async function refreshYouTubeToken(
       refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
+    signal: AbortSignal.timeout(GOOGLE_FETCH_TIMEOUT_MS),
   });
 
   const data = (await response.json().catch(() => ({}))) as {

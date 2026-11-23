@@ -132,3 +132,39 @@ export function throwIfPlatformRateLimited(
   if (!limited) return;
   throw new PlatformRateLimitError(platform, retryAfterFromHeaders(res.headers));
 }
+
+/** Throw when a plain HTTP response is a 429. */
+export function throwIfHttpRateLimited(
+  platform: string,
+  status: number | undefined,
+  _detail?: string,
+  headers?: HeaderBag,
+): void {
+  if (status === 429) {
+    throw new PlatformRateLimitError(platform, retryAfterFromHeaders(headers));
+  }
+}
+
+/** Inside a fetcher's catch: let throttles through, degrade everything else. */
+export function rethrowIfRateLimited(e: unknown): void {
+  if (e instanceof PlatformRateLimitError) throw e;
+  const status = (e as { status?: unknown; code?: unknown } | null)?.status ??
+    (e as { code?: unknown } | null)?.code;
+  if (status === 429) throw e;
+  if (e instanceof Error && /rate limit|too many requests|\b429\b/i.test(e.message)) {
+    throw e;
+  }
+}
+
+/** HTTP 429, or a 403 whose reason is quota / rate limit (YouTube). */
+export function isYouTubeThrottle(status: number | undefined, data: unknown): boolean {
+  return status === 429 || isYouTubeQuotaBody(data);
+}
+
+/** `error.errors[0].reason` from a Google API error body. */
+export function googleErrorReason(data: unknown): string | undefined {
+  const errors = (data as { error?: { errors?: Array<{ reason?: unknown }> } } | null)
+    ?.error?.errors;
+  const reason = Array.isArray(errors) ? errors[0]?.reason : undefined;
+  return typeof reason === "string" && reason ? reason : undefined;
+}

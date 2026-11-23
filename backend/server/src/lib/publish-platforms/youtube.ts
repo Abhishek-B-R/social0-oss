@@ -7,10 +7,71 @@ import { publishLog } from "@/lib/publish-log";
 import { truncate } from "@/lib/publish-validation";
 import { getValidToken } from "@/lib/token-refresh";
 import type { Post, Pub, PublishPlatformResult } from "./types";
-import { fetchMediaBytes, getMediaWithUrls } from "./media";
+import {
+  fetchMediaByteRange,
+  fetchMediaBytes,
+  getMediaByteSize,
+  getMediaWithUrls,
+} from "./media";
 
 /** Max size for YouTube uploads (Shorts and regular, up to 5 min). */
 const YOUTUBE_MAX_VIDEO_BYTES = 512 * 1024 * 1024;
+/**
+ * Resumable-upload chunk. YouTube needs every chunk but the last to be a
+ * multiple of 256 KiB. Reading and sending one chunk at a time keeps memory
+ * at one chunk whatever the file size, which is what lets a 500 MB video go
+ * through the 128 MB Cloudflare publish worker.
+ */
+export const YOUTUBE_UPLOAD_CHUNK_BYTES = 8 * 1024 * 1024;
+/** Chunk PUTs in a row that YouTube may answer without taking new bytes. */
+const YOUTUBE_MAX_STALLED_CHUNKS = 3;
+
+type ReadRange = (start: number, end: number) => Promise<Uint8Array<ArrayBuffer>>;
+
+/** Next byte YouTube wants after a 308: one past the end of its `Range: bytes=0-N`. */
+function nextOffsetAfter308(range: string | null): number {
+  const match = range ? /bytes=\d+-(\d+)/.exec(range) : null;
+  return match ? Number(match[1]) + 1 : 0;
+}
+
+/**
+ * Send the file to a resumable-upload session in chunks. Returns YouTube's
+ * final response (2xx with the video, or the error to report).
+ */
+async function uploadYouTubeChunks(
+  uploadUrl: string,
+  totalBytes: number,
+  mimeType: string,
+  readRange: ReadRange,
+): Promise<Response> {
+  let offset = 0;
+  let stalled = 0;
+  for (;;) {
+    const end = Math.min(offset + YOUTUBE_UPLOAD_CHUNK_BYTES, totalBytes) - 1;
+    const chunk = await readRange(offset, end);
+    const res = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Length": String(chunk.byteLength),
+        "Content-Type": mimeType,
+        "Content-Range": `bytes ${offset}-${end}/${totalBytes}`,
+      },
+      body: chunk,
+    });
+    if (res.status !== 308) return res;
+
+    await res.body?.cancel().catch(() => undefined);
+    const next = nextOffsetAfter308(res.headers.get("range"));
+    if (next >= totalBytes) {
+      throw new Error("YouTube took every byte but did not finish the upload.");
+    }
+    stalled = next > offset ? 0 : stalled + 1;
+    if (stalled >= YOUTUBE_MAX_STALLED_CHUNKS) {
+      throw new Error("YouTube stopped accepting the upload. Try again later.");
+    }
+    offset = next;
+  }
+}
 /** Duration threshold (seconds) for classifying as Short: ≤3 min vertical → Short, else regular. */
 const YOUTUBE_SHORT_MAX_DURATION = 180;
 
@@ -58,20 +119,37 @@ export async function publishToYouTube(
   const isVertical = videoMeta?.isVertical === true;
   const isShort = durationSeconds <= YOUTUBE_SHORT_MAX_DURATION && isVertical;
 
-  let videoBuffer: Buffer;
-  try {
-    videoBuffer = Buffer.from(await fetchMediaBytes(videoEntry.url));
-  } catch (e) {
-    const err = e instanceof Error ? e.message : "Failed to fetch video";
-    return { status: "failed", lastError: err, error: err };
-  }
+  const tooLarge: PublishPlatformResult = {
+    status: "failed",
+    lastError: `Video is too large for YouTube (max ${YOUTUBE_MAX_VIDEO_BYTES / 1024 / 1024}MB).`,
+    error: "Video too large",
+  };
 
-  if (videoBuffer.length > YOUTUBE_MAX_VIDEO_BYTES) {
-    return {
-      status: "failed",
-      lastError: `Video is too large for YouTube (max ${YOUTUBE_MAX_VIDEO_BYTES / 1024 / 1024}MB).`,
-      error: "Video too large",
-    };
+  // Size first, so the cap is checked before anything is downloaded and the
+  // upload can read the file in ranges. Only a file whose size nobody knows
+  // is read whole, as before.
+  const videoUrl = videoEntry.url;
+  let totalBytes: number;
+  let readRange: ReadRange;
+  const knownBytes = await getMediaByteSize(videoUrl, videoEntry.sizeBytes);
+  if (knownBytes != null) {
+    if (knownBytes > YOUTUBE_MAX_VIDEO_BYTES) return tooLarge;
+    totalBytes = knownBytes;
+    readRange = (start, end) => fetchMediaByteRange(videoUrl, start, end);
+  } else {
+    let bytes: Uint8Array<ArrayBuffer>;
+    try {
+      bytes = new Uint8Array(await fetchMediaBytes(videoUrl));
+    } catch (e) {
+      const err = e instanceof Error ? e.message : "Failed to fetch video";
+      return { status: "failed", lastError: err, error: err };
+    }
+    if (bytes.byteLength > YOUTUBE_MAX_VIDEO_BYTES) return tooLarge;
+    if (bytes.byteLength === 0) {
+      return { status: "failed", lastError: "Video file is empty", error: "No video" };
+    }
+    totalBytes = bytes.byteLength;
+    readRange = async (start, end) => bytes.subarray(start, end + 1);
   }
 
   const videoMimeType = videoEntry.mimeType || "video/mp4";
@@ -113,7 +191,7 @@ export async function publishToYouTube(
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json; charset=UTF-8",
           "x-upload-content-type": videoMimeType,
-          "X-Upload-Content-Length": String(videoBuffer.length),
+          "X-Upload-Content-Length": String(totalBytes),
         },
         body: JSON.stringify(metadata),
       },
@@ -158,15 +236,18 @@ export async function publishToYouTube(
     };
   }
 
-  const uploadRes = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      "Content-Length": String(videoBuffer.length),
-      "Content-Type": videoEntry.mimeType || "video/mp4",
-      "Content-Range": `bytes 0-${videoBuffer.length - 1}/${videoBuffer.length}`,
-    },
-    body: new Uint8Array(videoBuffer),
-  });
+  let uploadRes: Response;
+  try {
+    uploadRes = await uploadYouTubeChunks(
+      uploadUrl,
+      totalBytes,
+      videoEntry.mimeType || "video/mp4",
+      readRange,
+    );
+  } catch (e) {
+    const err = e instanceof Error ? e.message : "YouTube upload failed";
+    return { status: "failed", lastError: err, error: err };
+  }
 
   if (!uploadRes.ok) {
     const errText = await uploadRes.text();

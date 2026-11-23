@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import { getRequestApiKey } from "../request-context.js";
+import { getRequestApiKey, getRequestHeaders, getRequestMcpClient } from "../request-context.js";
 import type { ApiErrorBody } from "../types/index.js";
 import { logVerbose, parseRetryAfterMs, sleep } from "../utils/index.js";
 
@@ -163,10 +163,16 @@ export class Social0ApiClient {
 
       try {
         const headers: Record<string, string> = {
+          ...getRequestHeaders(),
           Authorization: `Bearer ${apiKey}`,
           Accept: "application/json",
+          // Lets Social0 label posts this client creates ("MCP" source chip).
+          "X-Social0-Client": "mcp",
           ...options.headers,
         };
+        // Hosted MCP: which host app (ChatGPT, Claude…) made this call.
+        const mcpClient = getRequestMcpClient();
+        if (mcpClient) headers["X-Social0-Mcp-Client"] = mcpClient;
 
         if (options.idempotencyKey) {
           headers["Idempotency-Key"] = options.idempotencyKey;

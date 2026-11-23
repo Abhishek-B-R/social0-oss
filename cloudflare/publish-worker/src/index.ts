@@ -1,11 +1,14 @@
 import {
+  CF_PUBLISH_QUEUES,
   isKnownConsumerQueue,
   parseEnqueueRequest,
   verifyEnqueueAuth,
 } from "./auth";
 import { recordPlatformResult } from "./job-progress-db";
-import { processPlatformJob } from "./process-platform";
+import { processPlatformJob, PublishRetryLaterError } from "./process-platform";
+import { PublishSlotBusyError } from "./publish-concurrency";
 import { assertPublishJobAuthorized } from "./validate-job";
+import { openSql } from "./db";
 import type { PublishPlatformJob } from "./types";
 
 const MAX_BODY_BYTES = 8192;
@@ -52,6 +55,32 @@ function recordAuthFailure(ip: string): void {
     return;
   }
   entry.count += 1;
+}
+
+/**
+ * Send a job that found the publish caps full back to its queue with a delay.
+ *
+ * A fresh message rather than `message.retry()`: retries are for crashes and
+ * count toward `max_retries`, so waiting for capacity would dead-letter a job
+ * that never failed. If the send itself fails, fall back to a retry so the
+ * job is not lost.
+ */
+async function requeueForSlot(
+  queueName: string,
+  env: Env,
+  message: Message,
+  job: PublishPlatformJob,
+  delaySeconds: number,
+): Promise<void> {
+  const queue =
+    queueName === CF_PUBLISH_QUEUES.NOW ? env.PUBLISH_NOW_QUEUE : env.PUBLISH_SCHEDULED_QUEUE;
+  try {
+    await queue.send({ ...job, slotWaits: (job.slotWaits ?? 0) + 1 }, { delaySeconds });
+    message.ack();
+  } catch (sendErr) {
+    console.error("[publish-worker] requeue for capacity failed, retrying message", sendErr);
+    message.retry({ delaySeconds });
+  }
 }
 
 export default {
@@ -135,8 +164,11 @@ export default {
 
     for (const message of batch.messages) {
       const job = message.body as PublishPlatformJob;
+      // One client for the whole message: the ownership check, progress
+      // events and the final result each used to open their own.
+      const sql = await openSql(env);
       try {
-        const authError = await assertPublishJobAuthorized(env, job);
+        const authError = await assertPublishJobAuthorized(env, job, sql);
         if (authError) {
           console.error("[publish-worker] unauthorized job dropped", authError);
           await recordPlatformResult(
@@ -144,21 +176,35 @@ export default {
             job,
             false,
             `Publish worker rejected job: ${authError}`,
-            { skipAuth: true },
+            { skipAuth: true, sql },
           );
           message.ack();
           continue;
         }
-        await processPlatformJob(job, env);
+        await processPlatformJob(job, env, message.attempts, sql);
         message.ack();
       } catch (err) {
+        if (err instanceof PublishSlotBusyError) {
+          await requeueForSlot(batch.queue, env, message, job, err.delaySeconds);
+          continue;
+        }
+        if (err instanceof PublishRetryLaterError) {
+          console.warn(
+            `[publish-worker] ${job.platform} retry ${message.attempts} in ${err.delaySeconds}s: ${err.reason}`,
+          );
+          message.retry({ delaySeconds: err.delaySeconds });
+          continue;
+        }
         const messageText =
           err instanceof Error ? err.message : "Platform worker failed";
         console.error("[publish-worker] platform job failed", err);
         await recordPlatformResult(env, job, false, messageText, {
           skipAuth: true,
+          sql,
         });
         message.ack();
+      } finally {
+        await sql.end({ timeout: 0 }).catch(() => undefined);
       }
     }
   },

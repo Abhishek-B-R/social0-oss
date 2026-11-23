@@ -28,12 +28,20 @@ export const auth = betterAuth({
   baseURL: authBaseUrl,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: getCorsOrigins(),
-  // SPA (dev.social0.app) starts OAuth via cross-origin POST to api.social0.app.
-  // Browsers may drop the auxiliary state cookie; DB verification still binds the flow.
-  account: {
-    skipStateCookieCheck: true,
-  },
+  // Google sign-in keeps Better Auth's signed `state` cookie check on: the DB
+  // row alone proves the state exists, not that *this browser* started the
+  // flow, so skipping the cookie lets an attacker hand a victim their own
+  // callback URL and log them into the attacker's account (login CSRF). The
+  // SPA and API are same-site (*.social0.app, cookie domain social0.app,
+  // SameSite=None; Secure), so the cookie set on the sign-in POST does reach
+  // the callback.
   advanced: {
+    // X-Forwarded-For is rewritten to the proxy-resolved client address by the
+    // root onRequest hook (lib/client-ip.ts) before it gets here, so the
+    // limiter keys on an address the client cannot choose.
+    ipAddress: {
+      ipAddressHeaders: ["x-forwarded-for"],
+    },
     useSecureCookies: authBaseUrl.startsWith("https://"),
     crossSubDomainCookies: {
       enabled: authBaseUrl.includes("social0.app"),
@@ -46,6 +54,12 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       overrideDefaultEmailVerification: true,
+      // OTP is for verifying email and resetting passwords only. Without this,
+      // sign-in-by-OTP creates a verified user for any address (skipping the
+      // /api/auth/sign-up wrapper's limiter, Turnstile and legal acceptance)
+      // and send-verification-otp {type:"sign-in"} mails codes to strangers.
+      // routes/api/auth.ts also refuses both OTP sign-in requests outright.
+      disableSignUp: true,
       async sendVerificationOTP({ email, otp, type }) {
         await sendEmail({
           to: email,
@@ -66,6 +80,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
+    // A reset is how a user locks out someone holding a stolen session.
+    revokeSessionsOnPasswordReset: true,
   },
   emailVerification: {
     autoSignInAfterVerification: true,

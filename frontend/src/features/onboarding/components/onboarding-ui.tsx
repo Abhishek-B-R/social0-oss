@@ -1,43 +1,43 @@
-import type { ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { ArrowLeft, Check, Copy, Info, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import Link from "@/components/AppLink";
 import { cn } from "@/lib/utils";
+import { focusRing } from "./onboarding-styles";
 
-/** Landing-matched primary CTA — dark text on emerald, soft glow. */
-export const onboardingPrimaryCtaClass =
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-emerald-500 px-7 py-3 text-[15px] font-semibold text-[#04140c] shadow-[0_0_32px_rgba(16,185,129,0.28)] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 dark:shadow-[0_0_32px_rgba(16,185,129,0.38)]";
-
-export const onboardingSecondaryCtaClass =
-  "inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-border bg-background/80 px-7 py-3 text-[15px] font-medium text-foreground backdrop-blur-sm transition-[transform,background-color,border-color] duration-150 ease-out hover:border-foreground/20 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50";
-
-export const onboardingGhostLinkClass =
-  "text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/40 rounded-sm";
-
-type StepFrameProps = {
-  children: ReactNode;
-  className?: string;
-  /** Narrower content column (goal / ready). Default is wide for connect/plan. */
-  narrow?: boolean;
-};
+/* Layout */
 
 export function OnboardingStepFrame({
   children,
   className,
-  narrow = false,
-}: StepFrameProps) {
+  wide = false,
+}: {
+  children: ReactNode;
+  className?: string;
+  /** Wider column for the network grid. */
+  wide?: boolean;
+}) {
   const reduceMotion = useReducedMotion();
   return (
     <motion.div
       className={cn(
         "relative z-10 mx-auto flex w-full flex-1 flex-col",
-        narrow ? "max-w-2xl" : "max-w-5xl",
+        wide ? "max-w-4xl" : "max-w-2xl",
         className,
       )}
-      initial={reduceMotion ? false : { opacity: 0, y: 10 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={
         reduceMotion
           ? { duration: 0 }
-          : { duration: 0.32, ease: [0.23, 1, 0.32, 1] }
+          : { duration: 0.28, ease: [0.23, 1, 0.32, 1] }
       }
     >
       {children}
@@ -45,41 +45,47 @@ export function OnboardingStepFrame({
   );
 }
 
-type StepHeaderProps = {
-  eyebrow?: string;
-  title: ReactNode;
-  description?: ReactNode;
-  align?: "center" | "left";
-};
-
 export function OnboardingStepHeader({
-  eyebrow,
+  step,
   title,
   description,
-  align = "center",
-}: StepHeaderProps) {
+  docsHref,
+  back,
+}: {
+  step: 1 | 2 | 3;
+  title: ReactNode;
+  description?: ReactNode;
+  docsHref?: string;
+  /** Path of the previous step; renders a Back link. */
+  back?: string;
+}) {
   return (
-    <header
-      className={cn(
-        "mb-8 sm:mb-10",
-        align === "center" ? "text-center" : "text-left",
-      )}
-    >
-      {eyebrow ? (
-        <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.14em] text-emerald-600 dark:text-emerald-400">
-          {eyebrow}
-        </p>
-      ) : null}
-      <h1 className="font-sans text-[clamp(28px,4.5vw,40px)] font-extrabold leading-[1.1] tracking-[-0.03em] text-[#333C4D] dark:text-foreground">
+    <header className="mb-7 sm:mb-8">
+      <div className="mb-3 flex min-h-8 items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {back ? (
+            <Link
+              href={back}
+              className={cn(
+                "-ml-2 inline-flex min-h-8 items-center gap-1.5 rounded-full px-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                focusRing,
+              )}
+            >
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
+              Back
+            </Link>
+          ) : null}
+          <p className="text-[12px] font-medium text-muted-foreground">
+            Step {step} of 3
+          </p>
+        </div>
+        {docsHref ? <OnboardingDocsLink href={docsHref} /> : null}
+      </div>
+      <h1 className="font-sans text-[clamp(26px,4vw,34px)] font-semibold leading-[1.15] tracking-[-0.025em] text-foreground">
         {title}
       </h1>
       {description ? (
-        <p
-          className={cn(
-            "mt-3 text-[15px] leading-relaxed text-muted-foreground sm:text-[16px]",
-            align === "center" ? "mx-auto max-w-xl" : "max-w-2xl",
-          )}
-        >
+        <p className="mt-2.5 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
           {description}
         </p>
       ) : null}
@@ -100,19 +106,182 @@ export function OnboardingDocsLink({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "absolute right-0 top-0 z-10 rounded-full p-2 text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground",
+        "inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        focusRing,
         className,
       )}
-      title="Documentation for this page"
-      aria-label="Documentation for this page"
+      title="Help for this step (opens in a new tab)"
+      aria-label="Help for this step (opens in a new tab)"
     >
-      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden>
-        <path
-          fillRule="evenodd"
-          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-          clipRule="evenodd"
-        />
-      </svg>
+      <Info className="h-4 w-4" aria-hidden />
     </a>
+  );
+}
+
+/** Centered spinner with one line of copy (checkout verify, finishing). */
+export function OnboardingBusy({ label }: { label: string }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center gap-3 py-24"
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2
+        className="h-7 w-7 animate-spin text-accent motion-reduce:animate-none"
+        aria-hidden
+      />
+      <p className="text-sm text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+/* Choice cards (goal, post mode). Rendered inside a role="radiogroup". */
+
+export function ChoiceCard({
+  selected,
+  onSelect,
+  title,
+  description,
+  icon,
+  children,
+  tone = "default",
+  tabIndex,
+  onKeyDown,
+  cardRef,
+}: {
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  description?: string;
+  icon?: ReactNode;
+  /** Extra content shown under the card body when selected. */
+  children?: ReactNode;
+  tone?: "default" | "agent";
+  tabIndex?: number;
+  onKeyDown?: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  cardRef?: (node: HTMLButtonElement | null) => void;
+}) {
+  const selectedClass =
+    tone === "agent"
+      ? "border-agent bg-agent-soft ring-1 ring-agent"
+      : "border-accent bg-accent/[0.07] ring-1 ring-accent";
+  return (
+    <div
+      className={cn(
+        "rounded-2xl border bg-card/80 transition-[border-color,background-color,box-shadow] duration-150 ease-out motion-reduce:transition-none",
+        selected ? selectedClass : "border-border hover:border-foreground/25",
+      )}
+    >
+      <button
+        ref={cardRef}
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        tabIndex={tabIndex}
+        onClick={onSelect}
+        onKeyDown={onKeyDown}
+        className={cn(
+          "flex w-full items-start gap-3 rounded-2xl px-4 py-3.5 text-left",
+          focusRing,
+        )}
+      >
+        <span
+          aria-hidden
+          className={cn(
+            "mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border transition-colors",
+            selected
+              ? tone === "agent"
+                ? "border-agent bg-agent text-background"
+                : "border-accent bg-accent text-accent-foreground"
+              : "border-border bg-background",
+          )}
+        >
+          {selected ? <Check className="h-3 w-3" strokeWidth={3} /> : null}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            {icon ? (
+              <span className="shrink-0 text-muted-foreground" aria-hidden>
+                {icon}
+              </span>
+            ) : null}
+            <span className="font-semibold text-foreground">{title}</span>
+          </span>
+          {description ? (
+            <span className="mt-0.5 block text-[13px] leading-snug text-muted-foreground">
+              {description}
+            </span>
+          ) : null}
+        </span>
+      </button>
+      {selected && children ? (
+        <div className="px-4 pb-4 sm:pl-[46px]">{children}</div>
+      ) : null}
+    </div>
+  );
+}
+
+/* Copy field */
+
+export function CopyField({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: ReactNode;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (timer.current) window.clearTimeout(timer.current);
+    },
+    [],
+  );
+
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      toast.success(`Copied ${label}`);
+      if (timer.current) window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      toast.error("Couldn't copy. Select the text and copy it yourself.");
+    }
+  }
+
+  return (
+    <div>
+      <p className="mb-1.5 text-[12px] font-medium text-foreground">{label}</p>
+      <div className="flex items-stretch gap-2">
+        <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap rounded-lg border border-border bg-background px-3 py-2 font-mono text-[12.5px] leading-5 text-foreground">
+          {value}
+        </code>
+        <button
+          type="button"
+          onClick={() => void copy()}
+          aria-label={`Copy ${label}`}
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-[13px] font-medium text-foreground transition-colors hover:bg-muted",
+            focusRing,
+          )}
+        >
+          {copied ? (
+            <Check className="h-3.5 w-3.5 text-ok" aria-hidden />
+          ) : (
+            <Copy className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {copied ? "Copied" : "Copy"}
+        </button>
+      </div>
+      {hint ? (
+        <p className="mt-1.5 text-[12px] leading-snug text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
+    </div>
   );
 }

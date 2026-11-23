@@ -5,7 +5,11 @@ import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
 import { PseoFaq } from "@/components/landing/PseoFaq";
 import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
-import { FEATURE_SLUGS, getFeature } from "@/lib/content/features";
+import {
+  FEATURE_SLUGS,
+  featureHeadlineLabel,
+  getFeature,
+} from "@/lib/content/features";
 import { getAlternative } from "@/lib/content/alternatives";
 import { SeoHead } from "@/components/seo/SeoHead";
 import {
@@ -41,7 +45,7 @@ export function FeatureDetailPage() {
       { name: "Home", path: "/" },
       { name: "Features", path: "/features" },
       {
-        name: page.platformLabel ?? page.heroHeadline.split("-")[0].trim(),
+        name: page.platformLabel ?? featureHeadlineLabel(page),
         path: `/features/${slug}`,
       },
     ]),
@@ -67,7 +71,7 @@ export function FeatureDetailPage() {
             </Link>
             <span className="mx-2">/</span>
             <span className="text-foreground">
-              {page.platformLabel ?? page.heroHeadline.split("-")[0].trim()}
+              {page.platformLabel ?? featureHeadlineLabel(page)}
             </span>
           </nav>
           {page.platformLabel ? (
@@ -181,7 +185,7 @@ export function FeatureDetailPage() {
               href: `/features/${s}`,
               label: feature.platformLabel
                 ? `${feature.platformLabel} scheduler`
-                : feature.heroHeadline.split("-")[0].trim(),
+                : featureHeadlineLabel(feature),
             };
           })}
       />

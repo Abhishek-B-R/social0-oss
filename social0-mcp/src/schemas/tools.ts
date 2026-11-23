@@ -9,6 +9,15 @@ const platformOptionsSchema = z
 
 export const listAccountsInputSchema = z.object({}).strict();
 
+const idempotencyKeySchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .optional()
+  .describe(
+    "Optional. Same key = same post: reuse it when retrying this exact call. Without it, an identical call within 10 minutes is treated as a retry.",
+  );
+
 export const createPostInputSchema = z.object({
   content: z.string().min(1).describe("Post caption / text content"),
   platforms: z
@@ -20,6 +29,7 @@ export const createPostInputSchema = z.object({
     .optional()
     .describe("Media upload IDs from upload_media"),
   platform_options: platformOptionsSchema.optional(),
+  idempotency_key: idempotencyKeySchema,
 });
 
 export const updatePostInputSchema = z.object({
@@ -65,6 +75,7 @@ export const publishPostInputSchema = z.object({
     .optional()
     .describe("Optional media IDs from upload_media to attach before publishing"),
   platform_options: platformOptionsSchema.optional(),
+  idempotency_key: idempotencyKeySchema,
 });
 
 export const schedulePostInputSchema = z.object({
@@ -140,6 +151,7 @@ export const publishNowInputSchema = z.object({
   platforms: z.array(z.string().min(1)).min(1).describe("Target platforms or account IDs"),
   media: z.array(mediaIdSchema).optional().describe("Media IDs from upload_media"),
   platform_options: platformOptionsSchema.optional(),
+  idempotency_key: idempotencyKeySchema,
 });
 
 export const scheduleContentInputSchema = z.object({
@@ -148,6 +160,7 @@ export const scheduleContentInputSchema = z.object({
   scheduled_at: z.string().describe("ISO 8601 datetime to publish"),
   media: z.array(mediaIdSchema).optional(),
   platform_options: platformOptionsSchema.optional(),
+  idempotency_key: idempotencyKeySchema,
 });
 
 export const getPublishStatusInputSchema = z.object({

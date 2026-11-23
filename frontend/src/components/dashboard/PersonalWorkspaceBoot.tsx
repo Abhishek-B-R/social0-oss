@@ -41,7 +41,14 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
     data?.workspaces.find((w) => w.isActive)?.kind ?? null;
 
   useEffect(() => {
-    if (!enabled || skipBoot || !data) return;
+    // The team tree can switch the server's active workspace (TeamAppGate),
+    // so forget the last personal path: coming back to that same path must
+    // re-check the active workspace instead of trusting the earlier run.
+    if (skipBoot) {
+      ranForPath.current = null;
+      return;
+    }
+    if (!enabled || !data) return;
     if (ranForPath.current === pathname) return;
 
     // Billing / settings / developer / teams list — keep whatever workspace is active.
@@ -66,7 +73,7 @@ export function PersonalWorkspaceBoot({ enabled }: { enabled: boolean }) {
       const withSearch =
         (dest.startsWith(`/dashboard/teams/${activeTeamId}`)
           ? dest
-          : `/dashboard/teams/${activeTeamId}/composer`) + search;
+          : `/dashboard/teams/${activeTeamId}/home`) + search;
       // Soft navigate — avoid full document reloads fighting TeamAppLayout.
       navigate(withSearch, { replace: true });
       return;

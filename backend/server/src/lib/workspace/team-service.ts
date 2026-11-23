@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { and, asc, eq, gt, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db } from "../../db/index.js";
 import {
+  autoPlugs,
   connectedAccounts,
   posts,
   postPublications,
@@ -13,6 +14,7 @@ import {
   workspaces,
 } from "../../db/schema.js";
 import { getSubscriptionForUser } from "../subscription.js";
+import { getUserTimezone } from "../resolve-scheduled-at.js";
 import { getPlanLimits } from "@social0/shared";
 import {
   ensureOwnerTeam,
@@ -157,7 +159,7 @@ async function requireAdminTeamsContext(actorUserId: string) {
     if (!getPlanLimits(sub.tier).allowTeams && !ctx.inWorkspace) {
       throw new TeamServiceError(
         403,
-        "Teams is available on the Pro plan. Upgrade to invite teammates.",
+        "Teams is available on the Agency plan. Upgrade to invite teammates.",
       );
     }
     throw new TeamServiceError(403, "Forbidden");
@@ -1194,10 +1196,15 @@ export async function revokeInvitation(
 
 export async function getTeamContextForUser(actorUserId: string) {
   const ctx = await resolveWorkspaceContext(actorUserId);
+  // Queue slots and "Add to queue" run in the resource owner's zone (see
+  // handlers/queue/next-slot.ts), so a team member's settings must show that
+  // zone, not their own.
+  const resourceOwnerTimezone = await getUserTimezone(ctx.resourceUserId);
   return {
     role: ctx.role,
     permissions: ctx.inWorkspace ? ctx.permissionsDto : null,
     resourceOwnerId: ctx.resourceUserId,
+    resourceOwnerTimezone,
     teamsEnabled: ctx.teamsEnabled,
     workspaceId: ctx.workspaceId,
     teamId: ctx.teamId,
@@ -1458,7 +1465,7 @@ export async function createTeamForUser(
     if (!limits.allowTeams) {
       throw new TeamServiceError(
         403,
-        "Creating teams requires the Pro plan.",
+        "Creating teams requires the Agency plan.",
       );
     }
   } else if (!limits.allowMultiWorkspace) {
@@ -1757,36 +1764,128 @@ export async function deleteWorkspaceInTeam(
     );
   }
 
-  await db
-    .update(userSettings)
-    .set({ activeWorkspaceId: null })
-    .where(eq(userSettings.activeWorkspaceId, workspaceId));
+  const defaultWorkspaceId = row.defaultWorkspaceId;
+  // One transaction: a failure partway must not leave accounts moved or
+  // dropped while the workspace (and its posts) still exist.
+  const result = await db.transaction(async (tx) => {
+    await tx
+      .update(userSettings)
+      .set({ activeWorkspaceId: null })
+      .where(eq(userSettings.activeWorkspaceId, workspaceId));
 
-  const result = await moveConnectionsBetweenWorkspaces(
-    workspaceId,
-    row.defaultWorkspaceId,
-  );
+    const moved = await moveConnectionsBetweenWorkspaces(
+      tx,
+      workspaceId,
+      defaultWorkspaceId,
+    );
 
-  // Keep posts with the accounts — don't let ON DELETE SET NULL dump them into Main.
-  await db
-    .update(posts)
-    .set({ workspaceId: row.defaultWorkspaceId, updatedAt: new Date() })
-    .where(eq(posts.workspaceId, workspaceId));
+    // Keep posts with the accounts — don't let ON DELETE SET NULL dump them into Main.
+    await tx
+      .update(posts)
+      .set({ workspaceId: defaultWorkspaceId, updatedAt: new Date() })
+      .where(eq(posts.workspaceId, workspaceId));
 
-  await db.delete(workspaces).where(eq(workspaces.id, workspaceId));
+    await tx.delete(workspaces).where(eq(workspaces.id, workspaceId));
+    return moved;
+  });
   await invalidateTeamRoomCache(row.teamId, [workspaceId]);
   return result;
 }
 
+type DbTx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+export type ConnectionMergePlan = {
+  /** Source rows that become the destination's copy of their account. */
+  toMove: string[];
+  /** Source rows dropped in favour of a surviving row (`keepId`). */
+  duplicates: Array<{ dupId: string; keepId: string }>;
+};
+
+/**
+ * Decide which source connections move and which are duplicates.
+ *
+ * `existing` maps an account key to the id of the row already at the
+ * destination. Source rows are also deduped against each other: the
+ * destination's unique index allows one row per key, so when the same account
+ * sits in two source workspaces the first one moves and the rest are folded
+ * into it.
+ */
+export function planConnectionMerge<T extends { id: string }>(
+  source: T[],
+  keyOf: (acc: T) => string,
+  existing: ReadonlyMap<string, string>,
+): ConnectionMergePlan {
+  const survivors = new Map(existing);
+  const toMove: string[] = [];
+  const duplicates: ConnectionMergePlan["duplicates"] = [];
+  for (const acc of source) {
+    const key = keyOf(acc);
+    const keepId = survivors.get(key);
+    if (keepId) {
+      duplicates.push({ dupId: acc.id, keepId });
+    } else {
+      survivors.set(key, acc.id);
+      toMove.push(acc.id);
+    }
+  }
+  return { toMove, duplicates };
+}
+
+/**
+ * Drop duplicate connections without cutting them off their posts.
+ *
+ * `post_publications` is ON DELETE SET NULL and `auto_plugs` is ON DELETE
+ * CASCADE, so deleting a duplicate outright would orphan its scheduled and
+ * published deliveries and kill its watching Auto-Plugs. Repoint each
+ * reference to the surviving row first. A post that already targets the
+ * survivor keeps that row (the publication pair is unique), and only the
+ * redundant reference falls to the FK action.
+ */
+async function repointAndDropDuplicates(
+  tx: DbTx,
+  duplicates: ConnectionMergePlan["duplicates"],
+): Promise<void> {
+  if (duplicates.length === 0) return;
+  const now = new Date();
+  for (const { dupId, keepId } of duplicates) {
+    await tx
+      .update(postPublications)
+      .set({ connectedAccountId: keepId, updatedAt: now })
+      .where(
+        and(
+          eq(postPublications.connectedAccountId, dupId),
+          sql`not exists (select 1 from post_publications p2 where p2.post_id = ${postPublications.postId} and p2.connected_account_id = ${keepId})`,
+        ),
+      );
+    await tx
+      .update(autoPlugs)
+      .set({ connectedAccountId: keepId, updatedAt: now })
+      .where(
+        and(
+          eq(autoPlugs.connectedAccountId, dupId),
+          sql`not exists (select 1 from auto_plugs a2 where a2.post_id = ${autoPlugs.postId} and a2.connected_account_id = ${keepId})`,
+        ),
+      );
+  }
+  await tx.delete(connectedAccounts).where(
+    inArray(
+      connectedAccounts.id,
+      duplicates.map((d) => d.dupId),
+    ),
+  );
+}
+
 /**
  * Move connections from one workspace to another.
- * Duplicates already on the target (same platform + platform_user_id) are dropped.
+ * Duplicates already on the target (same platform + platform_user_id) are
+ * folded into the target's row, references included.
  */
 async function moveConnectionsBetweenWorkspaces(
+  tx: DbTx,
   fromWorkspaceId: string,
   toWorkspaceId: string,
 ): Promise<{ moved: number; skipped: number }> {
-  const source = await db
+  const source = await tx
     .select({
       id: connectedAccounts.id,
       platform: connectedAccounts.platform,
@@ -1797,51 +1896,46 @@ async function moveConnectionsBetweenWorkspaces(
 
   if (source.length === 0) return { moved: 0, skipped: 0 };
 
-  const target = await db
+  const target = await tx
     .select({
+      id: connectedAccounts.id,
       platform: connectedAccounts.platform,
       platformUserId: connectedAccounts.platformUserId,
     })
     .from(connectedAccounts)
     .where(eq(connectedAccounts.workspaceId, toWorkspaceId));
 
-  const targetKeys = new Set(
-    target.map((t) => `${t.platform}:${t.platformUserId}`),
+  const keyOf = (a: { platform: string; platformUserId: string }) =>
+    `${a.platform}:${a.platformUserId}`;
+  const { toMove, duplicates } = planConnectionMerge(
+    source,
+    keyOf,
+    new Map(target.map((t) => [keyOf(t), t.id])),
   );
 
-  const toSkip: string[] = [];
-  const toMove: string[] = [];
-  for (const acc of source) {
-    const key = `${acc.platform}:${acc.platformUserId}`;
-    if (targetKeys.has(key)) toSkip.push(acc.id);
-    else toMove.push(acc.id);
-  }
-
-  if (toSkip.length > 0) {
-    await db
-      .delete(connectedAccounts)
-      .where(inArray(connectedAccounts.id, toSkip));
-  }
+  await repointAndDropDuplicates(tx, duplicates);
   if (toMove.length > 0) {
-    await db
+    await tx
       .update(connectedAccounts)
       .set({ workspaceId: toWorkspaceId, updatedAt: new Date() })
       .where(inArray(connectedAccounts.id, toMove));
   }
 
-  return { moved: toMove.length, skipped: toSkip.length };
+  return { moved: toMove.length, skipped: duplicates.length };
 }
 
 /**
  * Move connections from workspaces onto personal Main (workspace_id null).
- * Duplicates already on Main for that user are dropped.
+ * Duplicates already on Main for that user, or repeated across the source
+ * workspaces, are folded into one row, references included.
  */
 async function moveConnectionsToPersonal(
+  tx: DbTx,
   workspaceIds: string[],
 ): Promise<{ moved: number; skipped: number }> {
   if (workspaceIds.length === 0) return { moved: 0, skipped: 0 };
 
-  const source = await db
+  const source = await tx
     .select({
       id: connectedAccounts.id,
       userId: connectedAccounts.userId,
@@ -1849,13 +1943,16 @@ async function moveConnectionsToPersonal(
       platformUserId: connectedAccounts.platformUserId,
     })
     .from(connectedAccounts)
-    .where(inArray(connectedAccounts.workspaceId, workspaceIds));
+    .where(inArray(connectedAccounts.workspaceId, workspaceIds))
+    // Stable survivor choice when an account repeats across workspaces.
+    .orderBy(asc(connectedAccounts.createdAt), asc(connectedAccounts.id));
 
   if (source.length === 0) return { moved: 0, skipped: 0 };
 
   const userIds = [...new Set(source.map((s) => s.userId))];
-  const personal = await db
+  const personal = await tx
     .select({
+      id: connectedAccounts.id,
       userId: connectedAccounts.userId,
       platform: connectedAccounts.platform,
       platformUserId: connectedAccounts.platformUserId,
@@ -1868,31 +1965,28 @@ async function moveConnectionsToPersonal(
       ),
     );
 
-  const personalKeys = new Set(
-    personal.map((p) => `${p.userId}:${p.platform}:${p.platformUserId}`),
+  const keyOf = (a: {
+    userId: string;
+    platform: string;
+    platformUserId: string;
+  }) => `${a.userId}:${a.platform}:${a.platformUserId}`;
+  const { toMove, duplicates } = planConnectionMerge(
+    source,
+    keyOf,
+    new Map(personal.map((p) => [keyOf(p), p.id])),
   );
 
-  const toSkip: string[] = [];
-  const toMove: string[] = [];
-  for (const acc of source) {
-    const key = `${acc.userId}:${acc.platform}:${acc.platformUserId}`;
-    if (personalKeys.has(key)) toSkip.push(acc.id);
-    else toMove.push(acc.id);
-  }
-
-  if (toSkip.length > 0) {
-    await db
-      .delete(connectedAccounts)
-      .where(inArray(connectedAccounts.id, toSkip));
-  }
+  // Fold duplicates first: the moving survivor and its duplicate must never
+  // both sit on Main, or the personal unique index rejects the move.
+  await repointAndDropDuplicates(tx, duplicates);
   if (toMove.length > 0) {
-    await db
+    await tx
       .update(connectedAccounts)
       .set({ workspaceId: null, updatedAt: new Date() })
       .where(inArray(connectedAccounts.id, toMove));
   }
 
-  return { moved: toMove.length, skipped: toSkip.length };
+  return { moved: toMove.length, skipped: duplicates.length };
 }
 
 export async function deleteTeamForUser(
@@ -1919,39 +2013,45 @@ export async function deleteTeamForUser(
     .where(eq(workspaces.teamId, teamId));
   const wsIds = wsRows.map((w) => w.id);
 
-  let result = { moved: 0, skipped: 0 };
-  if (wsIds.length > 0) {
-    await db
-      .update(userSettings)
-      .set({ activeWorkspaceId: null })
-      .where(inArray(userSettings.activeWorkspaceId, wsIds));
+  // One transaction: a failure partway (e.g. a unique-index clash while moving
+  // connections) must leave the team, its accounts and its posts untouched so
+  // a retry starts from the same state.
+  const result = await db.transaction(async (tx) => {
+    let moved = { moved: 0, skipped: 0 };
+    if (wsIds.length > 0) {
+      await tx
+        .update(userSettings)
+        .set({ activeWorkspaceId: null })
+        .where(inArray(userSettings.activeWorkspaceId, wsIds));
 
-    if (keepConnections) {
-      result = await moveConnectionsToPersonal(wsIds);
-      // Match connections → Main so SET NULL on workspace delete doesn't surprise.
-      await db
-        .update(posts)
-        .set({ workspaceId: null, updatedAt: new Date() })
-        .where(inArray(posts.workspaceId, wsIds));
-    } else {
-      await db
-        .delete(connectedAccounts)
-        .where(inArray(connectedAccounts.workspaceId, wsIds));
-      const postRows = await db
-        .select({ id: posts.id })
-        .from(posts)
-        .where(inArray(posts.workspaceId, wsIds));
-      const postIds = postRows.map((p) => p.id);
-      if (postIds.length > 0) {
-        await db
-          .delete(postPublications)
-          .where(inArray(postPublications.postId, postIds));
-        await db.delete(posts).where(inArray(posts.id, postIds));
+      if (keepConnections) {
+        moved = await moveConnectionsToPersonal(tx, wsIds);
+        // Match connections → Main so SET NULL on workspace delete doesn't surprise.
+        await tx
+          .update(posts)
+          .set({ workspaceId: null, updatedAt: new Date() })
+          .where(inArray(posts.workspaceId, wsIds));
+      } else {
+        await tx
+          .delete(connectedAccounts)
+          .where(inArray(connectedAccounts.workspaceId, wsIds));
+        const postRows = await tx
+          .select({ id: posts.id })
+          .from(posts)
+          .where(inArray(posts.workspaceId, wsIds));
+        const postIds = postRows.map((p) => p.id);
+        if (postIds.length > 0) {
+          await tx
+            .delete(postPublications)
+            .where(inArray(postPublications.postId, postIds));
+          await tx.delete(posts).where(inArray(posts.id, postIds));
+        }
       }
     }
-  }
 
-  await db.delete(teams).where(eq(teams.id, teamId));
+    await tx.delete(teams).where(eq(teams.id, teamId));
+    return moved;
+  });
   await invalidateTeamRoomCache(teamId, wsIds);
   return result;
 }
@@ -2375,8 +2475,17 @@ async function resolveMoveTarget(
     targetWorkspaceId,
   );
 
-  // Into actor's own workspace (solo or owned team).
+  // Into actor's own workspace (solo or owned team). This also transfers
+  // ownership to the actor, so it gets the same guard as Main: a team Admin's
+  // `manage_connections` must not let them walk the team owner's connection
+  // into a workspace the Admin owns (just as private as their Main).
   if (target.isOwner) {
+    if (account.userId !== actorUserId) {
+      throw new TeamServiceError(
+        403,
+        "Only the account owner can move this connection out of its team.",
+      );
+    }
     return { nextUserId: actorUserId };
   }
 
@@ -2519,6 +2628,9 @@ export async function moveConnectedAccountToWorkspace(
     const { syncConnectedAccountsToLimit } = await import("../plan-limits.js");
     await syncConnectedAccountsToLimit(nextUserId);
     await syncConnectedAccountsToLimit(account.userId);
+    const { queueAgencyExtraAccountsSync } = await import("../extra-accounts.js");
+    queueAgencyExtraAccountsSync(nextUserId, "transfer");
+    queueAgencyExtraAccountsSync(account.userId, "transfer");
   }
 
   // Connection counts in workspace lists are cached — refresh both sides.

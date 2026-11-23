@@ -2,6 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import {
   claimPostMetadataKey,
+  markPostFinalized,
+  PUBLISH_WEBHOOK_SENT_KEY,
   releasePostMetadataKey,
 } from "../lib/post-metadata-claim.js";
 import {
@@ -11,6 +13,7 @@ import {
   queuedPosts,
 } from "../db/schema.js";
 import { maybeSendPostFailureEmail } from "../lib/post-failure-email.js";
+import { setupBulkAutoFeaturesAfterPublish } from "./bulk-auto-features.js";
 import {
   deliverUserWebhookEvent,
   hasWebhookSubscriberFor,
@@ -34,12 +37,11 @@ async function loadPublicationRows(postId: string) {
     .where(eq(postPublications.postId, postId));
 }
 
-const PUBLISH_WEBHOOK_SENT_KEY = "_publishWebhookSentAt";
-
 /**
- * One publish webhook per post. Platform jobs run concurrently (CF Queues
- * fans out per platform), so the last two to finish can both see every row
- * terminal and both try to emit.
+ * One publish webhook per publish attempt. Platform jobs run concurrently (CF
+ * Queues fans out per platform), so the last two to finish can both see every
+ * row terminal and both try to emit. A Retry starts a new attempt and re-arms
+ * the claim (`rearmPublishOutcomeClaims`, called from `executePublish`).
  */
 function claimPublishWebhook(postId: string): Promise<boolean> {
   return claimPostMetadataKey(postId, PUBLISH_WEBHOOK_SENT_KEY);
@@ -120,7 +122,15 @@ export async function emitPublishWebhooksForPost(
   }
 }
 
-/** After per-platform jobs finish, update aggregate post status and notify user. */
+/**
+ * After per-platform jobs finish, update aggregate post status and notify user.
+ *
+ * Idempotent and claim-guarded, so it is safe to run again for a post it has
+ * already finalized. Its last step marks the post finalized
+ * (`POST_FINALIZED_KEY`): a post that reached a terminal status without that
+ * mark is one whose finalize never ran or died part way, and the background
+ * worker's unfinalized-post sweep asks for it again.
+ */
 export async function maybeFinalizePostPublish(
   postId: string,
   userId: string,
@@ -160,6 +170,15 @@ export async function maybeFinalizePostPublish(
       ),
     );
 
+  // Auto-Repost / Auto-Plug saved with the post. Every publish path ends here,
+  // including the per-platform jobs a scheduled post runs as. Awaited: on the
+  // CF worker an unawaited insert dies with the isolate. Never throws.
+  await setupBulkAutoFeaturesAfterPublish({
+    postId,
+    userId,
+    publications: pubs,
+  });
+
   const failedList = pubs.filter((p) => p.status === "failed");
   if (failedList.length > 0) {
     await maybeSendPostFailureEmail({
@@ -174,4 +193,8 @@ export async function maybeFinalizePostPublish(
   }
 
   await emitPublishWebhooksForPost(postId, userId);
+
+  // Last, so a finalize that threw above leaves the post unmarked for the
+  // sweep to retry. Every side effect above is claimed once per attempt.
+  await markPostFinalized(postId);
 }

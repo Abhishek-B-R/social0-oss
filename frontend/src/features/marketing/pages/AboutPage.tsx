@@ -13,14 +13,16 @@ export default function AboutPage() {
         <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[22px] text-foreground landing mb-6">
           About Social0
         </h1>
-        <p className="text-sm text-muted-foreground mb-10">
-          Multi-platform social scheduling for humans and AI agents
+        <p className="text-base text-muted-foreground mb-10">
+          Social0 is a social media scheduler with a REST API, MCP server and
+          CLI that lets creators, agencies and AI agents publish one post to
+          nine networks from one place.
         </p>
 
         <div className="prose prose-zinc dark:prose-invert max-w-none space-y-8 text-base leading-relaxed">
           <section>
             <h2 className="text-xl sm:text-2xl font-semibold font-serif text-foreground mb-3">
-              What we build
+              What Social0 does
             </h2>
             <p>
               Social0 is a social media scheduler for creators, founders, and
@@ -35,7 +37,7 @@ export default function AboutPage() {
 
           <section>
             <h2 className="text-xl sm:text-2xl font-semibold font-serif text-foreground mb-3">
-              Who it is for
+              Who uses Social0
             </h2>
             <p>
               People who outgrew posting from nine native apps, teams that want
@@ -43,6 +45,56 @@ export default function AboutPage() {
               that need a real API instead of a browser. A free plan is
               available with no credit card. Paid tiers add accounts, bulk
               image and video tools, auto-repost, auto-plug, and teams.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-xl sm:text-2xl font-semibold font-serif text-foreground mb-3">
+              What makes Social0 different
+            </h2>
+            <ul>
+              <li>
+                Priced by connected accounts, with unlimited posts on paid
+                plans: Creator is $29.90/month for 15 accounts, Agency is
+                $59.90/month for 59 accounts plus $1 for each extra one. See{" "}
+                <a href="/pricing" className={linkClass}>
+                  pricing
+                </a>
+                .
+              </li>
+              <li>
+                The REST API, the hosted{" "}
+                <a href="/mcp" className={linkClass}>
+                  MCP server
+                </a>{" "}
+                and the CLI are on every plan, including the free one (3
+                accounts, 10 posts, no card).
+              </li>
+              <li>
+                One post goes out to every selected network in parallel, and you
+                see which networks succeeded and which failed, per account.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="text-xl sm:text-2xl font-semibold font-serif text-foreground mb-3">
+              Who builds Social0
+            </h2>
+            <p>
+              Social0 is built and run by Abhishek BR, an independent developer
+              in India who writes the code, answers support and ships updates
+              himself. He started it to post his own work everywhere without
+              opening nine apps, and to let his AI agents do the same. You can
+              find his other work on{" "}
+              <a href="https://github.com/Abhishek-B-R" className={linkClass}>
+                GitHub
+              </a>{" "}
+              and{" "}
+              <a href="https://abhishekbr.com" className={linkClass}>
+                abhishekbr.com
+              </a>
+              .
             </p>
           </section>
 

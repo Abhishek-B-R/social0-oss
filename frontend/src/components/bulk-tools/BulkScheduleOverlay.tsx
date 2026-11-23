@@ -1,118 +1,125 @@
-
-import { CalendarClock, Loader2, Upload, X } from "lucide-react";
+import { useEffect, useId } from "react";
+import { CalendarClock, Loader2, Upload } from "lucide-react";
 
 export type BulkScheduleOverlayPhase = "uploading" | "creating";
 
 type BulkScheduleOverlayProps = {
-  variant: "image" | "video";
   phase: BulkScheduleOverlayPhase;
   uploadPercent: number;
   totalItems: number;
-  /** 1-based index while creating scheduled posts */
+  /** 1-based index while creating posts */
   creatingIndex?: number;
+  /** What the posts become: "scheduled", "queued", "drafts". */
+  mode?: "schedule" | "queue" | "draft";
   onCancel: () => void;
 };
 
-function itemLabel(variant: "image" | "video", count: number) {
-  const word = variant === "image" ? "image" : "video";
-  return count === 1 ? word : `${word}s`;
-}
-
+/**
+ * Blocking progress panel while a bulk import uploads files and creates
+ * posts. Cancel stops further uploads and posts; posts already created stay.
+ */
 export function BulkScheduleOverlay({
-  variant,
   phase,
   uploadPercent,
   totalItems,
   creatingIndex = 0,
+  mode = "schedule",
   onCancel,
 }: BulkScheduleOverlayProps) {
+  const titleId = useId();
   const isUploading = phase === "uploading";
-  const label = itemLabel(variant, totalItems);
+  const files = `${totalItems} file${totalItems === 1 ? "" : "s"}`;
+  const pct = Math.min(100, Math.max(0, uploadPercent));
+
+  // Esc cancels, like the Cancel button.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onCancel]);
 
   const title = isUploading
-    ? `Uploading your ${label}`
-    : "Scheduling your posts";
-
-  const description = isUploading
-    ? `Each ${variant === "image" ? "image" : "video"} is uploaded first, then added to your calendar as a separate scheduled post.`
-    : "Saving each post to your schedule. This usually takes a few seconds.";
+    ? `Uploading ${files}`
+    : mode === "draft"
+      ? "Saving your drafts"
+      : mode === "queue"
+        ? "Adding posts to your queue"
+        : "Scheduling your posts";
 
   const stepLabel = isUploading
-    ? `${Math.min(100, Math.max(0, uploadPercent))}% complete · ${totalItems} ${label} total`
+    ? `${pct}% uploaded`
     : creatingIndex > 0
       ? `Post ${creatingIndex} of ${totalItems}`
-      : `Preparing ${totalItems} scheduled ${label}…`;
+      : `Preparing ${totalItems} post${totalItems === 1 ? "" : "s"}…`;
+
+  const bar = isUploading
+    ? pct
+    : totalItems > 0
+      ? Math.round((creatingIndex / totalItems) * 100)
+      : 0;
 
   return (
     <div
-      className="sheet-scrim bg-bg/70 backdrop-blur-[2px] dark:bg-black/70 lg:left-64"
+      className="sheet-scrim bg-scrim backdrop-blur-[2px] lg:left-64"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="bulk-schedule-overlay-title"
+      aria-labelledby={titleId}
       aria-busy="true"
     >
-      <div className="sheet-panel relative max-w-md border border-border bg-card p-6 shadow-xl sm:p-8">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full border border-border bg-bg-elevated text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          aria-label="Cancel scheduling"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
+      <div className="sheet-panel relative max-w-md border border-border bg-bg-elevated p-6 shadow-xl sm:p-8">
         <div className="flex flex-col items-center text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100/90 dark:bg-emerald-500/20">
+          <div className="flex size-14 items-center justify-center rounded-full bg-accent/10">
             {isUploading ? (
-              <Upload className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              <Upload className="size-7 text-accent" aria-hidden />
             ) : (
-              <CalendarClock className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+              <CalendarClock className="size-7 text-accent" aria-hidden />
             )}
           </div>
 
-          <h2
-            id="bulk-schedule-overlay-title"
-            className="mt-4 text-xl font-semibold text-foreground"
-          >
+          <h2 id={titleId} className="mt-4 text-xl font-semibold tracking-tight text-text">
             {title}
           </h2>
-          <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            {description}
+          <p className="mt-2 max-w-sm text-sm leading-relaxed text-text-muted">
+            {isUploading
+              ? "Each file uploads first, then becomes its own post."
+              : "Creating one post per file. This usually takes a few seconds."}
           </p>
 
           <div className="mt-6 w-full space-y-2">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-2 w-full overflow-hidden rounded-full bg-bg-muted"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={bar}
+              aria-label={stepLabel}
+            >
               <div
-                className="h-full bg-accent transition-all duration-200"
-                style={{
-                  width: `${
-                    isUploading
-                      ? Math.min(100, Math.max(0, uploadPercent))
-                      : totalItems > 0
-                        ? Math.round((creatingIndex / totalItems) * 100)
-                        : 0
-                  }%`,
-                }}
+                className="h-full bg-accent transition-[width] duration-200 motion-reduce:transition-none"
+                style={{ width: `${bar}%` }}
               />
             </div>
-            <div className="flex items-center justify-center gap-2 text-xs font-medium text-muted-foreground">
-              {!isUploading && (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
-              )}
+            <div className="flex items-center justify-center gap-2 text-xs font-medium text-text-muted" aria-live="polite">
+              {!isUploading ? (
+                <Loader2 className="size-3.5 animate-spin text-accent motion-reduce:animate-none" aria-hidden />
+              ) : null}
               <span>{stepLabel}</span>
             </div>
           </div>
 
-          <p className="mt-4 rounded-lg bg-muted/60 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-4 rounded-lg bg-bg-muted px-3 py-2 text-xs leading-relaxed text-text-muted">
             {isUploading
-              ? "Keep this tab open while uploads finish. You can cancel before posts are created."
-              : "You can leave this page once scheduling finishes — posts will appear on your calendar."}
+              ? "Keep this tab open until uploads finish. Nothing is posted until then."
+              : "Keep this tab open for a moment. Posts made before you cancel stay."}
           </p>
 
           <button
             type="button"
             onClick={onCancel}
-            className="mt-5 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+            className="mt-5 w-full rounded-xl border border-border bg-bg-elevated px-4 py-2.5 text-sm font-medium text-text transition-colors hover:bg-bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+            autoFocus
           >
             Cancel
           </button>

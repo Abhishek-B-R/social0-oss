@@ -3,6 +3,13 @@ import { config } from "./config.js";
 
 type RequestStore = {
   apiKey: string;
+  /**
+   * Hosted MCP only: the OAuth client's registered name ("ChatGPT", "Claude"),
+   * forwarded as `X-Social0-Mcp-Client` so posts are labelled per host.
+   */
+  mcpClient?: string;
+  /** Hosted MCP only: extra headers for every API call (the worker's token signature). */
+  headers?: Record<string, string>;
 };
 
 export const requestContext = new AsyncLocalStorage<RequestStore>();
@@ -17,9 +24,26 @@ export function runWithApiKey<T>(apiKey: string, fn: () => T): T {
   return requestContext.run({ apiKey }, fn);
 }
 
+export function getRequestMcpClient(): string | undefined {
+  return requestContext.getStore()?.mcpClient;
+}
+
+export function getRequestHeaders(): Record<string, string> {
+  return requestContext.getStore()?.headers ?? {};
+}
+
 export async function runWithApiKeyAsync<T>(
   apiKey: string,
   fn: () => Promise<T>,
+  opts?: { mcpClient?: string | null; headers?: Record<string, string> },
 ): Promise<T> {
-  return requestContext.run({ apiKey }, fn);
+  const mcpClient = opts?.mcpClient ?? undefined;
+  return requestContext.run(
+    {
+      apiKey,
+      ...(mcpClient ? { mcpClient } : {}),
+      ...(opts?.headers ? { headers: opts.headers } : {}),
+    },
+    fn,
+  );
 }

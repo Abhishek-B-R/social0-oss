@@ -21,3 +21,10 @@ export function clearTeamBootstrap(teamId?: string | null) {
   }
   bootstrappedTeams.clear();
 }
+
+/** Drop every team's gate except `teamId` (the team that is now active). */
+export function clearTeamBootstrapExcept(teamId: string) {
+  for (const id of [...bootstrappedTeams]) {
+    if (id !== teamId) bootstrappedTeams.delete(id);
+  }
+}

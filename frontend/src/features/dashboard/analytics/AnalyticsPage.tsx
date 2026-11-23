@@ -1,59 +1,213 @@
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
-import Link from "@/components/AppLink";
-import { ArrowClockwise, ArrowSquareOut, X } from "@/icons/phosphor";
-import { useSession } from "@/lib/auth-client";
-import { useDashboardPath } from "@/lib/dashboard-base-path";
-import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
-import { RangeToolbar } from "@/components/dashboard/RangeToolbar";
-import { AccountFilterChips } from "@/components/dashboard/AccountFilterChips";
+import { useSearchParams } from "react-router-dom";
+import { formatInTimeZone } from "date-fns-tz";
+import { BarChart3, RotateCw } from "lucide-react";
 import {
-  defaultDateWindow,
-  windowQueryParams,
-  type DateWindow,
-} from "@/lib/date-window";
-import { getAnalyticsOverview, listAnalyticsAccounts } from "@/api/analytics";
+  EmptyState,
+  ErrorState,
+  FilterChip,
+  InlineError,
+  NetworkIcon,
+  PageContainer,
+  PageHeader,
+  Skeleton,
+  SkeletonPageHeader,
+  openComposer,
+  useAccountHealth,
+  useDashboardPath,
+} from "@/components/app";
+import Link from "@/components/AppLink";
+import { GuestPostsPageView } from "@/components/dashboard/GuestPostsPageView";
+import {
+  getAnalyticsOverview,
+  listAnalyticsAccounts,
+  type AnalyticsAccount,
+  type AnalyticsOverview,
+} from "@/api/analytics";
 import { getUserSettingsSnapshot } from "@/api/settings";
 import { listWorkspaces } from "@/api/team";
-import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
-import {
-  EngagementTrendChart,
-  PlatformBreakdownChart,
-  EngagementMixChart,
-  TrendChartViewToggle,
-  type TrendChartView,
-} from "./AnalyticsCharts";
-import {
-  engagementOf,
-  engagementMix,
-  formatMetric,
-  formatRangeLabel,
-  viewsOf,
-} from "./analytics-utils";
-import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
-import { PLATFORM_LABEL } from "@/lib/platforms";
-import { cn } from "@/lib/utils";
-import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
+import { useSession } from "@/lib/auth-client";
+import { relativeTime } from "@/lib/date-format";
+import { WINDOW_PRESETS, type DateWindow, type WindowPreset } from "@/lib/date-window";
 import { PAGE_LIVE_QUERY } from "@/lib/page-live-query";
+import { WORKSPACES_QUERY_KEY } from "@/lib/team-query-keys";
+import { useWorkspaceNavPermissions } from "@/hooks/useWorkspaceNavPermissions";
+import { cn } from "@/lib/utils";
+import { ExperimentalBadge } from "@/components/dashboard/ExperimentalBadge";
+import {
+  MetricTrendChart,
+  TrendChartViewToggle,
+  TrendLegend,
+  type TrendChartView,
+  type TrendCompare,
+} from "./AnalyticsCharts";
+import { AnalyticsRangeControl } from "./AnalyticsRangeControl";
+import {
+  BreakdownCard,
+  Highlights,
+  KpiTabs,
+  TopPostsCard,
+  type ReconnectTarget,
+} from "./AnalyticsSections";
+import {
+  DEFAULT_RANGE,
+  METRICS,
+  buildHighlights,
+  buildSeriesRows,
+  handleOf,
+  isMetricKey,
+  kpiTotals,
+  metricMeta,
+  previousPeriodWords,
+  previousWindow,
+  rangeWords,
+  skippedCount,
+  type MetricKey,
+} from "./analytics-model";
+import { formatRangeLabel } from "./analytics-utils";
+
+/** Previous-period numbers move slowly; keep them warm across chip toggles. */
+const PREVIOUS_QUERY = {
+  ...PAGE_LIVE_QUERY,
+  staleTime: 10 * 60_000,
+  gcTime: 30 * 60_000,
+};
 
 export function AnalyticsPage() {
   const { data: session, isPending: sessionPending } = useSession();
-  const { ready: permissionsReady, canViewAnalytics } =
+  const { ready: permissionsReady, canViewAnalytics, canCreatePosts } =
     useWorkspaceNavPermissions();
-  const dash = useDashboardPath();
-  const [dateWindow, setDateWindow] = useState<DateWindow>(defaultDateWindow);
-  /** undefined = unresolved (do not fetch); null = All; string = account id */
-  const [accountFilter, setAccountFilter] = useState<string | null | undefined>(
-    undefined,
-  );
-  const [trendChartView, setTrendChartView] = useState<TrendChartView>("line");
-  const [reconnectDismissed, setReconnectDismissed] = useState(false);
 
+  if (sessionPending) return <AnalyticsSkeleton />;
+
+  if (!session) {
+    return (
+      <GuestPostsPageView
+        pageTitle="Analytics"
+        promptTitle="Sign in to see analytics"
+        promptDescription="Once you publish, Social0 pulls likes, views, and engagement live from each platform."
+      />
+    );
+  }
+
+  if (!permissionsReady) return <AnalyticsSkeleton />;
+
+  if (!canViewAnalytics) {
+    return (
+      <PageContainer>
+        <PageHeader title="Analytics" />
+        <EmptyState
+          icon={<BarChart3 aria-hidden />}
+          title="Analytics isn't part of your role"
+          description="Ask a team admin to switch you to Member, Analyst, or Admin."
+        />
+      </PageContainer>
+    );
+  }
+
+  return <AnalyticsView canCreatePosts={canCreatePosts} />;
+}
+
+// ---------------------------------------------------------------------------
+// URL state: ?range=28d | custom&since=&until= · ?account=<id> · ?metric=views
+
+function useAnalyticsUrlState() {
+  const [params, setParams] = useSearchParams();
+  const rawRange = params.get("range");
+  const since = params.get("since") ?? undefined;
+  const until = params.get("until") ?? undefined;
+  const dateWindow = useMemo<DateWindow>(() => {
+    if (rawRange === "custom" && since && until) {
+      return { range: "custom", since, until };
+    }
+    if (rawRange && (WINDOW_PRESETS as readonly string[]).includes(rawRange)) {
+      return { range: rawRange as WindowPreset };
+    }
+    return { range: DEFAULT_RANGE };
+  }, [rawRange, since, until]);
+
+  const accountId = params.get("account") || null;
+  const rawMetric = params.get("metric");
+  const metric = isMetricKey(rawMetric) ? rawMetric : null;
+
+  const update = useCallback(
+    (patch: Record<string, string | null>) => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          for (const [k, v] of Object.entries(patch)) {
+            if (v == null || v === "") next.delete(k);
+            else next.set(k, v);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setParams],
+  );
+
+  const setWindow = useCallback(
+    (w: DateWindow) => {
+      if (w.range === "custom") {
+        update({ range: "custom", since: w.since ?? null, until: w.until ?? null });
+      } else {
+        update({
+          range: w.range === DEFAULT_RANGE ? null : w.range,
+          since: null,
+          until: null,
+        });
+      }
+    },
+    [update],
+  );
+
+  const setAccountId = useCallback(
+    (id: string | null) => update({ account: id }),
+    [update],
+  );
+  // `null` clears ?metric= so the view falls back to its data-driven default.
+  const setMetric = useCallback(
+    (m: MetricKey | null) => update({ metric: m }),
+    [update],
+  );
+
+  return { window: dateWindow, setWindow, accountId, setAccountId, metric, setMetric };
+}
+
+function windowKey(w: DateWindow): string {
+  return w.range === "custom" ? `custom:${w.since}:${w.until}` : w.range;
+}
+
+function overviewParams(w: DateWindow) {
+  return w.range === "custom"
+    ? { range: "custom" as const, since: w.since, until: w.until }
+    : { range: w.range };
+}
+
+// ---------------------------------------------------------------------------
+
+function AnalyticsView({ canCreatePosts }: { canCreatePosts: boolean }) {
+  const dash = useDashboardPath();
   const qc = useQueryClient();
+  const panelId = useId().replace(/:/g, "");
+  const url = useAnalyticsUrlState();
+  const [view, setView] = useState<TrendChartView>("line");
+  const [compareChoice, setCompareChoice] = useState<TrendCompare>("previous");
+  // Tagged with the view it belongs to, so it clears when the range/account changes.
+  const [refreshFailure, setRefreshFailure] = useState<string | null>(null);
+
+  const settingsQuery = useQuery({
+    queryKey: ["user-settings-snapshot"],
+    queryFn: getUserSettingsSnapshot,
+    staleTime: 5 * 60_000,
+  });
+  const settingsTimeZone = settingsQuery.data?.timezone?.trim() || "UTC";
+
   const workspacesQuery = useQuery({
     queryKey: WORKSPACES_QUERY_KEY,
     queryFn: listWorkspaces,
-    enabled: !!session,
   });
   const workspaceReady = workspacesQuery.isSuccess || workspacesQuery.isError;
   const workspaceId =
@@ -62,479 +216,551 @@ export function AnalyticsPage() {
   const accountsQuery = useQuery({
     queryKey: ["analytics-accounts", workspaceId],
     queryFn: listAnalyticsAccounts,
-    enabled: !!session && permissionsReady && canViewAnalytics && workspaceReady,
+    enabled: workspaceReady,
     ...PAGE_LIVE_QUERY,
   });
+  const accounts = useMemo(() => accountsQuery.data ?? [], [accountsQuery.data]);
+  const health = useAccountHealth();
 
-  const accounts = accountsQuery.data ?? [];
-  const accountReady = accountFilter !== undefined;
-  const accountId =
-    typeof accountFilter === "string" ? accountFilter : null;
+  // An account id from the URL must belong to this workspace. Wait for the
+  // list before fetching a single-account view; drop stale ids.
+  const accountsSettled = accountsQuery.isSuccess || accountsQuery.isError;
+  const accountKnown =
+    url.accountId == null ||
+    accountsQuery.isError ||
+    accounts.some((a) => a.id === url.accountId);
+  const { accountId: urlAccountId, setAccountId } = url;
+  useEffect(() => {
+    if (!accountsQuery.isSuccess || urlAccountId == null) return;
+    if (!accounts.some((a) => a.id === urlAccountId)) setAccountId(null);
+  }, [accountsQuery.isSuccess, accounts, urlAccountId, setAccountId]);
+  const accountId = accountKnown ? url.accountId : null;
 
+  const wKey = windowKey(url.window);
+  const overviewKey = useMemo(
+    () => ["analytics-overview", workspaceId, wKey, accountId] as const,
+    [workspaceId, wKey, accountId],
+  );
   const overviewQuery = useQuery({
-    queryKey: ["analytics-overview", workspaceId, dateWindow, accountFilter],
+    queryKey: overviewKey,
     queryFn: () =>
       getAnalyticsOverview({
-        ...windowQueryParams(dateWindow),
-        accountId: accountId || undefined,
+        ...overviewParams(url.window),
+        accountId: accountId ?? undefined,
       }),
-    enabled:
-      !!session &&
-      permissionsReady &&
-      canViewAnalytics &&
-      workspaceReady &&
-      accountReady,
+    enabled: workspaceReady && (url.accountId == null || (accountsSettled && accountKnown)),
     ...PAGE_LIVE_QUERY,
   });
-
-  const settingsQuery = useQuery({
-    queryKey: ["user-settings-snapshot"],
-    queryFn: getUserSettingsSnapshot,
-    enabled: !!session,
-    staleTime: 5 * 60_000,
-  });
-
-  useEffect(() => {
-    if (accountsQuery.isError) {
-      if (accountFilter === undefined) setAccountFilter(null);
-      return;
-    }
-    if (!accountsQuery.isSuccess) return;
-    if (accountFilter !== undefined) {
-      if (
-        typeof accountFilter === "string" &&
-        accounts.length > 0 &&
-        !accounts.some((a) => a.id === accountFilter)
-      ) {
-        setAccountFilter(null);
-      }
-      return;
-    }
-    setAccountFilter(null);
-  }, [accountFilter, accounts, accountsQuery.isSuccess, accountsQuery.isError]);
-
-  const reconnect = useMemo(
-    () => overviewQuery.data?.accountsNeedingReconnect ?? [],
-    [overviewQuery.data],
-  );
-
-  const platformChart = useMemo(
-    () =>
-      overviewQuery.data?.byPlatform.map((row) => ({
-        platform: row.platform,
-        label: PLATFORM_LABEL[row.platform] ?? row.platform,
-        views: viewsOf(row.metrics) ?? 0,
-        likes: row.metrics.likes ?? 0,
-        comments: row.metrics.comments ?? 0,
-        shares:
-          (row.metrics.shares ?? 0) +
-          (row.metrics.reposts ?? 0) +
-          (row.metrics.quotes ?? 0),
-      })) ?? [],
-    [overviewQuery.data?.byPlatform],
-  );
-
-  const mixChart = useMemo(
-    () =>
-      overviewQuery.data ? engagementMix(overviewQuery.data.totals) : [],
-    [overviewQuery.data],
-  );
-
-  if (sessionPending) {
-    return <AnalyticsSkeleton />;
-  }
-
-  if (!session) {
-    return (
-      <GuestPostsPageView
-        pageTitle="Analytics"
-        pageDescription="Live performance from your connected social accounts."
-        promptTitle="Sign in to see analytics"
-        promptDescription="Once you publish, Social0 pulls likes, views, and engagement live from each platform."
-      />
-    );
-  }
-
-  if (!permissionsReady) {
-    return <AnalyticsSkeleton />;
-  }
-
-  if (!canViewAnalytics) {
-    return (
-      <div className="flex min-h-[24rem] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-bg-elevated px-6 text-center">
-        <p className="text-sm font-medium text-text">Analytics is not in your role</p>
-        <p className="mt-1 max-w-sm text-sm text-text-muted">
-          Ask a team admin to switch you to Member, Analyst, or Admin.
-        </p>
-      </div>
-    );
-  }
-
   const data = overviewQuery.data;
-  const loading = overviewQuery.isPending;
-  const refetching = overviewQuery.isFetching && !overviewQuery.isPending;
-  const emptyOverview = !data || data.publications.length === 0;
-  const kpi = {
-    views: emptyOverview ? undefined : viewsOf(data.totals),
-    likes: emptyOverview ? undefined : data.totals.likes,
-    comments: emptyOverview ? undefined : data.totals.comments,
-    engagement: emptyOverview ? undefined : engagementOf(data.totals),
+  // Day buckets come from the server, in the zone it used (the workspace
+  // owner's in a team). Read every day key, label and picker bound in that
+  // same zone; the viewer's own setting is only a fallback before it loads.
+  const timeZone = data?.timeZone || settingsTimeZone;
+
+  // Previous equal-length window, fetched only after the main one rendered.
+  const prevWindow = data ? previousWindow(data.since, data.until) : null;
+  const prevQuery = useQuery({
+    queryKey: ["analytics-overview-prev", workspaceId, wKey, accountId, data?.since ?? null],
+    queryFn: () =>
+      getAnalyticsOverview({
+        range: "custom",
+        since: prevWindow!.since,
+        until: prevWindow!.until,
+        accountId: accountId ?? undefined,
+      }),
+    enabled: !!prevWindow && !overviewQuery.isFetching,
+    ...PREVIOUS_QUERY,
+  });
+  const prevData = prevWindow ? prevQuery.data : undefined;
+
+  const refreshing = overviewQuery.isFetching;
+  const viewKey = overviewKey.join("|");
+  const refreshError = refreshFailure === viewKey;
+  const refresh = () => {
+    setRefreshFailure(null);
+    qc.fetchQuery({
+      queryKey: overviewKey,
+      queryFn: () =>
+        getAnalyticsOverview({
+          ...overviewParams(url.window),
+          accountId: accountId ?? undefined,
+          fresh: true,
+        }),
+      // Without this, fetchQuery honours staleTime and returns the cache.
+      staleTime: 0,
+    }).catch(() => {
+      setRefreshFailure(viewKey);
+    });
   };
 
-  const selectedAccount = accounts.find((a) => a.id === accountId);
-  const singleAccount = accountId != null;
-  const timeZone = settingsQuery.data?.timezone?.trim() || "UTC";
+  const totals = useMemo(() => (data ? kpiTotals(data) : null), [data]);
+  const prevTotals = useMemo(() => (prevData ? kpiTotals(prevData) : null), [prevData]);
+  const seriesRows = useMemo(
+    () => (data ? buildSeriesRows(data, timeZone) : []),
+    [data, timeZone],
+  );
+  const prevRows = useMemo(
+    () => (prevData ? buildSeriesRows(prevData, timeZone) : null),
+    [prevData, timeZone],
+  );
+  const highlights = useMemo(
+    () => (data ? buildHighlights(data, timeZone) : []),
+    [data, timeZone],
+  );
+
+  // With no ?metric=, show Views unless nothing in view reports views (e.g.
+  // LinkedIn / Bluesky only), then Engagement. Only the default is left out of
+  // the URL, so picking Views while the default is Engagement still sticks.
+  const defaultMetric: MetricKey =
+    totals && totals.views == null && totals.engagement != null ? "engagement" : "views";
+  const metric: MetricKey = url.metric ?? defaultMetric;
+  const { setMetric: setUrlMetric } = url;
+  const selectMetric = useCallback(
+    (m: MetricKey) => setUrlMetric(m === defaultMetric ? null : m),
+    [setUrlMetric, defaultMetric],
+  );
+  const compare: TrendCompare = compareChoice === metric ? "previous" : compareChoice;
+
+  const todayKey = safeDayKey(new Date().toISOString(), timeZone);
+  const ongoingToday =
+    seriesRows.length > 0 && seriesRows[seriesRows.length - 1]!.date === todayKey;
+
+  // Accounts that can't contribute numbers until they're reconnected.
+  const reconnectIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const a of accounts) if (a.missingScopes.length > 0) ids.add(a.id);
+    for (const a of data?.accountsNeedingReconnect ?? []) ids.add(a.accountId);
+    return ids;
+  }, [accounts, data?.accountsNeedingReconnect]);
+
+  const reconnectFor = useCallback(
+    (id: string): ReconnectTarget => {
+      const acct = health.canManageConnections
+        ? health.accounts.find((a) => a.id === id)
+        : undefined;
+      if (acct) return { href: acct.reconnectHref };
+      return { href: dash(`connections?account=${encodeURIComponent(id)}`) };
+    },
+    [health.accounts, health.canManageConnections, dash],
+  );
+
   const rangeLabel =
-    data?.since && data?.until
-      ? formatRangeLabel(data.since, data.until, timeZone)
-      : null;
+    data?.since && data.until ? formatRangeLabel(data.since, data.until, timeZone) : null;
+  const prevRangeLabel = prevWindow
+    ? formatRangeLabel(prevWindow.since, prevWindow.until, timeZone)
+    : null;
+
+  const noAccounts = accountsQuery.isSuccess && accounts.length === 0;
+  const emptyRange = !!data && data.publications.length === 0;
+  const loadingMain = !data && (overviewQuery.isPending || overviewQuery.isFetching);
+  const previousState: "loading" | "ready" | "error" | "off" = !data
+    ? "loading"
+    : !prevWindow
+      ? "off"
+      : prevQuery.isError
+        ? "error"
+        : prevData
+          ? "ready"
+          : "loading";
+
+  const skipped = data ? skippedCount(data) : 0;
+
+  const header = (
+    <PageHeader
+      title={
+        <span className="inline-flex items-center gap-2">
+          Analytics
+          <ExperimentalBadge withTip />
+        </span>
+      }
+      actions={
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:justify-end">
+          <AnalyticsRangeControl
+            value={url.window}
+            onChange={url.setWindow}
+            timeZone={timeZone}
+            resolvedSince={data?.since ?? null}
+            resolvedUntil={data?.until ?? null}
+          />
+          <UpdatedLine
+            fetchedAt={data?.fetchedAt ?? null}
+            refreshing={refreshing}
+            onRefresh={refresh}
+            disabled={!data && !overviewQuery.isError}
+          />
+        </div>
+      }
+    >
+      {!noAccounts ? (
+        <AccountChips
+          accounts={accounts}
+          loading={accountsQuery.isPending}
+          selectedId={accountId}
+          onSelect={setAccountId}
+          reconnectIds={reconnectIds}
+          reconnectFor={reconnectFor}
+        />
+      ) : null}
+    </PageHeader>
+  );
+
+  if (noAccounts) {
+    return (
+      <PageContainer stack>
+        {header}
+        <EmptyState
+          icon={<BarChart3 aria-hidden />}
+          title="No accounts with analytics yet"
+          description="Connect an account and publish through Social0. Views, likes, and comments show up here."
+          primaryAction={{ label: "Connect account", href: dash("connections?connect=1") }}
+        />
+      </PageContainer>
+    );
+  }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="shrink-0 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="flex flex-wrap items-center gap-2.5 dash-page-title">
-            Analytics
-            <ExperimentalBadge withTip />
-          </h1>
-          <p className="dash-page-subtitle">
-            Live metrics for posts you published through Social0.
-          </p>
-        </div>
-        <button
-          type="button"
-          title="Refresh from cache. Hold Shift to force a live platform fetch."
-          onClick={(e) => {
-            const force = e.shiftKey;
-            void qc.fetchQuery({
-              queryKey: ["analytics-overview", workspaceId, dateWindow, accountFilter],
-              queryFn: () =>
-                getAnalyticsOverview({
-                  ...windowQueryParams(dateWindow),
-                  accountId: accountId || undefined,
-                  fresh: force,
-                }),
-              // Without this, fetchQuery honours the client's default staleTime
-              // and Refresh silently returns cache instead of calling the API.
-              staleTime: 0,
-            });
-          }}
-          disabled={loading || refetching}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-bg-elevated px-3 py-1.5 text-sm font-medium text-text transition-[transform,background-color,color,opacity] duration-150 ease-out touch-manipulation hover:bg-bg-subtle active:scale-[0.97] disabled:opacity-60 disabled:active:scale-100 touch:min-h-10"
-        >
-          <ArrowClockwise
-            className={cn("h-4 w-4", refetching && "animate-spin")}
-            size={16}
-          />
-          Refresh
-        </button>
-      </div>
-
-      <RangeToolbar
-        value={dateWindow}
-        onChange={setDateWindow}
-        resolvedSince={data?.since}
-        resolvedUntil={data?.until}
-      />
-
-      <div className="shrink-0">
-        <AccountFilterChips
-          accounts={accounts}
-          selectedId={accountFilter === undefined ? undefined : accountId}
-          onSelect={setAccountFilter}
-          loading={
-            accountsQuery.isLoading ||
-            (!accountReady && !accountsQuery.isError)
-          }
-          emptyLabel="Connect an account to see analytics."
-        />
-      </div>
+    <PageContainer stack>
+      {header}
 
       {accountsQuery.isError ? (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">
-          {accountsQuery.error instanceof Error
-            ? accountsQuery.error.message
-            : "Failed to load accounts"}
-        </div>
+        <InlineError
+          message="Couldn't load your accounts, so the account filter is hidden."
+          onRetry={() => void accountsQuery.refetch()}
+        />
       ) : null}
 
-      {reconnect.length && !reconnectDismissed ? (
-        <div className="relative rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 pr-11 text-sm text-amber-900 dark:text-amber-100">
-          <p className="font-medium">Reconnect for full insights</p>
-          <p className="mt-1 text-amber-800/90 dark:text-amber-100/80">
-            These accounts still have posting access. Reconnect to grant
-            analytics scopes for the platforms currently rolled out.
-          </p>
-          <ul className="mt-2 list-inside list-disc text-xs">
-            {reconnect.map((a) => (
-              <li key={a.accountId}>
-                {PLATFORM_LABEL[a.platform] ?? a.platform}
-                {a.username ? ` (@${a.username})` : ""}
-              </li>
-            ))}
-          </ul>
-          <Link
-            href={dash("connections")}
-            className="mt-2 inline-block text-sm font-medium text-accent underline-offset-2 hover:underline"
-          >
-            Open Connections
-          </Link>
-          <button
-            type="button"
-            onClick={() => setReconnectDismissed(true)}
-            className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-md text-current opacity-70 transition-[transform,opacity,background-color] duration-150 ease-out hover:bg-black/10 hover:opacity-100 active:scale-[0.94] dark:hover:bg-white/10"
-            aria-label="Dismiss"
-          >
-            <X size={14} weight="bold" />
-          </button>
-        </div>
+      {overviewQuery.isError && !data ? (
+        <ErrorState
+          message="Couldn't load analytics."
+          detail={overviewQuery.error instanceof Error ? overviewQuery.error.message : null}
+          onRetry={() => void overviewQuery.refetch()}
+          retrying={overviewQuery.isFetching}
+        />
       ) : null}
 
-      {overviewQuery.isError ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
-          {overviewQuery.error instanceof Error
-            ? overviewQuery.error.message
-            : "Failed to load analytics"}
-        </div>
+      {refreshError && data ? (
+        <InlineError
+          message={`Couldn't refresh. Showing numbers from ${relativeTime(data.fetchedAt, { fallback: "earlier" })}.`}
+          onRetry={refresh}
+        />
       ) : null}
 
-      <div className="space-y-2">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label="Views"
-          value={formatMetric(kpi.views)}
-          loading={loading && !data}
+      {emptyRange ? (
+        <EmptyState
+          icon={<BarChart3 aria-hidden />}
+          title={`No posts published in ${rangeWords(url.window)}`}
+          description="Analytics covers posts you publish through Social0. Try a longer range, or publish something and refresh."
+          primaryAction={
+            url.window.range !== "365d"
+              ? {
+                  label:
+                    url.window.range === "90d" || url.window.range === "custom"
+                      ? "Show the last year"
+                      : "Show the last 3 months",
+                  onClick: () =>
+                    url.setWindow({
+                      range:
+                        url.window.range === "90d" || url.window.range === "custom"
+                          ? "365d"
+                          : "90d",
+                    }),
+                }
+              : undefined
+          }
+          secondaryAction={
+            canCreatePosts ? { label: "New post", onClick: () => openComposer() } : undefined
+          }
         />
-        <StatCard
-          label="Likes"
-          value={formatMetric(kpi.likes)}
-          loading={loading && !data}
-        />
-        <StatCard
-          label="Comments"
-          value={formatMetric(kpi.comments)}
-          loading={loading && !data}
-        />
-        <StatCard
-          label="Engagement"
-          value={formatMetric(kpi.engagement)}
-          loading={loading && !data}
-        />
-      </div>
-      {data?.sampled ? (
-        <p className="text-xs text-text-muted">
-          KPI totals cover the latest {data.sampleLimit} publications in this
-          range.
-        </p>
       ) : null}
-      {data?.partial ? (
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          Partial metrics — request budget reached. Refresh to load more.
-        </p>
-      ) : null}
-      {data && data.publications.length === 0 ? (
-        <p className="text-sm text-text-muted">
-          No posts published through Social0 in this range. Try 4W, or
-          publish something and refresh.
-        </p>
-      ) : null}
-      </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm sm:p-5">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-text">
-                Performance trend
-              </h2>
-              <p className="mt-1 text-xs text-text-muted">
-                Daily totals by publish date for posts in {rangeLabel ?? "this range"}.
-                {data?.sampled ? " Showing the most recent sample of posts." : ""}
-              </p>
+      {!emptyRange && !(overviewQuery.isError && !data) ? (
+        <>
+          <Highlights items={highlights} />
+
+          <section className="overflow-hidden rounded-xl border border-border bg-bg-elevated">
+            <KpiTabs
+              totals={totals}
+              previous={prevTotals}
+              previousState={previousState}
+              active={metric}
+              onActiveChange={selectMetric}
+              previousWords={previousPeriodWords(url.window)}
+              loading={loadingMain}
+              panelId={panelId}
+            />
+            <div
+              id={panelId}
+              role="tabpanel"
+              aria-labelledby={`${panelId}-tab-${metric}`}
+              className="flex flex-col gap-3 p-4 sm:p-5"
+            >
+              <CoverageNote
+                data={data}
+                skipped={skipped}
+                onRefresh={refresh}
+                refreshing={refreshing}
+              />
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs text-text-muted">
+                  {metricMeta(metric).label} per day by publish date
+                  {rangeLabel ? <>, {rangeLabel}</> : null}
+                  {compare === "previous" && prevRangeLabel ? (
+                    <span className="text-text-subtle"> · vs {prevRangeLabel}</span>
+                  ) : null}
+                </p>
+                <div className="flex items-center gap-2">
+                  <label className="inline-flex items-center gap-1.5 text-xs text-text-muted">
+                    <span>Compare</span>
+                    <select
+                      value={compare}
+                      onChange={(e) => setCompareChoice(e.target.value as TrendCompare)}
+                      className="h-7 rounded-full border border-border bg-bg-elevated px-2.5 text-xs font-medium text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 touch:h-9"
+                    >
+                      <option value="previous">Previous period</option>
+                      {METRICS.filter((m) => m.key !== metric).map((m) => (
+                        <option key={m.key} value={m.key}>
+                          {m.label}
+                        </option>
+                      ))}
+                      <option value="none">Nothing</option>
+                    </select>
+                  </label>
+                  <TrendChartViewToggle value={view} onChange={setView} />
+                </div>
+              </div>
+              {loadingMain ? (
+                <Skeleton className="h-56 w-full rounded-lg sm:h-72" />
+              ) : (
+                <MetricTrendChart
+                  rows={seriesRows}
+                  previous={prevRows}
+                  metric={metric}
+                  compare={compare}
+                  view={view}
+                  ongoingToday={ongoingToday}
+                />
+              )}
+              {!loadingMain ? (
+                <TrendLegend
+                  metric={metric}
+                  compare={compare}
+                  hasPrevious={!!prevRows?.length}
+                  ongoingToday={ongoingToday}
+                  view={view}
+                />
+              ) : null}
             </div>
-            <TrendChartViewToggle
-              value={trendChartView}
-              onChange={setTrendChartView}
+          </section>
+
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+            <TopPostsCard
+              data={data}
+              metric={metric}
+              loading={loadingMain}
+              postHref={(id) => dash(`posts/${id}`)}
+            />
+            <BreakdownCard
+              data={data}
+              metric={metric}
+              loading={loadingMain}
+              reconnectFor={reconnectFor}
             />
           </div>
-          {loading && !data ? (
-            <div className="h-56 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
-          ) : (
-            <EngagementTrendChart
-              data={data?.series ?? []}
-              view={trendChartView}
-            />
-          )}
-        </section>
+        </>
+      ) : null}
+    </PageContainer>
+  );
+}
 
-        <section className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm sm:p-5">
-          {singleAccount ? (
-            <>
-              <h2 className="mb-1 text-sm font-semibold text-text">
-                Engagement mix
-              </h2>
-              <p className="mb-4 text-xs text-text-muted">
-                How interactions split on{" "}
-                {selectedAccount
-                  ? `@${handleLabel(selectedAccount.username)}`
-                  : "this account"}
-                .
-              </p>
-              {loading && !data ? (
-                <div className="h-56 animate-pulse rounded-xl bg-bg-muted sm:h-72" />
-              ) : (
-                <EngagementMixChart data={mixChart} />
-              )}
-            </>
-          ) : (
-            <>
-              <h2 className="mb-1 text-sm font-semibold text-text">
-                By platform
-              </h2>
-              <p className="mb-4 text-xs text-text-muted">
-                Totals across publications in this range.
-              </p>
-              {loading && !data ? (
-                <div className="h-60 animate-pulse rounded-xl bg-bg-muted sm:h-[22rem]" />
-              ) : (
-                <PlatformBreakdownChart data={platformChart} />
-              )}
-            </>
-          )}
-        </section>
+// ---------------------------------------------------------------------------
+
+function safeDayKey(iso: string, timeZone: string): string {
+  try {
+    return formatInTimeZone(iso, timeZone, "yyyy-MM-dd");
+  } catch {
+    return iso.slice(0, 10);
+  }
+}
+
+/** Re-render every 30s so "Updated 2m ago" stays honest. */
+function useNow(intervalMs = 30_000) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), intervalMs);
+    return () => window.clearInterval(id);
+  }, [intervalMs]);
+}
+
+function UpdatedLine({
+  fetchedAt,
+  refreshing,
+  onRefresh,
+  disabled,
+}: {
+  fetchedAt: string | null;
+  refreshing: boolean;
+  onRefresh: () => void;
+  disabled: boolean;
+}) {
+  useNow();
+  return (
+    <p className="inline-flex items-center gap-2 text-xs text-text-muted">
+      {fetchedAt ? (
+        <span title={new Date(fetchedAt).toLocaleString()}>
+          Updated {relativeTime(fetchedAt, { fallback: "earlier" })}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        onClick={onRefresh}
+        disabled={refreshing || disabled}
+        title="Fetch fresh numbers from each network"
+        className="inline-flex h-7 items-center gap-1 rounded-md px-1.5 font-medium text-text transition-colors hover:bg-bg-muted disabled:cursor-default disabled:opacity-60 disabled:hover:bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 touch:min-h-10"
+      >
+        <RotateCw
+          className={cn("size-3", refreshing && "animate-spin motion-reduce:animate-none")}
+          aria-hidden
+        />
+        {refreshing ? "Refreshing…" : "Refresh"}
+      </button>
+    </p>
+  );
+}
+
+function AccountChips({
+  accounts,
+  loading,
+  selectedId,
+  onSelect,
+  reconnectIds,
+  reconnectFor,
+}: {
+  accounts: AnalyticsAccount[];
+  loading: boolean;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  reconnectIds: Set<string>;
+  reconnectFor: (id: string) => ReconnectTarget;
+}) {
+  if (loading) {
+    return (
+      <div className="flex gap-1.5" aria-hidden>
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="h-8 w-24 rounded-full" />
+        ))}
       </div>
-
-      <section className="rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm sm:p-5">
-        <h2 className="mb-1 text-sm font-semibold text-text">Top posts</h2>
-        <p className="mb-4 text-xs text-text-muted">
-          Ranked by views + engagement from live platform data.
-        </p>
-        {!data || data.topPosts.length === 0 ? (
-          <p className="text-sm text-text-muted">
-            {loading
-              ? "Loading…"
-              : "No published posts with metrics in this range."}
-          </p>
-        ) : (
-          <ul className="divide-y divide-border">
-            {data.topPosts.map((post) => {
-              const platformUrl =
-                data.publications.find(
-                  (p) => p.postId === post.postId && p.platformPostUrl,
-                )?.platformPostUrl ?? null;
-              const detailHref = dash(`posts/${post.postId}`);
-              return (
-                <li key={post.postId}>
-                  <div className="group relative flex items-stretch gap-2">
-                    <Link
-                      href={detailHref}
-                      className="flex min-w-0 flex-1 flex-col gap-1 py-3 transition-colors hover:bg-bg-subtle/60 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-                    >
-                      <div className="min-w-0">
-                        <p className="line-clamp-2 text-sm font-medium text-text group-hover:text-accent">
-                          {post.snippet}
-                        </p>
-                        <p className="mt-0.5 text-xs text-text-muted">
-                          {post.platforms
-                            .map((p) => PLATFORM_LABEL[p] ?? p)
-                            .join(" · ")}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 gap-4 text-xs text-text-muted">
-                        <span>
-                          <span className="font-semibold text-text">
-                            {formatMetric(viewsOf(post.metrics))}
-                          </span>{" "}
-                          views
-                        </span>
-                        <span>
-                          <span className="font-semibold text-text">
-                            {formatMetric(engagementOf(post.metrics))}
-                          </span>{" "}
-                          eng.
-                        </span>
-                      </div>
-                    </Link>
-                    {platformUrl ? (
-                      <a
-                        href={platformUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="my-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-[transform,background-color,color] duration-150 ease-out touch-manipulation hover:bg-bg-muted hover:text-accent active:scale-[0.97] touch:h-11 touch:w-11"
-                        aria-label="Open on platform"
-                        title="Open on platform"
-                      >
-                        <ArrowSquareOut size={14} />
-                      </a>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {data?.sampled ? (
-          <p className="mt-3 text-xs text-text-muted">
-            Showing the latest {data.sampleLimit} publications in this range for
-            live accuracy.
-          </p>
-        ) : null}
-        {data?.fetchedAt ? (
-          <p className="mt-2 text-xs text-text-muted">
-            Fetched {new Date(data.fetchedAt).toLocaleString()}
-          </p>
-        ) : null}
-      </section>
+    );
+  }
+  if (accounts.length === 0) return null;
+  return (
+    <div
+      role="group"
+      aria-label="Accounts"
+      className="scroll-touch flex items-center gap-1.5 overflow-x-auto pb-0.5"
+    >
+      <FilterChip selected={selectedId == null} onClick={() => onSelect(null)}>
+        All accounts
+      </FilterChip>
+      {accounts.map((a) => {
+        const label = handleOf(a.username, a.platform);
+        const broken = reconnectIds.has(a.id);
+        if (broken && selectedId !== a.id) {
+          const target = reconnectFor(a.id);
+          return (
+            <Link
+              key={a.id}
+              href={target.href}
+              title={`${label} needs to be reconnected before its numbers can be included.`}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-warning-border bg-warning-soft px-3 text-[13px] font-medium text-warning transition-colors hover:border-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 touch:h-10"
+            >
+              <NetworkIcon network={a.platform} size={14} label="" />
+              {label} · reconnect to include
+            </Link>
+          );
+        }
+        return (
+          <FilterChip
+            key={a.id}
+            selected={selectedId === a.id}
+            onClick={() => onSelect(selectedId === a.id ? null : a.id)}
+            icon={<NetworkIcon network={a.platform} size={14} label="" />}
+            tone={broken ? "warning" : "default"}
+            title={broken ? `${label} needs to be reconnected for full numbers.` : undefined}
+          >
+            {label}
+          </FilterChip>
+        );
+      })}
     </div>
   );
 }
 
-function handleLabel(username: string | null): string {
-  if (!username) return "account";
-  return username.startsWith("@") ? username.slice(1) : username;
-}
-
-function StatCard({
-  label,
-  value,
-  loading,
+/**
+ * One quiet line under the KPI row instead of a marker on every tile.
+ * Sampled (the publication list was capped) and partial (the live budget ran
+ * out) stay two separate sentences: different causes, different fixes.
+ */
+function CoverageNote({
+  data,
+  skipped,
+  onRefresh,
+  refreshing,
 }: {
-  label: string;
-  value: string;
-  loading?: boolean;
+  data: AnalyticsOverview | undefined;
+  skipped: number;
+  onRefresh: () => void;
+  refreshing: boolean;
 }) {
+  if (!data || (!data.sampled && !data.partial)) return null;
   return (
-    <div className="min-w-0 rounded-2xl border border-border bg-bg-elevated p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
-        {label}
-      </p>
-      {loading ? (
-        <div className="mt-2 h-8 w-16 animate-pulse rounded bg-bg-muted" />
-      ) : (
-        <p className="mt-1 font-logo text-2xl tracking-tight text-foreground sm:text-3xl">
-          {value}
-        </p>
-      )}
-    </div>
+    <p className="text-xs text-text-muted">
+      {data.sampled ? (
+        <span>
+          <span className="mr-1 font-medium text-text" aria-hidden>
+            ≈
+          </span>
+          Estimated from the latest {data.sampleLimit} publications in this range.{" "}
+        </span>
+      ) : null}
+      {data.partial ? (
+        <>
+          <span className="text-warning">
+            {skipped > 0
+              ? `${skipped} ${skipped === 1 ? "publication" : "publications"} didn't answer in time, so some numbers are missing.`
+              : "Some networks didn't answer in time, so some numbers are missing."}
+          </span>{" "}
+          <button
+            type="button"
+            onClick={onRefresh}
+            disabled={refreshing}
+            className="font-medium text-text underline decoration-border underline-offset-2 hover:decoration-text disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
+          >
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
+        </>
+      ) : null}
+    </p>
   );
 }
 
 function AnalyticsSkeleton() {
   return (
-    <div className="flex flex-col gap-6" aria-busy>
-      <div>
-        <div className="h-10 w-48 animate-pulse rounded bg-bg-muted" />
-        <div className="mt-2 h-4 w-72 animate-pulse rounded bg-bg-muted" />
-      </div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-20 animate-pulse rounded-2xl bg-bg-muted"
-          />
+    <PageContainer stack>
+      <SkeletonPageHeader />
+      <div className="flex gap-1.5">
+        {Array.from({ length: 4 }, (_, i) => (
+          <Skeleton key={i} className="h-8 w-24 rounded-full" />
         ))}
       </div>
-    </div>
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-3 xl:grid-cols-6">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="bg-bg-elevated px-4 py-3">
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="mt-2 h-7 w-16" />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="h-72 w-full rounded-xl" />
+    </PageContainer>
   );
 }

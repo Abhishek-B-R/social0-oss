@@ -18,10 +18,8 @@ export function XPostSettingsInline({
   if (!isVisible) return null;
 
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-bg-muted/30 p-4">
-      <p className="text-sm font-medium text-text">X post labels</p>
-
-      <label className="flex items-start gap-3 rounded-lg border border-border bg-bg px-3 py-2.5">
+    <div className="divide-y divide-border">
+      <label className="flex items-start gap-3 py-2.5">
         <input
           type="checkbox"
           checked={value.madeWithAi}
@@ -37,8 +35,7 @@ export function XPostSettingsInline({
           </span>
         </span>
       </label>
-
-      <label className="flex items-start gap-3 rounded-lg border border-border bg-bg px-3 py-2.5">
+      <label className="flex items-start gap-3 py-2.5">
         <input
           type="checkbox"
           checked={value.paidPartnership}

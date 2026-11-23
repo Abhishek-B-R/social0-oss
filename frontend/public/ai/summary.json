@@ -1,0 +1,22 @@
+{
+  "name": "Social0",
+  "url": "https://social0.app",
+  "description": "Multi-platform social media scheduler for creators, founders, and AI agents. Compose once and publish or schedule to 9 networks from one dashboard, or through MCP, the REST API, and the CLI.",
+  "category": "Social media scheduling software",
+  "platforms": [
+    "X (Twitter)",
+    "LinkedIn",
+    "Instagram",
+    "TikTok",
+    "YouTube",
+    "Facebook Pages",
+    "Threads",
+    "Bluesky",
+    "Pinterest"
+  ],
+  "pricing": "https://social0.app/pricing",
+  "docs": "https://docs.social0.app",
+  "llms": "https://social0.app/llms.txt",
+  "contact": "support@social0.app",
+  "updated": "2026-11-19T12:15:26.557Z"
+}

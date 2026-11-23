@@ -1,5 +1,5 @@
-import { RouteResponse } from "../../lib/http/http.js";
-import { auth } from "../../lib/auth.js";
+import { AppRequest, RouteResponse } from "../../lib/http/http.js";
+import { getRouteSession } from "../../lib/session.js";
 import { db } from "../../db/index.js";
 import {
   userSettings,
@@ -8,7 +8,6 @@ import {
   posts,
 } from "../../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
-import { headers } from "../../lib/http/request-cookies.js";
 import { getNextAvailableSlot } from "../../lib/queue-utils.js";
 import { toZonedTime } from "date-fns-tz";
 import { isValidIanaTimezone } from "../../lib/resolve-scheduled-at.js";
@@ -16,8 +15,26 @@ import { format } from "date-fns";
 import { requireWorkspacePermissionForUser } from "../../lib/workspace/session.js";
 import { postScopeCondition } from "../../lib/workspace/context.js";
 
-export async function getNextQueueSlot() {
-  const session = await auth.api.getSession({ headers: await headers() });
+/** Most `exclude` times one request may pass (a few in-flight submits). */
+const MAX_EXCLUDED_SLOTS = 20;
+
+/**
+ * `?exclude=<ISO>,<ISO>`: slot times the caller is already filling (a queued
+ * post still uploading in the composer tray). Counted as taken so a second
+ * "Add to queue" doesn't get the same slot before the first post is saved.
+ */
+function excludedSlotTimes(req: AppRequest | undefined): Date[] {
+  const raw = req?.parsedUrl.searchParams.get("exclude");
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .slice(0, MAX_EXCLUDED_SLOTS)
+    .map((v) => new Date(v.trim()))
+    .filter((d) => !Number.isNaN(d.getTime()));
+}
+
+export async function getNextQueueSlot(req?: AppRequest) {
+  const session = await getRouteSession();
   if (!session?.user?.id) {
     return RouteResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -80,6 +97,7 @@ export async function getNextQueueSlot() {
     );
 
   const occupiedSlots = [
+    ...excludedSlotTimes(req),
     ...pendingQueued.map((r) => new Date(r.scheduledFor)),
     ...scheduledPosts
       .map((r) => r.scheduledAt)

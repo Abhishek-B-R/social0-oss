@@ -3,7 +3,11 @@ import { db } from "../db/instance.js";
 import { connectedAccounts, userSettings } from "../db/schema.js";
 import { eq, and, sql, asc, inArray } from "drizzle-orm";
 import { getSubscriptionForUser } from "./subscription.js";
-import { getPlanLimits, isActiveTier } from "./plans.js";
+import {
+  AGENCY_INCLUDED_ACCOUNTS,
+  getPlanLimits,
+  isActiveTier,
+} from "./plans.js";
 import { twitterPublishLimiter, enforceRateLimit } from "./ratelimit.js";
 
 /**
@@ -61,6 +65,13 @@ export type AccountLimitResult = {
   reason?: string;
   currentTotal: number;
   limitTotal: number;
+  /**
+   * Agency only: accounts included before extras are billed (59). Accounts
+   * above it never block; each one is added to the bill.
+   */
+  includedTotal?: number;
+  /** Agency only: true, meaning accounts above `includedTotal` are auto-billed. */
+  autoBilled?: boolean;
   /** True once user has ever had a paid plan. Used for trial vs upgrade messaging when limit is 0. */
   hasUsedTrial: boolean;
 };
@@ -70,7 +81,13 @@ export async function checkAccountLimits(
   _newPlatform: string,
 ): Promise<AccountLimitResult> {
   const sub = await getSubscriptionForUser(userId);
+  // Agency never blocks: accounts above the 59 included are billed as extras
+  // (`agency-extra-accounts-sync` on the API), so its cap is only the backstop.
   const limits = getPlanLimits(sub.tier);
+  const agency =
+    sub.tier === "agency"
+      ? { includedTotal: AGENCY_INCLUDED_ACCOUNTS, autoBilled: true }
+      : {};
 
   const [totalRow] = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -92,6 +109,7 @@ export async function checkAccountLimits(
       currentTotal,
       limitTotal: limits.maxConnectedAccounts,
       hasUsedTrial: sub.hasUsedTrial,
+      ...agency,
     };
   }
 
@@ -100,6 +118,7 @@ export async function checkAccountLimits(
     currentTotal,
     limitTotal: limits.maxConnectedAccounts,
     hasUsedTrial: sub.hasUsedTrial,
+    ...agency,
   };
 }
 

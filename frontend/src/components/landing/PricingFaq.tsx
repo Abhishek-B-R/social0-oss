@@ -1,9 +1,40 @@
 import { useState } from "react";
+import {
+  AGENCY_INCLUDED_ACCOUNTS,
+  CREATOR_ACCOUNTS,
+  PLAN_NAMES,
+} from "@/lib/plans";
+
+const { creator: CREATOR, agency: AGENCY } = PLAN_NAMES;
 
 const PRICING_FAQS = [
   {
+    q: "What counts as an account?",
+    a: "Each connected social profile counts once. Your Instagram and your client's Instagram are 2 accounts; one LinkedIn profile and one LinkedIn page are 2 accounts.",
+  },
+  {
+    q: `What's the difference between ${CREATOR} and ${AGENCY}?`,
+    a: `${CREATOR} is $29.90/month for up to ${CREATOR_ACCOUNTS} accounts. ${AGENCY} is $59.90/month with ${AGENCY_INCLUDED_ACCOUNTS} accounts included, then $1/month per extra account with no cap, plus teammates, shared workspaces and higher API limits (5,000 requests/hour vs 1,000). Everything else, from all 9 networks to bulk tools, auto-repost and auto-plug, is on both.`,
+  },
+  {
     q: "Is there a free plan?",
     a: "Yes. Free includes 3 connected accounts and 10 posts so you can try Social0 before upgrading. No credit card required.",
+  },
+  {
+    q: "How does yearly billing work?",
+    a: `Yearly is 10 times the monthly price, so you get 2 months free: ${CREATOR} is $299/year and ${AGENCY} is $599/year, plus $10/year per extra ${AGENCY} account.`,
+  },
+  {
+    q: "What happens if I go over my account limit?",
+    a: `On ${AGENCY}, nothing stops you: connect as many accounts as you need. Each one over ${AGENCY_INCLUDED_ACCOUNTS} adds $1/month ($10/year on yearly) to your bill automatically, charged pro rata for the rest of the billing period. Disconnect one and your next bill drops by the same amount (no mid-cycle refunds). On ${CREATOR}, which holds ${CREATOR_ACCOUNTS} accounts, connecting a 16th offers a one-click move to ${AGENCY}. Free holds 3 accounts.`,
+  },
+  {
+    q: "I'm on Starter, Growth, Pro or Max. What changes?",
+    a: `Nothing, unless you want it to. You keep your plan, its limits and its price for as long as you stay subscribed. You can switch to ${CREATOR} or ${AGENCY} from Billing anytime.`,
+  },
+  {
+    q: "Do all plans include API, MCP, and CLI?",
+    a: "Yes. Every plan, Free included, gets the REST API, remote MCP, and official CLI, on the same publish engine as the dashboard.",
   },
   {
     q: "Can I cancel anytime?",
@@ -12,18 +43,6 @@ const PRICING_FAQS = [
   {
     q: "Can I get a refund?",
     a: "Subscription fees are non-refundable except where required by law. Cancel anytime to stop renewals — see /refund. Questions? Email support@social0.app.",
-  },
-  {
-    q: "Do all plans include API, MCP, and CLI?",
-    a: "Yes. Free, Starter, Growth, and Pro all include the REST API, remote MCP, and official CLI — same publish engine as the dashboard.",
-  },
-  {
-    q: "What’s the difference between Growth and Pro?",
-    a: "Growth is built for serious solo creators and small brands (15 accounts, automation, bulk tools). Pro adds up to 50 accounts, team invites, and priority support.",
-  },
-  {
-    q: "What happens if I go over my account limit?",
-    a: "Extra connected accounts stay linked but inactive until you upgrade or disconnect one. You never lose the connection — you just pause publishing from over-limit slots.",
   },
 ] as const;
 

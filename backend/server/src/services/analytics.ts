@@ -11,10 +11,16 @@ import {
   postPublications,
   posts,
 } from "../db/schema.js";
-import { postScopeCondition } from "../lib/workspace/context.js";
+import {
+  connectionScopeCondition,
+  postScopeCondition,
+} from "../lib/workspace/context.js";
 import { requireWorkspaceSession } from "../lib/workspace/session.js";
 import { rpcHttpError } from "../lib/rpc-http-error.js";
-import { resolveAccountAccess } from "../lib/account-access.js";
+import {
+  createAccountAccessResolver,
+  type AccountAccessResolver,
+} from "../lib/account-access-memo.js";
 import { listActiveConnectedAccounts } from "../lib/connected-accounts.js";
 import { mapPool } from "../lib/map-pool.js";
 import {
@@ -24,6 +30,10 @@ import {
   type PlatformFetchResult,
 } from "../lib/analytics/fetch-platform-metrics.js";
 import { analyticsCoverage } from "../lib/analytics/coverage.js";
+import {
+  loadTikTokBackfillContext,
+  persistResolvedPlatformPostId,
+} from "../lib/analytics/tiktok-video-claims.js";
 import { isPlatformLive, livePlatformIds } from "../lib/live-platforms.js";
 import {
   addZonedCalendarDays,
@@ -123,10 +133,11 @@ async function loadPublishedPubs(opts: {
 }): Promise<PubRow[]> {
   const live = livePlatformIds("analytics");
   if (!live.length) return [];
-  const postFilter = postScopeCondition({
+  const scope = {
     resourceUserId: opts.resourceUserId,
     workspaceId: opts.workspaceId,
-  });
+  };
+  const postFilter = postScopeCondition(scope);
 
   const rows = await db
     .select({
@@ -155,6 +166,10 @@ async function loadPublishedPubs(opts: {
     .where(
       and(
         postFilter,
+        // Live metrics use the account's tokens: the account must still be in
+        // this scope, not just the post (accounts move between workspaces and
+        // owners; their old publications stay behind).
+        connectionScopeCondition(scope),
         eq(postPublications.status, "published"),
         eq(connectedAccounts.isActive, true),
         opts.postId ? eq(posts.id, opts.postId) : undefined,
@@ -265,13 +280,20 @@ async function publicationMetricsFromResult(
     result.resolvedPlatformPostId &&
     result.resolvedPlatformPostId !== row.platformPostId
   ) {
-    await db
-      .update(postPublications)
-      .set({
-        platformPostId: result.resolvedPlatformPostId,
-        updatedAt: new Date(),
-      })
-      .where(eq(postPublications.id, row.publicationId));
+    const stored = await persistResolvedPlatformPostId({
+      publicationId: row.publicationId,
+      connectedAccountId: row.account!.id,
+      platformPostId: result.resolvedPlatformPostId,
+    });
+    if (!stored) {
+      // Another publication of this account already owns that video, so
+      // its numbers are not this post's. Keep the unresolved id.
+      return {
+        ...basePublicationMetrics(row),
+        status: "error",
+        error: "Could not tell which TikTok video belongs to this post yet.",
+      };
+    }
     row.platformPostId = result.resolvedPlatformPostId;
   }
 
@@ -293,6 +315,7 @@ async function publicationMetricsFromResult(
 
 async function metricsForPub(
   row: PubRow,
+  resolveAccess: AccountAccessResolver,
   window?: MetricsWindow,
   fresh = false,
 ): Promise<PublicationMetrics> {
@@ -303,7 +326,6 @@ async function metricsForPub(
   const missing = missingAnalyticsScopes(account.platform, account.scopes);
 
   try {
-    const { accessToken, accessSecret } = await resolveAccountAccess(account);
     let result: PlatformFetchResult;
     try {
       const cached = await withPlatformReadCache({
@@ -312,8 +334,11 @@ async function metricsForPub(
         kind: "analytics",
         suffix: analyticsCacheSuffix(account.platform, platformPostId, window),
         fresh,
-        fetch: () =>
-          fetchPlatformPublicationMetrics({
+        // Tokens only on a miss: a warm entry needs none, and resolving
+        // (YouTube: two Google tokeninfo calls) would eat the live budget.
+        fetch: async () => {
+          const { accessToken, accessSecret } = await resolveAccess(account);
+          return fetchPlatformPublicationMetrics({
             platform: account.platform,
             platformPostId,
             platformUserId: account.platformUserId,
@@ -327,7 +352,13 @@ async function metricsForPub(
             accountId: account.id,
             accountHandle: account.platformUsername,
             publishedAt: row.publishedAt,
-          }),
+            loadTikTokBackfillContext: () =>
+              loadTikTokBackfillContext({
+                connectedAccountId: account.id,
+                publicationId: row.publicationId,
+              }),
+          });
+        },
       });
       result = cached.data;
     } catch (e) {
@@ -353,6 +384,7 @@ async function metricsForPub(
  */
 async function metricsForAccountBatch(
   rows: PubRow[],
+  resolveAccess: AccountAccessResolver,
   window: MetricsWindow,
   fresh: boolean,
 ): Promise<PublicationMetrics[]> {
@@ -361,7 +393,6 @@ async function metricsForAccountBatch(
   const suffixOf = (row: PubRow) =>
     analyticsCacheSuffix(account.platform, row.platformPostId!, window);
   try {
-    const { accessToken, accessSecret } = await resolveAccountAccess(account);
     const postIdBySuffix = new Map(
       rows.map((row) => [suffixOf(row), row.platformPostId!] as const),
     );
@@ -372,6 +403,8 @@ async function metricsForAccountBatch(
       suffixes: rows.map(suffixOf),
       fresh,
       fetchMany: async (suffixes) => {
+        // Tokens only for the misses (see metricsForPub).
+        const { accessToken, accessSecret } = await resolveAccess(account);
         const byPostId = await fetchPlatformPublicationMetricsBatch(
           {
             platform: account.platform,
@@ -436,6 +469,7 @@ async function collectPublicationMetrics(
 ): Promise<{ results: PublicationMetrics[]; partial: boolean }> {
   const budget = createLiveRequestBudget();
   let partial = false;
+  const resolveAccess = createAccountAccessResolver();
   const results: Array<PublicationMetrics | undefined> = new Array(pubs.length);
   const batches = new Map<string, number[]>();
   const singles: number[] = [];
@@ -465,7 +499,7 @@ async function collectPublicationMetrics(
       break;
     }
     const rows = indexes.map((i) => pubs[i]!);
-    const metrics = await metricsForAccountBatch(rows, window, fresh);
+    const metrics = await metricsForAccountBatch(rows, resolveAccess, window, fresh);
     indexes.forEach((pubIndex, i) => {
       results[pubIndex] = metrics[i];
     });
@@ -475,7 +509,7 @@ async function collectPublicationMetrics(
     singles,
     concurrency,
     async (pubIndex) => {
-      results[pubIndex] = await metricsForPub(pubs[pubIndex]!, window, fresh);
+      results[pubIndex] = await metricsForPub(pubs[pubIndex]!, resolveAccess, window, fresh);
     },
     {
       shouldContinue: () => {
@@ -642,8 +676,7 @@ function buildTopPosts(
       (a, b) =>
         engagementTotal(b.metrics) + (b.metrics.views ?? 0) -
         (engagementTotal(a.metrics) + (a.metrics.views ?? 0)),
-    )
-    .slice(0, 10);
+    );
 }
 
 export type AnalyticsOverviewInput = {
@@ -742,6 +775,7 @@ export async function analyticsOverviewForScope(
     range,
     since: since.toISOString(),
     until: until.toISOString(),
+    timeZone,
     totals: sumMetrics(okResults.map((r) => r.metrics)),
     byPlatform: buildByPlatform(results),
     series: buildSeries(okResults, since, until, timeZone),
@@ -761,7 +795,7 @@ export async function analyticsOverviewForScope(
 }
 
 export async function getPostAnalytics(
-  input: { postId?: unknown } | string,
+  input: { postId?: unknown; fresh?: unknown } | string,
 ): Promise<PostAnalyticsResult> {
   const ws = await requireWorkspaceSession("view_analytics");
   if (!ws.ok) throw rpcHttpError(ws.error, ws.statusCode);
@@ -771,7 +805,7 @@ export async function getPostAnalytics(
 /** Core per-post analytics. See `analyticsOverviewForScope` for the scope contract. */
 export async function postAnalyticsForScope(
   ctx: AnalyticsScope,
-  input: { postId?: unknown } | string,
+  input: { postId?: unknown; fresh?: unknown } | string,
 ): Promise<PostAnalyticsResult> {
   const postId =
     typeof input === "string"
@@ -779,6 +813,8 @@ export async function postAnalyticsForScope(
       : typeof input?.postId === "string"
         ? input.postId
         : "";
+  // Same contract as the overview: only an explicit `true` bypasses the cache.
+  const fresh = typeof input === "object" && input?.fresh === true;
   if (!postId) {
     throw rpcHttpError("postId required", 400);
   }
@@ -806,7 +842,7 @@ export async function postAnalyticsForScope(
   const { results, partial } = await collectPublicationMetrics(
     pubs,
     { since, until, timeZone },
-    false,
+    fresh,
     Math.min(CONCURRENCY, 2),
   );
   const okResults = results.filter((r) => r.status === "ok");

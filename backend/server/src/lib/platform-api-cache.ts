@@ -9,10 +9,10 @@
  * - Cooldown + stale serve on platform 429
  */
 
-import { Ratelimit, type Duration } from "@upstash/ratelimit";
+import type { Duration, Ratelimit } from "@upstash/ratelimit";
 import { redis } from "./redis.js";
 import { withRedisTimeout } from "./redis-safe.js";
-import { enforceRateLimit } from "./ratelimit.js";
+import { enforceRateLimit, slidingWindowLimiter } from "./ratelimit.js";
 import { extractHttpStatus } from "./twitter-errors.js";
 import {
   clampRetryAfter,
@@ -156,6 +156,13 @@ const FALLBACK_GLOBAL_BUDGET: ReadBudget = { tokens: 300, window: "1 m" };
 export const SOFT_FRESH_MIN_AGE_MS = 90_000;
 
 const COOLDOWN_PREFIX = "platform:cooldown:";
+/**
+ * Last good copy of every read, kept far longer than the fresh TTL. When a
+ * platform (or our own outbound budget) says "not now", we show this instead
+ * of an error. X's tiny quotas make this the normal path, not an edge case.
+ */
+const STASH_SUFFIX = ":stash";
+export const STASH_TTL_SEC = 7 * 24 * 60 * 60;
 const CACHE_PREFIX = "platform:read:";
 
 /** Cap in-process cache so many account/suffix keys cannot grow forever. */
@@ -243,19 +250,50 @@ function cooldownKey(
   return `${COOLDOWN_PREFIX}${platform}:${accountId}:${kind}`;
 }
 
-function getOutboundLimiter(platform: string, kind: PlatformReadKind): Ratelimit | null {
+/**
+ * Who spends the per-account outbound budget. "verify" is mutation
+ * verification (reply / like / hide checking the comment is on the post).
+ * One inbox page load can spend the list budget, so a reply right after it
+ * must not be refused for that: verify gets its own small per-account budget.
+ * The global (egress / app) caps are shared either way.
+ */
+export type OutboundPurpose = "read" | "verify";
+
+/** Per-account verify calls (cache misses only). */
+const VERIFY_BUDGET: Record<string, ReadBudget> = {
+  twitter_x: { tokens: 6, window: "15 m" },
+  bluesky: { tokens: 4, window: "1 m" },
+  youtube: { tokens: 4, window: "1 m" },
+  default: { tokens: 6, window: "1 m" },
+};
+
+export function verifyReadBudget(platform: string): ReadBudget {
+  return VERIFY_BUDGET[platform] ?? VERIFY_BUDGET.default!;
+}
+
+function getOutboundLimiter(
+  platform: string,
+  kind: PlatformReadKind,
+  purpose: OutboundPurpose = "read",
+): Ratelimit | null {
   if (!redis) return null;
-  const id = `${platform}:${kind}`;
+  const id = purpose === "verify" ? `verify:${platform}:${kind}` : `${platform}:${kind}`;
   let limiter = outboundLimiters.get(id);
   if (!limiter) {
-    const budget = accountReadBudget(platform, kind);
-    limiter = new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(budget.tokens, budget.window),
-      // Prefix carries the window so a budget change never shares counters
-      // with the old shape.
-      prefix: `rl:out:v2:${platform}:${kind}`,
-    });
+    const budget =
+      purpose === "verify" ? verifyReadBudget(platform) : accountReadBudget(platform, kind);
+    // Prefix carries a version so a budget change never shares counters with
+    // the old shape. slidingWindowLimiter keeps limiting from memory when Redis
+    // is down.
+    limiter =
+      slidingWindowLimiter(
+        budget.tokens,
+        budget.window,
+        purpose === "verify"
+          ? `rl:out:verify:v2:${platform}:${kind}`
+          : `rl:out:v2:${platform}:${kind}`,
+      ) ?? undefined;
+    if (!limiter) return null;
     outboundLimiters.set(id, limiter);
   }
   return limiter;
@@ -267,11 +305,13 @@ function getGlobalOutboundLimiter(platform: string, kind: PlatformReadKind): Rat
   let limiter = globalOutboundLimiters.get(id);
   if (!limiter) {
     const budget = globalReadBudget(platform, kind);
-    limiter = new Ratelimit({
-      redis,
-      limiter: Ratelimit.slidingWindow(budget.tokens, budget.window),
-      prefix: `rl:out:global:v2:${platform}:${kind}`,
-    });
+    limiter =
+      slidingWindowLimiter(
+        budget.tokens,
+        budget.window,
+        `rl:out:global:v2:${platform}:${kind}`,
+      ) ?? undefined;
+    if (!limiter) return null;
     globalOutboundLimiters.set(id, limiter);
   }
   return limiter;
@@ -317,7 +357,35 @@ async function readCache<T>(
   );
 }
 
-async function writeCache(key: string, value: unknown, ttl: number): Promise<void> {
+/**
+ * Where a read's stash lives. Without a caller-supplied stable suffix it is
+ * the fresh key plus STASH_SUFFIX, which only helps while that exact key
+ * keeps being asked for.
+ */
+type StashTarget<T> = { key: string; merge?: (stashed: T, next: T) => T };
+
+function stashTarget<T>(
+  key: string,
+  opts: {
+    kind: PlatformReadKind;
+    platform: string;
+    accountId: string;
+    stash?: PlatformReadStash<T>;
+  },
+): StashTarget<T> {
+  if (!opts.stash) return { key: `${key}${STASH_SUFFIX}` };
+  return {
+    key: `${cacheKey(opts.kind, opts.platform, opts.accountId, `stash:${opts.stash.suffix}`)}${STASH_SUFFIX}`,
+    merge: opts.stash.merge,
+  };
+}
+
+async function writeCache<T>(
+  key: string,
+  value: T,
+  ttl: number,
+  stash: StashTarget<T> = { key: `${key}${STASH_SUFFIX}` },
+): Promise<void> {
   const envelope: CacheEnvelope<unknown> = { v: value, t: Date.now() };
   const raw = JSON.stringify(envelope);
   memCache.set(key, { exp: Date.now() + ttl * 1000, raw });
@@ -327,8 +395,35 @@ async function writeCache(key: string, value: unknown, ttl: number): Promise<voi
     `platform-cache set ${key}`,
     async () => {
       await redis!.set(key, raw, { ex: ttl });
+      let stashRaw = raw;
+      if (stash.merge) {
+        const prev = parseEnvelope<T>(
+          await redis!.get<string | CacheEnvelope<T>>(stash.key),
+        );
+        if (prev && shouldCachePlatformRead(prev.data)) {
+          stashRaw = JSON.stringify({
+            v: stash.merge(prev.data, value),
+            t: envelope.t,
+          } satisfies CacheEnvelope<T>);
+        }
+      }
+      await redis!.set(stash.key, stashRaw, { ex: STASH_TTL_SEC });
     },
     undefined,
+  );
+}
+
+async function readStash<T>(
+  stashKey: string,
+): Promise<{ data: T; cachedAt: number } | null> {
+  if (!redis) return null;
+  return withRedisTimeout(
+    `platform-cache stash get ${stashKey}`,
+    async () => {
+      const raw = await redis!.get<string | CacheEnvelope<T>>(stashKey);
+      return parseEnvelope<T>(raw);
+    },
+    null,
   );
 }
 
@@ -414,10 +509,26 @@ export function retryAfterSeconds(e: unknown, nowMs = Date.now()): number {
   return clampRetryAfter(null);
 }
 
+/**
+ * Stable home for a read's last good copy (see STASH_SUFFIX).
+ *
+ * `suffix` must not move with the date window or the set of posts on a page;
+ * the caller re-applies its own window to whatever comes back. `merge` folds a
+ * new read into the stashed one when one key collects several reads (X comment
+ * batches per page, DM list pages); without it the new read replaces the old.
+ * Stale data is only ever served with `rateLimited: true`.
+ */
+export type PlatformReadStash<T> = {
+  suffix: string;
+  merge?: (stashed: T, next: T) => T;
+};
+
 export type PlatformReadResult<T> = {
   data: T;
   fromCache: boolean;
   rateLimited?: boolean;
+  /** When the served data was fetched (ms epoch). Set for cached/stale reads. */
+  cachedAt?: number;
 };
 
 function isWeakPeerIdentity(peer: {
@@ -493,13 +604,14 @@ export function shouldBypassCacheForFresh(
 
 async function serveStaleOrCooldown<T>(
   key: string,
+  stashKey: string,
   platform: string,
   retryAt: number,
   reason: PlatformCooldownReason,
 ): Promise<PlatformReadResult<T>> {
-  const stale = await readCache<T>(key);
+  const stale = (await readCache<T>(key)) ?? (await readStash<T>(stashKey));
   if (stale && shouldCachePlatformRead(stale.data)) {
-    return { data: stale.data, fromCache: true, rateLimited: true };
+    return { data: stale.data, fromCache: true, rateLimited: true, cachedAt: stale.cachedAt };
   }
   throw new PlatformApiCooldownError(platform, retryAt, reason);
 }
@@ -511,9 +623,10 @@ async function acquireOutboundPermit(
   platform: string,
   accountId: string,
   kind: PlatformReadKind,
+  purpose: OutboundPurpose = "read",
 ): Promise<OutboundPermit> {
   const limiters: Array<[Ratelimit | null, string]> = [
-    [getOutboundLimiter(platform, kind), accountId],
+    [getOutboundLimiter(platform, kind, purpose), accountId],
     [getGlobalOutboundLimiter(platform, kind), "global"],
   ];
   for (const [limiter, id] of limiters) {
@@ -545,16 +658,20 @@ async function outboundPlatformRead<T>(opts: {
   kind: PlatformReadKind;
   fetch: () => Promise<T>;
   key: string;
+  stash: StashTarget<T>;
   ttl: number;
+  purpose?: OutboundPurpose;
 }): Promise<PlatformReadResult<T>> {
   const permit = await acquireOutboundPermit(
     opts.platform,
     opts.accountId,
     opts.kind,
+    opts.purpose,
   );
   if (!permit.allowed) {
     return serveStaleOrCooldown<T>(
       opts.key,
+      opts.stash.key,
       opts.platform,
       permit.retryAt,
       "local_budget",
@@ -564,7 +681,7 @@ async function outboundPlatformRead<T>(opts: {
   try {
     const data = await opts.fetch();
     if (shouldCachePlatformRead(data)) {
-      await writeCache(opts.key, data, opts.ttl);
+      await writeCache(opts.key, data, opts.ttl, opts.stash);
     }
     return { data, fromCache: false };
   } catch (e) {
@@ -577,6 +694,7 @@ async function outboundPlatformRead<T>(opts: {
       );
       return serveStaleOrCooldown<T>(
         opts.key,
+        opts.stash.key,
         opts.platform,
         retryAt,
         "platform_429",
@@ -605,14 +723,23 @@ export async function withPlatformReadCache<T>(opts: {
    * cached thread is 20s old is worse than one extra platform call.
    */
   softFreshMinAgeMs?: number;
+  /** Per-account budget to spend. Mutation verification passes "verify". */
+  purpose?: OutboundPurpose;
+  /**
+   * Keep the last good copy under a stable key instead of next to `suffix`.
+   * Pass it whenever `suffix` carries a date window or a page composition,
+   * or the fallback disappears at every day rollover / new post.
+   */
+  stash?: PlatformReadStash<T>;
   fetch: () => Promise<T>;
 }): Promise<PlatformReadResult<T>> {
   const key = cacheKey(opts.kind, opts.platform, opts.accountId, opts.suffix);
+  const stash = stashTarget(key, opts);
   const ttl = ttlSec(opts.platform, opts.kind);
 
   const cooledUntil = await cooldownUntil(opts.platform, opts.accountId, opts.kind);
   if (cooledUntil > Date.now()) {
-    return serveStaleOrCooldown<T>(key, opts.platform, cooledUntil, "platform_429");
+    return serveStaleOrCooldown<T>(key, stash.key, opts.platform, cooledUntil, "platform_429");
   }
 
   const cached = await readCache<T>(key);
@@ -622,7 +749,7 @@ export async function withPlatformReadCache<T>(opts: {
       !opts.fresh ||
       !shouldBypassCacheForFresh(cached.cachedAt, Date.now(), minAge)
     ) {
-      return { data: cached.data, fromCache: true };
+      return { data: cached.data, fromCache: true, cachedAt: cached.cachedAt };
     }
   }
 
@@ -637,7 +764,9 @@ export async function withPlatformReadCache<T>(opts: {
     kind: opts.kind,
     fetch: opts.fetch,
     key,
+    stash,
     ttl,
+    purpose: opts.purpose,
   }).finally(() => {
     inflight.delete(key);
   });
@@ -720,6 +849,7 @@ export async function withPlatformBatchReadCache<T>(opts: {
     try {
       const read = await serveStaleOrCooldown<T>(
         keyOf(suffix),
+        `${keyOf(suffix)}${STASH_SUFFIX}`,
         opts.platform,
         retryAt,
         reason,
@@ -747,7 +877,10 @@ export async function withPlatformBatchReadCache<T>(opts: {
       shouldCachePlatformRead(cached.data) &&
       (!opts.fresh || !shouldBypassCacheForFresh(cached.cachedAt))
     ) {
-      out.set(suffix, { ok: true, read: { data: cached.data, fromCache: true } });
+      out.set(suffix, {
+        ok: true,
+        read: { data: cached.data, fromCache: true, cachedAt: cached.cachedAt },
+      });
     } else {
       misses.push(suffix);
     }

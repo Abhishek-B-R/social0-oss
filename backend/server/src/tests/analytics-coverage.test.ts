@@ -49,16 +49,28 @@ describe("TikTok publish-time backfill", () => {
   const publishedAt = new Date("2026-03-01T12:00:00.000Z");
   const sec = (d: Date, offsetMs = 0) => Math.floor((d.getTime() + offsetMs) / 1000);
 
-  it("picks the video closest to the publish time inside the tolerance", () => {
+  it("picks the one video inside the tolerance", () => {
     const id = pickTikTokVideoByPublishTime(
       [
-        { id: "7000000000000000001", create_time: sec(publishedAt, -10 * 60_000) },
+        { id: "7000000000000000001", create_time: sec(publishedAt, -40 * 60_000) },
         { id: "7000000000000000002", create_time: sec(publishedAt, 40_000) },
-        { id: "7000000000000000003", create_time: sec(publishedAt, 5 * 60_000) },
+        { id: "7000000000000000003", create_time: sec(publishedAt, 50 * 60_000) },
       ],
       publishedAt,
     );
     expect(id).toBe("7000000000000000002");
+  });
+
+  it("does not guess when several videos sit inside the tolerance", () => {
+    expect(
+      pickTikTokVideoByPublishTime(
+        [
+          { id: "7000000000000000002", create_time: sec(publishedAt, 40_000) },
+          { id: "7000000000000000003", create_time: sec(publishedAt, 5 * 60_000) },
+        ],
+        publishedAt,
+      ),
+    ).toBeNull();
   });
 
   it("returns null when nothing is close enough", () => {

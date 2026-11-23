@@ -1,61 +1,46 @@
-import { useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import Link from "@/components/AppLink";
-import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
-import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
-import { getPlanLimits, type BillingInterval } from "@/lib/plans";
+import { signInUrl } from "@/lib/sign-in-url";
 import {
-  billedAsYearlyLabel,
-  getEffectiveMonthly,
+  AGENCY_INCLUDED_ACCOUNTS,
+  CREATOR_ACCOUNTS,
+  PLAN_NAMES,
+  getPlanLimits,
+  type BillingInterval,
+  type SellablePlanTier,
+} from "@/lib/plans";
+import {
+  ACCOUNT_SLIDER,
+  AGENCY_EXTRA_ACCOUNT_PRICE,
+  agencyExtraAccounts,
+  formatEffectiveMonthly,
+  formatMoney,
   getPlanPrice,
-  getYearlySlashMonthly,
+  planPriceForAccounts,
+  recommendedPlan,
+  yearlySavings,
 } from "@/lib/plan-pricing";
-import {
-  freeFeatures,
-  growthFeatures,
-  maxFeatures,
-  proFeatures,
-  starterFeatures,
-} from "@/lib/plan-features";
+import { cn } from "@/lib/utils";
 
-const basePlanCard =
-  "flex h-full flex-col rounded-2xl border border-border bg-card p-6 md:p-8 dark:border-white/10 dark:bg-[#1A1A1A]";
-
-const basePlanLabel =
-  "text-[11px] font-medium uppercase tracking-widest text-muted-foreground";
-
-const basePlanPrice =
-  "font-sans text-[clamp(40px,6vw,64px)] font-bold leading-none tracking-tight tabular-nums text-foreground";
-
-const basePlanDesc = "text-[14px] leading-relaxed text-muted-foreground";
-
-const basePlanFeature = "text-[14px] leading-snug text-muted-foreground";
-
-const basePlanCheck =
-  "mt-0.5 shrink-0 text-[14px] text-emerald-600 dark:text-emerald-400";
-
-const basePlanFooter = "mt-3 text-center text-[12px] text-muted-foreground";
-
-const ctaBase =
-  "block w-full rounded-[10px] py-3.5 text-center text-[14px] font-medium transition-all";
-
-const ctaNeutral = `${ctaBase} border border-border bg-background text-foreground hover:border-foreground/25 hover:bg-muted dark:border-white/10 dark:bg-[#111111] dark:hover:border-white/25 dark:hover:bg-white/5`;
-
-const ctaPrimary = `${ctaBase} bg-emerald-500 font-semibold text-[#04140c] hover:-translate-y-px hover:bg-emerald-400 hover:shadow-[0_6px_24px_rgba(16,185,129,0.35)]`;
+const NETWORKS =
+  "X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky and Pinterest";
 
 type PricingCardsProps = {
   signedIn?: boolean;
   interval: BillingInterval;
   onIntervalChange: (interval: BillingInterval) => void;
-  /** Page hero uses h1; section uses h2 */
+  /** Page hero uses h1; landing section uses h2. */
   headingAs?: "h1" | "h2";
-  /** Anchor for the compare-plans link (landing → /pricing#compare) */
+  /** Where "Compare every feature" points (landing → /pricing#compare). */
   compareHref?: string;
-  /** Section element id (landing uses #pricing) */
+  /** Section element id (landing uses #pricing). */
   id?: string;
-  /** Full-bleed cards on /pricing; landing stays the older narrower width. */
-  wide?: boolean;
 };
 
+/**
+ * Pricing, account count first: one slider ("how many accounts?") lights up
+ * the plan that fits and prices Agency live.
+ */
 export function PricingCards({
   signedIn = false,
   interval,
@@ -63,409 +48,331 @@ export function PricingCards({
   headingAs = "h2",
   compareHref = "#compare",
   id,
-  wide = false,
 }: PricingCardsProps) {
-  const [showMax, setShowMax] = useState(false);
-  const starter = getPlanPrice("starter", interval);
-  const growth = getPlanPrice("growth", interval);
-  const pro = getPlanPrice("pro", interval);
-  const max = getPlanPrice("max", interval);
-  const freePosts = getPlanLimits("free").maxFreePosts;
+  const [accounts, setAccounts] = useState<number>(ACCOUNT_SLIDER.default);
+  const sliderId = useId();
   const Heading = headingAs;
-  const paidCta = signedIn ? "Go to dashboard →" : "Get started";
-  const maxBuyHref = signedIn ? "/dashboard/billing" : "/auth?mode=signin";
-  const authStartHref = signedIn ? "/dashboard" : "/auth?mode=signin";
-  const maxWalkthroughHref = "https://cal.com/abhishekbr/30min";
-  const saveBadge = (pct: number | undefined) =>
-    pct != null ? (
-      <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700 dark:text-emerald-400">
-        Save {pct}%
-      </span>
-    ) : null;
+  const yearly = interval === "yearly";
+  const fit = recommendedPlan(accounts);
+  const free = getPlanLimits("free");
+
+  // Agency is never priced below its 59 included accounts.
+  const agencyAccounts = Math.max(accounts, AGENCY_INCLUDED_ACCOUNTS);
+  const agencyExtra = agencyExtraAccounts(agencyAccounts);
+
+  const startHref = (plan: SellablePlanTier) => {
+    const target = `/dashboard/billing?view=plans&plan=${plan}&interval=${interval}${
+      plan === "agency" ? `&accounts=${agencyAccounts}` : ""
+    }`;
+    return signedIn ? target : signInUrl(target);
+  };
+  const freeHref = signedIn ? "/dashboard" : "/auth?mode=signin";
+
+  const creatorBilled = yearly
+    ? `≈ $${formatEffectiveMonthly("creator")}/mo · you save $${formatMoney(yearlySavings("creator"))}`
+    : `or $${formatMoney(getPlanPrice("creator", "yearly").price)}/year, 2 months free`;
+  const agencyNote =
+    agencyExtra > 0
+      ? `${AGENCY_INCLUDED_ACCOUNTS} + ${agencyExtra} extra account${agencyExtra === 1 ? "" : "s"}`
+      : `Includes ${AGENCY_INCLUDED_ACCOUNTS} accounts`;
 
   return (
     <section id={id} className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
-      <div className={wide ? "mx-auto w-full max-w-350" : "mx-auto max-w-280"}>
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
-              Pricing
-            </div>
-            <Heading className="font-sans text-[clamp(32px,4.5vw,48px)] font-bold leading-tight tracking-tight text-[#333C4D] dark:text-white">
-              Find the right plan
-              <br />
-              <span className="text-muted-foreground">for how you post.</span>
-            </Heading>
+      <div className="mx-auto flex w-full max-w-200 flex-col items-center gap-6 text-center">
+        <div className="text-[11px] uppercase tracking-widest text-muted-foreground">
+          Pricing
+        </div>
+        <Heading className="font-serif text-[clamp(28px,4.5vw,44px)] font-extrabold leading-tight tracking-tight text-balance text-[#333C4D] dark:text-white">
+          One price per account. Two plans. That&apos;s it.
+        </Heading>
+        <p className="max-w-[52ch] text-[15px] leading-relaxed text-muted-foreground">
+          Every plan posts to {NETWORKS}, with unlimited posts, the API, MCP and
+          CLI.
+        </p>
+
+        <IntervalToggle value={interval} onChange={onIntervalChange} />
+
+        <div className="flex w-full max-w-160 flex-col gap-2.5 text-left">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <label
+              htmlFor={sliderId}
+              className="text-[15px] font-semibold text-foreground"
+            >
+              How many social accounts do you post to?
+            </label>
+            <span className="font-serif text-[22px] font-bold tabular-nums text-foreground">
+              <output htmlFor={sliderId} aria-live="polite">
+                {accounts}
+              </output>{" "}
+              <span className="font-sans text-[13px] font-medium text-muted-foreground">
+                account{accounts === 1 ? "" : "s"}
+              </span>
+            </span>
           </div>
-          <BillingIntervalToggle
-            value={interval}
-            onChange={onIntervalChange}
-            className="mt-10 sm:mt-12"
+          <input
+            id={sliderId}
+            type="range"
+            min={ACCOUNT_SLIDER.min}
+            max={ACCOUNT_SLIDER.max}
+            step={1}
+            value={accounts}
+            onChange={(e) => setAccounts(Number(e.target.value))}
+            aria-valuetext={`${accounts} accounts`}
+            className="h-7 w-full cursor-pointer accent-emerald-500"
+          />
+          <SliderTicks />
+          <p className="text-[13px] text-muted-foreground">
+            Each connected profile counts once: your Instagram and your
+            client&apos;s Instagram are 2 accounts.
+          </p>
+        </div>
+
+        <div className="grid w-full max-w-190 grid-cols-1 gap-4 text-left md:grid-cols-2">
+          <PlanCard
+            name={PLAN_NAMES.creator}
+            tagline="One person or brand on every platform"
+            picked={fit === "creator"}
+            dimmed={fit !== "creator"}
+            price={planPriceForAccounts("creator", accounts, interval)}
+            yearly={yearly}
+            billed={creatorBilled}
+            cta={`Start with ${PLAN_NAMES.creator}`}
+            href={startHref("creator")}
+            features={[
+              <>
+                <b className="font-semibold text-foreground">
+                  {CREATOR_ACCOUNTS} accounts
+                </b>
+                , any mix of platforms
+              </>,
+              "Unlimited posts and scheduling",
+              "Bulk image and video tools",
+              "Auto-repost and auto-plug",
+              "REST API, MCP and CLI · 1,000 requests/hour",
+            ]}
+          />
+          <PlanCard
+            name={PLAN_NAMES.agency}
+            tagline="Agencies, client work and agent fleets"
+            picked={fit === "agency"}
+            dimmed={false}
+            price={planPriceForAccounts("agency", agencyAccounts, interval)}
+            yearly={yearly}
+            billed={agencyNote}
+            cta={`Start with ${PLAN_NAMES.agency}`}
+            href={startHref("agency")}
+            featuresHead={`Everything in ${PLAN_NAMES.creator}, plus:`}
+            features={[
+              <>
+                <b className="font-semibold text-foreground">
+                  {AGENCY_INCLUDED_ACCOUNTS} accounts included
+                </b>
+                , then ${AGENCY_EXTRA_ACCOUNT_PRICE.monthly} per account, no cap
+              </>,
+              "Invite teammates to shared workspaces",
+              "Higher API limits · 5,000 requests/hour",
+            ]}
           />
         </div>
-        <p className="mb-3 text-[15px] text-muted-foreground">
-          Start on Free, upgrade when you need more accounts or automation —
-          every paid plan includes REST API, MCP &amp; CLI.
-        </p>
-        <p className="mb-10 text-[13px] text-muted-foreground">
-          No credit card on Free · Cancel anytime · Questions?{" "}
-          <a
-            href="mailto:support@social0.app"
-            className="underline underline-offset-2 hover:text-foreground"
-          >
-            Email us
-          </a>{" "}
-          — we&apos;ll make it right.
-        </p>
 
-        <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-          <div className={basePlanCard}>
-            <div className="mb-6 min-h-7.5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
-                {freePosts} posts for trial
-              </span>
-            </div>
-            <div className={basePlanLabel}>Free</div>
-            <div className="mt-6 mb-2 flex items-baseline gap-2">
-              <div className={basePlanPrice}>
-                <sup className="mr-0.5 text-[0.55em] font-medium top-[-0.35em]">
-                  $
-                </sup>
-                0
-              </div>
-              <div className="text-[13px] text-muted-foreground">to start</div>
-            </div>
-            <p className={`mb-8 ${basePlanDesc}`}>
-              Publish across every platform and see why creators switch — before
-              you spend a dollar.
-            </p>
-            <hr className="mb-8 border-border" />
-            <ul className="flex-1 space-y-2.5">
-              {freeFeatures.map((item) => (
-                <li key={item.text} className="flex items-start gap-3">
-                  <span className={basePlanCheck}>✓</span>
-                  <span
-                    className={
-                      item.highlight
-                        ? "text-[14px] font-semibold leading-snug text-foreground"
-                        : basePlanFeature
-                    }
-                  >
-                    {item.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-auto pt-8">
-              <Link
-                href={authStartHref}
-                className={ctaPrimary}
-              >
-                {signedIn ? "Go to dashboard →" : "Start free"}
-              </Link>
-              <p className={basePlanFooter}>No card required</p>
-            </div>
-          </div>
-
-          <div className={basePlanCard}>
-            <div className="mb-6 min-h-7.5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
-                For solo creators
-              </span>
-            </div>
-            <div className={basePlanLabel}>Starter</div>
-            <div className="mt-6 mb-2">
-              <PlanDiscountPrice
-                amount={
-                  interval === "yearly"
-                    ? getEffectiveMonthly("starter")
-                    : starter.price
-                }
-                listAmount={
-                  interval === "yearly"
-                    ? getYearlySlashMonthly("starter")
-                    : starter.listPrice
-                }
-                period="/month"
-                size="hero"
-              />
-            </div>
-            {interval === "yearly" ? (
-              <p className="mb-2 text-[13px] text-muted-foreground">
-                {billedAsYearlyLabel("starter")}
-              </p>
-            ) : null}
-            <p className={`mb-8 ${basePlanDesc}`}>
-              For creators ready to post everywhere without the copy-paste
-              marathon.
-            </p>
-            <hr className="mb-8 border-border" />
-            <ul className="flex-1 space-y-2.5">
-              {starterFeatures.map((text, i) => (
-                <li key={text} className="flex items-start gap-3">
-                  <span
-                    className={`${basePlanCheck}${i === 0 ? " font-semibold" : ""}`}
-                  >
-                    ✓
-                  </span>
-                  <span
-                    className={`text-[14px] leading-snug ${i === 0 ? "font-medium text-foreground/90" : "text-foreground/70"}`}
-                  >
-                    {text}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-auto pt-8">
-              <Link
-                href={authStartHref}
-                className={ctaPrimary}
-              >
-                {paidCta}
-              </Link>
-              <p className={basePlanFooter}>Cancel anytime</p>
-            </div>
-          </div>
-
-          <div className={basePlanCard}>
-            <div className="mb-6 min-h-7.5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
-                Automation &amp; scale
-              </span>
-            </div>
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <div className={basePlanLabel}>Growth</div>
-              <p className="text-[12px] font-medium text-amber-800 dark:text-amber-400/90">
-                Early adopter pricing
-              </p>
-            </div>
-            <div className="mt-6 mb-2">
-              <PlanDiscountPrice
-                amount={
-                  interval === "yearly"
-                    ? getEffectiveMonthly("growth")
-                    : growth.price
-                }
-                listAmount={
-                  interval === "yearly"
-                    ? getYearlySlashMonthly("growth")
-                    : growth.listPrice
-                }
-                period="/month"
-                size="hero"
-                badge={saveBadge(growth.savePercent)}
-              />
-            </div>
-            {interval === "yearly" ? (
-              <p className="mb-2 text-[13px] text-muted-foreground">
-                {billedAsYearlyLabel("growth")}
-              </p>
-            ) : null}
-            <p className={`mb-8 ${basePlanDesc}`}>
-              Scale your reach with automation, reposting, and bulk scheduling
-              built for serious creators.
-            </p>
-            <hr className="mb-8 border-border" />
-            <ul className="flex-1 space-y-2.5">
-              {growthFeatures.map((item) => (
-                <li key={item.text} className="flex items-start gap-3">
-                  <span
-                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-700 dark:text-emerald-400" : "text-emerald-700/70 dark:text-emerald-400/70"}`}
-                  >
-                    ✓
-                  </span>
-                  <span
-                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}
-                  >
-                    {item.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-auto pt-8">
-              <Link
-                href={authStartHref}
-                className={ctaPrimary}
-              >
-                {paidCta}
-              </Link>
-              <p className={basePlanFooter}>Cancel anytime</p>
-            </div>
-          </div>
-
-          <div className={basePlanCard}>
-            <div className="mb-6 min-h-7.5">
-              <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
-                For teams &amp; agencies
-              </span>
-            </div>
-            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <div className={basePlanLabel}>Pro</div>
-              <p className="text-[12px] font-medium text-amber-800 dark:text-amber-400/90">
-                Early adopter pricing
-              </p>
-            </div>
-            <div className="mt-6 mb-2">
-              <PlanDiscountPrice
-                amount={
-                  interval === "yearly" ? getEffectiveMonthly("pro") : pro.price
-                }
-                listAmount={
-                  interval === "yearly"
-                    ? getYearlySlashMonthly("pro")
-                    : pro.listPrice
-                }
-                period="/month"
-                size="hero"
-                badge={saveBadge(pro.savePercent)}
-              />
-            </div>
-            {interval === "yearly" ? (
-              <p className="mb-2 text-[13px] text-muted-foreground">
-                {billedAsYearlyLabel("pro")}
-              </p>
-            ) : null}
-            <p className={`mb-8 ${basePlanDesc}`}>
-              For power users and agencies who need more accounts and team
-              collaboration.
-            </p>
-            <hr className="mb-8 border-border" />
-            <ul className="flex-1 space-y-2.5">
-              {proFeatures.map((item) => (
-                <li key={item.text} className="flex items-start gap-3">
-                  <span
-                    className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-700 dark:text-emerald-400" : "text-emerald-700/70 dark:text-emerald-400/70"}`}
-                  >
-                    ✓
-                  </span>
-                  <span
-                    className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}
-                  >
-                    {item.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-auto pt-8">
-              <Link
-                href={authStartHref}
-                className={ctaPrimary}
-              >
-                {paidCta}
-              </Link>
-              <p className={basePlanFooter}>Cancel anytime</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 flex flex-col items-center gap-4">
-          {!showMax ? (
-            <button
-              type="button"
-              onClick={() => setShowMax(true)}
-              className="text-[13px] font-medium text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
-            >
-              Want more?
-            </button>
-          ) : (
-            <div className="w-full max-w-md">
-              <div className={`${basePlanCard} relative overflow-hidden`}>
-                <div className="mb-6 min-h-7.5">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1.5 text-[11px] font-medium uppercase tracking-widest text-muted-foreground dark:border-white/10">
-                    Unlimited connections
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                  <div className={basePlanLabel}>Max</div>
-                  <p className="text-[12px] font-medium text-amber-800 dark:text-amber-400/90">
-                    Early adopter pricing
-                  </p>
-                </div>
-                <div className="mt-6 mb-2">
-                  <PlanDiscountPrice
-                    amount={
-                      interval === "yearly"
-                        ? getEffectiveMonthly("max")
-                        : max.price
-                    }
-                    listAmount={
-                      interval === "yearly"
-                        ? getYearlySlashMonthly("max")
-                        : max.listPrice
-                    }
-                    period="/month"
-                    size="hero"
-                    badge={saveBadge(max.savePercent)}
-                  />
-                </div>
-                {interval === "yearly" ? (
-                  <p className="mb-2 text-[13px] text-muted-foreground">
-                    {billedAsYearlyLabel("max")}
-                  </p>
-                ) : null}
-                <p className={`mb-8 ${basePlanDesc}`}>
-                  For agencies and power users who need unlimited social
-                  connections — everything in Pro, without the account cap.
-                </p>
-                <hr className="mb-8 border-border" />
-                <ul className="mb-8 space-y-2.5">
-                  {maxFeatures.map((item) => (
-                    <li key={item.text} className="flex items-start gap-3">
-                      <span
-                        className={`mt-0.5 shrink-0 text-[14px] ${item.highlight ? "font-semibold text-emerald-700 dark:text-emerald-400" : "text-emerald-700/70 dark:text-emerald-400/70"}`}
-                      >
-                        ✓
-                      </span>
-                      <span
-                        className={`text-[14px] leading-snug ${item.highlight ? "font-medium text-foreground" : "text-muted-foreground"}`}
-                      >
-                        {item.text}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="flex flex-col gap-2.5">
-                  <a
-                    href={maxWalkthroughHref}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={ctaPrimary}
-                  >
-                    Get a walkthrough
-                  </a>
-                  <Link href={maxBuyHref} className={ctaNeutral}>
-                    {signedIn ? "Buy Max yourself →" : "Buy Max yourself"}
-                  </Link>
-                </div>
-                <p className={basePlanFooter}>
-                  Walk through it with me, or checkout yourself — your call.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <p className="mt-8 text-center text-[13px] text-muted-foreground">
+        <p className="text-[13px] text-muted-foreground">
+          Just trying it out?{" "}
           <Link
-            href={compareHref}
-            className="font-medium text-foreground underline underline-offset-4 hover:text-emerald-700 dark:hover:text-emerald-400"
+            href={freeHref}
+            className="text-emerald-700 underline underline-offset-[3px] hover:text-emerald-600 dark:text-emerald-400"
           >
-            Compare plans →
-          </Link>
+            Start free
+          </Link>{" "}
+          with {free.maxConnectedAccounts} accounts and {free.maxFreePosts}{" "}
+          posts. No card needed.
         </p>
+
+        <Link
+          href={compareHref}
+          className="text-[13px] font-medium text-foreground underline underline-offset-[3px] hover:text-emerald-700 dark:hover:text-emerald-400"
+        >
+          Compare every feature
+        </Link>
       </div>
     </section>
   );
 }
 
-/** Standalone wrapper if needed elsewhere */
-export function PricingSection({ signedIn = false }: { signedIn?: boolean }) {
-  const [interval, setInterval] = useState<BillingInterval>("monthly");
+function IntervalToggle({
+  value,
+  onChange,
+}: {
+  value: BillingInterval;
+  onChange: (v: BillingInterval) => void;
+}) {
+  const btn =
+    "flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[14px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500";
+  const on = "bg-foreground text-background";
+  const off = "text-muted-foreground hover:text-foreground";
   return (
-    <PricingCards
-      signedIn={signedIn}
-      interval={interval}
-      onIntervalChange={setInterval}
-    />
+    <div
+      role="group"
+      aria-label="Billing period"
+      className="inline-flex gap-0.5 rounded-full border border-border bg-card p-1 dark:border-white/10"
+    >
+      <button
+        type="button"
+        aria-pressed={value === "monthly"}
+        onClick={() => onChange("monthly")}
+        className={cn(btn, value === "monthly" ? on : off)}
+      >
+        Monthly
+      </button>
+      <button
+        type="button"
+        aria-pressed={value === "yearly"}
+        onClick={() => onChange("yearly")}
+        className={cn(btn, value === "yearly" ? on : off)}
+      >
+        Yearly
+        <span
+          className={cn(
+            "rounded-full px-1.5 py-0.5 text-[11px] font-semibold",
+            value === "yearly"
+              ? "bg-emerald-500 text-[#04140c]"
+              : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
+          )}
+        >
+          2 months free
+        </span>
+      </button>
+    </div>
+  );
+}
+
+/** Tick labels placed where each value sits on the 1–200 track. */
+function SliderTicks() {
+  const span = ACCOUNT_SLIDER.max - ACCOUNT_SLIDER.min;
+  return (
+    <div
+      aria-hidden
+      className="relative h-4 font-mono text-[11px] font-medium text-muted-foreground/80"
+    >
+      {ACCOUNT_SLIDER.ticks.map((t, i) => {
+        const pct = ((t - ACCOUNT_SLIDER.min) / span) * 100;
+        const edge =
+          i === 0
+            ? "translate-x-0"
+            : i === ACCOUNT_SLIDER.ticks.length - 1
+              ? "-translate-x-full"
+              : "-translate-x-1/2";
+        return (
+          <span
+            key={t}
+            className={cn("absolute top-0 tabular-nums", edge)}
+            style={{ left: `${pct}%` }}
+          >
+            {t}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function PlanCard({
+  name,
+  tagline,
+  picked,
+  dimmed,
+  price,
+  yearly,
+  billed,
+  cta,
+  href,
+  features,
+  featuresHead,
+}: {
+  name: string;
+  tagline: string;
+  picked: boolean;
+  dimmed: boolean;
+  price: number;
+  yearly: boolean;
+  billed: string;
+  cta: string;
+  href: string;
+  features: ReactNode[];
+  featuresHead?: string;
+}) {
+  return (
+    <article
+      className={cn(
+        "flex min-w-0 flex-col gap-4 rounded-2xl border bg-card p-6 transition-[border-color,box-shadow,opacity] duration-200 motion-reduce:transition-none dark:bg-[#1A1A1A]",
+        picked
+          ? "border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.18)]"
+          : "border-border dark:border-white/10",
+        dimmed && "opacity-60",
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="font-serif text-[18px] font-bold text-foreground">
+          {name}
+        </h3>
+        <span
+          className={cn(
+            "rounded-full bg-emerald-500 px-2 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-[#04140c]",
+            !picked && "invisible",
+          )}
+        >
+          Your fit
+        </span>
+      </div>
+      <p className="-mt-2.5 text-[14px] text-muted-foreground">{tagline}</p>
+      <div>
+        <div className="flex flex-wrap items-baseline gap-1.5">
+          <span className="font-serif text-[40px] font-extrabold leading-none tracking-tight tabular-nums text-foreground">
+            ${formatMoney(price)}
+          </span>
+          <span className="text-[14px] text-muted-foreground">
+            {yearly ? "/year" : "/month"}
+          </span>
+        </div>
+        <p className="mt-1 min-h-5 text-[13px] tabular-nums text-muted-foreground">
+          {billed}
+        </p>
+      </div>
+      <Link
+        href={href}
+        className={cn(
+          "block w-full rounded-[10px] border px-4 py-3 text-center text-[15px] font-semibold transition-colors",
+          picked
+            ? "border-emerald-500 bg-emerald-500 text-[#04140c] hover:bg-emerald-400"
+            : "border-border bg-background text-foreground hover:bg-muted dark:border-white/10 dark:bg-[#111111] dark:hover:bg-white/5",
+        )}
+      >
+        {cta}
+      </Link>
+      <ul className="flex flex-col gap-2 text-[14px] text-muted-foreground">
+        {featuresHead ? (
+          <li className="text-[13px] font-semibold">{featuresHead}</li>
+        ) : null}
+        {features.map((f, i) => (
+          <li key={i} className="flex items-start gap-2.5">
+            <svg
+              viewBox="0 0 16 16"
+              aria-hidden
+              className="mt-[3px] h-4 w-4 flex-none rounded-full bg-emerald-500/15"
+            >
+              <path
+                d="M4.5 8.2l2.2 2.2 4.8-4.8"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="text-emerald-600 dark:text-emerald-400"
+              />
+            </svg>
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+    </article>
   );
 }

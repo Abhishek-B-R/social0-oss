@@ -17,7 +17,7 @@ export function InboxAttachmentView({
 
   if (broken || !attachment.url) {
     return (
-      <p className="mt-1.5 text-[11px] text-text-muted">Media unavailable</p>
+      <p className="mt-1.5 text-xs text-text-muted">Media unavailable</p>
     );
   }
 

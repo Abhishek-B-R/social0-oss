@@ -51,3 +51,4 @@ Server enqueues `202`; **background-worker** executes:
 | `POST /api/cron/autoplug`               | Auto-plug                     |
 | `POST /api/cron/token-health`           | Token validation sweep        |
 | `POST /api/cron/billing-zombie-cleanup` | Cancel stale unpaid Dodo subs |
+| `POST /api/cron/agency-extra-accounts` | Re-sync Agency extra-account add-ons with connected accounts (in-process) |

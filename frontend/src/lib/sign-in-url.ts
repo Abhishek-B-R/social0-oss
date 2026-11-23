@@ -23,6 +23,21 @@ export function signInUrl(callbackPath?: string): string {
   return `/auth?callbackUrl=${encodeURIComponent(path)}`;
 }
 
+/**
+ * Email-verification page URL that keeps the post-auth callback, so an invite
+ * or deep link survives sign-up → OTP → `/auth/continue`. The default gate is
+ * left off the query to keep the common URL short.
+ */
+export function verifyEmailUrl(
+  email: string,
+  callbackUrl?: string | null,
+): string {
+  const base = `/auth/verify-email?email=${encodeURIComponent(email)}`;
+  const safe = sanitizeReturnToPath(callbackUrl);
+  if (!safe || safe === AUTH_CONTINUE_PATH) return base;
+  return `${base}&callbackUrl=${encodeURIComponent(safe)}`;
+}
+
 /** Resolve callbackUrl from search params; only same-origin paths allowed. */
 export function resolveCallbackUrl(
   raw: string | string[] | null | undefined,

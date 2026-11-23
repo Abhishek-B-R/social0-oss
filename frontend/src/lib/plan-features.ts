@@ -1,4 +1,13 @@
-import { getPlanLimits } from "@/lib/plans";
+import {
+  AGENCY_INCLUDED_ACCOUNTS,
+  CREATOR_ACCOUNTS,
+  getPlanLimits,
+  PLAN_NAMES,
+  type SellablePlanTier,
+} from "@/lib/plans";
+import { AGENCY_EXTRA_ACCOUNT_PRICE, formatMoney } from "@/lib/plan-pricing";
+
+const EXTRA_MONTHLY = `$${formatMoney(AGENCY_EXTRA_ACCOUNT_PRICE.monthly)}`;
 
 const freePosts = getPlanLimits("free").maxFreePosts;
 
@@ -46,18 +55,8 @@ export const freeFeatures: PlanFeature[] = [
   { text: "Activated instantly — no trial that auto-charges" },
 ];
 
-export const starterFeatures: string[] = [
-  "Up to 5 connected accounts",
-  "Unlimited posts",
-  "Multiple accounts per platform",
-  "Workspaces (multi-brand)",
-  ...CORE_PUBLISH,
-  ...CORE_DEV,
-  ...CORE_EXTRAS,
-];
-
-export const growthFeatures: PlanFeature[] = [
-  { text: "Up to 15 connected accounts", highlight: true },
+export const creatorFeatures: PlanFeature[] = [
+  { text: `Up to ${CREATOR_ACCOUNTS} connected accounts`, highlight: true },
   { text: "Unlimited posts", highlight: true },
   { text: "Multiple accounts per platform" },
   { text: "Workspaces (multi-brand)" },
@@ -66,14 +65,15 @@ export const growthFeatures: PlanFeature[] = [
   { text: "Auto-repost / resurface", highlight: true },
   ...CORE_PUBLISH.map((text) => ({ text })),
   ...CORE_DEV.map((text) => ({ text })),
+  { text: "1,000 API requests / hour" },
   ...CORE_EXTRAS.map((text) => ({ text })),
-  { text: "Human support" },
 ];
 
-export const proFeatures: PlanFeature[] = [
-  { text: "Up to 50 connected accounts", highlight: true },
+export const agencyFeatures: PlanFeature[] = [
+  { text: `${AGENCY_INCLUDED_ACCOUNTS} accounts included`, highlight: true },
+  { text: `+${EXTRA_MONTHLY}/month per extra account, no cap`, highlight: true },
   { text: "Unlimited posts", highlight: true },
-  { text: "Team collaboration / invite teammates", highlight: true },
+  { text: "Teammates & shared workspaces", highlight: true },
   { text: "Multiple accounts per platform" },
   { text: "Workspaces (multi-brand)" },
   { text: "Bulk image & video scheduling" },
@@ -81,57 +81,28 @@ export const proFeatures: PlanFeature[] = [
   { text: "Auto-repost / resurface" },
   ...CORE_PUBLISH.map((text) => ({ text })),
   ...CORE_DEV.map((text) => ({ text })),
+  { text: "5,000 API requests / hour", highlight: true },
   ...CORE_EXTRAS.map((text) => ({ text })),
-  { text: "Priority support", highlight: true },
-  { text: "Early access to new features" },
-];
-
-export const maxFeatures: PlanFeature[] = [
-  { text: "Unlimited connected accounts", highlight: true },
-  { text: "Unlimited posts", highlight: true },
-  { text: "Team collaboration / invite teammates", highlight: true },
-  { text: "Multiple accounts per platform" },
-  { text: "Workspaces (multi-brand)" },
-  { text: "Bulk image & video scheduling" },
-  { text: "Auto-plug (performance CTA replies)" },
-  { text: "Auto-repost / resurface" },
-  ...CORE_PUBLISH.map((text) => ({ text })),
-  ...CORE_DEV.map((text) => ({ text })),
-  ...CORE_EXTRAS.map((text) => ({ text })),
-  { text: "Priority support", highlight: true },
-  { text: "Early access to new features" },
-  { text: "10,000 API requests / hour" },
 ];
 
 /** Short bullets shown by default on onboarding plan cards. */
 export const ONBOARDING_PLAN_HIGHLIGHTS = {
-  starter: [
-    "Up to 5 connected accounts",
-    "Unlimited posts",
-    "Schedule across platforms",
-    "Threads & Collections",
-    "Workspaces (multi-brand)",
+  creator: [
+    `Up to ${CREATOR_ACCOUNTS} connected accounts`,
+    "Unlimited posts and scheduling",
+    "All 9 networks",
+    "Bulk tools, auto-repost & auto-plug",
+    "REST API, MCP & CLI (1,000 requests / hour)",
   ],
-  growth: [
-    "Everything in Starter",
-    "Up to 15 connected accounts",
-    "Auto-plug & auto-repost",
-    "Bulk scheduling tools",
-    "Human support",
+  agency: [
+    `Everything in ${PLAN_NAMES.creator}`,
+    `${AGENCY_INCLUDED_ACCOUNTS} accounts included, +${EXTRA_MONTHLY}/month per extra`,
+    "No cap on accounts",
+    "Teammates & shared workspaces",
+    "5,000 API requests / hour",
   ],
-  pro: [
-    "Everything in Growth",
-    "Up to 50 connected accounts",
-    "Invite teammates & collaborate",
-    "Priority support",
-    "Early access to new features",
-  ],
-} as const;
+} as const satisfies Record<SellablePlanTier, readonly string[]>;
 
-export function fullPlanFeatureTexts(
-  plan: keyof typeof ONBOARDING_PLAN_HIGHLIGHTS,
-): string[] {
-  if (plan === "starter") return starterFeatures;
-  if (plan === "growth") return growthFeatures.map((f) => f.text);
-  return proFeatures.map((f) => f.text);
+export function fullPlanFeatureTexts(plan: SellablePlanTier): string[] {
+  return (plan === "creator" ? creatorFeatures : agencyFeatures).map((f) => f.text);
 }

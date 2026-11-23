@@ -45,6 +45,20 @@ export async function claimCronWork(
   }
 }
 
+/**
+ * Hand a lease back when the work it guarded certainly did not happen (the
+ * platform refused the request outright), so the next run can try again
+ * instead of waiting out the lease. Best effort: the lease expires anyway.
+ */
+export async function releaseCronWork(key: string): Promise<void> {
+  if (!redis) return;
+  try {
+    await redis.del(key);
+  } catch (err) {
+    console.warn("[cron] could not release the work lease", key, err);
+  }
+}
+
 export function resurfaceEventClaimKey(eventId: string): string {
   return `cron:claim:resurface:${eventId}`;
 }

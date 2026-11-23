@@ -6,8 +6,8 @@ import { signOut } from "@/lib/auth-client";
 import { DOCS_DASHBOARD_URL } from "@/lib/docs-url";
 import { LEGAL_ENTITY } from "@/lib/legal-entity";
 import { cn } from "@/lib/utils";
+import { useDashboardPath } from "@/lib/dashboard-base-path";
 import { resetVemetricUser } from "@/lib/vemetric";
-import { SkeletonBone } from "@/components/ui/skeleton-bone";
 import {
   ArrowSquareOut,
   BookOpen,
@@ -47,14 +47,6 @@ type SidebarAccountMenuProps = {
   className?: string;
 };
 
-function planBadgeLabel(planLabel: string): string | null {
-  if (!planLabel || planLabel === "…" || planLabel === "Guest") return null;
-  if (planLabel.startsWith("Pro")) return "PRO";
-  if (planLabel.startsWith("Growth")) return "GRO";
-  if (planLabel.startsWith("Starter")) return "LITE";
-  return "FREE";
-}
-
 function MenuRow({
   icon: Icon,
   label,
@@ -76,9 +68,9 @@ function MenuRow({
 }) {
   const className = cn(
     "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium transition-[background-color,transform,color] duration-150",
-    "hover:bg-black/[0.04] dark:hover:bg-white/[0.06] active:scale-[0.98]",
+    "hover:bg-sidebar-active active:scale-[0.98]",
     danger
-      ? "text-red-600 dark:text-red-400"
+      ? "text-danger"
       : "text-sidebar-text",
   );
 
@@ -87,7 +79,7 @@ function MenuRow({
       <Icon
         className={cn(
           "h-4 w-4 shrink-0",
-          danger ? "text-red-600 dark:text-red-400" : "text-sidebar-muted",
+          danger ? "text-danger" : "text-sidebar-muted",
         )}
         size={16}
         weight="regular"
@@ -192,22 +184,24 @@ function AccountMenuPanel({
   displayName,
   email,
   image,
-  badge,
   planLabel,
   onClose,
   onSignOut,
+  accountsHref,
+  agentsHref,
 }: {
+  accountsHref: string;
+  agentsHref: string;
   displayName: string;
   email?: string | null;
   image?: string | null;
-  badge: string | null;
   planLabel: string;
   onClose: () => void;
   onSignOut: () => void;
 }) {
   return (
     <>
-      <div className="border-b border-sidebar-menu-border bg-gradient-to-b from-accent/[0.08] to-transparent px-3 pb-4 pt-3.5">
+      <div className="border-b border-sidebar-menu-border px-3 pb-4 pt-3.5">
         <div className="flex items-center gap-2.5">
           <div className="relative shrink-0">
             {image ? (
@@ -221,11 +215,6 @@ function AccountMenuPanel({
                 {displayName.charAt(0).toUpperCase()}
               </div>
             )}
-            {badge ? (
-              <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded bg-accent px-1 py-[1px] text-[8px] font-bold leading-none tracking-wide text-accent-foreground shadow-sm">
-                {badge}
-              </span>
-            ) : null}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-sidebar-text">
@@ -237,18 +226,18 @@ function AccountMenuPanel({
           </div>
         </div>
         <Link
-          href="/dashboard/connections"
+          href={accountsHref}
           prefetch
           onClick={onClose}
           className="mt-5 inline-flex items-center gap-1.5 text-[13px] font-semibold text-accent transition-opacity hover:opacity-80 active:scale-[0.98]"
         >
           <PlugsConnected className="h-4 w-4" size={16} />
-          Connect accounts
+          Connect account
         </Link>
       </div>
 
       <div className="px-1.5 pb-1.5 pt-2.5">
-        <p className="px-2.5 pb-1.5 pt-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted">
+        <p className="px-2.5 pb-1.5 pt-1 text-xs font-medium text-sidebar-muted">
           Resources
         </p>
         <MenuRow
@@ -260,7 +249,7 @@ function AccountMenuPanel({
         />
         <MenuRow
           icon={Megaphone}
-          label="Feedback & Feature Request"
+          label="Feedback & feature requests"
           href="/dashboard/feedback"
           onClick={onClose}
         />
@@ -302,8 +291,8 @@ function AccountMenuPanel({
         />
         <MenuRow
           icon={Code}
-          label="Developer"
-          href="/dashboard/api-keys"
+          label="AI agents"
+          href={agentsHref}
           onClick={onClose}
         />
       </div>
@@ -311,7 +300,7 @@ function AccountMenuPanel({
       <div className="mx-3 border-t border-sidebar-menu-border" />
 
       <div className="px-3 py-2.5">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-sidebar-muted">
+        <p className="mb-1.5 text-xs font-medium text-sidebar-muted">
           Theme
         </p>
         <ThemeSegment />
@@ -334,12 +323,12 @@ export function SidebarAccountMenu({
   railCollapsed = false,
   className,
 }: SidebarAccountMenuProps) {
+  const dash = useDashboardPath();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
   const menuId = useId();
   const displayName = user.name || user.email || "User";
-  const badge = planBadgeLabel(planLabel);
   const showPlanSkeleton = planPending || planLabel === "...";
   const close = () => setOpen(false);
   const opensUp = variant === "sidebar" && !railCollapsed;
@@ -429,10 +418,11 @@ export function SidebarAccountMenu({
               displayName={displayName}
               email={user.email}
               image={user.image}
-              badge={badge}
               planLabel={planLabel}
               onClose={close}
               onSignOut={() => void handleSignOut()}
+              accountsHref={dash("connections")}
+              agentsHref={dash("agents")}
             />
           </motion.div>
         ) : null}
@@ -467,6 +457,8 @@ export function SidebarAccountMenu({
         aria-haspopup="menu"
         aria-controls={open ? menuId : undefined}
         aria-label={open ? "Close account menu" : "Open account menu"}
+        // The collapsed rail hides the name and plan lines; keep them on hover.
+        title={railCollapsed && !showPlanSkeleton ? `${displayName}, ${planLabel}` : undefined}
       >
         <div className="relative shrink-0">
           {user.image ? (
@@ -496,11 +488,6 @@ export function SidebarAccountMenu({
               {displayName.charAt(0).toUpperCase()}
             </div>
           )}
-          {badge ? (
-            <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded bg-accent px-1 py-[1px] text-[7px] font-bold leading-none tracking-wide text-accent-foreground">
-              {badge}
-            </span>
-          ) : null}
         </div>
         {!railCollapsed ? (
           <>
@@ -515,7 +502,7 @@ export function SidebarAccountMenu({
               >
                 {displayName}
               </p>
-              <p
+              <div
                 className={cn(
                   "truncate text-xs",
                   variant === "sidebar"
@@ -524,14 +511,14 @@ export function SidebarAccountMenu({
                 )}
               >
                 {showPlanSkeleton ? (
-                  <SkeletonBone
-                    className="inline-block h-3 w-16 rounded bg-sidebar-active/80"
+                  <span
+                    className="inline-block h-3 w-16 animate-pulse rounded bg-sidebar-active/80"
                     aria-hidden
                   />
                 ) : (
                   planLabel
                 )}
-              </p>
+              </div>
             </div>
             <CaretDown
               className={cn(

@@ -6,6 +6,7 @@ import { useSession } from "@/lib/auth-client";
 import { getOnboardingStatus, type OnboardingStatus } from "@/api/onboarding";
 import { OnboardingProgress } from "@/components/onboarding/OnboardingProgress";
 import { GridBackground } from "@/components/landing/GridBackground";
+import { LegalConsentGate } from "@/components/auth/LegalConsentGate";
 import { useQuery } from "@tanstack/react-query";
 
 function OnboardingGateLoader() {
@@ -71,7 +72,7 @@ export function OnboardingLayout() {
 
   useEffect(() => {
     if (status?.onboardingCompleted) {
-      navigate("/dashboard", { replace: true });
+      navigate("/dashboard/home", { replace: true });
     }
   }, [status, navigate]);
 
@@ -114,7 +115,7 @@ export function OnboardingLayout() {
                 className="absolute inset-0 hidden rounded-full border border-white dark:block"
               />
             </span>
-            <span className="font-logo text-[22px] font-normal tracking-tight text-foreground">
+            <span className="brand-wordmark font-logo text-[22px] font-normal tracking-tight text-foreground">
               Social0
             </span>
           </Link>
@@ -135,6 +136,10 @@ export function OnboardingLayout() {
       <main className="relative z-10 flex flex-1 flex-col px-5 py-8 sm:px-8 sm:py-10 lg:px-10 lg:py-12">
         <Outlet />
       </main>
+      {/* Google sign-up skips the sign-up form's Terms/Privacy checkboxes, so
+          consent is asked here, before onboarding can connect accounts or
+          start a checkout — not first on the dashboard. */}
+      <LegalConsentGate />
     </div>
   );
 }

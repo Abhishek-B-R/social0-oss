@@ -18,8 +18,8 @@ export function BillingIntervalToggle({
     size === "sm"
       ? "px-3 py-1.5 text-xs touch:min-h-10 touch:px-4"
       : "px-4 py-2 text-sm touch:min-h-11";
-  const yearlyLabel =
-    size === "sm" ? "Yearly (2 mo free)" : "Yearly (2 months free)";
+  // Yearly is 10× monthly on every plan sold: two months free.
+  const yearlyLabel = "Yearly";
 
   return (
     <div
@@ -50,6 +50,13 @@ export function BillingIntervalToggle({
         }`}
       >
         {yearlyLabel}
+        <span
+          className={`ml-1.5 rounded-full px-1.5 py-px text-[11px] font-medium ${
+            value === "yearly" ? "bg-background/20" : "bg-accent/10 text-accent"
+          }`}
+        >
+          2 months free
+        </span>
       </button>
     </div>
   );

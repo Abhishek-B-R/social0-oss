@@ -23,9 +23,14 @@ export function scrollToHash(
   return true;
 }
 
-/** React Router won't scroll to #sections — retry until landing sections mount. */
+/**
+ * React Router won't scroll to #sections — retry until landing sections mount.
+ * Keyed on the location key too: AppLink re-navigates to the same `/#faq` on
+ * a second click, which leaves pathname and hash unchanged but still has to
+ * scroll back to the section.
+ */
 export function useLandingHashScroll(): void {
-  const { pathname, hash } = useLocation();
+  const { pathname, hash, key } = useLocation();
 
   useEffect(() => {
     if (!hash || !LANDING_PATHS.has(pathname)) return;
@@ -46,5 +51,5 @@ export function useLandingHashScroll(): void {
     return () => {
       cancelled = true;
     };
-  }, [hash, pathname]);
+  }, [hash, pathname, key]);
 }

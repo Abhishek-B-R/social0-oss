@@ -1,10 +1,4 @@
-import type { PublishOptions, PublishResult } from "@/api/publish";
-import { getPostPublicationList, publishPost } from "@/api/publish";
-import type {
-  PlatformResult,
-  PlatformStatus,
-} from "@/components/UploadPublishOverlay";
-import { PLATFORMS } from "@/lib/platforms";
+import { getPostPublicationList } from "@/api/publish";
 
 /**
  * TikTok / Threads are slow; list them last in the progress UI only.
@@ -45,62 +39,7 @@ export type PublicationProgressRow = PublicationListRow & {
 };
 
 const PROGRESS_POLL_MS = 1200;
-/** Client safety net when an RPC call hangs (e.g. platform API stall). */
-const PUBLISH_SERVER_ACTION_TIMEOUT_MS = 90_000;
 const POLL_UNTIL_DONE_MAX_MS = 90_000;
-
-function publicationStatusToPlatformStatus(
-  publicationStatus: string,
-  fallback: PlatformStatus = "waiting",
-): PlatformStatus {
-  if (publicationStatus === "published") return "published";
-  if (publicationStatus === "failed") return "failed";
-  if (publicationStatus === "publishing") return "processing";
-  return fallback;
-}
-
-export function publicationRowsToPlatformStatuses(
-  rows: PublicationProgressRow[],
-): PlatformResult[] {
-  return sortBySlowPlatformsLast(rows).map((pub) => ({
-    platform: pub.platform,
-    accountId: pub.connectedAccountId,
-    accountName: pub.platformUsername
-      ? `@${pub.platformUsername}`
-      : (PLATFORMS.find((p) => p.id === pub.platform)?.name ?? pub.platform),
-    status: publicationStatusToPlatformStatus(pub.publicationStatus),
-    error:
-      pub.publicationStatus === "failed"
-        ? (pub.lastError ?? undefined)
-        : undefined,
-    postUrl:
-      pub.publicationStatus === "published"
-        ? (pub.platformPostUrl ?? undefined)
-        : undefined,
-  }));
-}
-
-export function mergePublicationProgressIntoPlatformStatuses(
-  prev: PlatformResult[],
-  rows: PublicationProgressRow[],
-): PlatformResult[] {
-  return prev.map((p) => {
-    const row = rows.find((r) => r.connectedAccountId === p.accountId);
-    if (!row) return p;
-    return {
-      ...p,
-      status: publicationStatusToPlatformStatus(row.publicationStatus, p.status),
-      error:
-        row.publicationStatus === "failed"
-          ? (row.lastError ?? undefined)
-          : undefined,
-      postUrl:
-        row.publicationStatus === "published"
-          ? (row.platformPostUrl ?? undefined)
-          : undefined,
-    };
-  });
-}
 
 function allPublicationsResolved(rows: PublicationProgressRow[]): boolean {
   return (
@@ -145,66 +84,4 @@ export async function pollPublicationProgressUntilDone(
       })();
     }, PROGRESS_POLL_MS);
   });
-}
-
-/**
- * Single RPC publish call — executePublish runs all platforms in parallel via
- * Promise.allSettled. Polls publication rows for per-platform progress UI.
- */
-export async function publishPostWithParallelProgress(
-  postId: string,
-  options: PublishOptions | undefined,
-  onPoll: (rows: PublicationProgressRow[]) => void,
-): Promise<PublishResult> {
-  const pollOnce = async () => {
-    try {
-      const rows = await getPostPublicationList(postId);
-      onPoll(rows);
-    } catch {
-      // ignore transient poll errors
-    }
-  };
-
-  const pollTimer = setInterval(() => {
-    void pollOnce();
-  }, PROGRESS_POLL_MS);
-
-  const publishWithTimeout = async (): Promise<PublishResult> => {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    try {
-      return await Promise.race([
-        publishPost(postId, options),
-        new Promise<PublishResult>((resolve) => {
-          timeoutId = setTimeout(() => {
-            console.warn(
-              "[publishPostWithParallelProgress] publish timed out on client",
-              { postId },
-            );
-            resolve({
-              success: true,
-              results: [],
-            });
-          }, PUBLISH_SERVER_ACTION_TIMEOUT_MS);
-        }),
-      ]);
-    } catch (err) {
-      console.error("[publishPostWithParallelProgress] publish failed:", err);
-      return {
-        success: false,
-        error:
-          err instanceof Error ? err.message : "Publish failed unexpectedly",
-        results: [],
-      };
-    } finally {
-      if (timeoutId) clearTimeout(timeoutId);
-    }
-  };
-
-  try {
-    await pollOnce();
-    return await publishWithTimeout();
-  } finally {
-    clearInterval(pollTimer);
-    await pollOnce();
-  }
 }

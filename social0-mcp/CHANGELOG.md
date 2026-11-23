@@ -2,6 +2,12 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
+## [Unreleased]
+
+### Fixed
+
+- A retried `publish_now`, `publish_post`, `schedule_content` or `create_draft` call no longer creates a second post. Each call sends an `Idempotency-Key`: the new optional `idempotency_key` argument, or one derived from the tool and the exact request within a 10 minute window. `schedule_content` and `create_draft` used to send none, and the publish tools sent a new random key per call.
+
 ## [0.5.0] - 2026-09-04
 
 ### Added

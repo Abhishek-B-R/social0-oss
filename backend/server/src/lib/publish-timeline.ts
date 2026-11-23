@@ -1,5 +1,6 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "../db/index.js";
+import { isValidUUID } from "./validation.js";
 import {
   autoPlugs,
   posts,
@@ -200,15 +201,28 @@ export async function loadPublishTimelineForPost(
   }
 }
 
-/** Ensure the post belongs to the user before exposing events. */
+/**
+ * `/v1` timeline read: the post must belong to the API key's user **and** sit
+ * in the personal (main) pool. Team-workspace posts also carry the owner's
+ * `userId`, so `userId` alone would leak workspace timelines (platform error
+ * messages included) that `GET /v1/posts/:id` correctly 404s. Same scope rule
+ * as `v1GetPost` (`getPostDetail(..., null)`). Returns null when not found.
+ */
 export async function loadPublishTimelineForOwnedPost(
   postId: string,
   userId: string,
 ): Promise<PublishTimelineEvent[] | null> {
+  if (!isValidUUID(postId)) return null;
   const [row] = await db
     .select({ id: posts.id })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(
+      and(
+        eq(posts.id, postId),
+        eq(posts.userId, userId),
+        isNull(posts.workspaceId),
+      ),
+    )
     .limit(1);
   if (!row) return null;
   return loadPublishTimelineForPost(postId, userId);

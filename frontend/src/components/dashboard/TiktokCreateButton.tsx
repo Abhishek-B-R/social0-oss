@@ -3,12 +3,14 @@ import { useLocation } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 /** Brand-aligned floating create button: green core + subtle dual glow. Premium SaaS, not neon. */
 const TOKENS = {
-  width: 56,
-  // 44px is the minimum comfortable thumb target (WCAG 2.5.5 / Apple HIG).
-  height: 44,
+  width: 52,
+  // The tap target is the whole tab cell (button + label), not just the
+  // pill, so the pill can be shorter and leave room for the label.
+  height: 34,
   /** Horizontal offset (px) for glow layers - subtle, not flashy */
   glowOffset: 2,
 } as const;
@@ -47,7 +49,12 @@ export function TiktokCreateButton({
       onClick={() => {
         if (!isActive) setNavPending(true);
       }}
-      className={`flex flex-col items-center justify-center touch-manipulation ${navPending ? "opacity-75" : ""}`}
+      className={cn(
+        "flex h-full w-full flex-col items-center justify-center gap-1 text-[11px] leading-none touch-manipulation",
+        "rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40",
+        isActive ? "text-accent" : "text-text-muted",
+        navPending && "opacity-75",
+      )}
       aria-label={ariaLabel ?? label}
       aria-current={isActive ? "page" : undefined}
     >
@@ -79,6 +86,9 @@ export function TiktokCreateButton({
           />
         </div>
       </div>
+      <span aria-hidden className="truncate">
+        {label}
+      </span>
     </Link>
   );
 }

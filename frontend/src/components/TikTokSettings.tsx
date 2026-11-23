@@ -284,7 +284,7 @@ export function TikTokSettings({
         </div>
 
         {settings.brand_content_toggle && (
-          <div className="mt-3 space-y-3 rounded-lg border border-border bg-bg p-3">
+          <div className="mt-3 space-y-3 border-l border-border pl-3">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"

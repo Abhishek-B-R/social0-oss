@@ -298,7 +298,7 @@ export default function PrivacyPage() {
             </p>
             <p>
               You may delete your account in{" "}
-              <Link href="/dashboard/settings" className={linkClass}>
+              <Link href="/dashboard/settings/security" className={linkClass}>
                 Settings
               </Link>
               , or request deletion via our{" "}

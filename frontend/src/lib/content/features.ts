@@ -985,6 +985,15 @@ export const FEATURES: FeaturePage[] = [
 
 export const FEATURE_SLUGS = FEATURES.map((f) => f.slug);
 
+/**
+ * Short name for a feature without a platformLabel: the headline up to its
+ * spaced " - " separator, so "Multi-platform scheduler - one composer, …"
+ * becomes "Multi-platform scheduler" (a bare "-" split would cut at the hyphen).
+ */
+export function featureHeadlineLabel(feature: FeaturePage): string {
+  return feature.heroHeadline.split(" - ")[0].trim();
+}
+
 export function getFeature(slug: string): FeaturePage | undefined {
   return FEATURES.find((f) => f.slug === slug);
 }

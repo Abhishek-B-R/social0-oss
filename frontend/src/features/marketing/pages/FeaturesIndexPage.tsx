@@ -5,7 +5,7 @@ import { PSEO_PAGES_ENABLED } from "@/lib/content/pseo-enabled";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
-import { FEATURES } from "@/lib/content/features";
+import { FEATURES, featureHeadlineLabel } from "@/lib/content/features";
 import {
   buildItemListJsonLd,
   buildPageMetadata,
@@ -40,7 +40,7 @@ export default function FeaturesIndexPage() {
       FEATURES.map((feature) => ({
         name: feature.platformLabel
           ? `${feature.platformLabel} scheduler`
-          : feature.heroHeadline.split("-")[0].trim(),
+          : featureHeadlineLabel(feature),
         path: `/features/${feature.slug}`,
       })),
     ),
@@ -72,7 +72,7 @@ export default function FeaturesIndexPage() {
                   <h2 className="font-serif text-xl text-[#333C4D] dark:text-white">
                     {feature.platformLabel
                       ? `${feature.platformLabel} scheduler`
-                      : feature.heroHeadline.split("-")[0].trim()}
+                      : featureHeadlineLabel(feature)}
                   </h2>
                   <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
                     {feature.heroSubheadline}

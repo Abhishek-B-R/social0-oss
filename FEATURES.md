@@ -46,7 +46,7 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 - **Composer**: quick text-first flow with optional media; supports thread-style multi-post drafts
 - **Manual create**: per-type forms (`/dashboard/create/:type`) with full platform-specific options
 - **Per-platform captions**: one base caption, customize per account/platform where needed
-- **Carousel / multi-image**: image collections and Instagram-style carousels (Starter+)
+- **Carousel / multi-image**: image collections and Instagram-style carousels (every plan)
 - **Aspect-ratio guidance**: video dimension hints before upload
 - **Drag-and-drop media**: images and videos in composer and create forms
 - **Drafts**: save work in progress; edit later from Posts → Drafts
@@ -60,18 +60,18 @@ Plan gates reflect `react-frontend/src/lib/plans.ts` and the pricing page.
 
 - **Schedule for later**: date/time in user’s timezone
 - **Content calendar**: month/week view of scheduled and published posts (`/dashboard/calendar`)
-- **Analytics**: live metrics for posts you published through Social0 (`/dashboard/analytics`). Flask in the sidebar = early access, not a separate product. See [Analytics](#analytics)
-- **Inbox**: comments on Social0-published posts, plus DMs where the platform allows it (`/dashboard/inbox`). Same flask. See [Inbox](#inbox)
+- **Analytics**: live metrics for posts you published through Social0 (`/dashboard/analytics`). See [Analytics](#analytics)
+- **Inbox**: comments on Social0-published posts, plus DMs where the platform allows it (`/dashboard/inbox`). See [Inbox](#inbox)
 - **Posts list**: all posts with filters (platform, account, time, sort); views for drafts, scheduled, posted
 - **Posting queue**: recurring weekly time slots (Settings → Queue); assign posts to “next queue slot”
 - **Timezone**: user timezone drives schedule display and queue slots (Settings)
-- **Bulk scheduling**: upload many images or videos and schedule across days (Growth+; `/dashboard/bulk-tools`)
+- **Bulk scheduling**: upload many images or videos and schedule across days (paid plans; `/dashboard/bulk-tools`)
 
 ---
 
 ## Analytics
 
-Route: `/dashboard/analytics` (also under `/dashboard/teams/:teamId/analytics`). Not plan-gated. Flask icon in the sidebar (no “Experimental” label there). The page title shows a flask + **Experimental**: early access, not a separate product.
+Route: `/dashboard/analytics` (also under `/dashboard/teams/:teamId/analytics`). Not plan-gated. Marked with a flask “Experimental” badge in the sidebar and page title (early access: may have bugs).
 
 Live metrics come from **connected, active accounts** that are rolled out. Metrics are for **posts you published through Social0**, not the rest of the account.
 
@@ -100,7 +100,7 @@ Also available outside the dashboard: `social0 analytics` (CLI), `get_analytics`
 
 ## Inbox
 
-Route: `/dashboard/inbox` (also `/dashboard/teams/:teamId/inbox`). Not plan-gated. Same flask as Analytics.
+Route: `/dashboard/inbox` (also `/dashboard/teams/:teamId/inbox`). Not plan-gated. Marked with a flask “Experimental” badge in the sidebar and page title (early access: may have bugs).
 
 - **Comments** (default): comments on posts **published through Social0**
 - **DMs**: conversations on platforms that allow it
@@ -149,7 +149,7 @@ Route: `/dashboard/posts/:id`. Two columns.
 2. **Media** (if any)
 3. Under Media:
    - If **X is not** on the post: full-width **Post analytics** card (published / partial only)
-   - If **X is** on the post: that row splits: **Post analytics** \| **Auto-Plug & Auto-Repost** (Growth+; X-only). Scheduled X posts can show Auto-Plug / Auto-Repost without the analytics card
+   - If **X is** on the post: that row splits: **Post analytics** \| **Auto-Plug & Auto-Repost** (paid plans; X-only). Scheduled X posts can show Auto-Plug / Auto-Repost without the analytics card
 
 **Post analytics** starts **collapsed**. Clicking **Show analytics** is what fetches metrics. They do not load on page open. **Hide analytics** / **Refresh** after open. Live-platform filter still applies: platforms with `LIVE_PLATFORMS.analytics` false are skipped.
 
@@ -163,7 +163,7 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 
 ---
 
-## Growth automation (Growth & Pro)
+## Automation (paid plans)
 
 - **Auto-repost / resurface**: automatically repost evergreen content on an interval with optional max resurfaces and plug comment
 - **Auto-plug**: add a call-to-action reply when a post hits a performance threshold (e.g. retweets/likes on X)
@@ -210,23 +210,21 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 
 ## Billing & plans
 
-| Feature | Free | Starter ($9/mo) | Growth ($19/mo early) | Pro ($35/mo early) |
-| ------- | ---- | ----------------- | ----------------------- | ------------------ |
-| Connected accounts | 3 | 5 | 15 | Unlimited |
-| Lifetime free posts | 5 | — | — | — |
-| Unlimited posts | After free cap | ✓ | ✓ | ✓ |
-| All 9 platforms | ✓ | ✓ | ✓ | ✓ |
-| Schedule & calendar | ✓ | ✓ | ✓ | ✓ |
-| Carousels / collections / threads | ✓ | ✓ | ✓ | ✓ |
-| Multiple accounts per platform | — | ✓ | ✓ | ✓ |
-| Bulk tools (image/video) | — | — | ✓ | ✓ |
-| Auto-plug | — | — | ✓ | ✓ |
-| Auto-repost / resurface | — | — | ✓ | ✓ |
-| Analytics (experimental, live platforms) | ✓ | ✓ | ✓ | ✓ |
-| Inbox comments & DMs (experimental, live platforms) | ✓ | ✓ | ✓ | ✓ |
-| Human support | — | ✓ | ✓ | Priority (Pro) |
+| Feature | Free | Creator ($29.90/mo, $299/yr) | Agency ($59.90/mo, $599/yr) |
+| ------- | ---- | ------------------------- | ------------------------ |
+| Connected accounts | 3 | 15 (16th offers a one-click move to Agency) | 59 included, then $1/mo ($10/yr) each, billed automatically as they connect; never blocks (backstop 10,000 extras, `lib/extra-accounts.ts`) |
+| Lifetime free posts | 10 | — | — |
+| Unlimited posts | After free cap | ✓ | ✓ |
+| All 9 platforms | ✓ | ✓ | ✓ |
+| Schedule, calendar, drafts, queue | ✓ | ✓ | ✓ |
+| Multiple accounts per platform, workspaces | — | ✓ | ✓ |
+| Bulk tools (image/video) | — | ✓ | ✓ |
+| Auto-plug, auto-repost / resurface | — | ✓ | ✓ |
+| REST API / MCP / CLI requests per hour | 60 | 1,000 | 5,000 |
+| Teammates & shared workspaces | — | — | ✓ |
+| Analytics & inbox (live platforms) | ✓ | ✓ | ✓ |
 
-*Pricing shown on the website; early adopters lock in launch pricing.*
+*Plan names live in `PLAN_NAMES` (`frontend/src/lib/plans.ts`, `backend/shared/src/lib/plans.ts`); prices in `frontend/src/lib/plan-pricing.ts`. Starter / Growth / Pro / Max are closed to new signups; existing subscribers keep their plan, limits and price.*
 
 ---
 
@@ -247,7 +245,7 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 | Browser app → `POST /api/rpc` | ✓ Production path for dashboard |
 | REST `/api/*` (auth, publish, media, billing, connect, cron) | ✓ |
 | Publish now + SSE job stream | ✓ |
-| API keys UI (`/dashboard/api-keys`) | ✓ Self-serve `sk_live_…` keys |
+| API keys UI (`/dashboard/agents?tab=keys`; `/dashboard/api-keys` redirects) | ✓ Self-serve `sk_live_…` keys |
 | User outbound webhooks | ✓ Backend |
 | REST `/v1/*` API (`me`, `accounts`, `posts`, `media`, `jobs`, `webhooks`) | ✓ Implemented; Bearer API key |
 | REST `/v1/analytics/*` | ✓ Live metrics: overview, per-post, eligible accounts |
@@ -255,7 +253,7 @@ FIXME: the analytics card still renders for any published/partial post; non-live
 | CLI (`npm i -g social0`) | ✓ Includes `social0 analytics` and `social0 inbox` |
 | MCP (`@social0/mcp`, `mcp.social0.app`) | ✓ Includes analytics + inbox tools |
 | OpenAPI (`/openapi.json`, `/docs`) | ✓ Covers every `/v1` route |
-| Teams (`/dashboard/teams`) | ✓ Invite teammates as Admin, Member, Community, or Analyst (Pro-gated) |
+| Teams (`/dashboard/teams`) | ✓ Invite teammates as Admin, Member, Community, or Analyst (Agency, plus legacy Pro/Max) |
 
 `/v1` analytics and inbox reuse the same cores as the dashboard, but API keys
 address the **personal (main) pool** only: workspace-scoped accounts stay in the

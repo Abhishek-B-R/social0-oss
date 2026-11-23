@@ -5,6 +5,7 @@ import {
 } from "@/icons/phosphor";
 import { acceptTeamInvite } from "@/api/team";
 import Link from "@/components/AppLink";
+import { AuthBrandHeader } from "@/components/auth/AuthBrandHeader";
 import { useSession } from "@/lib/auth-client";
 import { writeTeamWorkspaceId } from "@/lib/dashboard-base-path";
 import { signInUrl } from "@/lib/sign-in-url";
@@ -34,24 +35,23 @@ export function AcceptInvitePage() {
       navigate(signInUrl(`/invite/${token}`), { replace: true });
       return;
     }
+    // Accept exactly once. No cleanup flag: under StrictMode the effect is
+    // torn down and re-run, and a cancelled first run would leave the page
+    // spinning on "Accepting invitation" forever.
     if (startedRef.current) return;
     startedRef.current = true;
-
-    let cancelled = false;
 
     void (async () => {
       try {
         const result = await acceptTeamInvite(token);
-        if (cancelled) return;
         writeTeamWorkspaceId(result.teamId, result.workspaceId);
         setAcceptState({ status: "success", error: null });
         window.setTimeout(() => {
           window.location.assign(
-            `/dashboard/teams/${result.teamId}/composer`,
+            `/dashboard/teams/${result.teamId}/home`,
           );
         }, 1200);
       } catch (err) {
-        if (cancelled) return;
         setAcceptState({
           status: "error",
           error:
@@ -61,19 +61,15 @@ export function AcceptInvitePage() {
         });
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
   }, [isPending, session, token, navigate]);
 
   if (!token) {
     return (
       <InviteShell>
-        <h1 className="font-serif text-xl font-semibold text-text">
+        <h1 className="font-sans text-2xl font-bold tracking-tight text-foreground dark:text-white">
           Couldn&apos;t accept invite
         </h1>
-        <p className="mt-2 text-sm text-text-muted">
+        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
           This invitation link is invalid.
         </p>
         <InviteActions />
@@ -85,9 +81,10 @@ export function AcceptInvitePage() {
     return (
       <InviteShell>
         <CircleNotch
-          className="mx-auto h-8 w-8 animate-spin text-accent"
+          className="mx-auto h-8 w-8 animate-spin text-emerald-500"
+          aria-hidden
         />
-        <h1 className="mt-4 font-serif text-xl font-semibold text-text">
+        <h1 className="mt-4 font-sans text-2xl font-bold tracking-tight text-foreground dark:text-white">
           Checking your session…
         </h1>
       </InviteShell>
@@ -98,9 +95,10 @@ export function AcceptInvitePage() {
     return (
       <InviteShell>
         <CircleNotch
-          className="mx-auto h-8 w-8 animate-spin text-accent"
+          className="mx-auto h-8 w-8 animate-spin text-emerald-500"
+          aria-hidden
         />
-        <h1 className="mt-4 font-serif text-xl font-semibold text-text">
+        <h1 className="mt-4 font-sans text-2xl font-bold tracking-tight text-foreground dark:text-white">
           Accepting invitation…
         </h1>
       </InviteShell>
@@ -110,10 +108,10 @@ export function AcceptInvitePage() {
   if (acceptState.status === "success") {
     return (
       <InviteShell>
-        <h1 className="font-serif text-xl font-semibold text-text">
+        <h1 className="font-sans text-2xl font-bold tracking-tight text-foreground dark:text-white">
           You&apos;re in!
         </h1>
-        <p className="mt-2 text-sm text-text-muted">
+        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
           Taking you to the team workspace…
         </p>
       </InviteShell>
@@ -122,10 +120,10 @@ export function AcceptInvitePage() {
 
   return (
     <InviteShell>
-      <h1 className="font-serif text-xl font-semibold text-text">
+      <h1 className="font-sans text-2xl font-bold tracking-tight text-foreground dark:text-white">
         Couldn&apos;t accept invite
       </h1>
-      <p className="mt-2 text-sm text-text-muted">
+      <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
         {acceptState.error ?? "Something went wrong."}
       </p>
       <InviteActions />
@@ -135,20 +133,30 @@ export function AcceptInvitePage() {
 
 function InviteShell({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4">
-      <div className="w-full max-w-md rounded-xl border border-border bg-bg-elevated p-8 text-center">
-        {children}
-      </div>
+    <div className="landing landing-page flex min-h-screen flex-col bg-background font-sans text-foreground antialiased">
+      <AuthBrandHeader />
+      <main
+        className="relative flex flex-1 items-center justify-center px-4 py-12 sm:py-16"
+        aria-live="polite"
+      >
+        <div className="relative z-10 w-full max-w-md">
+          <div className="rounded-[28px] border border-border bg-muted/40 p-1.5 dark:border-white/10 dark:bg-[#1A1A1A]">
+            <div className="rounded-[22px] border border-border/60 bg-background p-7 text-center dark:border-white/5 dark:bg-[#111111] sm:p-9">
+              {children}
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 }
 
 function InviteActions() {
   return (
-    <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+    <div className="mt-6">
       <Link
         href="/dashboard"
-        className="inline-flex h-9 items-center justify-center rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent-hover"
+        className="inline-flex w-full items-center justify-center rounded-[10px] bg-emerald-500 px-4 py-3 font-semibold text-[#04140c] transition-[transform,background-color] duration-150 ease-out hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98]"
       >
         Go to dashboard
       </Link>
