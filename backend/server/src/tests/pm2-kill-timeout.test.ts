@@ -28,7 +28,7 @@ import {
   warnIfKillTimeoutTooShort,
 } from "../lib/graceful-shutdown.js";
 
-type Pm2App = { name: string; script: string; kill_timeout?: number };
+type Pm2App = { name: string; script: string; node_args?: string[]; kill_timeout?: number };
 
 const require = createRequire(import.meta.url);
 const ecosystem = require("../../../ecosystem.config.cjs") as { apps: Pm2App[] };
@@ -42,7 +42,8 @@ const deployWorkflow = readFileSync(
 describe("PM2 ecosystem", () => {
   it("gives the API a kill_timeout longer than its shutdown deadline", () => {
     const api = ecosystem.apps.find((app) => app.name === "social0-api");
-    expect(api?.script).toBe("dist/index.js");
+    expect(api?.script).toBe("src/index.ts");
+    expect(api?.node_args).toEqual(["--import", "tsx"]);
     expect(api?.kill_timeout).toBeGreaterThan(SHUTDOWN_DEADLINE_MS);
   });
 

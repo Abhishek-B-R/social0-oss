@@ -24,7 +24,11 @@ module.exports = {
     {
       name: "social0-api",
       cwd: path.join(__dirname, "server"),
-      script: "dist/index.js",
+      // Run the source through tsx, like `npm start`: the tsc output keeps
+      // directory imports (e.g. ./db), which plain Node ESM refuses to load.
+      script: "src/index.ts",
+      interpreter: "node",
+      node_args: ["--import", "tsx"],
       exec_mode: "fork",
       instances: 1,
       kill_timeout: KILL_TIMEOUT_MS,
