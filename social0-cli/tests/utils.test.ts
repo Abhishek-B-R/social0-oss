@@ -99,7 +99,6 @@ describe("dates", () => {
   it("parses relative hours without UTC shifting", () => {
     const result = parseNaturalTime("in 2 hours");
     expect(result).toMatch(/T\d{2}:\d{2}:\d{2}\+default$/);
-    expect(result).not.toMatch(/Unable/);
   });
 
   it("parses in N days at time", () => {
@@ -107,10 +106,42 @@ describe("dates", () => {
     expect(result).toMatch(/T15:00:00\+default$/);
   });
 
-  it("passes through ISO dates", () => {
-    const result = parseNaturalTime("2026-08-01 14:00");
-    expect(result).toContain("2026-08-01");
-    expect(result).toMatch(/T14:00:00\+default$/);
+  it("parses month-name and ordinal dates", () => {
+    expect(parseNaturalTime("Aug 10 2099 9:00am")).toBe("2099-08-10T09:00:00+default");
+    expect(parseNaturalTime("August 8th 2099 9am")).toBe("2099-08-08T09:00:00+default");
+  });
+
+  it("parses bare weekdays, abbreviations, and time-first order", () => {
+    for (const phrase of ["monday 9am", "mon 9am", "9am monday", "next monday 9am"]) {
+      const result = parseNaturalTime(phrase);
+      expect(result).toMatch(/T09:00:00\+default$/);
+      const day = new Date(
+        Number(result.slice(0, 4)),
+        Number(result.slice(5, 7)) - 1,
+        Number(result.slice(8, 10)),
+      ).getDay();
+      expect(day).toBe(1);
+    }
+  });
+
+  it("parses noon, next week, and in N weeks", () => {
+    expect(parseNaturalTime("tomorrow noon")).toMatch(/T12:00:00\+default$/);
+    expect(parseNaturalTime("next week 9am")).toMatch(/T09:00:00\+default$/);
+    expect(parseNaturalTime("in 1 week")).toMatch(/T\d{2}:\d{2}:\d{2}\+default$/);
+  });
+
+  it("parses ISO including date-only and preserves Z", () => {
+    expect(parseNaturalTime("2099-08-10 14:00")).toBe("2099-08-10T14:00:00+default");
+    expect(parseNaturalTime("2099-08-10")).toBe("2099-08-10T09:00:00+default");
+    expect(parseNaturalTime("2099-12-25T09:00:00Z")).toBe("2099-12-25T09:00:00Z");
+  });
+
+  it("rejects past times, slash dates, and partial matches", () => {
+    expect(() => parseNaturalTime("2020-08-01 14:00")).toThrow(/must be in the future/);
+    expect(() => parseNaturalTime("8/10/2026 9am")).toThrow(/Ambiguous date format/);
+    expect(() => parseNaturalTime("Aug 32 2099 9am")).toThrow(/Unable to parse time/);
+    expect(() => parseNaturalTime("schedule this monday please")).toThrow(/Unable to parse time/);
+    expect(() => parseNaturalTime("yesterday")).toThrow(/must be in the future|Unable to parse/);
   });
 });
 

@@ -1,8 +1,19 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { Social0ApiError } from "../api/client.js";
-import { accountsApi, mediaApi, postsApi, publishApi } from "../api/index.js";
+import { accountsApi, mediaApi, postsApi, publishApi, webhooksApi } from "../api/index.js";
 import { formatPlatformSuggestions, suggestPlatforms, inferPostFormForSuggestion } from "../api/platform-suggestions.js";
 import type {
+  ConnectAccountInput,
+  CreateWebhookInput,
+  DeletePostsInput,
+  DisconnectAccountInput,
+  ListWebhookDeliveriesInput,
+  PostActionInput,
+  PostIdInput,
+  SetAutoPlugInput,
+  SetAutoRepostInput,
+  UpdateWebhookInput,
+  WebhookIdInput,
   CreatePostInput,
   DeletePostInput,
   GetPostInput,
@@ -492,3 +503,126 @@ export async function handleSuggestBestPlatforms(
     return handleApiError("suggest platforms", error);
   }
 }
+
+/** One API call, its JSON (plus an optional note for the model) as the result. */
+async function jsonCall(
+  context: string,
+  call: () => Promise<unknown>,
+  message?: string | ((data: any) => string),
+): Promise<CallToolResult> {
+  try {
+    const data = (await call()) ?? { success: true };
+    if (!message) return jsonResult(data);
+    const note = typeof message === "string" ? message : message(data);
+    return jsonResult(typeof data === "object" && !Array.isArray(data) ? { ...data, message: note } : { data, message: note });
+  } catch (error) {
+    return handleApiError(context, error);
+  }
+}
+
+export const handleWhoami = () => jsonCall("whoami", () => accountsApi.getMe());
+
+export const handleListWorkspaces = () =>
+  jsonCall(
+    "list workspaces",
+    async () => ({ data: await accountsApi.listWorkspaces() }),
+    "Pass a workspace's id as workspace_id to act inside it. Without workspace_id, tools act on the user's personal accounts.",
+  );
+
+export const handleConnectAccount = (input: ConnectAccountInput) =>
+  jsonCall(
+    "connect account",
+    () => accountsApi.connectAccount(input.platform),
+    "Give authorization_url to the user to open in their browser and approve. Then call list_accounts to confirm.",
+  );
+
+export const handleDisconnectAccount = (input: DisconnectAccountInput) =>
+  jsonCall(
+    "disconnect account",
+    () => accountsApi.disconnectAccount(input.account_id),
+    `Account ${input.account_id} disconnected.`,
+  );
+
+export const handleDeletePosts = (input: DeletePostsInput) =>
+  jsonCall("delete posts", () => postsApi.bulkDeletePosts(input.ids));
+
+export const handleDuplicatePost = (input: PostActionInput) =>
+  jsonCall(
+    "duplicate post",
+    () => postsApi.duplicatePost(input.post_id, input.idempotency_key),
+    (d: { id: string }) => `Draft copy created (${d.id}). Edit it with update_draft, then publish_post or schedule_post.`,
+  );
+
+export const handlePostAgain = (input: PostActionInput) =>
+  jsonCall(
+    "post again",
+    () => postsApi.postAgain(input.post_id, input.idempotency_key),
+    (d: { tracking_id: string | null }) =>
+      d.tracking_id
+        ? `Published as a new post. Use get_publish_status with tracking_id=${d.tracking_id} to monitor.`
+        : "New post created.",
+  );
+
+export const handleSetAutoPlug = ({ post_id, ...body }: SetAutoPlugInput) =>
+  jsonCall("set auto-plug", () =>
+    postsApi.setAutoPlug(post_id, {
+      metric: body.metric,
+      threshold: body.threshold,
+      message: body.message,
+      ...(body.account_id ? { account_id: body.account_id } : {}),
+    }),
+  );
+
+export const handleCancelAutoPlug = (input: PostIdInput) =>
+  jsonCall("cancel auto-plug", () => postsApi.cancelAutoPlug(input.post_id), "Auto-plug cancelled.");
+
+export const handleSetAutoRepost = ({ post_id, ...body }: SetAutoRepostInput) =>
+  jsonCall("set auto-repost", () =>
+    postsApi.setAutoRepost(post_id, {
+      ...(body.interval_hours !== undefined ? { interval_hours: body.interval_hours } : {}),
+      ...(body.max_reposts !== undefined ? { max_reposts: body.max_reposts } : {}),
+      ...(body.message !== undefined ? { message: body.message } : {}),
+      ...(body.active !== undefined ? { active: body.active } : {}),
+    }),
+  );
+
+export const handleCancelAutoRepost = (input: PostIdInput) =>
+  jsonCall("cancel auto-repost", () => postsApi.cancelAutoRepost(input.post_id), "Auto-repost cancelled.");
+
+export const handleGetPostEvents = (input: PostIdInput) =>
+  jsonCall("get post events", () => postsApi.getPostEvents(input.post_id));
+
+export const handleListWebhooks = () => jsonCall("list webhooks", () => webhooksApi.listWebhooks());
+
+export const handleCreateWebhook = (input: CreateWebhookInput) =>
+  jsonCall(
+    "create webhook",
+    () => webhooksApi.createWebhook(input),
+    "secret is shown only once: give it to the user to verify webhook signatures.",
+  );
+
+export const handleGetWebhook = (input: WebhookIdInput) =>
+  jsonCall("get webhook", () => webhooksApi.getWebhook(input.webhook_id));
+
+export const handleUpdateWebhook = ({ webhook_id, ...body }: UpdateWebhookInput) =>
+  jsonCall("update webhook", () =>
+    webhooksApi.updateWebhook(webhook_id, {
+      ...(body.url !== undefined ? { url: body.url } : {}),
+      ...(body.events !== undefined ? { events: body.events } : {}),
+      ...(body.active !== undefined ? { active: body.active } : {}),
+    }),
+  );
+
+export const handleDeleteWebhook = (input: WebhookIdInput) =>
+  jsonCall("delete webhook", () => webhooksApi.deleteWebhook(input.webhook_id), "Webhook deleted.");
+
+export const handleListWebhookDeliveries = ({ webhook_id, ...query }: ListWebhookDeliveriesInput) =>
+  jsonCall("list webhook deliveries", () =>
+    webhooksApi.listWebhookDeliveries(webhook_id, {
+      ...(query.limit !== undefined ? { limit: query.limit } : {}),
+      ...(query.before !== undefined ? { before: query.before } : {}),
+    }),
+  );
+
+export const handleTestWebhook = (input: WebhookIdInput) =>
+  jsonCall("test webhook", () => webhooksApi.testWebhook(input.webhook_id));

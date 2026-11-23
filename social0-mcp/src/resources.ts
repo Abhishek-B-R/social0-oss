@@ -27,7 +27,7 @@ Social0 also reads back what happened to those posts: get_analytics and get_post
 
 ## How to call
 
-1. List accounts first.
+1. List accounts first. If the user mentions a team, client, brand or workspace, call list_workspaces first and pass that workspace's id as workspace_id to every following call; without it, tools act on the user's personal accounts. A 403 inside a workspace means the user's role there cannot do that action: say so, do not retry.
 2. Prefer publish_now or schedule_content for one-shots.
 3. Poll get_publish_status with tracking_id until completed, failed, or partial.
 4. For metrics, call get_analytics with a range (7d by default) and repeat any "sampled" or "partial" caveat it returns.
@@ -92,6 +92,8 @@ Full markdown: https://social0.app/pricing.md
 Free tier: sign up at https://social0.app/auth - no credit card.
 Self-serve keys: https://social0.app/dashboard/api-keys (prefix sk_live_). There is no contact-sales gate for the public API.
 Publish and schedule calls go to live networks. Prefer unpublished drafts (POST /v1/posts or create_draft) while exploring.
+Team workspaces are opt-in: call list_workspaces when the user mentions a team or client workspace, then pass workspace_id (REST: ?workspace_id=) to every account, post, media, job, analytics and inbox call. /v1/me, /v1/workspaces and /v1/webhooks are account-level and refuse it.
+Connecting a network is a human step: connect_account returns a link for the user to open (X and Bluesky connect from the dashboard).
 
 Zero-auth (no API key):
 

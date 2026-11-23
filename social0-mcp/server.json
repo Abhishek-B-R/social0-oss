@@ -2,26 +2,30 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Abhishek-B-R/social0-mcp",
   "title": "Social0",
-  "description": "Post and schedule across 9 social platforms from Claude, Cursor, or ChatGPT.",
+  "description": "Post and schedule to X, LinkedIn, Instagram, TikTok, YouTube and more from Claude, ChatGPT, Cursor.",
   "websiteUrl": "https://social0.app",
   "icons": [
     {
       "src": "https://social0.app/logo.png",
       "mimeType": "image/png",
-      "sizes": ["any"]
+      "sizes": [
+        "any"
+      ]
     }
   ],
   "repository": {
     "url": "https://github.com/Abhishek-B-R/social0-mcp",
     "source": "github"
   },
-  "version": "0.4.0",
+  "version": "0.6.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@social0/mcp",
-      "version": "0.4.0",
-      "transport": { "type": "stdio" },
+      "version": "0.6.0",
+      "transport": {
+        "type": "stdio"
+      },
       "environmentVariables": [
         {
           "name": "SOCIAL0_API_KEY",
@@ -31,6 +35,12 @@
           "format": "string"
         }
       ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.social0.app/mcp"
     }
   ]
 }

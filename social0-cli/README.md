@@ -132,7 +132,50 @@ social0 post show <id>
 social0 post edit <id> --content "Updated text"
 social0 post delete <id>
 social0 post init   # generate sample JSON
+
+social0 post bulk-delete <id> <id> ...   # drafts/scheduled only, up to 100
+social0 post duplicate <id>              # copy into a new draft
+social0 post again <id>                  # republish a published post as a new post
+social0 post events <id>                 # publish timeline
+
+# X only
+social0 post auto-plug <id> --metric likes --threshold 100 --message "Get the guide: https://..."
+social0 post auto-plug <id> --off
+social0 post auto-repost <id> --interval 24 --max 3
+social0 post auto-repost <id> --pause | --resume | --off
 ```
+
+To retry only the accounts that failed on a post, use `social0 publish <id>`.
+
+### Workspaces
+
+Commands act on your personal accounts unless you pick a team workspace.
+
+```bash
+social0 workspaces                        # list, with your role and permissions
+social0 accounts --workspace <id>         # one command in a workspace
+social0 workspaces use <id>               # default for every command
+social0 workspaces use --personal         # back to personal accounts
+social0 workspaces current
+```
+
+`--workspace` (or `SOCIAL0_WORKSPACE_ID`) wins over the saved default. A `403`
+inside a workspace means your role there can't do that action.
+
+### Webhooks
+
+```bash
+social0 webhooks
+social0 webhooks create --url https://example.com/hook --events post.published post.failed
+# prints the signing secret once: save it
+social0 webhooks show <id>
+social0 webhooks update <id> --events post.failed --disable
+social0 webhooks deliveries <id> [--limit 50] [--before <cursor>]
+social0 webhooks test <id>
+social0 webhooks delete <id>
+```
+
+Webhooks belong to your account, not a workspace.
 
 ### Publish
 
@@ -342,6 +385,7 @@ social0 completion powershell >> $PROFILE
 | `SOCIAL0_API_KEY` | API key (overrides stored key; preferred for CI) | — |
 | `SOCIAL0_CREDENTIAL_PASSPHRASE` | Passphrase for encrypted local credential file | — |
 | `SOCIAL0_API_URL` | API base URL | `https://api.social0.app/v1` |
+| `SOCIAL0_WORKSPACE_ID` | Team workspace to act in (same as `--workspace`) | personal |
 | `SOCIAL0_REQUEST_TIMEOUT_MS` | Request timeout | `30000` |
 | `SOCIAL0_MAX_RETRIES` | Rate limit retries | `3` |
 | `SOCIAL0_VERBOSE` | Enable verbose logging | `0` |

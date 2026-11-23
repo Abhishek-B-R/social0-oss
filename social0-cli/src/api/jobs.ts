@@ -1,5 +1,5 @@
 import type { JobStatusResponse } from "../types/index.js";
-import { getClient } from "./client.js";
+import { getClient, withWorkspace } from "./client.js";
 import { getApiKey } from "../config/credentials.js";
 import { resolveApiUrl } from "../config/settings.js";
 
@@ -12,7 +12,7 @@ export async function* streamJobEvents(trackingId: string): AsyncGenerator<Recor
   if (!apiKey) throw new Error("Not authenticated");
 
   const base = resolveApiUrl();
-  const url = `${base}/jobs/${trackingId}/stream`;
+  const url = `${base}${withWorkspace(`/jobs/${trackingId}/stream`)}`;
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${apiKey}`,

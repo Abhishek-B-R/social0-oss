@@ -28,6 +28,7 @@ vi.mock("../lib/ratelimit.js", () => ({
 vi.mock("../middleware/api-auth.js", () => ({
   requireV1ApiKey: vi.fn(async (request: { v1Auth?: unknown }) => {
     request.v1Auth = { userId: "user-1" };
+    (request as { v1Workspace?: unknown }).v1Workspace = { resourceUserId: "user-1", workspaceId: null, actorUserId: "user-1" };
   }),
   v1UserId: (request: { v1Auth?: { userId: string } }) =>
     request.v1Auth!.userId,

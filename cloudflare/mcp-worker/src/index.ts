@@ -63,7 +63,7 @@ export default {
         name: "Social0 MCP",
         description:
           "Publish and schedule to Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Threads, Bluesky, and Pinterest from Claude, ChatGPT, Cursor, or any MCP host - then read back live metrics, comments, and DMs.",
-        version: "0.5.0",
+        version: "0.6.0",
         serverUrl: `${baseUrl}/mcp`,
         documentationUrl: "https://docs.social0.app/docs/integrations/mcp",
         icon: "https://social0.app/logo.png",

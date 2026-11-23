@@ -47,7 +47,8 @@ async function ownerHasTeams(ownerUserId: string): Promise<boolean> {
  * Personal ("Main") context for a user, ignoring their active workspace.
  *
  * API-key callers get this rather than the session's active workspace: a key is
- * scoped to the personal pool (`workspaceId: null`), the same rule `/v1` follows.
+ * scoped to the personal pool (`workspaceId: null`) unless a `/v1` call names a
+ * workspace with `workspace_id` (lib/v1-workspace.ts).
  */
 export function personalWorkspaceContext(actorUserId: string): WorkspaceContext {
   return personalContext(actorUserId);
@@ -100,6 +101,26 @@ export async function resolveWorkspaceContext(
     return personalContext(actorUserId);
   }
 
+  const ctx = await workspaceContextFor(actorUserId, activeId);
+  if (!ctx) {
+    await db
+      .update(userSettings)
+      .set({ activeWorkspaceId: null })
+      .where(eq(userSettings.userId, actorUserId));
+    return personalContext(actorUserId);
+  }
+  return ctx;
+}
+
+/**
+ * Context for one named workspace, or null when the actor is not a member of
+ * its team (or it does not exist). `/v1` uses it for an explicit
+ * `workspace_id`; the dashboard for the saved active workspace.
+ */
+export async function workspaceContextFor(
+  actorUserId: string,
+  workspaceId: string,
+): Promise<WorkspaceContext | null> {
   const [row] = await db
     .select({
       workspaceId: workspaces.id,
@@ -118,16 +139,10 @@ export async function resolveWorkspaceContext(
         eq(teamMembers.userId, actorUserId),
       ),
     )
-    .where(eq(workspaces.id, activeId))
+    .where(eq(workspaces.id, workspaceId))
     .limit(1);
 
-  if (!row) {
-    await db
-      .update(userSettings)
-      .set({ activeWorkspaceId: null })
-      .where(eq(userSettings.userId, actorUserId));
-    return personalContext(actorUserId);
-  }
+  if (!row) return null;
 
   const isOwner = row.ownerUserId === actorUserId;
   const teamsEnabled = await ownerHasTeams(row.ownerUserId);

@@ -1,6 +1,6 @@
 {
   "name": "@social0/mcp",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Post to Instagram, TikTok, YouTube, X, LinkedIn, and more from Claude, Cursor, or ChatGPT",
   "type": "module",
   "main": "dist/index.js",
@@ -23,7 +23,7 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "tsx --test src/resources.test.ts src/tools/tools.test.ts src/api/api.test.ts src/api/idempotency.test.ts src/tools/accounts-lookup.test.ts",
+    "test": "tsx --test src/resources.test.ts src/tools/tools.test.ts src/api/api.test.ts src/api/idempotency.test.ts src/tools/accounts-lookup.test.ts src/tools/workspace-actions.test.ts",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
@@ -52,7 +52,7 @@
   },
   "mcpName": "io.github.Abhishek-B-R/social0-mcp",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "dotenv": "^16.5.0",
     "zod": "^3.24.4"
   },

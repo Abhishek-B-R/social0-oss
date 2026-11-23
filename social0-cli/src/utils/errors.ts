@@ -1,5 +1,6 @@
 import chalk from "chalk";
 import type { Social0ApiError } from "../api/client.js";
+import { resolveWorkspaceId } from "../config/settings.js";
 
 const ERROR_HINTS: Record<string, string> = {
   invalid_api_key: "Your API key is invalid or expired. Run `social0 login` to set a new key.",
@@ -17,7 +18,11 @@ export function formatApiError(err: unknown): string {
   if (err.name === "Social0ApiError") {
     const apiErr = err as Social0ApiError;
     const code = apiErr.code ?? "unknown";
-    const hint = ERROR_HINTS[code];
+    const workspaceId = apiErr.status === 403 ? resolveWorkspaceId() : undefined;
+    // In a team workspace a 403 means the caller's role there can't do this, not a plan limit.
+    const hint = workspaceId
+      ? `Your role in workspace ${workspaceId} does not allow this. See \`social0 workspaces\` for your permissions, or switch back with \`social0 workspaces use --personal\`.`
+      : ERROR_HINTS[code];
     const lines = [
       chalk.red.bold("Error:"),
       "",

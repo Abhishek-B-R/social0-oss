@@ -1,5 +1,5 @@
 import { getApiKey } from "../config/credentials.js";
-import { resolveApiUrl, getRequestTimeoutMs, getMaxRetries } from "../config/settings.js";
+import { resolveApiUrl, getRequestTimeoutMs, getMaxRetries, resolveWorkspaceId } from "../config/settings.js";
 import type { ApiErrorBody } from "../types/index.js";
 import { logVerbose, parseRetryAfterMs, sleep, redactUrlForLog } from "../utils/verbose.js";
 
@@ -32,7 +32,7 @@ export function retryAfterSeconds(header: string | null): number | undefined {
   return Math.max(1, Math.ceil(ms / 1000));
 }
 
-type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 interface RequestOptions {
   method?: HttpMethod;
@@ -43,9 +43,19 @@ interface RequestOptions {
   apiUrl?: string;
 }
 
-function buildUrl(base: string, path: string): string {
+/** `/me`, `/workspaces` and `/webhooks*` are account-level: the server answers 400 to `workspace_id` there. */
+const UNSCOPED_PATH = /^\/(me|workspaces|webhooks)(\/|$)/;
+
+/** Append `workspace_id` (from --workspace / SOCIAL0_WORKSPACE_ID / config) to workspace-scoped paths. */
+export function withWorkspace(path: string, workspaceId = resolveWorkspaceId()): string {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-  return `${base.replace(/\/$/, "")}${normalizedPath}`;
+  if (!workspaceId || UNSCOPED_PATH.test(normalizedPath.split("?")[0]!)) return normalizedPath;
+  const sep = normalizedPath.includes("?") ? "&" : "?";
+  return `${normalizedPath}${sep}workspace_id=${encodeURIComponent(workspaceId)}`;
+}
+
+function buildUrl(base: string, path: string): string {
+  return `${base.replace(/\/$/, "")}${withWorkspace(path)}`;
 }
 
 async function parseJsonSafe(response: Response): Promise<ApiErrorBody | undefined> {
@@ -100,6 +110,10 @@ export class Social0ApiClient {
 
   async post<T>(path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {
     return this.request<T>(path, { ...options, method: "POST", body });
+  }
+
+  async put<T>(path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {
+    return this.request<T>(path, { ...options, method: "PUT", body });
   }
 
   async patch<T>(path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {

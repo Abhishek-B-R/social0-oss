@@ -7,13 +7,15 @@ import {
   formatV1StreamEvent,
 } from "../../lib/v1-job-format.js";
 import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
+import { v1Scope } from "../../lib/v1-workspace.js";
 import { sendRateLimited } from "../../middleware/v1-live-limits.js";
 
 export async function registerJobsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireV1ApiKey);
 
   app.get("/jobs/:trackingId", async (request, reply) => {
-    const userId = v1UserId(request);
+    // Jobs carry the post owner, which is the workspace owner inside a workspace.
+    const { userId } = v1Scope(request);
     const { trackingId } = request.params as { trackingId: string };
 
     const snapshot = await resolveJobSnapshot(request.server, trackingId);
@@ -28,7 +30,7 @@ export async function registerJobsRoutes(app: FastifyInstance) {
   });
 
   app.get("/jobs/:trackingId/stream", async (request, reply) => {
-    const userId = v1UserId(request);
+    const { userId } = v1Scope(request);
     const { trackingId } = request.params as { trackingId: string };
 
     const snapshot = await resolveJobSnapshot(request.server, trackingId);
@@ -41,7 +43,8 @@ export async function registerJobsRoutes(app: FastifyInstance) {
 
     // The hourly tier limit counts a 15-minute stream as one request; cap
     // opens and concurrent streams like the dashboard does (keys `v1:`).
-    const admit = await admitJobStream(userId, `v1:jobstream:${userId}`);
+    const actorId = v1UserId(request);
+    const admit = await admitJobStream(actorId, `v1:jobstream:${actorId}`);
     if (!admit.allowed) return sendRateLimited(reply, admit);
 
     await openJobSseStream(

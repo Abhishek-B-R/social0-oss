@@ -1,11 +1,12 @@
 /**
  * `/v1` inbox (comments + DMs) for API keys (CLI / MCP).
  *
- * Reuses the dashboard inbox core with the personal (main) pool, matching
- * `v1-accounts.ts` — workspace-scoped accounts stay dashboard-only. Responses
+ * Reuses the dashboard inbox core with the caller's scope: the personal pool,
+ * or a team workspace named by `workspace_id` (lib/v1-workspace.ts). Responses
  * are snake_case to match the rest of `/v1`.
  */
 
+import type { V1Scope } from "../lib/v1-workspace.js";
 import {
   getInboxDmThreadForScope,
   hideInboxCommentForScope,
@@ -29,9 +30,8 @@ import type {
   InboxThread,
 } from "../lib/inbox/types.js";
 
-/** API keys address the personal pool only (same rule as `/v1/accounts`). */
-function scopeFor(userId: string): InboxScope {
-  return { resourceUserId: userId, workspaceId: null };
+function scopeFor(scope: V1Scope): InboxScope {
+  return { resourceUserId: scope.userId, workspaceId: scope.workspaceId };
 }
 
 export type V1InboxListQuery = {
@@ -139,10 +139,10 @@ function dmMessage(m: InboxDmMessage) {
 }
 
 export async function v1ListInboxAccounts(
-  userId: string,
+  scope: V1Scope,
   mode: "comments" | "dms",
 ) {
-  const rows = await listInboxAccountsForScope(scopeFor(userId), { mode });
+  const rows = await listInboxAccountsForScope(scopeFor(scope), { mode });
   return rows.map((r) => ({
     id: r.id,
     platform: r.platform,
@@ -153,10 +153,10 @@ export async function v1ListInboxAccounts(
 }
 
 export async function v1ListInboxComments(
-  userId: string,
+  scope: V1Scope,
   query: V1InboxListQuery,
 ) {
-  const data = await listInboxCommentsForScope(scopeFor(userId), {
+  const data = await listInboxCommentsForScope(scopeFor(scope), {
     accountId: query.account_id,
     platform: query.platform,
     range: query.range,
@@ -184,8 +184,8 @@ export async function v1ListInboxComments(
   };
 }
 
-export async function v1ListInboxDms(userId: string, query: V1InboxListQuery) {
-  const data = await listInboxDmsForScope(scopeFor(userId), {
+export async function v1ListInboxDms(scope: V1Scope, query: V1InboxListQuery) {
+  const data = await listInboxDmsForScope(scopeFor(scope), {
     accountId: query.account_id,
     range: query.range,
     since: query.since,
@@ -212,7 +212,7 @@ export async function v1ListInboxDms(userId: string, query: V1InboxListQuery) {
 }
 
 export async function v1GetInboxDmThread(
-  userId: string,
+  scope: V1Scope,
   input: {
     account_id: string;
     conversation_id: string;
@@ -239,7 +239,7 @@ export async function v1GetInboxDmThread(
       retryAfterSec?: number;
     }
 > {
-  const result = await getInboxDmThreadForScope(scopeFor(userId), {
+  const result = await getInboxDmThreadForScope(scopeFor(scope), {
     accountId: input.account_id,
     conversationId: input.conversation_id,
     peerId: input.peer_id,
@@ -268,7 +268,7 @@ export async function v1GetInboxDmThread(
 }
 
 export async function v1ReplyToInboxComment(
-  userId: string,
+  scope: V1Scope,
   input: {
     publication_id: string;
     comment_id: string;
@@ -276,7 +276,7 @@ export async function v1ReplyToInboxComment(
     media_id?: string;
   },
 ) {
-  return replyToInboxCommentForScope(scopeFor(userId), {
+  return replyToInboxCommentForScope(scopeFor(scope), {
     publicationId: input.publication_id,
     commentId: input.comment_id,
     text: input.text,
@@ -285,10 +285,10 @@ export async function v1ReplyToInboxComment(
 }
 
 export async function v1LikeInboxComment(
-  userId: string,
+  scope: V1Scope,
   input: { publication_id: string; comment_id: string; unlike?: boolean },
 ) {
-  return likeInboxCommentForScope(scopeFor(userId), {
+  return likeInboxCommentForScope(scopeFor(scope), {
     publicationId: input.publication_id,
     commentId: input.comment_id,
     unlike: input.unlike,
@@ -296,17 +296,17 @@ export async function v1LikeInboxComment(
 }
 
 export async function v1HideInboxComment(
-  userId: string,
+  scope: V1Scope,
   input: { publication_id: string; comment_id: string },
 ) {
-  return hideInboxCommentForScope(scopeFor(userId), {
+  return hideInboxCommentForScope(scopeFor(scope), {
     publicationId: input.publication_id,
     commentId: input.comment_id,
   });
 }
 
 export async function v1ReplyToInboxDm(
-  userId: string,
+  scope: V1Scope,
   input: {
     account_id: string;
     conversation_id: string;
@@ -315,7 +315,7 @@ export async function v1ReplyToInboxDm(
     media_id?: string;
   },
 ) {
-  return replyToInboxDmForScope(scopeFor(userId), {
+  return replyToInboxDmForScope(scopeFor(scope), {
     accountId: input.account_id,
     conversationId: input.conversation_id,
     peerId: input.peer_id,

@@ -59,6 +59,7 @@ const { PostClaimLostError, PublishNotDispatchedError, PublishPartiallyDispatche
 
 const POST_ID = "55555555-5555-4555-8555-555555555555";
 const USER_ID = "user_1";
+const SCOPE = { userId: USER_ID, workspaceId: null, actorUserId: USER_ID };
 const app = {} as Parameters<typeof v1PublishPost>[0];
 
 function postWithStatus(status: string) {
@@ -80,7 +81,7 @@ describe("v1PublishPost", () => {
   it("refuses a post that is already publishing without enqueueing", async () => {
     postWithStatus("publishing");
 
-    const result = await v1PublishPost(app, USER_ID, POST_ID);
+    const result = await v1PublishPost(app, SCOPE, POST_ID);
 
     expect(result).toEqual({ ok: false, error: "Post is already publishing" });
     expect(mockEnqueue).not.toHaveBeenCalled();
@@ -91,7 +92,7 @@ describe("v1PublishPost", () => {
     postWithStatus("draft");
     mockEnqueue.mockRejectedValue(new PostClaimLostError(POST_ID, "draft"));
 
-    const result = await v1PublishPost(app, USER_ID, POST_ID);
+    const result = await v1PublishPost(app, SCOPE, POST_ID);
 
     expect(result).toEqual({ ok: false, error: "Post is already publishing" });
     expect(mockRelease).toHaveBeenCalledWith(
@@ -103,7 +104,7 @@ describe("v1PublishPost", () => {
   it("queues a scheduled post", async () => {
     postWithStatus("scheduled");
 
-    const result = await v1PublishPost(app, USER_ID, POST_ID);
+    const result = await v1PublishPost(app, SCOPE, POST_ID);
 
     expect(result).toMatchObject({ ok: true, tracking_id: "track-1" });
     expect(mockEnqueue).toHaveBeenCalledTimes(1);
@@ -121,7 +122,7 @@ describe("v1PublishPost", () => {
       new PublishPartiallyDispatchedError("CF publish enqueue failed: 502"),
     );
 
-    const result = await v1PublishPost(app, USER_ID, POST_ID);
+    const result = await v1PublishPost(app, SCOPE, POST_ID);
 
     expect(result).toEqual({
       ok: true,
@@ -139,7 +140,7 @@ describe("v1PublishPost", () => {
       new PublishNotDispatchedError("publish worker unreachable", "draft"),
     );
 
-    const result = await v1PublishPost(app, USER_ID, POST_ID);
+    const result = await v1PublishPost(app, SCOPE, POST_ID);
 
     expect(result).toEqual({
       ok: false,
@@ -158,7 +159,7 @@ describe("v1PublishPost", () => {
       new PublishNotDispatchedError("CF publish not configured", "unchanged"),
     );
 
-    const result = await v1PublishPost(app, USER_ID, POST_ID);
+    const result = await v1PublishPost(app, SCOPE, POST_ID);
 
     expect(result).toMatchObject({ ok: false, unavailable: true });
     expect(mockRelease).toHaveBeenCalledTimes(1);
@@ -170,7 +171,7 @@ describe("v1PublishPost", () => {
       new PublishNotDispatchedError(`No publication targets for post ${POST_ID}`, "unchanged"),
     );
 
-    const result = await v1PublishPost(app, USER_ID, POST_ID);
+    const result = await v1PublishPost(app, SCOPE, POST_ID);
 
     expect(result).toEqual({ ok: false, error: "Post not found or not publishable" });
     expect(mockRelease).toHaveBeenCalledTimes(1);
@@ -182,7 +183,7 @@ describe("v1PublishPost", () => {
       new PublishNotDispatchedError("publish worker unreachable", "failed"),
     );
 
-    const result = await v1PublishPost(app, USER_ID, POST_ID);
+    const result = await v1PublishPost(app, SCOPE, POST_ID);
 
     expect(result).toMatchObject({ ok: false, unavailable: true });
     expect(mockReserve).not.toHaveBeenCalled();
@@ -193,6 +194,6 @@ describe("v1PublishPost", () => {
     postWithStatus("draft");
     mockEnqueue.mockRejectedValue(new Error("db down"));
 
-    await expect(v1PublishPost(app, USER_ID, POST_ID)).rejects.toThrow("db down");
+    await expect(v1PublishPost(app, SCOPE, POST_ID)).rejects.toThrow("db down");
   });
 });

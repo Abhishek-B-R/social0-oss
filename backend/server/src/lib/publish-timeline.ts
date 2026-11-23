@@ -211,6 +211,7 @@ export async function loadPublishTimelineForPost(
 export async function loadPublishTimelineForOwnedPost(
   postId: string,
   userId: string,
+  workspaceId: string | null = null,
 ): Promise<PublishTimelineEvent[] | null> {
   if (!isValidUUID(postId)) return null;
   const [row] = await db
@@ -220,7 +221,7 @@ export async function loadPublishTimelineForOwnedPost(
       and(
         eq(posts.id, postId),
         eq(posts.userId, userId),
-        isNull(posts.workspaceId),
+        workspaceId ? eq(posts.workspaceId, workspaceId) : isNull(posts.workspaceId),
       ),
     )
     .limit(1);

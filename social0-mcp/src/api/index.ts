@@ -5,4 +5,5 @@ export * as mediaApi from "./media.js";
 export * as publishApi from "./publish.js";
 export * as analyticsApi from "./analytics.js";
 export * as inboxApi from "./inbox.js";
+export * as webhooksApi from "./webhooks.js";
 export { suggestPlatforms, formatPlatformSuggestions } from "./platform-suggestions.js";

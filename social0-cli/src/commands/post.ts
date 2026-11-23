@@ -194,7 +194,7 @@ export async function postShowCommand(postId: string, opts: GlobalOptions): Prom
 
 export async function postEditCommand(
   postId: string,
-  opts: GlobalOptions & { content?: string; platform?: string[] },
+  opts: GlobalOptions & { content?: string; platform?: string[]; time?: string },
 ): Promise<void> {
   applyGlobalOptions(opts);
 
@@ -206,24 +206,39 @@ export async function postEditCommand(
     if (opts.platform?.length) {
       payload.platforms = resolveAccountRefs(opts.platform, aliases.map((a) => a.account));
     }
-    if (!payload.content && !payload.platforms) {
+    if (!payload.content && !payload.platforms && !opts.time) {
       const content = await promptContent();
       payload.content = content;
     }
-    await withSpinner("Updating post...", () => updatePost(id, payload));
+    if (payload.content || payload.platforms) {
+      await withSpinner("Updating post...", () => updatePost(id, payload));
+    }
+    if (opts.time) {
+      const scheduledAt = parseNaturalTime(opts.time, getTimezone());
+      const result = await withSpinner("Rescheduling...", () =>
+        schedulePost(id, { scheduledAt, timezone: getTimezone() }),
+      );
+      success(`Post scheduled for ${result.scheduled_at}`);
+      return;
+    }
     success("Post updated.");
   } catch (err) {
     exitWithError(err);
   }
 }
 
-export async function postDeleteCommand(postId: string, opts: GlobalOptions): Promise<void> {
+export async function postDeleteCommand(
+  postId: string,
+  opts: GlobalOptions & { yes?: boolean },
+): Promise<void> {
   applyGlobalOptions(opts);
 
   try {
     const id = await resolvePostId(postId);
-    const confirmed = await confirmAction(`Delete post ${shortId(id)}… (${id})?`);
-    if (!confirmed) return;
+    if (!opts.yes) {
+      const confirmed = await confirmAction(`Delete post ${shortId(id)}… (${id})?`);
+      if (!confirmed) return;
+    }
     await withSpinner("Deleting...", () => deletePost(id));
     success("Post deleted.");
   } catch (err) {

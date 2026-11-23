@@ -2,7 +2,16 @@
 
 All notable changes to `social0` will be documented in this file.
 
-## [0.2.0] - 2026-09-04
+## [0.3.0] - 2026-11-23
+
+### Added
+
+- Team workspaces: `social0 workspaces [list|use|current]` and a global `--workspace <id>` flag (or `SOCIAL0_WORKSPACE_ID`). Without one, commands act on your personal accounts as before
+- `social0 post bulk-delete`, `duplicate`, `again`, `events`, `auto-plug`, `auto-repost`
+- `social0 webhooks [list|create|show|update|delete|deliveries|test]`
+- Natural-language schedule times (`--schedule "tomorrow 9am"`) and `-y` to skip delete confirmations
+
+ - 2026-09-04
 
 ### Added
 

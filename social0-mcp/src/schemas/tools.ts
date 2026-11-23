@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { SUPPORTED_PLATFORMS } from "../types/index.js";
+import { SUPPORTED_PLATFORMS, WEBHOOK_EVENTS } from "../types/index.js";
 
 export const platformSchema = z.enum(SUPPORTED_PLATFORMS);
 const mediaIdSchema = z.string().uuid().transform((id) => id.toLowerCase());
@@ -296,3 +296,84 @@ export type ModerateCommentInput = z.infer<typeof moderateCommentInputSchema>;
 export type ListInboxDmsInput = z.infer<typeof listInboxDmsInputSchema>;
 export type GetInboxDmThreadInput = z.infer<typeof getInboxDmThreadInputSchema>;
 export type ReplyToDmInput = z.infer<typeof replyToDmInputSchema>;
+
+/** Shared by every workspace-scoped tool; read centrally in tools/index.ts, never by a handler. */
+export const workspaceIdSchema = z
+  .string()
+  .uuid()
+  .transform((id) => id.toLowerCase())
+  .optional()
+  .describe("Team workspace UUID from list_workspaces. Omit for the user's personal accounts.");
+
+const postIdSchema = z.string().uuid().describe("Social0 post ID");
+const webhookIdSchema = z.string().uuid().describe("Webhook ID from list_webhooks");
+const webhookEventsSchema = z.array(z.enum(WEBHOOK_EVENTS)).min(1);
+
+export const emptyInputSchema = z.object({});
+
+export const connectAccountInputSchema = z.object({
+  platform: platformSchema.describe("Network to connect"),
+});
+
+export const disconnectAccountInputSchema = z.object({
+  account_id: z.string().uuid().describe("Connected account UUID from list_accounts"),
+});
+
+export const deletePostsInputSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100).describe("Draft or scheduled post IDs (1-100)"),
+});
+
+export const postActionInputSchema = z.object({
+  post_id: postIdSchema,
+  idempotency_key: idempotencyKeySchema,
+});
+
+export const setAutoPlugInputSchema = z.object({
+  post_id: postIdSchema,
+  metric: z.enum(["likes", "retweets"]),
+  threshold: z.number().int().min(1).max(10_000_000),
+  message: z.string().trim().min(1).max(280),
+  account_id: z.string().uuid().optional(),
+});
+
+export const setAutoRepostInputSchema = z.object({
+  post_id: postIdSchema,
+  interval_hours: z.number().min(0.5).max(720).optional(),
+  max_reposts: z.number().int().min(1).max(10).optional(),
+  message: z.string().max(280).nullable().optional(),
+  active: z.boolean().optional(),
+});
+
+export const postIdInputSchema = z.object({ post_id: postIdSchema });
+
+export const createWebhookInputSchema = z.object({
+  url: z.string().url(),
+  events: webhookEventsSchema,
+});
+
+export const webhookIdInputSchema = z.object({ webhook_id: webhookIdSchema });
+
+export const updateWebhookInputSchema = z.object({
+  webhook_id: webhookIdSchema,
+  url: z.string().url().optional(),
+  events: webhookEventsSchema.optional(),
+  active: z.boolean().optional(),
+});
+
+export const listWebhookDeliveriesInputSchema = z.object({
+  webhook_id: webhookIdSchema,
+  limit: z.number().int().min(1).max(100).optional(),
+  before: z.string().min(1).optional().describe("next_before from a previous page"),
+});
+
+export type ConnectAccountInput = z.infer<typeof connectAccountInputSchema>;
+export type DisconnectAccountInput = z.infer<typeof disconnectAccountInputSchema>;
+export type DeletePostsInput = z.infer<typeof deletePostsInputSchema>;
+export type PostActionInput = z.infer<typeof postActionInputSchema>;
+export type SetAutoPlugInput = z.infer<typeof setAutoPlugInputSchema>;
+export type SetAutoRepostInput = z.infer<typeof setAutoRepostInputSchema>;
+export type PostIdInput = z.infer<typeof postIdInputSchema>;
+export type CreateWebhookInput = z.infer<typeof createWebhookInputSchema>;
+export type WebhookIdInput = z.infer<typeof webhookIdInputSchema>;
+export type UpdateWebhookInput = z.infer<typeof updateWebhookInputSchema>;
+export type ListWebhookDeliveriesInput = z.infer<typeof listWebhookDeliveriesInputSchema>;

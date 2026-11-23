@@ -20,7 +20,7 @@ import { SUPPORTED_PLATFORMS } from "../types/index.js";
 export async function accountsCommand(
   action: string | undefined,
   arg: string | undefined,
-  opts: GlobalOptions,
+  opts: GlobalOptions & { yes?: boolean },
 ): Promise<void> {
   applyGlobalOptions(opts);
   const format = getFormat(opts);
@@ -76,10 +76,12 @@ export async function accountsCommand(
       }
       const account = aliases.find((a) => a.alias === aliasNum);
       const label = account ? formatPlatformName(account.account.platform) : arg;
-      const confirmed = await confirmAction(`Disconnect ${label} (account #${arg})?`);
-      if (!confirmed) {
-        info("Cancelled.");
-        return;
+      if (!opts.yes) {
+        const confirmed = await confirmAction(`Disconnect ${label} (account #${arg})?`);
+        if (!confirmed) {
+          info("Cancelled.");
+          return;
+        }
       }
       await disconnectAccount(accountId);
       setAccountCache([]);

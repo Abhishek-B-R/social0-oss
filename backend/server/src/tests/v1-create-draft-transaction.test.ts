@@ -39,6 +39,7 @@ import { v1CreateDraft } from "../services/v1-posts.js";
 const ACCOUNT_ID = "66666666-6666-4666-8666-666666666666";
 const POST_ID = "77777777-7777-4777-8777-777777777777";
 const USER_ID = "user_1";
+const SCOPE = { userId: USER_ID, workspaceId: null, actorUserId: USER_ID };
 
 const inserted: unknown[] = [];
 
@@ -70,7 +71,7 @@ describe("v1CreateDraft", () => {
   it("writes the post and its publications in one transaction", async () => {
     txInsertsSucceed();
 
-    const result = await v1CreateDraft(USER_ID, { content: "hello", platforms: [ACCOUNT_ID] });
+    const result = await v1CreateDraft(SCOPE, { content: "hello", platforms: [ACCOUNT_ID] });
 
     expect(result).toEqual({ ok: true, id: POST_ID });
     expect(mockDb.transaction).toHaveBeenCalledTimes(1);
@@ -93,7 +94,7 @@ describe("v1CreateDraft", () => {
     }));
 
     await expect(
-      v1CreateDraft(USER_ID, { content: "hello", platforms: [ACCOUNT_ID] }),
+      v1CreateDraft(SCOPE, { content: "hello", platforms: [ACCOUNT_ID] }),
     ).rejects.toThrow("connection reset");
     // Nothing was written outside the transaction that rolled back.
     expect(mockDb.insert).not.toHaveBeenCalled();

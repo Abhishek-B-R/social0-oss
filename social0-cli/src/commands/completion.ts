@@ -22,7 +22,7 @@ _social0_completions() {
   COMPREPLY=()
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
-  opts="login logout whoami passphrase accounts post publish schedule upload status drafts analytics inbox config doctor version update completion link watch logs export import suggest improve hashtags examples help"
+  opts="login logout whoami passphrase accounts post publish schedule upload status drafts analytics inbox workspaces webhooks config doctor version update completion link watch logs export import suggest improve hashtags examples help"
 
   if [[ \${COMP_CWORD} -eq 1 ]]; then
     COMPREPLY=( $(compgen -W "\${opts}" -- \${cur}) )
@@ -34,7 +34,7 @@ _social0_completions() {
       COMPREPLY=( $(compgen -W "list connect disconnect" -- \${cur}) )
       ;;
     post)
-      COMPREPLY=( $(compgen -W "create edit delete list show init" -- \${cur}) )
+      COMPREPLY=( $(compgen -W "create edit delete list show init bulk-delete duplicate again auto-plug auto-repost events" -- \${cur}) )
       ;;
     drafts)
       COMPREPLY=( $(compgen -W "list delete publish schedule" -- \${cur}) )
@@ -44,6 +44,12 @@ _social0_completions() {
       ;;
     inbox)
       COMPREPLY=( $(compgen -W "comments dms dm dm-reply reply like unlike hide accounts" -- \${cur}) )
+      ;;
+    workspaces)
+      COMPREPLY=( $(compgen -W "list use current" -- \${cur}) )
+      ;;
+    webhooks)
+      COMPREPLY=( $(compgen -W "list create show update delete deliveries test" -- \${cur}) )
       ;;
     config)
       COMPREPLY=( $(compgen -W "get set" -- \${cur}) )
@@ -79,6 +85,8 @@ _social0() {
     'drafts:Manage drafts'
     'analytics:Live post metrics'
     'inbox:Comments and DMs'
+    'workspaces:Team workspaces'
+    'webhooks:Webhook endpoints'
     'config:CLI configuration'
     'doctor:Run diagnostics'
     'version:Show version'
@@ -108,6 +116,8 @@ complete -c social0 -n "__fish_use_subcommand" -a "status" -d "Job status"
 complete -c social0 -n "__fish_use_subcommand" -a "drafts" -d "Manage drafts"
 complete -c social0 -n "__fish_use_subcommand" -a "analytics" -d "Live post metrics"
 complete -c social0 -n "__fish_use_subcommand" -a "inbox" -d "Comments and DMs"
+complete -c social0 -n "__fish_use_subcommand" -a "workspaces" -d "Team workspaces"
+complete -c social0 -n "__fish_use_subcommand" -a "webhooks" -d "Webhook endpoints"
 complete -c social0 -n "__fish_use_subcommand" -a "config" -d "Configuration"
 complete -c social0 -n "__fish_use_subcommand" -a "doctor" -d "Diagnostics"
 complete -c social0 -n "__fish_use_subcommand" -a "version" -d "Show version"
@@ -121,7 +131,7 @@ complete -c social0 -n "__fish_use_subcommand" -a "logs" -d "Live logs"
 function powershellCompletion(): string {
   return `Register-ArgumentCompleter -Native -CommandName social0 -ScriptBlock {
   param($wordToComplete, $commandAst, $cursorPosition)
-  @('login','logout','whoami','accounts','post','publish','schedule','upload','status','drafts','analytics','inbox','config','doctor','version','update','completion','link','watch','logs','export','import','suggest','improve','hashtags','examples') | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
+  @('login','logout','whoami','accounts','post','publish','schedule','upload','status','drafts','analytics','inbox','workspaces','webhooks','config','doctor','version','update','completion','link','watch','logs','export','import','suggest','improve','hashtags','examples') | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
     [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
   }
 }

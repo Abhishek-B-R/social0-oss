@@ -2,7 +2,18 @@
 
 All notable changes to the Social0 MCP server are documented here.
 
-## [Unreleased]
+## [0.6.0] - 2026-11-23
+
+### Added
+
+- Team workspaces: `list_workspaces`, and an optional `workspace_id` on every posts, accounts, media, analytics and inbox tool. Without it, tools act on your personal accounts as before; with it, your role in that workspace decides what you can do
+- Account tools: `whoami`, `connect_account` (returns a link for the user to open), `disconnect_account`
+- Post tools: `delete_posts` (up to 100 drafts or scheduled posts), `duplicate_post`, `post_again`, `get_post_events`, `set_auto_plug` / `cancel_auto_plug`, `set_auto_repost` / `cancel_auto_repost`
+- Webhook tools: `list_webhooks`, `create_webhook`, `get_webhook`, `update_webhook`, `delete_webhook`, `list_webhook_deliveries`, `test_webhook`
+
+### Changed
+
+- Server version reported as `0.6.0`; MCP SDK floor `^1.30.0`
 
 ### Fixed
 

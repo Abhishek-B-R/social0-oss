@@ -7,9 +7,11 @@ import { registerWebhooksRoutes } from "./webhooks.js";
 import { registerMeRoutes } from "./me.js";
 import { registerAnalyticsRoutes } from "./analytics.js";
 import { registerInboxRoutes } from "./inbox.js";
+import { registerWorkspacesRoutes } from "./workspaces.js";
 
 export async function registerV1Routes(app: FastifyInstance) {
   await app.register(registerMeRoutes);
+  await app.register(registerWorkspacesRoutes);
   await app.register(registerAccountsRoutes);
   await app.register(registerPostsRoutes);
   await app.register(registerMediaRoutes);

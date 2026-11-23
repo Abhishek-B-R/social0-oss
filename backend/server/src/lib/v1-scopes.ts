@@ -8,6 +8,7 @@
  */
 export const V1_ROUTE_SCOPES: Readonly<Record<string, readonly string[]>> = {
   "GET /v1/me": ["me:read", "social0:read"],
+  "GET /v1/workspaces": ["me:read", "social0:read"],
   "GET /v1/accounts": ["accounts:read", "social0:read"],
   "POST /v1/accounts/connect": ["accounts:write", "social0:write"],
   "DELETE /v1/accounts/:id": ["accounts:write", "social0:write"],
@@ -21,6 +22,13 @@ export const V1_ROUTE_SCOPES: Readonly<Record<string, readonly string[]>> = {
   "POST /v1/posts/:id/schedule": ["posts:write", "social0:write"],
   "POST /v1/posts/publish": ["posts:write", "social0:write"],
   "POST /v1/posts/schedule": ["posts:write", "social0:write"],
+  "POST /v1/posts/bulk-delete": ["posts:write", "social0:write"],
+  "POST /v1/posts/:id/duplicate": ["posts:write", "social0:write"],
+  "POST /v1/posts/:id/post-again": ["posts:write", "social0:write"],
+  "PUT /v1/posts/:id/auto-plug": ["posts:write", "social0:write"],
+  "DELETE /v1/posts/:id/auto-plug": ["posts:write", "social0:write"],
+  "PUT /v1/posts/:id/auto-repost": ["posts:write", "social0:write"],
+  "DELETE /v1/posts/:id/auto-repost": ["posts:write", "social0:write"],
   "GET /v1/jobs/:trackingId": ["jobs:read", "social0:read"],
   "GET /v1/jobs/:trackingId/stream": ["jobs:read", "social0:read"],
   "POST /v1/media/presign": ["media:write", "social0:write"],

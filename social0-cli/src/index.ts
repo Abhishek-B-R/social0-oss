@@ -16,6 +16,16 @@ import {
   postDeleteCommand,
   postInitCommand,
 } from "./commands/post.js";
+import {
+  postBulkDeleteCommand,
+  postDuplicateCommand,
+  postAgainCommand,
+  postAutoPlugCommand,
+  postAutoRepostCommand,
+  postEventsCommand,
+} from "./commands/post-actions.js";
+import { workspacesCommand } from "./commands/workspaces.js";
+import { webhooksCommand } from "./commands/webhooks.js";
 import { publishCommand } from "./commands/publish.js";
 import { analyticsCommand } from "./commands/analytics.js";
 import { inboxCommand } from "./commands/inbox.js";
@@ -49,10 +59,14 @@ program
   .option("--table", "Output as table (default)")
   .option("--verbose", "Verbose logging")
   .option("--api-url <url>", "Override API URL")
+  .option("--workspace <id>", "Act in a team workspace (see `social0 workspaces`)")
   .hook("preAction", (thisCommand) => {
-    const opts = thisCommand.opts<GlobalOptions>();
+    const opts = thisCommand.opts<GlobalOptions & { workspace?: string }>();
     if (opts.apiUrl) {
       process.env.SOCIAL0_API_URL = opts.apiUrl;
+    }
+    if (opts.workspace) {
+      process.env.SOCIAL0_WORKSPACE_ID = opts.workspace;
     }
   });
 
@@ -129,8 +143,9 @@ const accountsCmd = program
   .description("Manage connected social accounts")
   .argument("[action]", "list, connect, or disconnect")
   .argument("[platform-or-id]", "Platform name or account ID")
-  .action(async (action, arg, _, cmd) => {
-    await accountsCommand(action, arg, globalOpts(cmd));
+  .option("-y, --yes", "Skip confirmation (disconnect)")
+  .action(async (action, arg, opts, cmd) => {
+    await accountsCommand(action, arg, { ...globalOpts(cmd), ...opts });
   });
 
 // Posts
@@ -168,6 +183,7 @@ postCmd
   .description("Edit a post")
   .option("-c, --content <text>", "New content")
   .option("-p, --platform <platforms...>", "Platforms or account IDs")
+  .option("-t, --time <when>", "Reschedule (natural language)")
   .action(async (id, opts, cmd) => {
     await postEditCommand(id, { ...globalOpts(cmd), ...opts });
   });
@@ -175,8 +191,64 @@ postCmd
 postCmd
   .command("delete <id>")
   .description("Delete a post")
+  .option("-y, --yes", "Skip confirmation")
+  .action(async (id, opts, cmd) => {
+    await postDeleteCommand(id, { ...globalOpts(cmd), ...opts });
+  });
+
+postCmd
+  .command("bulk-delete <ids...>")
+  .description("Delete up to 100 draft or scheduled posts")
+  .option("-y, --yes", "Skip the confirmation prompt")
+  .action(async (ids, opts, cmd) => {
+    await postBulkDeleteCommand(ids, { ...globalOpts(cmd), ...opts });
+  });
+
+postCmd
+  .command("duplicate <id>")
+  .description("Copy a post into a new draft")
   .action(async (id, _, cmd) => {
-    await postDeleteCommand(id, globalOpts(cmd));
+    await postDuplicateCommand(id, globalOpts(cmd));
+  });
+
+postCmd
+  .command("again <id>")
+  .alias("post-again")
+  .description("Publish a published post again as a new post (retry failed accounts: social0 publish <id>)")
+  .action(async (id, _, cmd) => {
+    await postAgainCommand(id, globalOpts(cmd));
+  });
+
+postCmd
+  .command("auto-plug <id>")
+  .description("X only: reply with a plug once the post reaches a likes/retweets threshold")
+  .option("--metric <metric>", "likes or retweets")
+  .option("--threshold <n>", "Count that triggers the plug")
+  .option("--message <text>", "Plug reply text (max 280 chars)")
+  .option("-a, --account <id>", "X account to reply from (numeric ID, platform, or UUID)")
+  .option("--off", "Cancel the auto-plug")
+  .action(async (id, opts, cmd) => {
+    await postAutoPlugCommand(id, { ...globalOpts(cmd), ...opts });
+  });
+
+postCmd
+  .command("auto-repost <id>")
+  .description("X only: repost the post on an interval")
+  .option("--interval <hours>", "Hours between reposts (0.5-720)")
+  .option("--max <n>", "Maximum reposts (1-10)")
+  .option("--message <text>", "Text to add when reposting")
+  .option("--pause", "Pause the schedule")
+  .option("--resume", "Resume a paused schedule")
+  .option("--off", "Remove the auto-repost schedule")
+  .action(async (id, opts, cmd) => {
+    await postAutoRepostCommand(id, { ...globalOpts(cmd), ...opts });
+  });
+
+postCmd
+  .command("events <id>")
+  .description("Show the publish timeline for a post")
+  .action(async (id, _, cmd) => {
+    await postEventsCommand(id, globalOpts(cmd));
   });
 
 postCmd
@@ -186,6 +258,34 @@ postCmd
     await postInitCommand({});
   });
 
+// Workspaces
+program
+  .command("workspaces")
+  .description("List team workspaces, or set the default one")
+  .argument("[action]", "list (default), use, or current")
+  .argument("[id]", "Workspace ID for `use`")
+  .option("--personal", "With `use`: clear the default and act on personal accounts")
+  .action(async (action, id, opts, cmd) => {
+    await workspacesCommand(action, id, { ...globalOpts(cmd), ...opts });
+  });
+
+// Webhooks
+program
+  .command("webhooks")
+  .description("Manage webhook endpoints for post events")
+  .argument("[action]", "list (default), create, show, update, delete, deliveries, test")
+  .argument("[id]", "Webhook ID")
+  .option("--url <url>", "Public https endpoint")
+  .option("--events <events...>", "post.published, post.failed, post.scheduled, post.deleted")
+  .option("--enable", "With `update`: resume deliveries")
+  .option("--disable", "With `update`: pause deliveries")
+  .option("-l, --limit <n>", "With `deliveries`: page size (1-100)")
+  .option("--before <cursor>", "With `deliveries`: next_before from the previous page")
+  .option("-y, --yes", "With `delete`: skip the confirmation prompt")
+  .action(async (action, id, opts, cmd) => {
+    await webhooksCommand(action, id, { ...globalOpts(cmd), ...opts });
+  });
+
 // Publish
 program
   .command("publish [target]")
@@ -193,6 +293,7 @@ program
   .option("-c, --content <text>", "Post content")
   .option("-p, --platform <platforms...>", "Platforms or account IDs")
   .option("-m, --media <ids...>", "Media IDs")
+  .option("-s, --schedule <time>", "Schedule instead of publishing now (natural language or ISO)")
   .action(async (target, opts, cmd) => {
     await publishCommand(target, { ...globalOpts(cmd), ...opts });
   });
@@ -232,6 +333,7 @@ const draftsCmd = program
   .argument("[action]", "list, delete, publish, or schedule")
   .argument("[id]", "Draft ID")
   .option("-t, --time <when>", "Schedule time")
+  .option("-y, --yes", "Skip confirmation (delete)")
   .action(async (action, id, opts, cmd) => {
     await draftsCommand(action, id, { ...globalOpts(cmd), ...opts });
   });

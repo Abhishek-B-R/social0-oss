@@ -59,7 +59,16 @@ export function resolvePlatformToIds(
   const list = accounts ?? cachedAccounts;
   const ids: string[] = [];
   for (const platform of platforms) {
-    const normalized = platform.toLowerCase().replace(/^twitter$/, "twitter_x");
+    const normalized = platform
+      .toLowerCase()
+      .replace(/^twitter$/, "twitter_x")
+      .replace(/^x$/, "twitter_x")
+      .replace(/^ig$/, "instagram")
+      .replace(/^fb$/, "facebook")
+      .replace(/^yt$/, "youtube")
+      .replace(/^li$/, "linkedin")
+      .replace(/^bsky$/, "bluesky")
+      .replace(/^pin$/, "pinterest");
     const match = list.find(
       (a) =>
         a.platform === normalized ||

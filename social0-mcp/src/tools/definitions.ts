@@ -1,4 +1,5 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
+import { WEBHOOK_EVENTS as webhookEventEnum } from "../types/index.js";
 
 const platformEnum = [
   "linkedin",
@@ -72,7 +73,34 @@ const PUBLIC_ACTION: ToolAnnotations = {
   openWorldHint: true,
 };
 
+/** Configures something that sends data to a URL outside Social0 (webhooks). */
+const EXTERNAL_WRITE: ToolAnnotations = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+};
+
 const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
+  whoami: READ,
+  list_workspaces: READ,
+  get_post_events: READ,
+  list_webhooks: READ,
+  get_webhook: READ,
+  list_webhook_deliveries: READ,
+  connect_account: LOCAL_WRITE,
+  duplicate_post: LOCAL_WRITE,
+  disconnect_account: LOCAL_DELETE,
+  delete_posts: LOCAL_DELETE,
+  cancel_auto_plug: LOCAL_DELETE,
+  cancel_auto_repost: LOCAL_DELETE,
+  delete_webhook: LOCAL_DELETE,
+  post_again: PUBLIC_ACTION,
+  set_auto_plug: PUBLIC_ACTION,
+  set_auto_repost: PUBLIC_ACTION,
+  create_webhook: EXTERNAL_WRITE,
+  update_webhook: EXTERNAL_WRITE,
+  test_webhook: EXTERNAL_WRITE,
   list_accounts: READ,
   list_posts: READ,
   get_post: READ,
@@ -606,11 +634,268 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
       additionalProperties: false,
     },
   },
+
+  {
+    name: "whoami",
+    description:
+      "Show the Social0 user this connection acts as: name, email, plan, timezone and API key. Use when the user asks who they are signed in as or which plan they are on.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "list_workspaces",
+    description:
+      "List the team/client workspaces the user belongs to, with their role and permissions in each. Call this when the user mentions a team, client, brand or workspace, then pass its id as workspace_id to the other tools. Without workspace_id every tool acts on the user's personal accounts.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "connect_account",
+    description:
+      "Start connecting a social account. Returns an authorization_url: give the link to the user to open and approve in their browser (you cannot complete it), then call list_accounts. X (twitter_x) and Bluesky must be connected from the Social0 dashboard; the server says so.",
+    inputSchema: {
+      type: "object",
+      properties: { platform: { type: "string", enum: [...platformEnum] } },
+      required: ["platform"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "disconnect_account",
+    description:
+      "Disconnect a connected social account from Social0. Its scheduled posts to that account will not go out. Confirm with the user first.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        account_id: { type: "string", format: "uuid", description: "Connected account UUID from list_accounts" },
+      },
+      required: ["account_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "delete_posts",
+    description:
+      "Delete up to 100 draft or scheduled posts in one call. Published posts are not deletable and come back in failed. Returns { deleted, failed: [{ id, error }] }. Confirm with the user first.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        ids: {
+          type: "array",
+          items: { type: "string", format: "uuid" },
+          minItems: 1,
+          maxItems: 100,
+          description: "Draft or scheduled post IDs",
+        },
+      },
+      required: ["ids"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "duplicate_post",
+    description:
+      "Copy any post into a new unpublished draft (same text, media and targets). Returns the new draft id.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        post_id: { type: "string", format: "uuid", description: "Post to copy" },
+        idempotency_key: idempotencyKeyProperty,
+      },
+      required: ["post_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "post_again",
+    description:
+      "Republish a published or partial post as a NEW post, live now, to the same accounts. Returns post_id and tracking_id for get_publish_status. To retry only the failed accounts on an existing post use publish_post instead.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        post_id: { type: "string", format: "uuid", description: "Published or partial post to repost" },
+        idempotency_key: idempotencyKeyProperty,
+      },
+      required: ["post_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "set_auto_plug",
+    description:
+      "X only (Creator/Agency plans): when a published post reaches a likes or retweets threshold, Social0 replies to it with message. Editable for 24 hours after publishing. Creates or replaces the post's auto-plug.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        post_id: { type: "string", format: "uuid" },
+        metric: { type: "string", enum: ["likes", "retweets"] },
+        threshold: { type: "integer", minimum: 1, maximum: 10000000 },
+        message: { type: "string", minLength: 1, maxLength: 280, description: "Reply text posted when the threshold is hit" },
+        account_id: { type: "string", format: "uuid", description: "X account, when the post went to more than one" },
+      },
+      required: ["post_id", "metric", "threshold", "message"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "cancel_auto_plug",
+    description: "Cancel the pending auto-plug reply on an X post so it is never sent.",
+    inputSchema: {
+      type: "object",
+      properties: { post_id: { type: "string", format: "uuid" } },
+      required: ["post_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "set_auto_repost",
+    description:
+      "Turn on or change automatic reposting of a published post: repost every interval_hours, up to max_reposts times, optionally with a message. Returns { post_id, schedule_id }.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        post_id: { type: "string", format: "uuid" },
+        interval_hours: { type: "number", minimum: 0.5, maximum: 720 },
+        max_reposts: { type: "integer", minimum: 1, maximum: 10 },
+        message: { type: ["string", "null"], maxLength: 280 },
+        active: { type: "boolean", description: "false pauses it" },
+      },
+      required: ["post_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "cancel_auto_repost",
+    description: "Stop automatic reposting of a post. Reposts already published stay up.",
+    inputSchema: {
+      type: "object",
+      properties: { post_id: { type: "string", format: "uuid" } },
+      required: ["post_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_post_events",
+    description:
+      "Publish timeline for a post: each phase per platform with its message. Use to explain why a post failed or what happened while publishing.",
+    inputSchema: {
+      type: "object",
+      properties: { post_id: { type: "string", format: "uuid" } },
+      required: ["post_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_webhooks",
+    description:
+      "List the user's webhook endpoints (post.published, post.failed, post.scheduled, post.deleted) with their last delivery result.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
+    name: "create_webhook",
+    description:
+      "Register a public https URL to receive post events. Returns the signing secret once; give it to the user.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        url: { type: "string", format: "uri" },
+        events: { type: "array", items: { type: "string", enum: [...webhookEventEnum] }, minItems: 1 },
+      },
+      required: ["url", "events"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "get_webhook",
+    description: "Get one webhook endpoint: URL, events, active flag and its last delivery result.",
+    inputSchema: {
+      type: "object",
+      properties: { webhook_id: { type: "string", format: "uuid" } },
+      required: ["webhook_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "update_webhook",
+    description: "Change a webhook's URL or events, or pause/resume it with active.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        webhook_id: { type: "string", format: "uuid" },
+        url: { type: "string", format: "uri" },
+        events: { type: "array", items: { type: "string", enum: [...webhookEventEnum] }, minItems: 1 },
+        active: { type: "boolean" },
+      },
+      required: ["webhook_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "delete_webhook",
+    description: "Delete a webhook endpoint. It stops receiving events. Confirm with the user first.",
+    inputSchema: {
+      type: "object",
+      properties: { webhook_id: { type: "string", format: "uuid" } },
+      required: ["webhook_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "list_webhook_deliveries",
+    description:
+      "Delivery attempts for one webhook, newest first, with response status and error. Use to answer \"did Social0 send it?\". Page with before = next_before.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        webhook_id: { type: "string", format: "uuid" },
+        limit: { type: "integer", minimum: 1, maximum: 100 },
+        before: { type: "string", description: "next_before from a previous page" },
+      },
+      required: ["webhook_id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "test_webhook",
+    description: "Send a signed webhook.test ping to the endpoint now and report what it answered.",
+    inputSchema: {
+      type: "object",
+      properties: { webhook_id: { type: "string", format: "uuid" } },
+      required: ["webhook_id"],
+      additionalProperties: false,
+    },
+  },
 ];
+
+/** Account-level tools: their endpoints refuse workspace_id. Every other tool takes it. */
+export const ACCOUNT_LEVEL_TOOLS: ReadonlySet<string> = new Set([
+  "whoami",
+  "list_workspaces",
+  "list_webhooks",
+  "create_webhook",
+  "get_webhook",
+  "update_webhook",
+  "delete_webhook",
+  "list_webhook_deliveries",
+  "test_webhook",
+]);
+
+const workspaceIdProperty = {
+  type: "string",
+  format: "uuid",
+  description: "Team workspace UUID from list_workspaces. Omit for the user's personal accounts.",
+} as const;
 
 export const TOOL_DEFINITIONS: Tool[] = RAW_TOOL_DEFINITIONS.map((tool) => {
   const annotations = annotationsFor(tool.name);
-  return annotations ? { ...tool, annotations } : tool;
+  const scoped = ACCOUNT_LEVEL_TOOLS.has(tool.name)
+    ? tool
+    : {
+        ...tool,
+        inputSchema: {
+          ...tool.inputSchema,
+          properties: { ...tool.inputSchema.properties, workspace_id: workspaceIdProperty },
+        },
+      };
+  return annotations ? { ...scoped, annotations } : scoped;
 });
 
 export const TOOL_NAMES = TOOL_DEFINITIONS.map((t) => t.name);

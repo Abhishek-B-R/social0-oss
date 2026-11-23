@@ -103,6 +103,16 @@ Needs [Node.js 20+](https://nodejs.org/) and a `sk_live_` key from [API keys](ht
   (`list_inbox_comments`, `reply_to_comment`, `moderate_comment`)
 - Read and answer DMs on networks that support them: X and Bluesky today
   (`list_inbox_dms`, `get_inbox_dm_thread`, `reply_to_dm`)
+- Work inside a team/client workspace: `list_workspaces`, then pass
+  `workspace_id` to any account, post, media, job, analytics or inbox tool
+  (omit it for personal accounts)
+- Account: `whoami`, `connect_account` (returns a link for you to open),
+  `disconnect_account`
+- More post actions: `delete_posts` (bulk, drafts/scheduled), `duplicate_post`,
+  `post_again`, `get_post_events`, `set_auto_plug` / `cancel_auto_plug` (X),
+  `set_auto_repost` / `cancel_auto_repost`
+- Webhooks: `list_webhooks`, `create_webhook`, `get_webhook`, `update_webhook`,
+  `delete_webhook`, `list_webhook_deliveries`, `test_webhook`
 
 Analytics and inbox read from each network at request time and cover posts
 published through Social0 (plus DMs on the connected account), they are not a

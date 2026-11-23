@@ -65,6 +65,11 @@ export function resolveApiUrl(override?: string): string {
   return url.replace(/\/$/, "").endsWith("/v1") ? url.replace(/\/$/, "") : `${url.replace(/\/$/, "")}/v1`;
 }
 
+/** Team workspace to act in: --workspace (via env) > SOCIAL0_WORKSPACE_ID > `workspaces use`. Empty = personal. */
+export function resolveWorkspaceId(): string | undefined {
+  return process.env.SOCIAL0_WORKSPACE_ID || loadConfig().defaultWorkspace || undefined;
+}
+
 export function resolveOutputFormat(opts: {
   json?: boolean;
   yaml?: boolean;

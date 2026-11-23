@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { apiError } from "../../lib/api-errors.js";
-import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
+import { requireV1ApiKey } from "../../middleware/api-auth.js";
+import { v1Scope } from "../../lib/v1-workspace.js";
 import {
   requireV1LiveReadBudget,
   requireV1MutationBudget,
@@ -113,14 +114,12 @@ export async function registerInboxRoutes(app: FastifyInstance) {
   const mutation = { preHandler: requireV1MutationBudget };
 
   app.get("/inbox/accounts", async (request, reply) => {
-    const userId = v1UserId(request);
     const query = accountsQuerySchema.safeParse(request.query ?? {});
     if (!query.success) return invalid(reply, query.error);
-    return { data: await v1ListInboxAccounts(userId, query.data.mode) };
+    return { data: await v1ListInboxAccounts(v1Scope(request), query.data.mode) };
   });
 
   app.get("/inbox/comments", live, async (request, reply) => {
-    const userId = v1UserId(request);
     const query = listQuerySchema.safeParse(request.query ?? {});
     if (!query.success) return invalid(reply, query.error);
     // The rollout gate is backend-only (LIVE_PLATFORMS); a platform that is
@@ -133,15 +132,14 @@ export async function registerInboxRoutes(app: FastifyInstance) {
         ),
       );
     }
-    return v1ListInboxComments(userId, query.data);
+    return v1ListInboxComments(v1Scope(request), query.data);
   });
 
   app.post("/inbox/comments/:commentId/reply", mutation, async (request, reply) => {
-    const userId = v1UserId(request);
     const { commentId } = request.params as { commentId: string };
     const body = replyCommentSchema.safeParse(request.body ?? {});
     if (!body.success) return invalid(reply, body.error);
-    const result = await v1ReplyToInboxComment(userId, {
+    const result = await v1ReplyToInboxComment(v1Scope(request), {
       publication_id: body.data.publication_id,
       comment_id: commentId,
       text: body.data.text,
@@ -151,11 +149,10 @@ export async function registerInboxRoutes(app: FastifyInstance) {
   });
 
   app.post("/inbox/comments/:commentId/like", mutation, async (request, reply) => {
-    const userId = v1UserId(request);
     const { commentId } = request.params as { commentId: string };
     const body = likeCommentSchema.safeParse(request.body ?? {});
     if (!body.success) return invalid(reply, body.error);
-    const result = await v1LikeInboxComment(userId, {
+    const result = await v1LikeInboxComment(v1Scope(request), {
       publication_id: body.data.publication_id,
       comment_id: commentId,
       unlike: body.data.unlike,
@@ -164,11 +161,10 @@ export async function registerInboxRoutes(app: FastifyInstance) {
   });
 
   app.post("/inbox/comments/:commentId/hide", mutation, async (request, reply) => {
-    const userId = v1UserId(request);
     const { commentId } = request.params as { commentId: string };
     const body = hideCommentSchema.safeParse(request.body ?? {});
     if (!body.success) return invalid(reply, body.error);
-    const result = await v1HideInboxComment(userId, {
+    const result = await v1HideInboxComment(v1Scope(request), {
       publication_id: body.data.publication_id,
       comment_id: commentId,
     });
@@ -176,18 +172,16 @@ export async function registerInboxRoutes(app: FastifyInstance) {
   });
 
   app.get("/inbox/dms", live, async (request, reply) => {
-    const userId = v1UserId(request);
     const query = listQuerySchema.safeParse(request.query ?? {});
     if (!query.success) return invalid(reply, query.error);
-    return v1ListInboxDms(userId, query.data);
+    return v1ListInboxDms(v1Scope(request), query.data);
   });
 
   app.get("/inbox/dms/:conversationId", live, async (request, reply) => {
-    const userId = v1UserId(request);
     const { conversationId } = request.params as { conversationId: string };
     const query = dmThreadQuerySchema.safeParse(request.query ?? {});
     if (!query.success) return invalid(reply, query.error);
-    const result = await v1GetInboxDmThread(userId, {
+    const result = await v1GetInboxDmThread(v1Scope(request), {
       account_id: query.data.account_id,
       conversation_id: conversationId,
       peer_id: query.data.peer_id,
@@ -219,11 +213,10 @@ export async function registerInboxRoutes(app: FastifyInstance) {
   });
 
   app.post("/inbox/dms/:conversationId/reply", mutation, async (request, reply) => {
-    const userId = v1UserId(request);
     const { conversationId } = request.params as { conversationId: string };
     const body = replyDmSchema.safeParse(request.body ?? {});
     if (!body.success) return invalid(reply, body.error);
-    const result = await v1ReplyToInboxDm(userId, {
+    const result = await v1ReplyToInboxDm(v1Scope(request), {
       account_id: body.data.account_id,
       conversation_id: conversationId,
       peer_id: body.data.peer_id,

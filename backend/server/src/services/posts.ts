@@ -13,7 +13,10 @@ import {
   idlePublicationSqlFor,
   postPublishingStaleSql,
 } from "@/lib/stuck-publishing";
-import { requireWorkspaceSession } from "@/lib/workspace/session";
+import {
+  requireWorkspaceSession,
+  type WorkspaceSession,
+} from "@/lib/workspace/session";
 import {
   connectionScopeCondition,
   postScopeCondition,
@@ -628,7 +631,14 @@ export async function duplicatePosts(
  * Returns the new post id on success.
  */
 export async function postAgain(postId: string): Promise<PostAgainResult> {
-  const ws = await requireWorkspaceSession("create_posts");
+  return postAgainForScope(await requireWorkspaceSession("create_posts"), postId);
+}
+
+/** `postAgain` for an already-resolved scope (`/v1` passes its `workspace_id` context). */
+export async function postAgainForScope(
+  ws: WorkspaceSession,
+  postId: string,
+): Promise<PostAgainResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }

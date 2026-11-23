@@ -23,6 +23,7 @@ interface PublishOptions extends GlobalOptions {
   content?: string;
   platform?: string[];
   media?: string[];
+  schedule?: string;
 }
 
 export async function publishCommand(
@@ -109,6 +110,21 @@ export async function publishCommand(
     const platformIds = opts.platform?.length
       ? resolveAccountRefs(opts.platform, aliases.map((a) => a.account))
       : await promptAccountSelection();
+
+    if (opts.schedule) {
+      const result = await withSpinner("Scheduling...", () =>
+        scheduleContent({
+          content,
+          platforms: platformIds,
+          media: opts.media,
+          scheduledAt: parseNaturalTime(opts.schedule!, getTimezone()),
+          timezone: getTimezone(),
+        }),
+      );
+      success(`Scheduled for ${result.scheduled_at}`);
+      if (format !== "table") printOutput(result, format);
+      return;
+    }
 
     const spinner = ora("Publishing...").start();
     const result = await publishNow({

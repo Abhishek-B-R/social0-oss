@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { apiError } from "../../lib/api-errors.js";
-import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
+import { requireV1ApiKey } from "../../middleware/api-auth.js";
+import { v1Scope } from "../../lib/v1-workspace.js";
 import { requireV1LiveReadBudget } from "../../middleware/v1-live-limits.js";
 import {
   v1AnalyticsOverview,
@@ -32,15 +33,13 @@ export async function registerAnalyticsRoutes(app: FastifyInstance) {
   app.addHook("preHandler", requireV1ApiKey);
 
   app.get("/analytics/accounts", async (request) => {
-    const userId = v1UserId(request);
-    return { data: await v1ListAnalyticsAccounts(userId) };
+    return { data: await v1ListAnalyticsAccounts(v1Scope(request)) };
   });
 
   // Live reads fan out to platform APIs; gate them like the dashboard RPC does.
   const live = { preHandler: requireV1LiveReadBudget };
 
   app.get("/analytics/overview", live, async (request, reply) => {
-    const userId = v1UserId(request);
     const query = overviewQuerySchema.safeParse(request.query ?? {});
     if (!query.success) {
       return reply
@@ -53,7 +52,7 @@ export async function registerAnalyticsRoutes(app: FastifyInstance) {
         );
     }
     try {
-      return await v1AnalyticsOverview(userId, query.data);
+      return await v1AnalyticsOverview(v1Scope(request), query.data);
     } catch (error) {
       const status = statusFromError(error);
       if (status === 404) {
@@ -66,10 +65,9 @@ export async function registerAnalyticsRoutes(app: FastifyInstance) {
   });
 
   app.get("/analytics/posts/:postId", live, async (request, reply) => {
-    const userId = v1UserId(request);
     const { postId } = request.params as { postId: string };
     try {
-      return await v1PostAnalytics(userId, postId);
+      return await v1PostAnalytics(v1Scope(request), postId);
     } catch (error) {
       const status = statusFromError(error);
       if (status === 404) {

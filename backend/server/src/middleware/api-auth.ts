@@ -9,6 +9,7 @@ import {
 import { apiError, V1_WWW_AUTHENTICATE } from "../lib/api-errors.js";
 import { getSubscriptionForUser } from "../lib/subscription.js";
 import { hasV1Scope, scopesForV1Route } from "../lib/v1-scopes.js";
+import { resolveV1Workspace } from "../lib/v1-workspace.js";
 import { TtlCache } from "../lib/ttl-cache.js";
 import type { SubscriptionState } from "../lib/subscription.js";
 import {
@@ -137,6 +138,8 @@ export async function requireV1ApiKey(
     userId: auth.userId,
     apiKeyId: auth.apiKeyId,
   });
+
+  if (!(await resolveV1Workspace(request, reply, auth.userId))) return null;
 
   return ctx;
 }

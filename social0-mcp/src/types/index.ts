@@ -12,6 +12,9 @@ export const SUPPORTED_PLATFORMS = [
 
 export type Platform = (typeof SUPPORTED_PLATFORMS)[number];
 
+/** Subscribable webhook events (`WEBHOOK_EVENTS` on the server). */
+export const WEBHOOK_EVENTS = ["post.published", "post.failed", "post.scheduled", "post.deleted"] as const;
+
 export type PostStatus =
   | "draft"
   | "scheduled"
@@ -115,7 +118,9 @@ export interface PlatformSuggestion {
 }
 
 export interface ApiErrorBody {
-  error?: string | { code?: string; message?: string; issues?: unknown };
+  error?:
+    | string
+    | { code?: string; message?: string; issues?: unknown; details?: { required_permission?: string } };
   code?: string;
   message?: string;
 }

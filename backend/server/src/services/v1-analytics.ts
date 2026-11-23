@@ -1,11 +1,12 @@
 /**
  * `/v1` analytics for API keys (CLI / MCP).
  *
- * Reuses the dashboard analytics core with the personal (main) pool, matching
- * `v1-accounts.ts` — workspace-scoped accounts stay dashboard-only. Responses
+ * Reuses the dashboard analytics core with the caller's scope: the personal pool,
+ * or a team workspace named by `workspace_id` (lib/v1-workspace.ts). Responses
  * are snake_case to match the rest of `/v1`.
  */
 
+import type { V1Scope } from "../lib/v1-workspace.js";
 import {
   analyticsAccountsForScope,
   analyticsOverviewForScope,
@@ -20,9 +21,8 @@ import {
 
 const TOP_POSTS_LIMIT = 10;
 
-/** API keys address the personal pool only (same rule as `/v1/accounts`). */
-function scopeFor(userId: string): AnalyticsScope {
-  return { resourceUserId: userId, workspaceId: null };
+function scopeFor(scope: V1Scope): AnalyticsScope {
+  return { resourceUserId: scope.userId, workspaceId: scope.workspaceId };
 }
 
 export type V1AnalyticsQuery = {
@@ -83,10 +83,10 @@ function reconnect(
 }
 
 export async function v1AnalyticsOverview(
-  userId: string,
+  scope: V1Scope,
   query: V1AnalyticsQuery,
 ) {
-  const data = await analyticsOverviewForScope(scopeFor(userId), {
+  const data = await analyticsOverviewForScope(scopeFor(scope), {
     range: query.range,
     since: query.since,
     until: query.until,
@@ -132,8 +132,8 @@ export async function v1AnalyticsOverview(
   };
 }
 
-export async function v1PostAnalytics(userId: string, postId: string) {
-  const data = await postAnalyticsForScope(scopeFor(userId), { postId });
+export async function v1PostAnalytics(scope: V1Scope, postId: string) {
+  const data = await postAnalyticsForScope(scopeFor(scope), { postId });
   return {
     post_id: data.postId,
     fetched_at: data.fetchedAt,
@@ -144,8 +144,8 @@ export async function v1PostAnalytics(userId: string, postId: string) {
   };
 }
 
-export async function v1ListAnalyticsAccounts(userId: string) {
-  const rows = await analyticsAccountsForScope(scopeFor(userId));
+export async function v1ListAnalyticsAccounts(scope: V1Scope) {
+  const rows = await analyticsAccountsForScope(scopeFor(scope));
   return rows.map((r) => ({
     id: r.id,
     platform: r.platform,

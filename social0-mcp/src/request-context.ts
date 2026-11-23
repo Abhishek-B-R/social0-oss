@@ -47,3 +47,14 @@ export async function runWithApiKeyAsync<T>(
     fn,
   );
 }
+
+/** The `workspace_id` of the tool call being handled; the API client appends it to scoped paths. */
+const workspaceContext = new AsyncLocalStorage<string | undefined>();
+
+export function getRequestWorkspaceId(): string | undefined {
+  return workspaceContext.getStore();
+}
+
+export function runWithWorkspaceId<T>(workspaceId: string | undefined, fn: () => T): T {
+  return workspaceContext.run(workspaceId, fn);
+}

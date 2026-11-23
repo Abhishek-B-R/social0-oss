@@ -227,7 +227,7 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
 | `social0-cli/` | npm CLI `social0` → `/v1` with `SOCIAL0_API_KEY` |
 | `social0-mcp/` | `@social0/mcp` stdio tools → same `/v1` (also bundled by `cloudflare/mcp-worker`) |
 
-`/v1` routes are **implemented** (`me`, `accounts`, `posts`, `media`, `jobs`, `webhooks`, `analytics`, `inbox`), not stubs. Auth: Bearer API key (`sk_live_…` / legacy `s0_live_`).
+`/v1` routes are **implemented** (`me`, `workspaces`, `accounts`, `posts`, `media`, `jobs`, `webhooks`, `analytics`, `inbox`), not stubs. Posts also have `bulk-delete`, `:id/duplicate`, `:id/post-again`, `:id/auto-plug`, `:id/auto-repost` (dashboard cores via `*ForScope`, `services/v1-post-actions.ts`). A new `/v1` route needs an entry in `V1_ROUTE_SCOPES` and `V1_ROUTE_PERMISSIONS` (tests fail otherwise) and the spec (`openapi/openapi.json`, copied to `frontend/public/openapi.json`). Auth: Bearer API key (`sk_live_…` / legacy `s0_live_`).
 
 ### Analytics + inbox on `/v1`
 
@@ -243,8 +243,12 @@ Billing provider: **Dodo Payments** (not Stripe). Env: `DODO_PAYMENTS_*`.
   DTO mappers over the **same cores** the dashboard RPC uses
   (`*ForScope(ctx, input)` in `services/analytics.ts` / `services/inbox.ts`).
   Add behavior to the core, never to one caller.
-- Scope: API keys read the **personal (main) pool** (`workspaceId: null`), same
-  rule as `/v1/accounts`. Workspace-scoped accounts stay dashboard-only.
+- Scope: a `/v1` call acts on the **personal (main) pool** (`workspaceId: null`)
+  unless it passes `?workspace_id=`; then it acts inside that team workspace as
+  the workspace owner, gated by the caller's role (`lib/v1-workspace.ts`,
+  `V1_ROUTE_PERMISSIONS`; `null` there = account-level, e.g. `/me`, webhooks).
+  A key never follows the dashboard's active workspace. `GET /v1/workspaces`
+  lists them; CLI `--workspace`, MCP `workspace_id`.
 - Same `LIVE_PLATFORMS` gate, cache, and outbound platform limits as the SPA.
   Live reads and inbox mutations also sit behind the per-minute
   `rpcLiveReadLimiter` / `rpcMutationLimiter` budgets (route-level

@@ -17,7 +17,7 @@ import type { GlobalOptions } from "../types/index.js";
 export async function draftsCommand(
   action: string | undefined,
   draftId: string | undefined,
-  opts: GlobalOptions & { time?: string },
+  opts: GlobalOptions & { time?: string; yes?: boolean },
 ): Promise<void> {
   applyGlobalOptions(opts);
   const format = getFormat(opts);
@@ -53,8 +53,10 @@ export async function draftsCommand(
     const id = await resolvePostId(draftId);
 
     if (action === "delete") {
-      const confirmed = await confirmAction(`Delete draft ${shortId(id)}… (${id})?`);
-      if (!confirmed) return;
+      if (!opts.yes) {
+        const confirmed = await confirmAction(`Delete draft ${shortId(id)}… (${id})?`);
+        if (!confirmed) return;
+      }
       await withSpinner("Deleting...", () => deletePost(id));
       success("Draft deleted.");
       return;

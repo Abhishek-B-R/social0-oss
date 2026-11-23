@@ -18,6 +18,7 @@ import {
   emitPostScheduledWebhook,
 } from "../lib/post-lifecycle-webhooks.js";
 import { sanitizePostMetadata } from "../lib/post-metadata-sanitize.js";
+import type { V1Scope } from "../lib/v1-workspace.js";
 import {
   checkSelectedAccounts,
   SELECTED_ACCOUNT_OVER_PLAN_LIMIT_ERROR,
@@ -58,6 +59,23 @@ function validateScheduledAt(scheduledAt: unknown): string | null {
   return null;
 }
 
+/** Rows in `workspaceId` (null = the personal pool). */
+function inWorkspace(
+  column: typeof posts.workspaceId | typeof connectedAccounts.workspaceId,
+  workspaceId: string | null,
+) {
+  return workspaceId ? eq(column, workspaceId) : isNull(column);
+}
+
+/** The post, if it is in this scope. */
+function postInScope(postId: string, scope: V1Scope) {
+  return and(
+    eq(posts.id, postId),
+    eq(posts.userId, scope.userId),
+    inWorkspace(posts.workspaceId, scope.workspaceId),
+  );
+}
+
 function normalizeUuid(id: string): string {
   return id.toLowerCase();
 }
@@ -67,7 +85,7 @@ function normalizeUuidList(ids: string[]): string[] {
 }
 
 async function validateOwnedAccounts(
-  userId: string,
+  { userId, workspaceId }: V1Scope,
   accountIds: string[],
 ): Promise<string | null> {
   if (accountIds.length === 0) {
@@ -83,7 +101,7 @@ async function validateOwnedAccounts(
     .where(
       and(
         eq(connectedAccounts.userId, userId),
-        isNull(connectedAccounts.workspaceId),
+        inWorkspace(connectedAccounts.workspaceId, workspaceId),
         inArray(connectedAccounts.id, normalizedIds),
       ),
     );
@@ -565,16 +583,17 @@ export type V1CreateOptions = {
 };
 
 export async function v1CreateDraft(
-  userId: string,
+  scope: V1Scope,
   input: V1CreatePostInput,
   opts: V1CreateOptions = {},
 ): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const { userId } = scope;
   const content = input.content?.trim() ?? "";
   if (!content && (!input.media || input.media.length === 0)) {
     return { ok: false, error: "content or media is required" };
   }
 
-  const accountErr = await validateOwnedAccounts(userId, input.platforms);
+  const accountErr = await validateOwnedAccounts(scope, input.platforms);
   if (accountErr) return { ok: false, error: accountErr };
 
   const mediaIds = normalizeUuidList(input.media ?? []);
@@ -610,8 +629,8 @@ export async function v1CreateDraft(
       .insert(posts)
       .values({
         userId,
-        createdByUserId: userId,
-        workspaceId: null,
+        createdByUserId: scope.actorUserId,
+        workspaceId: scope.workspaceId,
         originalContent: content,
         finalContent: content,
         status: "draft",
@@ -636,7 +655,7 @@ export async function v1CreateDraft(
 }
 
 export async function v1ListPosts(
-  userId: string,
+  { userId, workspaceId }: V1Scope,
   opts: {
     page?: number;
     limit?: number;
@@ -650,7 +669,7 @@ export async function v1ListPosts(
   const limit = Math.min(100, Math.max(1, opts.limit ?? 20));
   const offset = (page - 1) * limit;
 
-  const conditions = [eq(posts.userId, userId), isNull(posts.workspaceId)];
+  const conditions = [eq(posts.userId, userId), inWorkspace(posts.workspaceId, workspaceId)];
 
   if (opts.status) {
     conditions.push(eq(posts.status, opts.status as typeof posts.status.enumValues[number]));
@@ -731,9 +750,9 @@ export async function v1ListPosts(
   };
 }
 
-export async function v1GetPost(userId: string, postId: string) {
+export async function v1GetPost({ userId, workspaceId }: V1Scope, postId: string) {
   if (!isValidUUID(postId)) return null;
-  const detail = await getPostDetail(postId, userId, null);
+  const detail = await getPostDetail(postId, userId, workspaceId);
   if (!detail) return null;
 
   return {
@@ -759,10 +778,11 @@ export async function v1GetPost(userId: string, postId: string) {
 }
 
 export async function v1UpdateDraft(
-  userId: string,
+  scope: V1Scope,
   postId: string,
   input: Partial<V1CreatePostInput>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { userId } = scope;
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
   const [existing] = await db
@@ -773,7 +793,7 @@ export async function v1UpdateDraft(
       metadata: posts.metadata,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId), isNull(posts.workspaceId)))
+    .where(postInScope(postId, scope))
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };
@@ -812,7 +832,7 @@ export async function v1UpdateDraft(
   }
 
   if (input.platforms) {
-    const accountErr = await validateOwnedAccounts(userId, normalizeUuidList(input.platforms));
+    const accountErr = await validateOwnedAccounts(scope, normalizeUuidList(input.platforms));
     if (accountErr) return { ok: false, error: accountErr };
   }
 
@@ -894,7 +914,7 @@ export async function v1UpdateDraft(
 }
 
 export async function v1DeletePost(
-  userId: string,
+  scope: V1Scope,
   postId: string,
   /** `false` when rolling back a post the caller never got to see. */
   opts: { notify?: boolean } = {},
@@ -904,7 +924,7 @@ export async function v1DeletePost(
   const [existing] = await db
     .select({ id: posts.id, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId), isNull(posts.workspaceId)))
+    .where(postInScope(postId, scope))
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };
@@ -924,9 +944,7 @@ export async function v1DeletePost(
       .from(posts)
       .where(
         and(
-          eq(posts.id, postId),
-          eq(posts.userId, userId),
-          isNull(posts.workspaceId),
+          postInScope(postId, scope),
           inArray(posts.status, ["draft", "scheduled"]),
         ),
       )
@@ -941,16 +959,17 @@ export async function v1DeletePost(
     return { ok: false, error: "Only draft or scheduled posts can be deleted" };
   }
 
-  if (opts.notify !== false) emitPostDeletedWebhook(userId, postId);
+  if (opts.notify !== false) emitPostDeletedWebhook(scope.userId, postId);
 
   return { ok: true };
 }
 
 export async function v1SchedulePost(
-  userId: string,
+  scope: V1Scope,
   postId: string,
   scheduledAt: string,
 ): Promise<{ ok: true; scheduled_at: string } | { ok: false; error: string }> {
+  const { userId } = scope;
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
   const scheduleErr = validateScheduledAt(scheduledAt);
@@ -959,7 +978,7 @@ export async function v1SchedulePost(
   const [existing] = await db
     .select({ id: posts.id, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId), isNull(posts.workspaceId)))
+    .where(postInScope(postId, scope))
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };
@@ -1035,16 +1054,17 @@ export type V1PublishResult =
 
 export async function v1PublishPost(
   app: FastifyInstance,
-  userId: string,
+  scope: V1Scope,
   postId: string,
   connectedAccountIds?: string[],
 ): Promise<V1PublishResult> {
+  const { userId } = scope;
   if (!isValidUUID(postId)) return { ok: false, error: "Invalid post ID" };
 
   const [existing] = await db
     .select({ id: posts.id, status: posts.status })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId), isNull(posts.workspaceId)))
+    .where(postInScope(postId, scope))
     .limit(1);
 
   if (!existing) return { ok: false, error: "Post not found" };
@@ -1121,7 +1141,7 @@ export async function v1PublishPost(
 
 export async function v1CreateAndPublish(
   app: FastifyInstance,
-  userId: string,
+  scope: V1Scope,
   input: V1CreatePostInput,
   opts: V1CreateOptions = {},
 ): Promise<
@@ -1134,15 +1154,15 @@ export async function v1CreateAndPublish(
     }
   | Extract<V1PublishResult, { ok: false }>
 > {
-  const created = await v1CreateDraft(userId, input, opts);
+  const created = await v1CreateDraft(scope, input, opts);
   if (!created.ok) return created;
 
   // Every `ok: false` from `v1PublishPost` means nothing of this post went
   // out (and its free post was refunded), so the draft it was made for goes
   // too: a retry creates a fresh one instead of leaving an orphan behind.
-  const published = await v1PublishPost(app, userId, created.id);
+  const published = await v1PublishPost(app, scope, created.id);
   if (!published.ok) {
-    await v1DeletePost(userId, created.id, { notify: false });
+    await v1DeletePost(scope, created.id, { notify: false });
     return published;
   }
 
@@ -1156,7 +1176,7 @@ export async function v1CreateAndPublish(
 }
 
 export async function v1CreateAndSchedule(
-  userId: string,
+  scope: V1Scope,
   input: V1CreatePostInput & { scheduledAt: string },
   opts: V1CreateOptions = {},
 ): Promise<
@@ -1166,12 +1186,12 @@ export async function v1CreateAndSchedule(
   const scheduleErr = validateScheduledAt(input.scheduledAt);
   if (scheduleErr) return { ok: false, error: scheduleErr };
 
-  const created = await v1CreateDraft(userId, input, opts);
+  const created = await v1CreateDraft(scope, input, opts);
   if (!created.ok) return created;
 
-  const scheduled = await v1SchedulePost(userId, created.id, input.scheduledAt);
+  const scheduled = await v1SchedulePost(scope, created.id, input.scheduledAt);
   if (!scheduled.ok) {
-    await v1DeletePost(userId, created.id, { notify: false });
+    await v1DeletePost(scope, created.id, { notify: false });
     return scheduled;
   }
 

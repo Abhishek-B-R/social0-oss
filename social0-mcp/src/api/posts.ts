@@ -120,3 +120,61 @@ export async function scheduleContent(
 }
 
 export type { PostSummary };
+
+export async function bulkDeletePosts(
+  ids: string[],
+): Promise<{ deleted: number; failed: { id: string; error: string }[] }> {
+  return apiClient.post("/posts/bulk-delete", { ids });
+}
+
+export async function duplicatePost(postId: string, idempotencyKey?: string): Promise<{ id: string }> {
+  return apiClient.post(`/posts/${postId}/duplicate`, undefined, {
+    idempotencyKey: idempotencyKeyFor("duplicate_post", { post_id: postId }, idempotencyKey),
+  });
+}
+
+export async function postAgain(
+  postId: string,
+  idempotencyKey?: string,
+): Promise<{ post_id: string; tracking_id: string | null; stream_url: string | null; warning?: string }> {
+  return apiClient.post(`/posts/${postId}/post-again`, undefined, {
+    idempotencyKey: idempotencyKeyFor("post_again", { post_id: postId }, idempotencyKey),
+  });
+}
+
+export interface AutoPlugPayload {
+  metric: "likes" | "retweets";
+  threshold: number;
+  message: string;
+  account_id?: string;
+}
+
+export async function setAutoPlug(postId: string, payload: AutoPlugPayload): Promise<Record<string, unknown>> {
+  return apiClient.put(`/posts/${postId}/auto-plug`, payload);
+}
+
+export async function cancelAutoPlug(postId: string): Promise<void> {
+  await apiClient.delete(`/posts/${postId}/auto-plug`);
+}
+
+export interface AutoRepostPayload {
+  interval_hours?: number;
+  max_reposts?: number;
+  message?: string | null;
+  active?: boolean;
+}
+
+export async function setAutoRepost(
+  postId: string,
+  payload: AutoRepostPayload,
+): Promise<{ post_id: string; schedule_id: string }> {
+  return apiClient.put(`/posts/${postId}/auto-repost`, payload);
+}
+
+export async function cancelAutoRepost(postId: string): Promise<void> {
+  await apiClient.delete(`/posts/${postId}/auto-repost`);
+}
+
+export async function getPostEvents(postId: string): Promise<Record<string, unknown>> {
+  return apiClient.get(`/posts/${postId}/events`);
+}

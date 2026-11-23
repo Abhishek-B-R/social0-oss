@@ -3,6 +3,7 @@ import { z } from "zod";
 import { apiError } from "../../lib/api-errors.js";
 import { enforceRateLimit, uploadLimiter } from "../../lib/ratelimit.js";
 import { requireV1ApiKey, v1UserId } from "../../middleware/api-auth.js";
+import { v1Scope } from "../../lib/v1-workspace.js";
 import { sendRateLimited } from "../../middleware/v1-live-limits.js";
 import { v1ConfirmMedia, v1GetMedia, v1PresignMedia } from "../../services/v1-media.js";
 
@@ -43,7 +44,8 @@ export async function registerMediaRoutes(app: FastifyInstance) {
   const upload = { preHandler: requireV1UploadBudget };
 
   app.post("/media/presign", upload, async (request, reply) => {
-    const userId = v1UserId(request);
+    // Uploads belong to the workspace owner, as on the dashboard.
+    const { userId } = v1Scope(request);
     const body = presignSchema.safeParse(request.body);
     if (!body.success) {
       return reply
@@ -66,7 +68,7 @@ export async function registerMediaRoutes(app: FastifyInstance) {
   });
 
   app.post("/media/confirm", upload, async (request, reply) => {
-    const userId = v1UserId(request);
+    const { userId } = v1Scope(request);
     const body = confirmSchema.safeParse(request.body);
     if (!body.success) {
       return reply
@@ -81,7 +83,7 @@ export async function registerMediaRoutes(app: FastifyInstance) {
   });
 
   app.get("/media/:id", async (request, reply) => {
-    const userId = v1UserId(request);
+    const { userId } = v1Scope(request);
     const { id } = request.params as { id: string };
     const media = await v1GetMedia(userId, id);
     if (!media) {

@@ -1,5 +1,7 @@
+import { connectionScopeCondition } from "../lib/workspace/context.js";
+import type { V1Scope } from "../lib/v1-workspace.js";
 import crypto from "node:crypto";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { connectedAccounts, verification } from "../db/schema.js";
 import { encrypt, encryptToken } from "@social0/shared";
@@ -22,13 +24,13 @@ const VALID_PLATFORMS: Platform[] = [
   "facebook",
 ];
 
-/** API keys / CLI / MCP use the personal (main) pool only — workspace accounts stay dashboard-scoped. */
-export async function v1ListAccounts(userId: string) {
+/** Accounts in the caller's scope: the personal pool, or the `workspace_id` workspace. */
+export async function v1ListAccounts(scope: V1Scope) {
   const accounts = await db.query.connectedAccounts.findMany({
-    where: and(
-      eq(connectedAccounts.userId, userId),
-      isNull(connectedAccounts.workspaceId),
-    ),
+    where: connectionScopeCondition({
+      resourceUserId: scope.userId,
+      workspaceId: scope.workspaceId,
+    }),
     orderBy: [asc(connectedAccounts.createdAt), asc(connectedAccounts.id)],
     columns: {
       id: true,
@@ -55,17 +57,20 @@ export async function v1ListAccounts(userId: string) {
 }
 
 export async function v1DisconnectAccount(
-  userId: string,
+  scope: V1Scope,
   accountId: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { userId } = scope;
   const [account] = await db
     .select()
     .from(connectedAccounts)
     .where(
       and(
         eq(connectedAccounts.id, accountId),
-        eq(connectedAccounts.userId, userId),
-        isNull(connectedAccounts.workspaceId),
+        connectionScopeCondition({
+          resourceUserId: userId,
+          workspaceId: scope.workspaceId,
+        }),
       ),
     )
     .limit(1);
@@ -83,9 +88,11 @@ export async function v1DisconnectAccount(
 
 /** Build OAuth authorization URL for dashboard-style connect flow. */
 export async function v1BuildConnectUrl(
-  userId: string,
+  scope: V1Scope,
   platform: string,
 ): Promise<{ ok: true; authorization_url: string } | { ok: false; error: string }> {
+  // The account lands in the workspace's pool, owned by the workspace owner (as the dashboard's connect does).
+  const { userId, workspaceId } = scope;
   if (!VALID_PLATFORMS.includes(platform as Platform)) {
     return { ok: false, error: "Invalid platform" };
   }
@@ -136,12 +143,12 @@ export async function v1BuildConnectUrl(
       expiresAt,
     });
 
-    state = encrypt({ userId, platform, stateId });
+    state = encrypt({ userId, workspaceId, platform, stateId });
     url.searchParams.set("client_key", clientId);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
   } else {
-    state = encrypt({ userId, platform });
+    state = encrypt({ userId, workspaceId, platform });
     url.searchParams.set("client_id", clientId);
   }
 

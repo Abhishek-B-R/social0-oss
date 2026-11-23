@@ -53,6 +53,7 @@ import { v1DeletePost, v1SchedulePost, v1UpdateDraft } from "../services/v1-post
 const POST_ID = "55555555-5555-4555-8555-555555555555";
 const ACCOUNT_ID = "66666666-6666-4666-8666-666666666666";
 const USER_ID = "user_1";
+const SCOPE = { userId: USER_ID, workspaceId: null, actorUserId: USER_ID };
 
 /** Each `db.select()` resolves to the next result, awaited or via `.limit()`. */
 function queueSelects(...results: unknown[][]) {
@@ -98,7 +99,7 @@ describe("v1UpdateDraft", () => {
     );
     updateReturns(mockTx, []);
 
-    const result = await v1UpdateDraft(USER_ID, POST_ID, {
+    const result = await v1UpdateDraft(SCOPE, POST_ID, {
       content: "edited",
       platforms: [ACCOUNT_ID],
     });
@@ -120,7 +121,7 @@ describe("v1UpdateDraft", () => {
     );
     updateReturns(mockTx, [{ id: POST_ID }]);
 
-    const result = await v1UpdateDraft(USER_ID, POST_ID, {
+    const result = await v1UpdateDraft(SCOPE, POST_ID, {
       content: "edited",
       platforms: [ACCOUNT_ID],
     });
@@ -139,7 +140,7 @@ describe("v1SchedulePost", () => {
     queueSelects([{ id: POST_ID, status: "draft" }]);
     updateReturns(mockDb, []);
 
-    const result = await v1SchedulePost(USER_ID, POST_ID, at);
+    const result = await v1SchedulePost(SCOPE, POST_ID, at);
 
     expect(result).toEqual({
       ok: false,
@@ -156,7 +157,7 @@ describe("v1SchedulePost", () => {
     queueSelects([{ id: POST_ID, status: "draft" }]);
     updateReturns(mockDb, [{ id: POST_ID }]);
 
-    const result = await v1SchedulePost(USER_ID, POST_ID, at);
+    const result = await v1SchedulePost(SCOPE, POST_ID, at);
 
     expect(result).toEqual({ ok: true, scheduled_at: new Date(at).toISOString() });
     expect(mockRelease).not.toHaveBeenCalled();
@@ -169,7 +170,7 @@ describe("v1DeletePost", () => {
     queueSelects([{ id: POST_ID, status: "scheduled" }]);
     lockReturns([]);
 
-    const result = await v1DeletePost(USER_ID, POST_ID);
+    const result = await v1DeletePost(SCOPE, POST_ID);
 
     expect(result).toEqual({
       ok: false,
@@ -183,7 +184,7 @@ describe("v1DeletePost", () => {
     queueSelects([{ id: POST_ID, status: "draft" }]);
     lockReturns([{ id: POST_ID }]);
 
-    const result = await v1DeletePost(USER_ID, POST_ID);
+    const result = await v1DeletePost(SCOPE, POST_ID);
 
     expect(result).toEqual({ ok: true });
     expect(mockTx.delete).toHaveBeenCalledTimes(2);

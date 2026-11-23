@@ -9,7 +9,10 @@ import {
   autoPlugs,
 } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { requireWorkspaceSession } from "@/lib/workspace/session";
+import {
+  requireWorkspaceSession,
+  type WorkspaceSession,
+} from "@/lib/workspace/session";
 import { postScopeCondition } from "@/lib/workspace/context";
 import { isPostOlderThanAutoFeaturesEditWindow } from "@social0/shared";
 import {
@@ -82,7 +85,16 @@ export async function createAutoPlug(
   connectedAccountId: string | null,
   config: AutoPlugConfig,
 ): Promise<CreateAutoPlugResult> {
-  const ws = await requireWorkspaceSession("edit_posts");
+  return createAutoPlugForScope(await requireWorkspaceSession("edit_posts"), postId, connectedAccountId, config);
+}
+
+/** `createAutoPlug` for an already-resolved scope (`/v1` passes its `workspace_id` context). */
+export async function createAutoPlugForScope(
+  ws: WorkspaceSession,
+  postId: string,
+  connectedAccountId: string | null,
+  config: AutoPlugConfig,
+): Promise<CreateAutoPlugResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
@@ -238,7 +250,18 @@ export async function createResurfaceSchedule(
   maxResurfaces: number,
   plugComment: string | null,
 ): Promise<CreateResurfaceResult> {
-  const ws = await requireWorkspaceSession("edit_posts");
+  return createResurfaceScheduleForScope(await requireWorkspaceSession("edit_posts"), postId, platform, intervalHours, maxResurfaces, plugComment);
+}
+
+/** `createResurfaceSchedule` for an already-resolved scope (`/v1` passes its `workspace_id` context). */
+export async function createResurfaceScheduleForScope(
+  ws: WorkspaceSession,
+  postId: string,
+  platform: string,
+  intervalHours: number,
+  maxResurfaces: number,
+  plugComment: string | null,
+): Promise<CreateResurfaceResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
@@ -374,7 +397,14 @@ export type DisableResurfaceResult =
 export async function disableResurfaceSchedule(
   scheduleId: string,
 ): Promise<DisableResurfaceResult> {
-  const ws = await requireWorkspaceSession("edit_posts");
+  return disableResurfaceScheduleForScope(await requireWorkspaceSession("edit_posts"), scheduleId);
+}
+
+/** `disableResurfaceSchedule` for an already-resolved scope (`/v1` passes its `workspace_id` context). */
+export async function disableResurfaceScheduleForScope(
+  ws: WorkspaceSession,
+  scheduleId: string,
+): Promise<DisableResurfaceResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
@@ -433,7 +463,15 @@ export async function updateAutoPlug(
   postId: string,
   config: AutoPlugConfig,
 ): Promise<UpdateAutoPlugResult> {
-  const ws = await requireWorkspaceSession("edit_posts");
+  return updateAutoPlugForScope(await requireWorkspaceSession("edit_posts"), postId, config);
+}
+
+/** `updateAutoPlug` for an already-resolved scope (`/v1` passes its `workspace_id` context). */
+export async function updateAutoPlugForScope(
+  ws: WorkspaceSession,
+  postId: string,
+  config: AutoPlugConfig,
+): Promise<UpdateAutoPlugResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
@@ -506,7 +544,14 @@ export async function updateAutoPlug(
 export async function cancelAutoPlug(
   postId: string,
 ): Promise<UpdateAutoPlugResult> {
-  const ws = await requireWorkspaceSession("edit_posts");
+  return cancelAutoPlugForScope(await requireWorkspaceSession("edit_posts"), postId);
+}
+
+/** `cancelAutoPlug` for an already-resolved scope (`/v1` passes its `workspace_id` context). */
+export async function cancelAutoPlugForScope(
+  ws: WorkspaceSession,
+  postId: string,
+): Promise<UpdateAutoPlugResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }
@@ -556,7 +601,20 @@ export async function updateResurfaceSchedule(
     isActive?: boolean;
   },
 ): Promise<UpdateResurfaceScheduleResult> {
-  const ws = await requireWorkspaceSession("edit_posts");
+  return updateResurfaceScheduleForScope(await requireWorkspaceSession("edit_posts"), scheduleId, updates);
+}
+
+/** `updateResurfaceSchedule` for an already-resolved scope (`/v1` passes its `workspace_id` context). */
+export async function updateResurfaceScheduleForScope(
+  ws: WorkspaceSession,
+  scheduleId: string,
+  updates: {
+    intervalHours?: number;
+    maxResurfaces?: number;
+    plugComment?: string | null;
+    isActive?: boolean;
+  },
+): Promise<UpdateResurfaceScheduleResult> {
   if (!ws.ok) {
     return { success: false, error: ws.error };
   }

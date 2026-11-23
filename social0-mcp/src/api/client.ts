@@ -1,5 +1,10 @@
 import { config } from "../config.js";
-import { getRequestApiKey, getRequestHeaders, getRequestMcpClient } from "../request-context.js";
+import {
+  getRequestApiKey,
+  getRequestHeaders,
+  getRequestMcpClient,
+  getRequestWorkspaceId,
+} from "../request-context.js";
 import type { ApiErrorBody } from "../types/index.js";
 import { logVerbose, parseRetryAfterMs, sleep } from "../utils/index.js";
 
@@ -36,6 +41,11 @@ export class Social0ApiError extends Error {
           : "Wait about a minute before retrying.";
       return `Rate limited by Social0 (${this.message}). ${wait} Live analytics and inbox reads share a per-minute budget; do not retry in a loop.`;
     }
+    if (this.status === 403 && getRequestWorkspaceId()) {
+      const details = typeof this.body?.error === "object" ? this.body.error.details : undefined;
+      const needed = details?.required_permission ? ` (needs ${details.required_permission})` : "";
+      return `${this.message}${needed} This workspace role cannot do this action; tell the user, or check list_workspaces for the permissions they have there.`;
+    }
     return this.message;
   }
 }
@@ -47,7 +57,7 @@ export function retryAfterSeconds(header: string | null): number | undefined {
   return Math.max(1, Math.ceil(ms / 1000));
 }
 
-type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 interface RequestOptions {
   method?: HttpMethod;
@@ -55,6 +65,18 @@ interface RequestOptions {
   headers?: Record<string, string>;
   timeoutMs?: number;
   idempotencyKey?: string;
+}
+
+/** Account-level `/v1` paths: the server refuses `workspace_id` on these. */
+const ACCOUNT_LEVEL_PATH = /^\/(me|workspaces|webhooks)(\/|\?|$)/;
+
+/** Appends the tool call's `workspace_id` to every workspace-scoped path. */
+export function withWorkspaceId(
+  path: string,
+  workspaceId: string | undefined = getRequestWorkspaceId(),
+): string {
+  if (!workspaceId || ACCOUNT_LEVEL_PATH.test(path)) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}workspace_id=${encodeURIComponent(workspaceId)}`;
 }
 
 function buildUrl(base: string, path: string): string {
@@ -110,6 +132,10 @@ export class Social0ApiClient {
     return this.request<T>(path, { ...options, method: "POST", body });
   }
 
+  async put<T>(path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {
+    return this.request<T>(path, { ...options, method: "PUT", body });
+  }
+
   async patch<T>(path: string, body?: unknown, options?: Omit<RequestOptions, "method">): Promise<T> {
     return this.request<T>(path, { ...options, method: "PATCH", body });
   }
@@ -149,7 +175,7 @@ export class Social0ApiClient {
 
   private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const method = options.method ?? "GET";
-    const url = buildUrl(config.v1Base, path);
+    const url = buildUrl(config.v1Base, withWorkspaceId(path.startsWith("/") ? path : `/${path}`));
     const apiKey = this.resolveApiKey();
     let attempt = 0;
 
