@@ -1,5 +1,7 @@
 # Social0 MCP
 
+[![Abhishek-B-R/social0-mcp MCP server](https://glama.ai/mcp/servers/Abhishek-B-R/social0-mcp/badges/score.svg)](https://glama.ai/mcp/servers/Abhishek-B-R/social0-mcp)
+
 Post to **Instagram, TikTok, YouTube, X, LinkedIn, Facebook, Pinterest, Threads, and Bluesky** from Claude, Cursor, ChatGPT, and other AI apps: in plain English.
 
 Prefer the **[`social0` CLI](https://www.npmjs.com/package/social0)** when you have a terminal or agent shell (`npx social0`). Use this MCP package when the AI host only supports MCP connectors.
