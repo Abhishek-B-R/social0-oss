@@ -120,6 +120,7 @@ describe("tool annotations", () => {
   it("annotates every advertised tool", () => {
     for (const tool of TOOL_DEFINITIONS) {
       assert.ok(tool.annotations, `${tool.name} has no annotations`);
+      assert.ok(tool.title && tool.annotations.title, `${tool.name} has no title`);
       assert.equal(typeof tool.annotations.readOnlyHint, "boolean", tool.name);
       assert.equal(typeof tool.annotations.destructiveHint, "boolean", tool.name);
       assert.equal(typeof tool.annotations.openWorldHint, "boolean", tool.name);

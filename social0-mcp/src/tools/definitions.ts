@@ -895,7 +895,9 @@ export const TOOL_DEFINITIONS: Tool[] = RAW_TOOL_DEFINITIONS.map((tool) => {
           properties: { ...tool.inputSchema.properties, workspace_id: workspaceIdProperty },
         },
       };
-  return annotations ? { ...scoped, annotations } : scoped;
+  // Directory listings (Claude, ChatGPT) want a human title on every tool.
+  const title = tool.name.charAt(0).toUpperCase() + tool.name.slice(1).replace(/_/g, " ");
+  return { ...scoped, title, annotations: { title, ...annotations } };
 });
 
 export const TOOL_NAMES = TOOL_DEFINITIONS.map((t) => t.name);
