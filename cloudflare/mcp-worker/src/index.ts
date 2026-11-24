@@ -37,6 +37,11 @@ export default {
       });
     }
 
+    // OpenAI plugin directory domain check (public token, not a secret).
+    if (pathname === "/.well-known/openai-apps-challenge") {
+      return new Response("sgxaP_4_eCPuJ_zjioJD8g2oV351eK7tTWJihOK5Fog", { headers: { "Content-Type": "text/plain" } });
+    }
+
     if (pathname === "/.well-known/oauth-authorization-server") {
       return jsonResponse(getOAuthAuthorizationServerMetadata(baseUrl));
     }
