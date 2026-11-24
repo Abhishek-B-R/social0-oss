@@ -122,6 +122,8 @@ const INDEXED_CATALOG_SLUGS = new Set([
   "upload-post",
   "postflow",
   "planoly",
+  "recurpost",
+  "storefries",
 ]);
 
 function buildCatalogMeta({ slug, name }) {

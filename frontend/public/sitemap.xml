@@ -196,12 +196,17 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://social0.app/alternatives/planoly</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://social0.app/alternatives/napoleoncat</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://social0.app/alternatives/planoly</loc>
+    <loc>https://social0.app/alternatives/recurpost</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -227,6 +232,11 @@
   </url>
   <url>
     <loc>https://social0.app/alternatives/social-champ</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/alternatives/storefries</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

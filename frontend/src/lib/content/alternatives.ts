@@ -191,49 +191,38 @@ const ALL_ALTERNATIVES: AlternativePage[] = [
   {
     slug: "metricool",
     competitorName: "Metricool",
-    metaTitle: "Metricool Alternative - Social0 | Focused Publishing",
+    metaTitle: "Metricool Alternatives: Free X + LinkedIn, API on Every Plan | Social0",
     metaDescription:
-      "Metricool alternative focused on scheduling and publishing. Social0 prioritizes a fast compose-once workflow over analytics dashboards.",
-    keywords: ["metricool alternative", "metricool vs social0"],
-    heroHeadline: "A Metricool alternative focused on publishing speed",
+      "Metricool's free plan skips X and LinkedIn and its API starts on Advanced. Social0: free plan with X, LinkedIn, API, MCP and CLI; unlimited posts on paid plans.",
+    keywords: ["metricool alternative", "metricool alternatives", "metricool vs social0", "metricool pricing", "metricool free plan"],
+    heroHeadline: "Metricool alternatives: when Social0 fits better",
     heroSubheadline:
-      "When your bottleneck is posting — not reporting — Social0 gets content live faster.",
+      "Metricool is an analytics and ads-reporting suite with scheduling. Social0 is for people who mainly need to publish, on X and LinkedIn too, and want an API, MCP server and CLI for their AI agents.",
     intro:
-      "Metricool bundles scheduling with analytics and ads reporting. Social0 focuses on the publish path: connect accounts, compose, schedule or post now, and see clear per-platform results.",
+      "Metricool's free plan covers 1 brand and 20 posts a month, but not LinkedIn or X. Paid plans are sold per brand (Starter for 5 or 10 brands, Advanced for 15 to 50), and the Metricool API (Zapier, Make) is listed only on Advanced and Custom. Its MCP is on every plan, and it adds Google Business Profile, Twitch and ads reporting (metricool.com/pricing, checked 2026-11-24). Social0's free plan includes X and LinkedIn plus the REST API, hosted MCP server and CLI, and paid plans have unlimited posts.",
     whySwitch: [
-      "Publish-first UX without analytics clutter",
-      "Parallel publishing to every selected account",
-      "Drafts, scheduled posts, and calendar in one place",
-      "Encrypted OAuth token storage",
-      "Built for indie creators and small teams",
+      "You want X and LinkedIn on a free plan",
+      "You need an API without moving up to an Advanced plan",
+      "Your AI assistant should publish for you through MCP (Claude, ChatGPT, Cursor) or a CLI",
+      "You care about posting, not ads reporting",
     ],
     comparisonRows: [
-      {
-        feature: "Primary focus",
-        social0: "Publishing & scheduling",
-        competitor: "Analytics + scheduling",
-      },
-      {
-        feature: "Compose once",
-        social0: "Yes",
-        competitor: "Yes",
-      },
-      {
-        feature: "Ads reporting",
-        social0: "Not included",
-        competitor: "Included",
-      },
-      {
-        feature: "Per-platform publish status",
-        social0: "Yes",
-        competitor: "Varies",
-      },
+      { feature: "Free plan", social0: "3 accounts, 10 posts, X and LinkedIn included", competitor: "1 brand, 20 posts/month, no X or LinkedIn" },
+      { feature: "Paid pricing", social0: "Per account: Creator $29.90/mo for 15", competitor: "Per brand: Starter (5-10 brands), Advanced (15-50)" },
+      { feature: "API", social0: "Every plan", competitor: "Advanced and Custom" },
+      { feature: "MCP server", social0: "Every plan, plus a CLI", competitor: "Every plan" },
+      { feature: "Ads reporting, Google Business Profile, Twitch", social0: "No", competitor: "Yes" },
     ],
     faq: [
       {
-        question: "Does Social0 replace Metricool analytics?",
+        question: "When is Metricool the better choice?",
         answer:
-          "No. Social0 does not try to replace full analytics suites. It removes the friction of posting and scheduling across many platforms.",
+          "If you want analytics, competitor tracking and Facebook, Google and TikTok ads reporting in the same tool as scheduling, or you post to Google Business Profile or Twitch, Metricool covers more. Social0 does not try to replace a full analytics suite.",
+      },
+      {
+        question: "Does Social0 have a free plan like Metricool?",
+        answer:
+          "Yes. Social0's free plan connects 3 accounts on any of its 9 networks, X and LinkedIn included, with 10 lifetime posts, and it includes the API, MCP server and CLI.",
       },
     ],
     relatedFeatureSlugs: ["multi-platform-scheduler", "twitter-scheduler"],
@@ -527,6 +516,40 @@ const ALL_ALTERNATIVES: AlternativePage[] = [
       },
     ],
     relatedFeatureSlugs: ["twitter-scheduler", "multi-platform-scheduler"],
+  },
+  {
+    slug: "planoly",
+    competitorName: "Planoly",
+    metaTitle: "Planoly Alternatives: 15 Accounts for $29.90, API + MCP | Social0",
+    metaDescription:
+      "Planoly is $14/mo for 1 social set and adds $8-10 per extra set. Social0: free plan, 15 accounts for $29.90/mo, unlimited posts, API, MCP and CLI on every plan.",
+    keywords: ["planoly alternative", "planoly alternatives", "planoly vs social0", "planoly pricing", "apps like planoly"],
+    heroHeadline: "Planoly alternatives: when Social0 fits better",
+    heroSubheadline:
+      "Planoly is an Instagram-first visual planner. Social0 is for people who post to many accounts and networks, or want their AI agents to publish for them.",
+    intro:
+      "Planoly is $14/month for 1 social set and 1 user, $24 for 2 sets and $47 for 6, with extra sets at $10 (Growth) or $8 (Pro) a month and a 14-day trial; its free plan is mobile-only with 10 uploads a month. It covers Instagram, Facebook, X, Pinterest, LinkedIn, YouTube, Threads and TikTok, with a grid planner, link in bio and digital product sales (planoly.com/pricing, checked 2026-11-24). Social0 adds Bluesky, gives 15 accounts for $29.90/month with unlimited posts, and includes a REST API, hosted MCP server and CLI on every plan.",
+    whySwitch: [
+      "You manage more accounts than a few social sets cover",
+      "You post to Bluesky as well as the big networks",
+      "Your AI assistant should publish for you through MCP (Claude, ChatGPT, Cursor) or a CLI",
+      "You want a free plan on the web, not only in a mobile app",
+    ],
+    comparisonRows: [
+      { feature: "Entry price", social0: "Free; Creator $29.90/mo for 15 accounts", competitor: "$14/mo for 1 social set" },
+      { feature: "Growing", social0: "Agency $59.90/mo for 59 accounts, then $1 each", competitor: "$8-10/mo per extra social set" },
+      { feature: "Free plan", social0: "Web and API, 3 accounts, 10 posts", competitor: "Mobile app only, 10 uploads/month" },
+      { feature: "API, MCP server and CLI", social0: "Every plan", competitor: "Planoly MCP exists; plan not stated on pricing page" },
+      { feature: "Instagram grid planner, link in bio, digital products", social0: "No", competitor: "Yes" },
+    ],
+    faq: [
+      {
+        question: "When is Planoly the better choice?",
+        answer:
+          "If you run one Instagram-led brand and want visual grid planning, a link-in-bio page and selling digital products in one place, Planoly's $14 Starter plan fits that well.",
+      },
+    ],
+    relatedFeatureSlugs: ["instagram-scheduler", "multi-platform-scheduler"],
   },
   ...CATALOG_ALTERNATIVES,
 ];

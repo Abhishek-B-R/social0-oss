@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-19T12:15:26.557Z",
+  "generatedAt": "2026-11-24T06:00:14.770Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -145,8 +145,8 @@
       "description": "Later starts with a 14-day trial and has no X or Bluesky. Social0 posts to 9 networks: free for 3 accounts, or $29.90/mo for 15 with unlimited posts."
     },
     "metricool": {
-      "title": "Metricool Alternative - Social0 | Focused Publishing",
-      "description": "Metricool alternative focused on scheduling and publishing. Social0 prioritizes a fast compose-once workflow over analytics dashboards."
+      "title": "Metricool Alternatives: Free X + LinkedIn, API on Every Plan | Social0",
+      "description": "Metricool's free plan skips X and LinkedIn and its API starts on Advanced. Social0: free plan with X, LinkedIn, API, MCP and CLI; unlimited posts on paid plans."
     },
     "publer": {
       "title": "Publer Alternative With API and MCP on Every Plan | Social0",
@@ -175,6 +175,10 @@
     "postflow": {
       "title": "PostFlow Alternatives: Unlimited X Posts + MCP | Social0",
       "description": "PostFlow starts at $12/mo but charges credits past a few X posts a day. Social0: free plan, API and MCP included, unlimited posts on paid plans."
+    },
+    "planoly": {
+      "title": "Planoly Alternatives: 15 Accounts for $29.90, API + MCP | Social0",
+      "description": "Planoly is $14/mo for 1 social set and adds $8-10 per extra set. Social0: free plan, 15 accounts for $29.90/mo, unlimited posts, API, MCP and CLI on every plan."
     },
     "agorapulse": {
       "title": "Agorapulse Alternative - Social0 | Multi-Platform Scheduler",
@@ -235,10 +239,6 @@
       "description": "Looking for a Planable alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest - with MCP, API, and CLI for AI agents. Start free.",
       "noindex": true
     },
-    "planoly": {
-      "title": "Planoly Alternative - Social0 | Multi-Platform Scheduler",
-      "description": "Looking for a Planoly alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest - with MCP, API, and CLI for AI agents. Start free."
-    },
     "post-planner": {
       "title": "Post Planner Alternative - Social0 | Multi-Platform Scheduler",
       "description": "Looking for a Post Planner alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest - with MCP, API, and CLI for AI agents. Start free.",
@@ -246,8 +246,7 @@
     },
     "recurpost": {
       "title": "RecurPost Alternative - Social0 | Multi-Platform Scheduler",
-      "description": "Looking for a RecurPost alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest - with MCP, API, and CLI for AI agents. Start free.",
-      "noindex": true
+      "description": "Looking for a RecurPost alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest - with MCP, API, and CLI for AI agents. Start free."
     },
     "sendible": {
       "title": "Sendible Alternative - Social0 | Multi-Platform Scheduler",
@@ -411,8 +410,7 @@
     },
     "storefries": {
       "title": "Storefries Alternative - Social0 | Multi-Platform Scheduler",
-      "description": "Looking for a Storefries alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest - with MCP, API, and CLI for AI agents. Start free.",
-      "noindex": true
+      "description": "Looking for a Storefries alternative? Social0 lets you compose once and publish to X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky, and Pinterest - with MCP, API, and CLI for AI agents. Start free."
     },
     "taplio": {
       "title": "Taplio Alternative - Social0 | Multi-Platform Scheduler",
