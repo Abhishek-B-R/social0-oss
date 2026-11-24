@@ -99,7 +99,7 @@ const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
   set_auto_plug: PUBLIC_ACTION,
   set_auto_repost: PUBLIC_ACTION,
   create_webhook: EXTERNAL_WRITE,
-  update_webhook: EXTERNAL_WRITE,
+  update_webhook: { ...EXTERNAL_WRITE, destructiveHint: true }, // overwrites URL/events
   test_webhook: EXTERNAL_WRITE,
   list_accounts: READ,
   list_posts: READ,
@@ -112,8 +112,8 @@ const TOOL_ANNOTATIONS: Record<string, ToolAnnotations> = {
   list_inbox_dms: READ,
   get_inbox_dm_thread: READ,
   create_draft: LOCAL_WRITE,
-  update_draft: LOCAL_WRITE,
-  upload_media: LOCAL_WRITE,
+  update_draft: { ...LOCAL_WRITE, destructiveHint: true }, // overwrites the caption/media
+  upload_media: { ...LOCAL_WRITE, openWorldHint: true }, // fetches a public URL
   delete_draft: LOCAL_DELETE,
   publish_post: PUBLIC_ACTION,
   schedule_post: PUBLIC_ACTION,
@@ -638,7 +638,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "whoami",
     description:
-      "Show the Social0 user this connection acts as: name, email, plan, timezone and API key. Use when the user asks who they are signed in as or which plan they are on.",
+      "Show the Social0 user this connection acts as: name, email, plan and timezone. Use when the user asks who they are signed in as or which plan they are on.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {

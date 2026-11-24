@@ -520,7 +520,11 @@ async function jsonCall(
   }
 }
 
-export const handleWhoami = () => jsonCall("whoami", () => accountsApi.getMe());
+// Never hand the account's API key to the model.
+export const handleWhoami = () =>
+  jsonCall("whoami", async () =>
+    Object.fromEntries(Object.entries(await accountsApi.getMe()).filter(([k]) => !/api_?key/i.test(k))),
+  );
 
 export const handleListWorkspaces = () =>
   jsonCall(
