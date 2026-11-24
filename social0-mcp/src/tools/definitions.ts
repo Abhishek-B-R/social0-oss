@@ -142,7 +142,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "create_draft",
     description:
-      "Create an unpublished Social0 draft (does not post to any network). Use when the user wants to write content first and publish/schedule later. For one-step live posting use publish_now. Example: 'Draft a LinkedIn post about AI.'",
+      "Create an unpublished Social0 draft (does not post to any network). Use when the user wants to write content first and publish/schedule later. Example: 'Draft a LinkedIn post about AI.'",
     inputSchema: {
       type: "object",
       properties: {
@@ -167,7 +167,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "update_draft",
     description:
-      "Update an unpublished Social0 draft or scheduled post — caption, platforms, or media. Does not edit already-published live posts. Use before publish_post / schedule_post.",
+      "Update an unpublished Social0 draft or scheduled post — caption, platforms, or media. Does not edit already-published live posts.",
     inputSchema: {
       type: "object",
       properties: {
@@ -339,7 +339,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "publish_now",
     description:
-      "Create content and publish it live to connected platforms in one step (writes to external social networks). Prefer this over create_draft when the user wants to post immediately.",
+      "Create content and publish it live to connected platforms in one step (writes to external social networks).",
     inputSchema: {
       type: "object",
       properties: {
@@ -512,7 +512,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "reply_to_comment",
     description:
-      "Post a public reply to a comment on the originating network. Requires both `comment_id` and the `publication_id` from list_inbox_comments — Social0 verifies the comment is on that post before sending. This is a live public action; confirm the wording with the user first.",
+      "Post a public reply to a comment on the originating network. Requires both `comment_id` and the `publication_id` from list_inbox_comments — Social0 verifies the comment is on that post before sending. This is a live public action.",
     inputSchema: {
       type: "object",
       properties: {
@@ -536,7 +536,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "moderate_comment",
     description:
-      "Like, unlike, or hide a comment. Hiding is Instagram and Facebook Pages only. Requires `publication_id` from list_inbox_comments. Hiding is a moderation action — confirm with the user first.",
+      "Like, unlike, or hide a comment. Hiding is Instagram and Facebook Pages only. Requires `publication_id` from list_inbox_comments. Hiding is a moderation action.",
     inputSchema: {
       type: "object",
       properties: {
@@ -589,7 +589,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "get_inbox_dm_thread",
     description:
-      "Read the most recent messages in one DM conversation. Call list_inbox_dms first to get conversation_id. Pass the returned cursor to read older messages.",
+      "Read the most recent messages in one DM conversation. conversation_id comes from list_inbox_dms. Pass the returned cursor to read older messages.",
     inputSchema: {
       type: "object",
       properties: {
@@ -612,7 +612,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "reply_to_dm",
     description:
-      "Send a message into an existing DM conversation. Social0 verifies the conversation belongs to the account before sending. This delivers a real message to a real person; confirm the wording with the user first.",
+      "Send a message into an existing DM conversation. Social0 verifies the conversation belongs to the account before sending. This delivers a real message to a real person.",
     inputSchema: {
       type: "object",
       properties: {
@@ -644,7 +644,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "list_workspaces",
     description:
-      "List the team/client workspaces the user belongs to, with their role and permissions in each. Call this when the user mentions a team, client, brand or workspace, then pass its id as workspace_id to the other tools. Without workspace_id every tool acts on the user's personal accounts.",
+      "List the team/client workspaces the user belongs to, with their role and permissions in each. Passing a workspace's id as workspace_id scopes the other tools to that team, client or brand. Without workspace_id every tool acts on the user's personal accounts.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
@@ -661,7 +661,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "disconnect_account",
     description:
-      "Disconnect a connected social account from Social0. Its scheduled posts to that account will not go out. Confirm with the user first.",
+      "Disconnect a connected social account from Social0. Its scheduled posts to that account will not go out.",
     inputSchema: {
       type: "object",
       properties: {
@@ -674,7 +674,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "delete_posts",
     description:
-      "Delete up to 100 draft or scheduled posts in one call. Published posts are not deletable and come back in failed. Returns { deleted, failed: [{ id, error }] }. Confirm with the user first.",
+      "Delete up to 100 draft or scheduled posts in one call. Published posts are not deletable and come back in failed. Returns { deleted, failed: [{ id, error }] }.",
     inputSchema: {
       type: "object",
       properties: {
@@ -707,7 +707,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   {
     name: "post_again",
     description:
-      "Republish a published or partial post as a NEW post, live now, to the same accounts. Returns post_id and tracking_id for get_publish_status. To retry only the failed accounts on an existing post use publish_post instead.",
+      "Republish a published or partial post as a NEW post, live now, to the same accounts. Returns post_id and tracking_id for get_publish_status. Retrying only the failed accounts on an existing post is publish_post.",
     inputSchema: {
       type: "object",
       properties: {
@@ -830,7 +830,7 @@ const RAW_TOOL_DEFINITIONS: Tool[] = [
   },
   {
     name: "delete_webhook",
-    description: "Delete a webhook endpoint. It stops receiving events. Confirm with the user first.",
+    description: "Delete a webhook endpoint. It stops receiving events.",
     inputSchema: {
       type: "object",
       properties: { webhook_id: { type: "string", format: "uuid" } },
