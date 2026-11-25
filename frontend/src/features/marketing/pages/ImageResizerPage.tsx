@@ -221,6 +221,15 @@ export default function ImageResizerPage() {
 
         {p ? (
           <section className="max-w-[760px]">
+            <h2 className="mb-3 font-serif text-[24px] font-bold">Tips for {p.name} images</h2>
+            <ul className="list-disc space-y-1.5 pl-5 text-[14px] text-muted-foreground">
+              {p.tips.map((t) => <li key={t}>{t}</li>)}
+            </ul>
+          </section>
+        ) : null}
+
+        {p ? (
+          <section className="max-w-[760px]">
             <h2 className="mb-3 font-serif text-[24px] font-bold">FAQ</h2>
             <div className="flex flex-col divide-y divide-border">
               {p.faq.map((f) => (

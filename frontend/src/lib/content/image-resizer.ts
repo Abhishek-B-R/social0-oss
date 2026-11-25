@@ -13,6 +13,8 @@ export type ResizerPlatform = {
   metaTitle: string;
   metaDescription: string;
   formats: ImageFormat[];
+  /** Practical tips shown on the page and to crawlers. */
+  tips: string[];
   faq: FreeToolFaq[];
 };
 
@@ -37,6 +39,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
       { label: "Story / Reel", w: 1080, h: 1920 },
       { label: "Landscape post", w: 1080, h: 566 },
     ],
+    tips: [
+      "The profile grid shows posts as 3:4 rectangles, so keep the subject in the middle of a 4:5 post.",
+      "Stories and Reels cover the top and bottom with the profile name and reply bar; keep text away from those edges.",
+      "Use one shape for every slide in a carousel; Instagram crops them all to the first slide's shape."
+    ],
     faq: [
       {
         question: "What size should an Instagram post be?",
@@ -56,6 +63,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
       { label: "Square post", w: 1080, h: 1080 },
       { label: "Header", w: 1500, h: 500 },
       { label: "Profile photo", w: 400, h: 400 },
+    ],
+    tips: [
+      "16:9 images show uncropped in the timeline; other shapes may be cropped in the preview.",
+      "You can attach up to 4 images to one post.",
+      "On the header, the profile photo covers the bottom-left corner, so keep text to the right."
     ],
     faq: [
       {
@@ -77,6 +89,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
       { label: "Portrait post", w: 1080, h: 1350 },
       { label: "Profile banner", w: 1584, h: 396 },
     ],
+    tips: [
+      "Portrait 4:5 images take up more of the feed on phones than landscape ones.",
+      "On the profile banner, your photo covers part of the left side; keep important parts on the right.",
+      "Text in images should be large: most people read LinkedIn on a phone."
+    ],
     faq: [
       {
         question: "What is the best image size for a LinkedIn post?",
@@ -97,6 +114,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
       { label: "Story", w: 1080, h: 1920 },
       { label: "Page cover", w: 851, h: 315 },
     ],
+    tips: [
+      "The Page cover is cropped differently on phones and desktops; keep the important part in the middle.",
+      "Square and 4:5 images take more room in the mobile feed than landscape ones.",
+      "Stories cover the top and bottom with buttons; keep text in the middle."
+    ],
     faq: [
       {
         question: "What size is a Facebook post image?",
@@ -116,6 +138,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
       { label: "Channel banner", w: 2560, h: 1440, note: "Text-safe area is the middle 1546 x 423." },
       { label: "Shorts cover", w: 1080, h: 1920 },
     ],
+    tips: [
+      "Keep the thumbnail under 2 MB and readable at a small size: big face, few words.",
+      "The video length covers the bottom-right corner of the thumbnail.",
+      "Only the middle 1546 x 423 of the banner shows on every device; put text and logos there."
+    ],
     faq: [
       {
         question: "What size is a YouTube thumbnail?",
@@ -133,6 +160,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
     formats: [
       { label: "Photo post / cover", w: 1080, h: 1920 },
       { label: "Profile photo", w: 200, h: 200 },
+    ],
+    tips: [
+      "TikTok's buttons cover the right side and the caption covers the bottom; keep text in the centre.",
+      "Use full-screen 9:16 images so photo posts don't get bars.",
+      "The profile photo shows as a circle, so keep the face in the middle."
     ],
     faq: [
       {
@@ -152,6 +184,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
       { label: "Standard Pin (2:3)", w: 1000, h: 1500 },
       { label: "Square Pin", w: 1000, h: 1000 },
     ],
+    tips: [
+      "2:3 Pins fit the feed best; much taller Pins can get cut off.",
+      "Add a short text overlay: people scan Pins quickly.",
+      "Use a clear, bright image; Pinterest is a visual search engine."
+    ],
     faq: [
       {
         question: "What is the best Pinterest Pin size?",
@@ -169,6 +206,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
     formats: [
       { label: "Portrait post", w: 1080, h: 1350 },
       { label: "Square post", w: 1080, h: 1080 },
+    ],
+    tips: [
+      "Threads uses the same shapes as Instagram, so one 4:5 export works for both.",
+      "Portrait images take more room in the feed than landscape ones.",
+      "Keep text large; most people use Threads on a phone."
     ],
     faq: [
       {
@@ -188,6 +230,11 @@ export const RESIZER_PLATFORMS: ResizerPlatform[] = [
       { label: "Post image (16:9)", w: 1200, h: 675 },
       { label: "Square post", w: 1080, h: 1080 },
       { label: "Profile banner", w: 3000, h: 1000 },
+    ],
+    tips: [
+      "Bluesky caps each image at 1 MB; JPG exports from this tool usually stay under that.",
+      "You can add up to 4 images to one post.",
+      "Add alt text after uploading; Bluesky users expect it."
     ],
     faq: [
       {

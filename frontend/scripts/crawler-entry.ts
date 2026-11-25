@@ -160,6 +160,7 @@ function previewToolPage(p: PreviewPlatform): CrawlerPage {
     `<h1>${esc(p.name)} Post Preview &amp; Character Counter</h1><p>${esc(p.intro)}</p>` +
       `<h2>How to use it</h2><ol><li>Paste or write your post.</li><li>Pick a network to see its preview and where it gets cut.</li><li>Fix anything in red, then schedule it with Social0.</li></ol>` +
       `<h2>${esc(p.name)} limits</h2><ul>${p.limits.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` +
+      `<h2>Tips for ${esc(p.name)} posts</h2><ul>${p.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` +
       faqHtml(p.faq) +
       `<p>${others}</p><p><a href="${SITE}/free-tools">All free tools</a> · <a href="${SITE}/pricing">Social0 pricing</a></p>`,
   );
@@ -182,11 +183,28 @@ function resizerPage(p: ResizerPlatform): CrawlerPage {
   const html = article(
     `<h1>${esc(p.name)} Image Resizer</h1><p>Drop in any image and get every ${esc(p.name)} size at once, cropped to fill or fitted with a background. It runs in your browser, so nothing is uploaded.</p>` +
       `<h2>${esc(p.name)} image sizes</h2><table><thead><tr><th>Format</th><th>Size</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table>` +
+      `<h2>How to use it</h2><ol><li>Drop in your image.</li><li>Choose Crop to fill, or Fit with background to keep the whole picture.</li><li>Download the sizes you need as JPG, or post one straight to ${esc(p.name)} with Social0.</li></ol>` +
+      `<h2>Crop or fit?</h2><p>Crop to fill keeps the image full-bleed and trims the edges evenly. Fit with background keeps everything visible and fills the gaps with a colour, which suits logos, screenshots and text.</p>` +
+      `<h2>Tips for ${esc(p.name)} images</h2><ul>${p.tips.map((t) => `<li>${esc(t)}</li>`).join("")}</ul>` +
       faqHtml(p.faq) +
       `<p>${RESIZER_PLATFORMS.filter((x) => x.slug !== p.slug).map((x) => `<a href="${SITE}${resizerPath(x.slug)}">${esc(x.name)} image sizes</a>`).join(" · ")}</p>` +
       `<p><a href="${SITE}${IMAGE_RESIZER_PATH}">All platforms</a> · <a href="${SITE}/free-tools">All free tools</a></p>`,
   );
   return { html, faqs: p.faq };
+}
+
+function freeToolsHubPage(): CrawlerPage {
+  const counters = PREVIEW_PLATFORMS.map((p) => `<li><a href="${SITE}${postPreviewPath(p.slug)}">${esc(p.name)} post preview and character counter</a>: ${esc(p.limits[0])}</li>`).join("");
+  const tools = STANDALONE_TOOLS.map((t) => `<li><a href="${SITE}${freeToolPath(t.slug)}">${esc(t.name)}</a>: ${esc(t.metaDescription)}</li>`).join("");
+  const resizers = RESIZER_PLATFORMS.map((p) => `<li><a href="${SITE}${resizerPath(p.slug)}">${esc(p.name)} image sizes</a>: ${p.formats.map((f) => `${esc(f.label)} ${f.w} x ${f.h}`).join(", ")}</li>`).join("");
+  const html = article(
+    `<h1>Free social media tools</h1><p>Small tools that each do one job, free and without an account: check a post against every network's character limit, format LinkedIn text, split a thread, resize images for every platform, cut an Instagram grid or carousel, and make memes and meme videos. Everything runs in your browser, so nothing you upload leaves your device. When a post is ready, Social0 schedules it to X, LinkedIn, Instagram, Facebook, Threads, TikTok, YouTube, Pinterest and Bluesky in one go.</p>` +
+      `<h2>Writing, video and image tools</h2><ul>${tools}</ul>` +
+      `<h2>Post preview and character counters</h2><ul>${counters}</ul>` +
+      `<h2><a href="${SITE}${IMAGE_RESIZER_PATH}">Image resizer</a></h2><ul>${resizers}</ul>` +
+      `<p><a href="${SITE}/pricing">Social0 pricing</a> · <a href="${SITE}/">Social0</a></p>`,
+  );
+  return { html, faqs: [] };
 }
 
 function resizerHubPage(): CrawlerPage {
@@ -227,6 +245,7 @@ export function buildCrawlerPages(): Record<string, CrawlerPage> {
   for (const p of PREVIEW_PLATFORMS) pages[postPreviewPath(p.slug)] = previewToolPage(p);
   for (const t of STANDALONE_TOOLS) pages[freeToolPath(t.slug)] = standaloneToolPage(t);
   pages[IMAGE_RESIZER_PATH] = resizerHubPage();
+  pages["/free-tools"] = freeToolsHubPage();
   for (const p of RESIZER_PLATFORMS) pages[resizerPath(p.slug)] = resizerPage(p);
   const seen = new Set<string>();
   for (const a of [...ALTERNATIVES, ...CATALOG_ALTERNATIVES]) {

@@ -24,7 +24,7 @@ export default function FreeToolsIndexPage() {
             Free social media tools
           </h1>
           <p className="mx-auto max-w-[56ch] text-[15px] text-muted-foreground">
-            Small tools that do one job, free and without an account. When a post is ready, schedule it to all 9 networks with Social0.
+            Small tools that do one job, free and without an account: check a post against every network's limit, format LinkedIn text, split a thread, resize images, cut an Instagram grid or carousel, and make memes and meme videos. Everything runs in your browser. When a post is ready, schedule it to all 9 networks with Social0.
           </p>
         </header>
         <section className="flex flex-col gap-3">

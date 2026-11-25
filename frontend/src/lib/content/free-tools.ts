@@ -17,6 +17,8 @@ export type PreviewPlatform = {
   metaDescription: string;
   intro: string;
   limits: string[];
+  /** Practical tips shown on the page and to crawlers. */
+  tips: string[];
   faq: FreeToolFaq[];
 };
 
@@ -44,6 +46,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
       "Post: 3,000 characters.",
       "The feed shows roughly the first 210 characters on desktop (fewer on phones) before \"…more\".",
       "Comment: 1,250 characters. Headline: 220 characters.",
+    ],
+    tips: [
+      "Put the hook in the first one or two lines: that is all most people see before “…more”.",
+      "Use short paragraphs with a blank line between them; walls of text get scrolled past on phones.",
+      "End with one specific question so readers have an easy reason to comment.",
+      "Use bold Unicode text for a word or two at most; screen readers and LinkedIn search handle it badly."
     ],
     faq: [
       {
@@ -73,6 +81,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
       "Free accounts: 280 weighted characters per post.",
       "Premium: 25,000 characters. The timeline shows the first 280, then \"Show more\".",
       "Every link counts 23, whatever its length. Emoji count 2.",
+    ],
+    tips: [
+      "Lead with the point. Even Premium posts show only the first 280 characters before “Show more”.",
+      "One idea per post. If it needs more room, split it into a thread instead of cramming.",
+      "Remember a link always costs 23 characters, however short it looks.",
+      "Emoji count as 2, so a row of them eats your limit faster than you expect."
     ],
     faq: [
       {
@@ -108,6 +122,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
       "The feed shows about the first 125 characters before \"…more\".",
       "Up to 30 hashtags per post.",
     ],
+    tips: [
+      "The first 125 or so characters show under the post; make them work on their own.",
+      "Put hashtags at the end of the caption. Instagram suggests a few relevant ones over a long list.",
+      "Line breaks help a long caption read like a story instead of a block.",
+      "Ask people to save or share the post if it is useful; both count as strong signals."
+    ],
     faq: [
       {
         question: "What is the Instagram caption character limit?",
@@ -138,6 +158,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
       },
       scheduleFaq("Threads"),
     ],
+    tips: [
+      "Write like you talk: Threads rewards conversation more than polished copy.",
+      "You get 500 characters per post; go longer by replying to yourself with the next part.",
+      "Add one topic tag so people browsing that topic can find the post.",
+      "Reply to early comments quickly; replies keep the post in front of more people."
+    ],
   },
   {
     slug: "bluesky",
@@ -157,6 +183,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
         answer: "300 characters, counted as graphemes, so a family emoji or an accented letter counts as one.",
       },
       scheduleFaq("Bluesky"),
+    ],
+    tips: [
+      "Bluesky counts graphemes, so an emoji or an accented letter counts as one character.",
+      "Paste a link on its own and Bluesky turns it into a card, which saves characters in the text.",
+      "Add alt text to images; the Bluesky community expects it and many people check.",
+      "Use the thread feature for longer thoughts rather than cutting your point short."
     ],
   },
   {
@@ -178,6 +210,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
       },
       scheduleFaq("Facebook"),
     ],
+    tips: [
+      "Long posts fold behind “See more”, so the opening line has to earn the click.",
+      "Posts with an image or a short video usually get more attention than plain text.",
+      "Questions and opinions invite comments, which keep the post in people's feeds longer.",
+      "Write for your Page's audience, not for search: Facebook is about people who already follow you."
+    ],
   },
   {
     slug: "tiktok",
@@ -197,6 +235,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
         answer: "4,000 characters, including hashtags and mentions.",
       },
       scheduleFaq("TikTok"),
+    ],
+    tips: [
+      "Only the first lines show over the video, so start with the hook or the keyword.",
+      "TikTok search reads captions: use the words people would type to find the video.",
+      "A few specific hashtags beat a long list of generic ones.",
+      "Point people to the comments with a question; replies can become your next video."
     ],
   },
   {
@@ -218,6 +262,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
       },
       scheduleFaq("YouTube"),
     ],
+    tips: [
+      "About the first 150 characters show in search and above “…more”: put the summary and key link there.",
+      "Add chapters by listing timestamps that start at 0:00; YouTube needs at least three, each 10 seconds or longer.",
+      "Write the description for search: say plainly what the video covers in the first two sentences.",
+      "Keep the title under 100 characters, and front-load the words people search for."
+    ],
   },
   {
     slug: "pinterest",
@@ -236,6 +286,12 @@ export const PREVIEW_PLATFORMS: PreviewPlatform[] = [
         answer: "500 characters for the description and 100 for the Pin title.",
       },
       scheduleFaq("Pinterest"),
+    ],
+    tips: [
+      "Pinterest works like a search engine: describe the Pin with the words people search for.",
+      "Use the 100-character title for the main keyword and the description for detail.",
+      "Always add a destination link; Pins send traffic long after you post them.",
+      "Write in full sentences rather than a list of hashtags."
     ],
   },
 ];
