@@ -171,7 +171,73 @@ export const THREAD_MAKER: StandaloneTool = {
   ],
 };
 
-export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, THREAD_MAKER, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
+export const MEME_VIDEO: StandaloneTool = {
+  slug: "meme-video-maker",
+  name: "Meme Video Maker",
+  metaTitle: "Meme Video Maker: Add a Caption Above Any Clip (Free) | Social0",
+  metaDescription:
+    "Put a caption bar above your video, the meme format that goes viral on X, Instagram and TikTok. Exports MP4 with sound, in your browser. Free, no signup.",
+  intro:
+    "Upload a short clip, type the caption and download a meme video with the white caption bar on top, the format that goes viral on X, Instagram Reels and TikTok. It runs in your browser, so your clip is never uploaded.",
+  howTo: [
+    "Drop in a video up to 60 seconds long.",
+    "Type the caption, pick Caption bar, Top & bottom or Subtitle, and set the size.",
+    "Press Download. The clip plays through once while it records, then saves as MP4 with sound.",
+  ],
+  notes: [
+    "Use clips you have the right to post. Social0 doesn't host meme templates; you bring your own.",
+    "Chrome, Edge and Safari save MP4. Older browsers save WebM, which X, Instagram and TikTok also accept.",
+    "Keep this tab open while it records. Free downloads carry a small social0.app badge; sign up free to remove it.",
+  ],
+  faq: [
+    {
+      question: "How do I add text above a video for a meme?",
+      answer:
+        "Upload the clip here, type your caption and download it. The tool adds a white bar on top with your text in bold, sized to fit, and keeps the video and sound underneath.",
+    },
+    {
+      question: "Is the video uploaded to a server?",
+      answer: "No. The video is drawn and recorded in your browser and saved straight to your device.",
+    },
+    {
+      question: "Can I schedule the meme to several platforms?",
+      answer:
+        "Yes. Upload the downloaded video to Social0 and post it to X, Instagram, TikTok, YouTube Shorts and more in one go. The free plan covers 3 accounts.",
+    },
+  ],
+};
+
+export const MEME_IMAGE: StandaloneTool = {
+  slug: "meme-generator",
+  name: "Meme Generator",
+  metaTitle: "Meme Generator: Caption Bar or Top & Bottom Text (Free) | Social0",
+  metaDescription:
+    "Make a meme from your own image: a caption bar on top, classic top and bottom text, or a subtitle. Download as JPG, free, nothing uploaded.",
+  intro:
+    "Turn any image into a meme in seconds: a bold caption bar on top (the format people screenshot and share), classic white top and bottom text, or a subtitle. It runs in your browser.",
+  howTo: [
+    "Drop in an image.",
+    "Type the caption and pick a style. For top and bottom text, put a line break or full stop between the two parts.",
+    "Download the JPG, or schedule it to every network with Social0.",
+  ],
+  notes: [
+    "Use images you have the right to post; Social0 doesn't host meme templates.",
+    "Images save 1080 px wide, a good size for every network.",
+    "Free downloads carry a small social0.app badge; sign up free to remove it.",
+  ],
+  faq: [
+    {
+      question: "How do I make a meme with text on top?",
+      answer: "Upload the image, type the caption and keep the Caption bar style. The text sits in a white bar above the picture, sized to fit.",
+    },
+    {
+      question: "How do I make a classic top and bottom text meme?",
+      answer: "Choose Top & bottom and separate the two lines with a line break or a full stop. The text is white with a black outline in an Impact-style font.",
+    },
+  ],
+};
+
+export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, THREAD_MAKER, MEME_VIDEO, MEME_IMAGE, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
 
 export const FORMATTER_SAMPLE = `𝗠𝗼𝘀𝘁 𝗳𝗼𝘂𝗻𝗱𝗲𝗿𝘀 𝗽𝗼𝘀𝘁 𝘁𝗼𝗼 𝗹𝗶𝘁𝘁𝗹𝗲.
 

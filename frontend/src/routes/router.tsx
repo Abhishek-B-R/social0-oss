@@ -206,6 +206,7 @@ const LinkedInFormatterPage = lazy(() => import("@/features/marketing/pages/Link
 const ImageResizerPage = lazy(() => import("@/features/marketing/pages/ImageResizerPage"));
 const ImageSplitterPage = lazy(() => import("@/features/marketing/pages/ImageSplitterPage"));
 const ThreadMakerPage = lazy(() => import("@/features/marketing/pages/ThreadMakerPage"));
+const MemeMakerPage = lazy(() => import("@/features/marketing/pages/MemeMakerPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
@@ -506,6 +507,22 @@ function AppRoutes() {
           element={
             <Lazy>
               <FreeToolsIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/meme-video-maker"
+          element={
+            <Lazy>
+              <MemeMakerPage kind="video" />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/meme-generator"
+          element={
+            <Lazy>
+              <MemeMakerPage kind="image" />
             </Lazy>
           }
         />

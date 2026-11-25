@@ -606,6 +606,8 @@ ${toolLines.join("\n")}
 - LinkedIn text formatter (bold, italic, underline, lists): ${base}/free-tools/linkedin-text-formatter
 - Social media image resizer (every platform size, runs in the browser): ${base}/free-tools/image-resizer
 - X (Twitter) thread maker (splits long text at sentences, X/Threads/Bluesky): ${base}/free-tools/twitter-thread-maker
+- Meme video maker (caption bar above a clip, MP4 with sound, in the browser): ${base}/free-tools/meme-video-maker
+- Meme generator (caption bar or top and bottom text on your image): ${base}/free-tools/meme-generator
 - Instagram grid maker (3:4 profile grid tiles in posting order): ${base}/free-tools/instagram-grid-maker
 - Instagram carousel splitter (seamless panorama slides): ${base}/free-tools/instagram-carousel-splitter
 

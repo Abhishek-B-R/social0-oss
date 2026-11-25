@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T14:05:41.319Z",
+  "generatedAt": "2026-11-25T14:18:26.231Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -102,6 +102,14 @@
     "/free-tools/twitter-thread-maker": {
       "title": "Twitter Thread Maker: Split Long Text into a Thread (Free) | Social0",
       "description": "Paste long text and split it into an X (Twitter) thread that breaks at sentences, with optional 1/5 numbering. Also works for Threads and Bluesky. Free."
+    },
+    "/free-tools/meme-video-maker": {
+      "title": "Meme Video Maker: Add a Caption Above Any Clip (Free) | Social0",
+      "description": "Put a caption bar above your video, the meme format that goes viral on X, Instagram and TikTok. Exports MP4 with sound, in your browser. Free, no signup."
+    },
+    "/free-tools/meme-generator": {
+      "title": "Meme Generator: Caption Bar or Top & Bottom Text (Free) | Social0",
+      "description": "Make a meme from your own image: a caption bar on top, classic top and bottom text, or a subtitle. Download as JPG, free, nothing uploaded."
     },
     "/free-tools/image-resizer": {
       "title": "Social Media Image Resizer: Every Platform Size (Free) | Social0",
