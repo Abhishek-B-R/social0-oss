@@ -205,6 +205,7 @@ const PostPreviewToolPage = lazy(() => import("@/features/marketing/pages/PostPr
 const LinkedInFormatterPage = lazy(() => import("@/features/marketing/pages/LinkedInFormatterPage"));
 const ImageResizerPage = lazy(() => import("@/features/marketing/pages/ImageResizerPage"));
 const ImageSplitterPage = lazy(() => import("@/features/marketing/pages/ImageSplitterPage"));
+const ThreadMakerPage = lazy(() => import("@/features/marketing/pages/ThreadMakerPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
@@ -505,6 +506,14 @@ function AppRoutes() {
           element={
             <Lazy>
               <FreeToolsIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/twitter-thread-maker"
+          element={
+            <Lazy>
+              <ThreadMakerPage />
             </Lazy>
           }
         />

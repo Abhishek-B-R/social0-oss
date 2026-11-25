@@ -605,6 +605,7 @@ ${toolLines.join("\n")}
 - Free post preview & character counters (X incl. Premium, LinkedIn, Instagram, Threads, Bluesky, TikTok, YouTube, Facebook, Pinterest): ${base}/free-tools
 - LinkedIn text formatter (bold, italic, underline, lists): ${base}/free-tools/linkedin-text-formatter
 - Social media image resizer (every platform size, runs in the browser): ${base}/free-tools/image-resizer
+- X (Twitter) thread maker (splits long text at sentences, X/Threads/Bluesky): ${base}/free-tools/twitter-thread-maker
 - Instagram grid maker (3:4 profile grid tiles in posting order): ${base}/free-tools/instagram-grid-maker
 - Instagram carousel splitter (seamless panorama slides): ${base}/free-tools/instagram-carousel-splitter
 

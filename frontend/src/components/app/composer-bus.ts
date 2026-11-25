@@ -4,6 +4,8 @@ import { useSyncExternalStore } from "react";
 export type ComposerOpenOptions = {
   /** Caption text (palette "Create post with this text", Home quick-compose). */
   text?: string;
+  /** Thread posts in order (free thread maker: `/new?part=..&part=..`). Wins over `text`. */
+  parts?: string[];
   /** ISO string or Date: preselect this time (calendar empty slot, "New post at 14:00"). */
   scheduledAt?: string | Date;
   /**
@@ -139,6 +141,7 @@ export function readComposerSearchParams(
   const intent = params.get("intent");
   return {
     text: params.get("text") ?? undefined,
+    parts: params.getAll("part").length ? params.getAll("part") : undefined,
     scheduledAt: params.get("at") ?? undefined,
     queueSlotId: params.get("slot") ?? undefined,
     accounts: accounts ? accounts.split(",").filter(Boolean) : undefined,

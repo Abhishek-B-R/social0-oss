@@ -217,6 +217,7 @@ const graphemes =
   typeof Intl !== "undefined" && "Segmenter" in Intl
     ? new Intl.Segmenter()
     : null;
+// shortcut: any word.tld counts as a link (X only links real TLDs, so "Node.js" is over-counted); switch to twitter-text if users report miscounts.
 const URL_RE = /\bhttps?:\/\/[^\s]+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?/gi;
 const EMOJI_RE = /\p{Extended_Pictographic}/u;
 // X's weighting (twitter-text v3): these code point ranges count 1, everything else 2.

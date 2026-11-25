@@ -206,12 +206,14 @@ function freshDraft(props: ComposerProps): ComposerDraft {
   const target = prefillTarget(p);
   const draft: ComposerDraft = {
     ...base,
-    parts: [{ id: base.parts[0]!.id, text: p?.text ?? "", media: [] }],
+    parts: p?.parts?.length
+      ? p.parts.map((text, i) => ({ id: i === 0 ? base.parts[0]!.id : localId("p"), text, media: [] }))
+      : [{ id: base.parts[0]!.id, text: p?.text ?? "", media: [] }],
     accountIds: target.accountIds ?? [],
     scheduledAt: target.scheduledAt,
     queueSlotId: target.queueSlotId,
   };
-  const prefilled = !!(p?.text || p?.files?.length || target.accountIds || p?.scheduledAt);
+  const prefilled = !!(p?.text || p?.parts?.length || p?.files?.length || target.accountIds || p?.scheduledAt);
   if (!prefilled && props.startAsThread) {
     return { ...draft, parts: [...draft.parts, { id: localId("p"), text: "", media: [] }] };
   }

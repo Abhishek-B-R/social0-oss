@@ -134,7 +134,44 @@ export const INSTAGRAM_CAROUSEL: StandaloneTool = {
   ],
 };
 
-export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
+export const THREAD_MAKER: StandaloneTool = {
+  slug: "twitter-thread-maker",
+  name: "X (Twitter) Thread Maker",
+  metaTitle: "Twitter Thread Maker: Split Long Text into a Thread (Free) | Social0",
+  metaDescription:
+    "Paste long text and split it into an X (Twitter) thread that breaks at sentences, with optional 1/5 numbering. Also works for Threads and Bluesky. Free.",
+  intro:
+    "Paste a long post, an article or notes, and get a thread where every post fits. It breaks at the end of sentences, counts characters the way X does (links count 23), and can number posts 1/5, 2/5. Switch to Threads or Bluesky for their limits.",
+  howTo: [
+    "Paste your text. Leave a blank line wherever you want a new post to start, and turn on that option.",
+    "Pick X, Threads or Bluesky and whether to number the posts.",
+    "Copy each post, or schedule the whole thread in Social0.",
+  ],
+  notes: [
+    "X: 280 characters per post, links count 23, emoji 2. Threads: 500. Bluesky: 300.",
+    "A thread's first post does most of the work. Make it a full thought that makes people want the rest.",
+    "Numbering (1/5) helps readers know how long the thread is, but costs about 5 characters per post.",
+  ],
+  faq: [
+    {
+      question: "How do I make a thread on X (Twitter)?",
+      answer:
+        "Write the full text, split it into posts of up to 280 characters, then post the first one and reply to it with the next. This tool does the splitting; Social0 can post the whole thread for you.",
+    },
+    {
+      question: "Where does the tool split my text?",
+      answer:
+        "At the end of a sentence whenever possible, then between words. It only cuts inside a word when a single word is longer than a whole post.",
+    },
+    {
+      question: "Can I schedule the thread?",
+      answer:
+        "Yes. Press Schedule this thread and Social0 opens it with every post in place, ready to schedule to X, Threads or Bluesky. The free plan covers 3 accounts.",
+    },
+  ],
+};
+
+export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, THREAD_MAKER, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
 
 export const FORMATTER_SAMPLE = `𝗠𝗼𝘀𝘁 𝗳𝗼𝘂𝗻𝗱𝗲𝗿𝘀 𝗽𝗼𝘀𝘁 𝘁𝗼𝗼 𝗹𝗶𝘁𝘁𝗹𝗲.
 
@@ -147,3 +184,11 @@ I posted every weekday for 30 days. What changed:
 The trick was 𝘣𝘢𝘵𝘤𝘩𝘪𝘯𝘨: write five on Monday, schedule them, forget them.
 
 What's stopping you from posting daily?`;
+
+export const THREAD_SAMPLE = `Most founders think they need more features. They usually need more posts. I learned this the hard way after shipping for six months and getting almost no signups.
+
+So I tried something simple. I wrote five posts every Monday morning and scheduled them for the week. No posting on the fly, no guessing what to say each day.
+
+Within a month, profile visits went up and people started replying with real questions. A few of them became customers, and none of them came from a launch.
+
+The lesson: distribution is a habit, not an event. Pick a day, batch your posts, schedule them, and get back to building.`;

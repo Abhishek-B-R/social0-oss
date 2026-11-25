@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T13:58:36.510Z",
+  "generatedAt": "2026-11-25T14:05:41.319Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -98,6 +98,10 @@
     "/free-tools/instagram-carousel-splitter": {
       "title": "Instagram Carousel Splitter: Seamless Panorama Slides (Free) | Social0",
       "description": "Cut a panorama or wide design into 2 to 10 seamless Instagram carousel slides, 4:5 or square, that line up when people swipe. Free, nothing uploaded."
+    },
+    "/free-tools/twitter-thread-maker": {
+      "title": "Twitter Thread Maker: Split Long Text into a Thread (Free) | Social0",
+      "description": "Paste long text and split it into an X (Twitter) thread that breaks at sentences, with optional 1/5 numbering. Also works for Threads and Bluesky. Free."
     },
     "/free-tools/image-resizer": {
       "title": "Social Media Image Resizer: Every Platform Size (Free) | Social0",
