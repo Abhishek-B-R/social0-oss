@@ -212,3 +212,41 @@ export function getMostRestrictiveLimit(
   if (accounts.length === 0) return 63206;
   return Math.min(...accounts.map(getLimitForAccount));
 }
+
+const graphemes =
+  typeof Intl !== "undefined" && "Segmenter" in Intl
+    ? new Intl.Segmenter()
+    : null;
+const URL_RE = /\bhttps?:\/\/[^\s]+|\b(?:[a-z0-9-]+\.)+[a-z]{2,}(?:\/[^\s]*)?/gi;
+const EMOJI_RE = /\p{Extended_Pictographic}/u;
+// X's weighting (twitter-text v3): these code point ranges count 1, everything else 2.
+const X_LIGHT: [number, number][] = [[0, 4351], [8192, 8205], [8208, 8223], [8242, 8247]];
+
+function splitGraphemes(text: string): string[] {
+  return graphemes ? [...graphemes.segment(text)].map((s) => s.segment) : [...text];
+}
+
+/** X's weighted length: links count 23, emoji 2, CJK and most non-Latin 2. */
+export function xWeightedLength(text: string): number {
+  let n = 0;
+  const rest = text.normalize("NFC").replace(URL_RE, () => {
+    n += 23;
+    return "";
+  });
+  for (const g of splitGraphemes(rest)) {
+    if (EMOJI_RE.test(g)) {
+      n += 2;
+      continue;
+    }
+    for (const ch of g) {
+      const cp = ch.codePointAt(0) ?? 0;
+      n += X_LIGHT.some(([a, b]) => cp >= a && cp <= b) ? 1 : 2;
+    }
+  }
+  return n;
+}
+
+/** Characters as the platform counts them (X weighted, others by visible character). */
+export function postCharCount(text: string, platform: string): number {
+  return platform === "twitter_x" ? xWeightedLength(text) : splitGraphemes(text).length;
+}

@@ -228,6 +228,7 @@ const alternativeMeta = [
     .map(buildCatalogMeta),
 ];
 const toolMeta = extractMetaEntries("tools.ts");
+const freeToolMeta = extractMetaEntries("free-tools.ts");
 const blogEntries = extractBlogEntries();
 const homeFaqs = extractHomeFaqs();
 
@@ -290,6 +291,17 @@ const STATIC_ROUTE_META = {
     description:
       "API, MCP, CLI, bulk tools, calendar, queue, teams, and agent integrations for multi-platform social publishing.",
   },
+  "/free-tools": {
+    title: "Free Social Media Tools: Post Preview & Character Counters | Social0",
+    description:
+      "Free, no-signup tools for social media posts: preview and character counters for LinkedIn, X (incl. Premium), Instagram, Threads, Bluesky, TikTok and more.",
+  },
+  ...Object.fromEntries(
+    freeToolMeta.map((t) => [
+      `/free-tools/post-preview/${t.slug}`,
+      { title: t.title, description: t.description },
+    ]),
+  ),
   "/refund": {
     title: "Refund & Cancellation Policy | Social0",
     description:
@@ -577,6 +589,7 @@ ${featureLines.join("\n")}
 
 ${toolLines.join("\n")}
 - All tools: ${base}/tools
+- Free post preview & character counters (X incl. Premium, LinkedIn, Instagram, Threads, Bluesky, TikTok, YouTube, Facebook, Pinterest): ${base}/free-tools
 
 `
     : ""
@@ -648,6 +661,14 @@ if (PSEO_PAGES_ENABLED) {
   }
 }
 
+entries.push({ loc: `${base}/free-tools`, changefreq: "weekly", priority: "0.8" });
+for (const t of freeToolMeta) {
+  entries.push({
+    loc: `${base}/free-tools/post-preview/${t.slug}`,
+    changefreq: "monthly",
+    priority: "0.7",
+  });
+}
 entries.push({ loc: `${base}/blog`, changefreq: "weekly", priority: "0.8" });
 for (const entry of blogEntries) {
   entries.push({

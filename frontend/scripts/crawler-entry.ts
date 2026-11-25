@@ -8,6 +8,7 @@ import { BLOG_POSTS } from "../src/lib/content/blog";
 import type { BlogBlock, BlogPost } from "../src/lib/content/blog-types";
 import { FEATURES, type FeaturePage } from "../src/lib/content/features";
 import { TOOLS, type ToolPage } from "../src/lib/content/tools";
+import { PREVIEW_PLATFORMS, postPreviewPath, type PreviewPlatform } from "../src/lib/content/free-tools";
 import { ALTERNATIVES } from "../src/lib/content/alternatives";
 import { CATALOG_ALTERNATIVES } from "../src/lib/content/alternatives-catalog";
 import type { AlternativePage } from "../src/lib/content/alternative-page-types";
@@ -149,6 +150,20 @@ function toolPage(t: ToolPage): CrawlerPage {
   return { html, faqs: t.faq };
 }
 
+function previewToolPage(p: PreviewPlatform): CrawlerPage {
+  const others = PREVIEW_PLATFORMS.filter((x) => x.slug !== p.slug)
+    .map((x) => `<a href="${SITE}${postPreviewPath(x.slug)}">${esc(x.name)} character counter</a>`)
+    .join(" · ");
+  const html = article(
+    `<h1>${esc(p.name)} Post Preview &amp; Character Counter</h1><p>${esc(p.intro)}</p>` +
+      `<h2>How to use it</h2><ol><li>Paste or write your post.</li><li>Pick a network to see its preview and where it gets cut.</li><li>Fix anything in red, then schedule it with Social0.</li></ol>` +
+      `<h2>${esc(p.name)} limits</h2><ul>${p.limits.map((l) => `<li>${esc(l)}</li>`).join("")}</ul>` +
+      faqHtml(p.faq) +
+      `<p>${others}</p><p><a href="${SITE}/free-tools">All free tools</a> · <a href="${SITE}/pricing">Social0 pricing</a></p>`,
+  );
+  return { html, faqs: p.faq };
+}
+
 function alternativePage(a: AlternativePage): CrawlerPage {
   const rows = a.comparisonRows
     .map((r) => `<tr><td>${inline(r.feature)}</td><td>${inline(r.social0)}</td><td>${inline(r.competitor)}</td></tr>`)
@@ -173,6 +188,7 @@ export function buildCrawlerPages(): Record<string, CrawlerPage> {
   for (const post of BLOG_POSTS) pages[`/blog/${post.slug}`] = blogPage(post);
   for (const f of FEATURES) pages[`/features/${f.slug}`] = featurePage(f);
   for (const t of TOOLS) pages[`/tools/${t.slug}`] = toolPage(t);
+  for (const p of PREVIEW_PLATFORMS) pages[postPreviewPath(p.slug)] = previewToolPage(p);
   const seen = new Set<string>();
   for (const a of [...ALTERNATIVES, ...CATALOG_ALTERNATIVES]) {
     if (seen.has(a.slug)) continue;

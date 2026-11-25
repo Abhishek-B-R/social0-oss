@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T07:18:40.338Z",
+  "generatedAt": "2026-11-25T13:16:46.123Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -46,6 +46,46 @@
     "/tools": {
       "title": "Tools & Integrations | Social0",
       "description": "API, MCP, CLI, bulk tools, calendar, queue, teams, and agent integrations for multi-platform social publishing."
+    },
+    "/free-tools": {
+      "title": "Free Social Media Tools: Post Preview & Character Counters | Social0",
+      "description": "Free, no-signup tools for social media posts: preview and character counters for LinkedIn, X (incl. Premium), Instagram, Threads, Bluesky, TikTok and more."
+    },
+    "/free-tools/post-preview/linkedin": {
+      "title": "LinkedIn Post Preview & Character Counter (Free) | Social0",
+      "description": "See how your LinkedIn post looks before you publish: live preview, 3,000-character counter and where “…more” cuts it. Free, no signup."
+    },
+    "/free-tools/post-preview/x": {
+      "title": "X (Twitter) Character Counter & Tweet Preview, incl. Premium | Social0",
+      "description": "Count characters the way X does (links = 23, emoji = 2) and preview your post. Switch on Premium for the 25,000 limit. Free, no signup."
+    },
+    "/free-tools/post-preview/instagram": {
+      "title": "Instagram Caption Preview & Character Counter (Free) | Social0",
+      "description": "Preview your Instagram caption, count it against the 2,200-character limit and see where “…more” cuts it in the feed. Free, no signup."
+    },
+    "/free-tools/post-preview/threads": {
+      "title": "Threads Character Counter & Post Preview (Free) | Social0",
+      "description": "Check your Threads post against the 500-character limit and preview it before posting. Free, no signup, works on your phone."
+    },
+    "/free-tools/post-preview/bluesky": {
+      "title": "Bluesky Character Counter & Post Preview (Free) | Social0",
+      "description": "Count your Bluesky post against the 300-character limit (graphemes, so emoji count once) and preview it. Free, no signup."
+    },
+    "/free-tools/post-preview/facebook": {
+      "title": "Facebook Post Preview & Character Counter (Free) | Social0",
+      "description": "Preview your Facebook Page post and count characters against the 63,206 limit. Free, no signup."
+    },
+    "/free-tools/post-preview/tiktok": {
+      "title": "TikTok Caption Character Counter & Preview (Free) | Social0",
+      "description": "Count your TikTok caption against the 4,000-character limit and preview it. Free, no signup."
+    },
+    "/free-tools/post-preview/youtube": {
+      "title": "YouTube Description Character Counter & Preview (Free) | Social0",
+      "description": "Count your YouTube description against the 5,000-character limit and see what shows before “…more”. Titles: 100 characters. Free."
+    },
+    "/free-tools/post-preview/pinterest": {
+      "title": "Pinterest Pin Description Character Counter (Free) | Social0",
+      "description": "Count your Pin description against the 500-character limit and preview it. Pin titles: 100 characters. Free, no signup."
     },
     "/refund": {
       "title": "Refund & Cancellation Policy | Social0",

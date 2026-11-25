@@ -200,6 +200,8 @@ const HomeMarketingPage = lazy(() =>
   })),
 );
 const McpPage = lazy(() => import("@/features/marketing/pages/McpPage"));
+const FreeToolsIndexPage = lazy(() => import("@/features/marketing/pages/FreeToolsIndexPage"));
+const PostPreviewToolPage = lazy(() => import("@/features/marketing/pages/PostPreviewToolPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
@@ -492,6 +494,22 @@ function AppRoutes() {
           element={
             <Lazy>
               <McpPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools"
+          element={
+            <Lazy>
+              <FreeToolsIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/post-preview/:platform"
+          element={
+            <Lazy>
+              <PostPreviewToolPage />
             </Lazy>
           }
         />

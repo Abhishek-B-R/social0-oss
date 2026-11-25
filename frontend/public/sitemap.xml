@@ -316,6 +316,56 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://social0.app/free-tools</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/linkedin</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/x</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/instagram</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/threads</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/bluesky</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/facebook</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/tiktok</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/youtube</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/post-preview/pinterest</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://social0.app/blog</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
