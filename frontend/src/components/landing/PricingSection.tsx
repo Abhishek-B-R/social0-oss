@@ -21,6 +21,7 @@ import {
   yearlySavings,
 } from "@/lib/plan-pricing";
 import { cn } from "@/lib/utils";
+import { BlackFridayNote } from "@/components/landing/BlackFridayBar";
 
 const NETWORKS =
   "X, LinkedIn, Instagram, TikTok, YouTube, Facebook, Threads, Bluesky and Pinterest";
@@ -89,6 +90,7 @@ export function PricingCards({
           Every plan posts to {NETWORKS}, with unlimited posts, the API, MCP and
           CLI.
         </p>
+        <BlackFridayNote />
 
         <IntervalToggle value={interval} onChange={onIntervalChange} />
 

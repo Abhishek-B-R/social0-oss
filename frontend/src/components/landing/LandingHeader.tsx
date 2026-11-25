@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { useSession } from "@/lib/auth-client";
 import Image from "@/components/AppImage";
+import { BlackFridayBar } from "@/components/landing/BlackFridayBar";
 
 type NavLink = { href: string; label: string };
 
@@ -40,6 +41,7 @@ export function LandingHeader() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/85 backdrop-blur-md">
+      <BlackFridayBar />
       <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
         <Link
           href={pathname === "/home" ? "/home" : "/"}
