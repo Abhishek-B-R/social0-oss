@@ -134,7 +134,8 @@ export function unsafeUrl(raw: string): string | null {
   if (u.port && u.port !== "80" && u.port !== "443") return "Only standard ports (80 and 443) can be checked.";
   if (u.username || u.password) return "Links with a username or password can't be checked.";
   const h = u.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal") || !h.includes(".")) return "Local addresses can't be checked.";
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal")) return "Local addresses can't be checked.";
+  if (!h.includes(".") && !h.includes(":")) return "That doesn't look like a web address. Try something like example.com/page.";
   const v4 = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
   if (v4) {
     const [a, b] = [Number(v4[1]), Number(v4[2])];
