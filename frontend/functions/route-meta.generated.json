@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T14:47:38.051Z",
+  "generatedAt": "2026-11-25T14:59:10.333Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -110,6 +110,10 @@
     "/free-tools/meme-generator": {
       "title": "Meme Generator: Add Text Anywhere on Your Image (Free) | Social0",
       "description": "Free meme maker: upload an image, add as many text boxes as you like, drag them anywhere, change font, colour and outline, and add extra images. JPG or PNG."
+    },
+    "/free-tools/video-resizer": {
+      "title": "Video Resizer: Convert Video to 9:16, 4:5 or 1:1 Online (Free) | Social0",
+      "description": "Reframe any video for Reels, TikTok, Shorts or the feed: 9:16, 4:5, 1:1 or 16:9 with a blurred background, a colour, or a crop. MP4 with sound, in your browser."
     },
     "/free-tools/image-resizer": {
       "title": "Social Media Image Resizer: Every Platform Size (Free) | Social0",

@@ -208,6 +208,7 @@ const ImageSplitterPage = lazy(() => import("@/features/marketing/pages/ImageSpl
 const ThreadMakerPage = lazy(() => import("@/features/marketing/pages/ThreadMakerPage"));
 const MemeMakerPage = lazy(() => import("@/features/marketing/pages/MemeMakerPage"));
 const MemeEditorPage = lazy(() => import("@/features/marketing/pages/MemeEditorPage"));
+const VideoResizerPage = lazy(() => import("@/features/marketing/pages/VideoResizerPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
@@ -508,6 +509,14 @@ function AppRoutes() {
           element={
             <Lazy>
               <FreeToolsIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/video-resizer"
+          element={
+            <Lazy>
+              <VideoResizerPage />
             </Lazy>
           }
         />

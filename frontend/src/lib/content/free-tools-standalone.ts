@@ -245,7 +245,46 @@ export const MEME_IMAGE: StandaloneTool = {
   ],
 };
 
-export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, THREAD_MAKER, MEME_VIDEO, MEME_IMAGE, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
+export const VIDEO_RESIZER: StandaloneTool = {
+  slug: "video-resizer",
+  name: "Video Resizer",
+  metaTitle: "Video Resizer: Convert Video to 9:16, 4:5 or 1:1 Online (Free) | Social0",
+  metaDescription:
+    "Reframe any video for Reels, TikTok, Shorts or the feed: 9:16, 4:5, 1:1 or 16:9 with a blurred background, a colour, or a crop. MP4 with sound, in your browser.",
+  intro:
+    "Turn a landscape clip into a vertical video for Reels, TikTok and Shorts (or the other way round) without cropping off what matters. Keep the whole picture on a blurred copy of itself, put it on a colour, or crop to fill and choose which part stays. It runs in your browser, so your video is never uploaded.",
+  howTo: [
+    "Drop in a video up to 60 seconds long.",
+    "Pick the shape (9:16, 4:5, 1:1 or 16:9) and the background: blurred, a colour, or crop to fill.",
+    "Press Download. The clip plays through once while it records, then saves as MP4 with sound.",
+  ],
+  notes: [
+    "Blurred background keeps the whole clip visible, which is the usual look for landscape clips on Reels and TikTok.",
+    "Crop to fill uses the whole screen; slide the position to keep the subject in frame.",
+    "Chrome, Edge and Safari save MP4; older browsers save WebM. Keep this tab open while it records. Free downloads carry a small social0.app badge; sign up free to remove it.",
+  ],
+  faq: [
+    {
+      question: "How do I convert a horizontal video to vertical 9:16?",
+      answer:
+        "Upload it, choose 9:16 and Blurred background, then download. The whole clip sits in the middle with a blurred copy filling the top and bottom, ready for Reels, TikTok and Shorts.",
+    },
+    {
+      question: "What size is a 9:16 video for Reels and TikTok?",
+      answer: "1080 x 1920 px is the full size; this tool records at 720 x 1280, the same shape, which keeps in-browser recording smooth and looks sharp on phones.",
+    },
+    {
+      question: "Is my video uploaded?",
+      answer: "No. It is drawn and recorded in your browser and saved straight to your device.",
+    },
+    {
+      question: "Can I post it to several platforms at once?",
+      answer: "Yes. Press Post it everywhere and Social0 opens the resized video in a new post for Reels, TikTok, Shorts and more. The free plan covers 3 accounts.",
+    },
+  ],
+};
+
+export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, THREAD_MAKER, MEME_VIDEO, MEME_IMAGE, VIDEO_RESIZER, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
 
 export const FORMATTER_SAMPLE = `𝗠𝗼𝘀𝘁 𝗳𝗼𝘂𝗻𝗱𝗲𝗿𝘀 𝗽𝗼𝘀𝘁 𝘁𝗼𝗼 𝗹𝗶𝘁𝘁𝗹𝗲.
 

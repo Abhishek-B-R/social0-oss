@@ -93,20 +93,25 @@ export function drawMeme(g: CanvasRenderingContext2D, src: CanvasImageSource, mw
     });
   }
 
-  if (o.watermark) {
-    const px = Math.max(12, Math.round(W / 42));
-    g.font = `600 ${px}px "DM Sans", sans-serif`;
-    const text = "made with social0.app";
-    const bw = g.measureText(text).width + px * 1.3;
-    const bh = px * 1.7;
-    const x = W - bw - px * 0.8;
-    const y = H - bh - px * 0.8;
-    g.fillStyle = "rgba(0,0,0,.6)";
-    g.beginPath();
-    g.roundRect(x, y, bw, bh, bh / 2);
-    g.fill();
-    g.fillStyle = "#fff";
-    g.textAlign = "left";
-    g.fillText(text, x + px * 0.65, y + bh * 0.68);
-  }
+  if (o.watermark) drawBadge(g, W, H);
+
+}
+
+/** The "made with social0.app" badge (free downloads, signed out). */
+export function drawBadge(g: CanvasRenderingContext2D, W: number, H: number) {
+  const px = Math.max(12, Math.round(Math.min(W, H) / 42));
+  g.font = `600 ${px}px "DM Sans", sans-serif`;
+  g.textAlign = "left";
+  g.textBaseline = "alphabetic";
+  const text = "made with social0.app";
+  const bw = g.measureText(text).width + px * 1.3;
+  const bh = px * 1.7;
+  const x = W - bw - px * 0.8;
+  const y = H - bh - px * 0.8;
+  g.fillStyle = "rgba(0,0,0,.6)";
+  g.beginPath();
+  g.roundRect(x, y, bw, bh, bh / 2);
+  g.fill();
+  g.fillStyle = "#fff";
+  g.fillText(text, x + px * 0.65, y + bh * 0.68);
 }

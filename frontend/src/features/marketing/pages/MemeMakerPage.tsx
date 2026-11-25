@@ -9,6 +9,7 @@ import { absoluteUrl } from "@/lib/seo";
 import { databullGoal } from "@/lib/databull";
 import { postEverywhere } from "@/lib/tool-handoff";
 import { useToolDraft } from "@/lib/use-tool-draft";
+import { recordCanvas, recordingMime } from "@/lib/record-canvas";
 import { baseName, canvasToFile, downloadCanvas, sampleSource } from "@/lib/canvas-image";
 import { MEME_FONTS_URL, drawMeme, memeSize, type MemeOptions, type MemeStyle } from "@/lib/meme-render";
 import { FREE_TOOLS_PATH } from "@/lib/content/free-tools";
@@ -22,8 +23,6 @@ const STYLES: [MemeStyle, string][] = [["bar", "Caption bar"], ["impact", "Top &
 const MAX_SECONDS = 60;
 const PREVIEW_W = 640;
 const EXPORT_W = { video: 720, image: 1080 } as const;
-const audioSources = new WeakMap<HTMLVideoElement, MediaElementAudioSourceNode>();
-let audioCtx: AudioContext | null = null;
 
 const seg = (on: boolean) =>
   cn("rounded-md px-3 py-1.5 text-[13px] font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50",
@@ -65,29 +64,6 @@ function sizeCanvas(c: HTMLCanvasElement, m: Media, o: MemeOptions, width: numbe
   }
 }
 
-/** Play once, with sound (it only goes to the recording), from the start. */
-function rewindForRecording(v: HTMLVideoElement) {
-  v.pause();
-  v.loop = false;
-  v.muted = false;
-  v.currentTime = 0;
-}
-
-function stopWhenEnded(v: HTMLVideoElement, rec: MediaRecorder) {
-  v.onended = () => rec.state === "recording" && rec.stop();
-}
-
-/** Back to the silent looping preview. */
-function resumePreview(v: HTMLVideoElement) {
-  v.muted = true;
-  v.loop = true;
-  void v.play().catch(() => undefined);
-}
-
-function pickMime(): string {
-  const options = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm"];
-  return options.find((t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) ?? "";
-}
 
 export default function MemeMakerPage({ kind }: { kind: Kind }) {
   const T = kind === "video" ? MEME_VIDEO : MEME_IMAGE;
@@ -218,59 +194,24 @@ export default function MemeMakerPage({ kind }: { kind: Kind }) {
   /** Play the clip through once onto a canvas and record it (with sound) to a file. */
   const recordVideo = async (): Promise<File | null> => {
     const m = current;
-    const mime = pickMime();
-    if (!m || !mime) {
+    if (!m || !recordingMime()) {
       setError("This browser can't record video. Try Chrome, Edge or Safari.");
       return null;
     }
     const c = document.createElement("canvas");
     sizeCanvas(c, m, opts, EXPORT_W.video);
     const g = c.getContext("2d")!;
-    const stream = c.captureStream(30);
-    const v = m.video ? videoEl.current : null;
-    if (v) {
-      // Route the clip's sound into the recording only, not the speakers.
-      audioCtx ??= new AudioContext();
-      await audioCtx.resume();
-      let source = audioSources.get(v);
-      if (!source) {
-        source = audioCtx.createMediaElementSource(v);
-        audioSources.set(v, source);
-      }
-      const dest = audioCtx.createMediaStreamDestination();
-      source.connect(dest);
-      dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
-      rewindForRecording(v);
-    }
-    const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
-    const chunks: Blob[] = [];
-    rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-    const duration = v ? v.duration : 4;
-    const started = performance.now();
-    let raf = 0;
-    const draw = (t: number) => {
-      if (!media) paintSampleClip(m.el as HTMLCanvasElement, t);
-      drawMeme(g, m.el, m.w, m.h, optsRef.current);
-      const elapsed = v ? v.currentTime : (performance.now() - started) / 1000;
-      setProgress(Math.min(1, elapsed / duration));
-      if (!v && elapsed >= duration) rec.stop();
-      else raf = requestAnimationFrame(draw);
-    };
-    const done = new Promise<File>((resolve) => {
-      rec.onstop = () => {
-        cancelAnimationFrame(raf);
-        setProgress(null);
-        if (v) resumePreview(v);
-        const ext = mime.startsWith("video/mp4") ? "mp4" : "webm";
-        const type = mime.split(";")[0];
-        resolve(new File([new Blob(chunks, { type })], `${baseName(m.name)}-meme.${ext}`, { type }));
-      };
+    return recordCanvas({
+      canvas: c,
+      video: m.video ? videoEl.current : null,
+      seconds: 4,
+      name: `${baseName(m.name)}-meme`,
+      onProgress: setProgress,
+      draw: (t) => {
+        if (!media) paintSampleClip(m.el as HTMLCanvasElement, t);
+        drawMeme(g, m.el, m.w, m.h, optsRef.current);
+      },
     });
-    if (v) stopWhenEnded(v, rec);
-    rec.start(250);
-    if (v) await v.play();
-    raf = requestAnimationFrame(draw);
-    return done;
   };
 
   const downloadVideo = async () => {

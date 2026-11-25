@@ -401,6 +401,11 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://social0.app/free-tools/video-resizer</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://social0.app/free-tools/post-preview/linkedin</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

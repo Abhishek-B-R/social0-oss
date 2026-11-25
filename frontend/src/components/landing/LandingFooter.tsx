@@ -235,6 +235,7 @@ export function LandingFooter() {
     { href: "/free-tools/post-preview/linkedin", label: "LinkedIn post preview" },
     { href: "/free-tools/linkedin-text-formatter", label: "LinkedIn text formatter" },
     { href: "/free-tools/twitter-thread-maker", label: "Twitter thread maker" },
+    { href: "/free-tools/video-resizer", label: "Video resizer (9:16)" },
     { href: "/free-tools/meme-video-maker", label: "Meme video maker" },
     { href: "/free-tools/meme-generator", label: "Meme generator" },
     { href: "/free-tools/image-resizer", label: "Social media image resizer" },
