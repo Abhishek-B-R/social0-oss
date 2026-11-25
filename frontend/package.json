@@ -9,6 +9,7 @@
     "test": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc -b --noEmit",
+    "indexnow": "node scripts/indexnow.mjs",
     "preview": "vite preview",
     "start": "vite preview --host"
   },
