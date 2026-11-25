@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T13:16:46.123Z",
+  "generatedAt": "2026-11-25T13:27:59.082Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -86,6 +86,10 @@
     "/free-tools/post-preview/pinterest": {
       "title": "Pinterest Pin Description Character Counter (Free) | Social0",
       "description": "Count your Pin description against the 500-character limit and preview it. Pin titles: 100 characters. Free, no signup."
+    },
+    "/free-tools/linkedin-text-formatter": {
+      "title": "LinkedIn Text Formatter: Bold, Italic, Underline (Free) | Social0",
+      "description": "Make bold, italic, underlined or strikethrough text and bullet lists for LinkedIn posts, with a live preview and copy button. Free, no signup."
     },
     "/refund": {
       "title": "Refund & Cancellation Policy | Social0",

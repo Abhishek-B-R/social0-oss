@@ -229,6 +229,7 @@ const alternativeMeta = [
 ];
 const toolMeta = extractMetaEntries("tools.ts");
 const freeToolMeta = extractMetaEntries("free-tools.ts");
+const standaloneToolMeta = extractMetaEntries("free-tools-standalone.ts");
 const blogEntries = extractBlogEntries();
 const homeFaqs = extractHomeFaqs();
 
@@ -301,6 +302,9 @@ const STATIC_ROUTE_META = {
       `/free-tools/post-preview/${t.slug}`,
       { title: t.title, description: t.description },
     ]),
+  ),
+  ...Object.fromEntries(
+    standaloneToolMeta.map((t) => [`/free-tools/${t.slug}`, { title: t.title, description: t.description }]),
   ),
   "/refund": {
     title: "Refund & Cancellation Policy | Social0",
@@ -590,6 +594,7 @@ ${featureLines.join("\n")}
 ${toolLines.join("\n")}
 - All tools: ${base}/tools
 - Free post preview & character counters (X incl. Premium, LinkedIn, Instagram, Threads, Bluesky, TikTok, YouTube, Facebook, Pinterest): ${base}/free-tools
+- LinkedIn text formatter (bold, italic, underline, lists): ${base}/free-tools/linkedin-text-formatter
 
 `
     : ""
@@ -662,6 +667,9 @@ if (PSEO_PAGES_ENABLED) {
 }
 
 entries.push({ loc: `${base}/free-tools`, changefreq: "weekly", priority: "0.8" });
+for (const t of standaloneToolMeta) {
+  entries.push({ loc: `${base}/free-tools/${t.slug}`, changefreq: "monthly", priority: "0.7" });
+}
 for (const t of freeToolMeta) {
   entries.push({
     loc: `${base}/free-tools/post-preview/${t.slug}`,

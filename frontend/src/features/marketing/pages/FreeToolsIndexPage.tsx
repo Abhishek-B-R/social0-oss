@@ -4,6 +4,7 @@ import { SeoHead } from "@/components/seo/SeoHead";
 import { useSession } from "@/lib/auth-client";
 import { absoluteUrl } from "@/lib/seo";
 import { FREE_TOOLS_PATH, PREVIEW_PLATFORMS, postPreviewPath } from "@/lib/content/free-tools";
+import { STANDALONE_TOOLS, freeToolPath } from "@/lib/content/free-tools-standalone";
 
 export default function FreeToolsIndexPage() {
   const { data: session } = useSession();
@@ -25,6 +26,21 @@ export default function FreeToolsIndexPage() {
             Small tools that do one job, free and without an account. When a post is ready, schedule it to all 9 networks with Social0.
           </p>
         </header>
+        <section className="flex flex-col gap-3">
+          <h2 className="text-[18px] font-semibold">Writing tools</h2>
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+            {STANDALONE_TOOLS.map((t) => (
+              <Link
+                key={t.slug}
+                href={freeToolPath(t.slug)}
+                className="flex flex-col gap-1 rounded-xl border border-border bg-card p-4 hover:border-emerald-500"
+              >
+                <span className="text-[15px] font-semibold">{t.name}</span>
+                <span className="text-[13px] text-muted-foreground">{t.metaDescription.split(".")[0]}.</span>
+              </Link>
+            ))}
+          </div>
+        </section>
         <section className="flex flex-col gap-3">
           <h2 className="text-[18px] font-semibold">Post preview &amp; character counter</h2>
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">

@@ -9,6 +9,7 @@ import type { BlogBlock, BlogPost } from "../src/lib/content/blog-types";
 import { FEATURES, type FeaturePage } from "../src/lib/content/features";
 import { TOOLS, type ToolPage } from "../src/lib/content/tools";
 import { PREVIEW_PLATFORMS, postPreviewPath, type PreviewPlatform } from "../src/lib/content/free-tools";
+import { STANDALONE_TOOLS, freeToolPath, type StandaloneTool } from "../src/lib/content/free-tools-standalone";
 import { ALTERNATIVES } from "../src/lib/content/alternatives";
 import { CATALOG_ALTERNATIVES } from "../src/lib/content/alternatives-catalog";
 import type { AlternativePage } from "../src/lib/content/alternative-page-types";
@@ -164,6 +165,17 @@ function previewToolPage(p: PreviewPlatform): CrawlerPage {
   return { html, faqs: p.faq };
 }
 
+function standaloneToolPage(t: StandaloneTool): CrawlerPage {
+  const html = article(
+    `<h1>${esc(t.name)}</h1><p>${esc(t.intro)}</p>` +
+      `<h2>How to use it</h2><ol>${t.howTo.map((h) => `<li>${esc(h)}</li>`).join("")}</ol>` +
+      `<h2>Good to know</h2><ul>${t.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` +
+      faqHtml(t.faq) +
+      `<p><a href="${SITE}/free-tools">All free tools</a> · <a href="${SITE}${postPreviewPath("linkedin")}">LinkedIn post preview</a> · <a href="${SITE}/pricing">Social0 pricing</a></p>`,
+  );
+  return { html, faqs: t.faq };
+}
+
 function alternativePage(a: AlternativePage): CrawlerPage {
   const rows = a.comparisonRows
     .map((r) => `<tr><td>${inline(r.feature)}</td><td>${inline(r.social0)}</td><td>${inline(r.competitor)}</td></tr>`)
@@ -189,6 +201,7 @@ export function buildCrawlerPages(): Record<string, CrawlerPage> {
   for (const f of FEATURES) pages[`/features/${f.slug}`] = featurePage(f);
   for (const t of TOOLS) pages[`/tools/${t.slug}`] = toolPage(t);
   for (const p of PREVIEW_PLATFORMS) pages[postPreviewPath(p.slug)] = previewToolPage(p);
+  for (const t of STANDALONE_TOOLS) pages[freeToolPath(t.slug)] = standaloneToolPage(t);
   const seen = new Set<string>();
   for (const a of [...ALTERNATIVES, ...CATALOG_ALTERNATIVES]) {
     if (seen.has(a.slug)) continue;

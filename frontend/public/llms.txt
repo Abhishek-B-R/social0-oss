@@ -101,6 +101,7 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - [OpenClaw skill](https://social0.app/tools/openclaw)
 - [All tools](https://social0.app/tools)
 - [Free post preview & character counters (X incl. Premium, LinkedIn, Instagram, Threads, Bluesky, TikTok, YouTube, Facebook, Pinterest)](https://social0.app/free-tools)
+- [LinkedIn text formatter (bold, italic, underline, lists)](https://social0.app/free-tools/linkedin-text-formatter)
 
 ## Guides and reference
 

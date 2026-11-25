@@ -202,6 +202,7 @@ const HomeMarketingPage = lazy(() =>
 const McpPage = lazy(() => import("@/features/marketing/pages/McpPage"));
 const FreeToolsIndexPage = lazy(() => import("@/features/marketing/pages/FreeToolsIndexPage"));
 const PostPreviewToolPage = lazy(() => import("@/features/marketing/pages/PostPreviewToolPage"));
+const LinkedInFormatterPage = lazy(() => import("@/features/marketing/pages/LinkedInFormatterPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
@@ -502,6 +503,14 @@ function AppRoutes() {
           element={
             <Lazy>
               <FreeToolsIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/linkedin-text-formatter"
+          element={
+            <Lazy>
+              <LinkedInFormatterPage />
             </Lazy>
           }
         />

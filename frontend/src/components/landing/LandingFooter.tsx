@@ -233,6 +233,7 @@ export function LandingFooter() {
     { href: "/free-tools", label: "Free tools" },
     { href: "/free-tools/post-preview/x", label: "X character counter" },
     { href: "/free-tools/post-preview/linkedin", label: "LinkedIn post preview" },
+    { href: "/free-tools/linkedin-text-formatter", label: "LinkedIn text formatter" },
     { href: "/tools/api", label: "API" },
     { href: "/mcp", label: "MCP" },
     { href: "/tools/cli", label: "AI Agents CLI" },
