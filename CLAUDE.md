@@ -49,6 +49,8 @@ Layout is whatever `ls` shows; ownership is not:
 | CF cron worker | `cloudflare/cron-worker` | Schedules → API |
 | CF MCP worker | `cloudflare/mcp-worker` | Hosted MCP |
 
+**New or changed public pages (standing rule):** after the Pages deploy is live, run `cd frontend && npm run indexnow` (submits sitemap URLs never sent before; pass changed URLs as args), then in Google Search Console resubmit `https://social0.app/sitemap.xml` (full URL) and request indexing for the new pages (~6/day; the rest go on the todo list). Before deploying, confirm the page is in `public/sitemap.xml`, `llms.txt` and `functions/route-meta.generated.json`.
+
 **How they talk**
 
 - Browser → API: session cookies; `POST /api/rpc`, REST `/api/*`. Dev: Vite proxies `/api` + `/v1` to `VITE_API_PROXY_TARGET` (default `:3001`). Leave `VITE_API_URL` empty in local proxy mode.
