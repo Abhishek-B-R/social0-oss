@@ -16,6 +16,7 @@ Disallow: /invite/
 Disallow: /api/
 Disallow: /v1
 Disallow: /v1/
+Disallow: /tools-api/
 
 # AI crawlers - marketing + PSEO allowed; app routes blocked above
 User-agent: GPTBot

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T14:59:10.333Z",
+  "generatedAt": "2026-11-25T18:12:12.128Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -114,6 +114,10 @@
     "/free-tools/video-resizer": {
       "title": "Video Resizer: Convert Video to 9:16, 4:5 or 1:1 Online (Free) | Social0",
       "description": "Reframe any video for Reels, TikTok, Shorts or the feed: 9:16, 4:5, 1:1 or 16:9 with a blurred background, a colour, or a crop. MP4 with sound, in your browser."
+    },
+    "/free-tools/link-preview-checker": {
+      "title": "Link Preview Checker: See Your Card on X, LinkedIn, Facebook (Free) | Social0",
+      "description": "Paste a link to see how its preview card looks on X, LinkedIn, Facebook, Bluesky and Threads, and what to fix in your og:image, title and tags. Free Open Graph checker."
     },
     "/free-tools/image-resizer": {
       "title": "Social Media Image Resizer: Every Platform Size (Free) | Social0",

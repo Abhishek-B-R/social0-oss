@@ -284,7 +284,48 @@ export const VIDEO_RESIZER: StandaloneTool = {
   ],
 };
 
-export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, THREAD_MAKER, MEME_VIDEO, MEME_IMAGE, VIDEO_RESIZER, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
+export const LINK_PREVIEW: StandaloneTool = {
+  slug: "link-preview-checker",
+  name: "Link Preview Checker",
+  metaTitle: "Link Preview Checker: See Your Card on X, LinkedIn, Facebook (Free) | Social0",
+  metaDescription:
+    "Paste a link to see how its preview card looks on X, LinkedIn, Facebook, Bluesky and Threads, and what to fix in your og:image, title and tags. Free Open Graph checker.",
+  intro:
+    "Paste any link to see the card it gets on X, LinkedIn, Facebook, Bluesky and Threads before you post it. The checker reads the page's Open Graph and Twitter tags, measures the og:image, and tells you exactly what to fix when a card comes out blank, cropped or with the wrong title.",
+  howTo: [
+    "Paste a link (your page, a blog post, a product) and press Check.",
+    "Compare the cards for each network and read the list of fixes.",
+    "Fix the tags on your site, check again, then schedule the post with the link.",
+  ],
+  notes: [
+    "Networks cache previews. After fixing tags, X and LinkedIn may keep showing the old card for a while; LinkedIn's Post Inspector and Facebook's Sharing Debugger can refresh theirs.",
+    "The best og:image is 1200 x 630 px (1.91:1), under 5 MB, served over HTTPS.",
+    "The checker fetches the page from Social0's servers like a network would; it can't read pages behind a login.",
+  ],
+  faq: [
+    {
+      question: "Why does my link show no image on LinkedIn or X?",
+      answer:
+        "Usually the page has no og:image tag, the image URL doesn't load, or it is too small. Paste the link here: the checker shows which one it is and the exact tag to add.",
+    },
+    {
+      question: "What size should an og:image be?",
+      answer: "1200 x 630 px, a 1.91:1 shape. Smaller images show as a small thumbnail, and other shapes get cropped in large cards.",
+    },
+    {
+      question: "What is the difference between og: tags and twitter: tags?",
+      answer:
+        "Open Graph (og:) tags are read by LinkedIn, Facebook, Bluesky, Threads and others. X reads twitter: tags first and falls back to og: tags, so og: tags plus twitter:card=summary_large_image cover everyone.",
+    },
+    {
+      question: "How do I refresh a preview after changing my tags?",
+      answer:
+        "Check the link here to confirm the new tags, then use LinkedIn's Post Inspector or Facebook's Sharing Debugger to refresh their copies. X updates on its own after a while.",
+    },
+  ],
+};
+
+export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, THREAD_MAKER, MEME_VIDEO, MEME_IMAGE, VIDEO_RESIZER, LINK_PREVIEW, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
 
 export const FORMATTER_SAMPLE = `𝗠𝗼𝘀𝘁 𝗳𝗼𝘂𝗻𝗱𝗲𝗿𝘀 𝗽𝗼𝘀𝘁 𝘁𝗼𝗼 𝗹𝗶𝘁𝘁𝗹𝗲.
 

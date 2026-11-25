@@ -606,6 +606,7 @@ ${toolLines.join("\n")}
 - LinkedIn text formatter (bold, italic, underline, lists): ${base}/free-tools/linkedin-text-formatter
 - Social media image resizer (every platform size, runs in the browser): ${base}/free-tools/image-resizer
 - X (Twitter) thread maker (splits long text at sentences, X/Threads/Bluesky): ${base}/free-tools/twitter-thread-maker
+- Link preview checker (Open Graph / Twitter card preview for X, LinkedIn, Facebook, Bluesky, Threads): ${base}/free-tools/link-preview-checker
 - Video resizer (reframe to 9:16, 4:5, 1:1 or 16:9 with blur, colour or crop; MP4 with sound): ${base}/free-tools/video-resizer
 - Meme video maker (caption bar above a clip, MP4 with sound, in the browser): ${base}/free-tools/meme-video-maker
 - Meme generator (drag text and images anywhere, imgflip-style editor): ${base}/free-tools/meme-generator

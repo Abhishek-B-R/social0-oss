@@ -104,6 +104,7 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - [LinkedIn text formatter (bold, italic, underline, lists)](https://social0.app/free-tools/linkedin-text-formatter)
 - [Social media image resizer (every platform size, runs in the browser)](https://social0.app/free-tools/image-resizer)
 - [X (Twitter) thread maker (splits long text at sentences, X/Threads/Bluesky)](https://social0.app/free-tools/twitter-thread-maker)
+- [Link preview checker (Open Graph / Twitter card preview for X, LinkedIn, Facebook, Bluesky, Threads)](https://social0.app/free-tools/link-preview-checker)
 - [Video resizer (reframe to 9:16, 4:5, 1:1 or 16:9 with blur, colour or crop; MP4 with sound)](https://social0.app/free-tools/video-resizer)
 - [Meme video maker (caption bar above a clip, MP4 with sound, in the browser)](https://social0.app/free-tools/meme-video-maker)
 - [Meme generator (drag text and images anywhere, imgflip-style editor)](https://social0.app/free-tools/meme-generator)

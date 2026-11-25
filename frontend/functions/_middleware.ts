@@ -406,7 +406,7 @@ async function handleRequest(context: PagesContext): Promise<Response> {
   }
 
   // Leave API proxies alone
-  if (path.startsWith("/api") || path.startsWith("/v1")) {
+  if (path.startsWith("/api") || path.startsWith("/v1") || path.startsWith("/tools-api/")) {
     return context.next();
   }
 
