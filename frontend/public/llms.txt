@@ -105,7 +105,7 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - [Social media image resizer (every platform size, runs in the browser)](https://social0.app/free-tools/image-resizer)
 - [X (Twitter) thread maker (splits long text at sentences, X/Threads/Bluesky)](https://social0.app/free-tools/twitter-thread-maker)
 - [Meme video maker (caption bar above a clip, MP4 with sound, in the browser)](https://social0.app/free-tools/meme-video-maker)
-- [Meme generator (caption bar or top and bottom text on your image)](https://social0.app/free-tools/meme-generator)
+- [Meme generator (drag text and images anywhere, imgflip-style editor)](https://social0.app/free-tools/meme-generator)
 - [Instagram grid maker (3:4 profile grid tiles in posting order)](https://social0.app/free-tools/instagram-grid-maker)
 - [Instagram carousel splitter (seamless panorama slides)](https://social0.app/free-tools/instagram-carousel-splitter)
 

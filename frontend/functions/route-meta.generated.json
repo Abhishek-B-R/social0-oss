@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T14:18:26.231Z",
+  "generatedAt": "2026-11-25T14:29:03.454Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -108,8 +108,8 @@
       "description": "Put a caption bar above your video, the meme format that goes viral on X, Instagram and TikTok. Exports MP4 with sound, in your browser. Free, no signup."
     },
     "/free-tools/meme-generator": {
-      "title": "Meme Generator: Caption Bar or Top & Bottom Text (Free) | Social0",
-      "description": "Make a meme from your own image: a caption bar on top, classic top and bottom text, or a subtitle. Download as JPG, free, nothing uploaded."
+      "title": "Meme Generator: Add Text Anywhere on Your Image (Free) | Social0",
+      "description": "Free meme maker: upload an image, add as many text boxes as you like, drag them anywhere, change font, colour and outline, and add extra images. JPG or PNG."
     },
     "/free-tools/image-resizer": {
       "title": "Social Media Image Resizer: Every Platform Size (Free) | Social0",

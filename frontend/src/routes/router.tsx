@@ -207,6 +207,7 @@ const ImageResizerPage = lazy(() => import("@/features/marketing/pages/ImageResi
 const ImageSplitterPage = lazy(() => import("@/features/marketing/pages/ImageSplitterPage"));
 const ThreadMakerPage = lazy(() => import("@/features/marketing/pages/ThreadMakerPage"));
 const MemeMakerPage = lazy(() => import("@/features/marketing/pages/MemeMakerPage"));
+const MemeEditorPage = lazy(() => import("@/features/marketing/pages/MemeEditorPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
@@ -522,7 +523,7 @@ function AppRoutes() {
           path="free-tools/meme-generator"
           element={
             <Lazy>
-              <MemeMakerPage kind="image" />
+              <MemeEditorPage />
             </Lazy>
           }
         />

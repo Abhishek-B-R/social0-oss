@@ -210,29 +210,37 @@ export const MEME_VIDEO: StandaloneTool = {
 export const MEME_IMAGE: StandaloneTool = {
   slug: "meme-generator",
   name: "Meme Generator",
-  metaTitle: "Meme Generator: Caption Bar or Top & Bottom Text (Free) | Social0",
+  metaTitle: "Meme Generator: Add Text Anywhere on Your Image (Free) | Social0",
   metaDescription:
-    "Make a meme from your own image: a caption bar on top, classic top and bottom text, or a subtitle. Download as JPG, free, nothing uploaded.",
+    "Free meme maker: upload an image, add as many text boxes as you like, drag them anywhere, change font, colour and outline, and add extra images. JPG or PNG.",
   intro:
-    "Turn any image into a meme in seconds: a bold caption bar on top (the format people screenshot and share), classic white top and bottom text, or a subtitle. It runs in your browser.",
+    "Upload any image and build your meme: add as many text boxes as you want, drag them anywhere, and style each one with its own font, colour, outline and size. Add more pictures on top, or white space above and below. It all runs in your browser.",
   howTo: [
-    "Drop in an image.",
-    "Type the caption and pick a style. For top and bottom text, put a line break or full stop between the two parts.",
-    "Download the JPG, or schedule it to every network with Social0.",
+    "Upload your image (or start from the sample).",
+    "Type in the text boxes on the right, add more with + Text, and drag each one into place on the picture.",
+    "Press the gear on a text box for font, size, outline, caps and alignment, then download a JPG or PNG.",
   ],
   notes: [
-    "Use images you have the right to post; Social0 doesn't host meme templates.",
-    "Images save 1080 px wide, a good size for every network.",
-    "Free downloads carry a small social0.app badge; sign up free to remove it.",
+    "Drag the blue corner to resize any text or image. Delete removes the selected one.",
+    "Add white space at the top for the caption-bar meme format, then put your text in it.",
+    "Use images you have the right to post; Social0 doesn't host meme templates. Free downloads carry a small social0.app badge; sign up free to remove it.",
   ],
   faq: [
     {
-      question: "How do I make a meme with text on top?",
-      answer: "Upload the image, type the caption and keep the Caption bar style. The text sits in a white bar above the picture, sized to fit.",
+      question: "How do I put text anywhere on a meme?",
+      answer: "Every text box can be dragged. Click it on the picture and move it, then drag the blue corner to make it bigger or smaller.",
     },
     {
-      question: "How do I make a classic top and bottom text meme?",
-      answer: "Choose Top & bottom and separate the two lines with a line break or a full stop. The text is white with a black outline in an Impact-style font.",
+      question: "Can I use the classic Impact meme font?",
+      answer: "Yes. New text starts in the classic style: white, all caps, black outline. Switch font per text box between Impact-style, rounded bold, comic, marker and clean.",
+    },
+    {
+      question: "Can I add more than one image?",
+      answer: "Yes. Use + Image to place extra pictures on top of the base image, then drag and resize them like text.",
+    },
+    {
+      question: "Is my image uploaded?",
+      answer: "No. Everything is drawn in your browser and saved straight to your device.",
     },
   ],
 };

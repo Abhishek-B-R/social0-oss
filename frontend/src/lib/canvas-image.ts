@@ -56,7 +56,7 @@ export function renderTo(
   g.drawImage(src.img, (r.x - crop.x) * scale, (r.y - crop.y) * scale, r.w * scale, r.h * scale);
 }
 
-export function downloadCanvas(canvas: HTMLCanvasElement, filename: string) {
+export function downloadCanvas(canvas: HTMLCanvasElement, filename: string, type: "image/jpeg" | "image/png" = "image/jpeg") {
   canvas.toBlob(
     (blob) => {
       if (!blob) return;
@@ -66,7 +66,7 @@ export function downloadCanvas(canvas: HTMLCanvasElement, filename: string) {
       a.click();
       window.setTimeout(() => URL.revokeObjectURL(a.href), 2000);
     },
-    "image/jpeg",
+    type,
     0.92,
   );
 }
