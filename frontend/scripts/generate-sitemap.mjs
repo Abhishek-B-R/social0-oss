@@ -230,6 +230,7 @@ const alternativeMeta = [
 const toolMeta = extractMetaEntries("tools.ts");
 const freeToolMeta = extractMetaEntries("free-tools.ts");
 const standaloneToolMeta = extractMetaEntries("free-tools-standalone.ts");
+const resizerMeta = extractMetaEntries("image-resizer.ts");
 const blogEntries = extractBlogEntries();
 const homeFaqs = extractHomeFaqs();
 
@@ -295,7 +296,7 @@ const STATIC_ROUTE_META = {
   "/free-tools": {
     title: "Free Social Media Tools: Post Preview & Character Counters | Social0",
     description:
-      "Free, no-signup tools for social media posts: preview and character counters for LinkedIn, X (incl. Premium), Instagram, Threads, Bluesky, TikTok and more.",
+      "Free, no-signup social media tools: post preview and character counters for 9 networks (X Premium too), a LinkedIn text formatter and an image resizer for every platform.",
   },
   ...Object.fromEntries(
     freeToolMeta.map((t) => [
@@ -305,6 +306,14 @@ const STATIC_ROUTE_META = {
   ),
   ...Object.fromEntries(
     standaloneToolMeta.map((t) => [`/free-tools/${t.slug}`, { title: t.title, description: t.description }]),
+  ),
+  "/free-tools/image-resizer": {
+    title: "Social Media Image Resizer: Every Platform Size (Free) | Social0",
+    description:
+      "Upload one image and get it sized for Instagram, X, LinkedIn, Facebook, YouTube, TikTok, Pinterest, Threads and Bluesky. Free, nothing uploaded.",
+  },
+  ...Object.fromEntries(
+    resizerMeta.map((t) => [`/free-tools/image-resizer/${t.slug}`, { title: t.title, description: t.description }]),
   ),
   "/refund": {
     title: "Refund & Cancellation Policy | Social0",
@@ -595,6 +604,7 @@ ${toolLines.join("\n")}
 - All tools: ${base}/tools
 - Free post preview & character counters (X incl. Premium, LinkedIn, Instagram, Threads, Bluesky, TikTok, YouTube, Facebook, Pinterest): ${base}/free-tools
 - LinkedIn text formatter (bold, italic, underline, lists): ${base}/free-tools/linkedin-text-formatter
+- Social media image resizer (every platform size, runs in the browser): ${base}/free-tools/image-resizer
 
 `
     : ""
@@ -667,6 +677,10 @@ if (PSEO_PAGES_ENABLED) {
 }
 
 entries.push({ loc: `${base}/free-tools`, changefreq: "weekly", priority: "0.8" });
+entries.push({ loc: `${base}/free-tools/image-resizer`, changefreq: "monthly", priority: "0.7" });
+for (const t of resizerMeta) {
+  entries.push({ loc: `${base}/free-tools/image-resizer/${t.slug}`, changefreq: "monthly", priority: "0.6" });
+}
 for (const t of standaloneToolMeta) {
   entries.push({ loc: `${base}/free-tools/${t.slug}`, changefreq: "monthly", priority: "0.7" });
 }

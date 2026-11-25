@@ -203,6 +203,7 @@ const McpPage = lazy(() => import("@/features/marketing/pages/McpPage"));
 const FreeToolsIndexPage = lazy(() => import("@/features/marketing/pages/FreeToolsIndexPage"));
 const PostPreviewToolPage = lazy(() => import("@/features/marketing/pages/PostPreviewToolPage"));
 const LinkedInFormatterPage = lazy(() => import("@/features/marketing/pages/LinkedInFormatterPage"));
+const ImageResizerPage = lazy(() => import("@/features/marketing/pages/ImageResizerPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
@@ -503,6 +504,22 @@ function AppRoutes() {
           element={
             <Lazy>
               <FreeToolsIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/image-resizer"
+          element={
+            <Lazy>
+              <ImageResizerPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/image-resizer/:platform"
+          element={
+            <Lazy>
+              <ImageResizerPage />
             </Lazy>
           }
         />

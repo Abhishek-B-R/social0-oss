@@ -10,6 +10,7 @@ import { FEATURES, type FeaturePage } from "../src/lib/content/features";
 import { TOOLS, type ToolPage } from "../src/lib/content/tools";
 import { PREVIEW_PLATFORMS, postPreviewPath, type PreviewPlatform } from "../src/lib/content/free-tools";
 import { STANDALONE_TOOLS, freeToolPath, type StandaloneTool } from "../src/lib/content/free-tools-standalone";
+import { IMAGE_RESIZER_PATH, RESIZER_PLATFORMS, resizerPath, type ResizerPlatform } from "../src/lib/content/image-resizer";
 import { ALTERNATIVES } from "../src/lib/content/alternatives";
 import { CATALOG_ALTERNATIVES } from "../src/lib/content/alternatives-catalog";
 import type { AlternativePage } from "../src/lib/content/alternative-page-types";
@@ -176,6 +177,29 @@ function standaloneToolPage(t: StandaloneTool): CrawlerPage {
   return { html, faqs: t.faq };
 }
 
+function resizerPage(p: ResizerPlatform): CrawlerPage {
+  const rows = p.formats.map((f) => `<tr><td>${esc(f.label)}</td><td>${f.w} x ${f.h} px</td><td>${esc(f.note ?? "")}</td></tr>`).join("");
+  const html = article(
+    `<h1>${esc(p.name)} Image Resizer</h1><p>Drop in any image and get every ${esc(p.name)} size at once, cropped to fill or fitted with a background. It runs in your browser, so nothing is uploaded.</p>` +
+      `<h2>${esc(p.name)} image sizes</h2><table><thead><tr><th>Format</th><th>Size</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table>` +
+      faqHtml(p.faq) +
+      `<p>${RESIZER_PLATFORMS.filter((x) => x.slug !== p.slug).map((x) => `<a href="${SITE}${resizerPath(x.slug)}">${esc(x.name)} image sizes</a>`).join(" · ")}</p>` +
+      `<p><a href="${SITE}${IMAGE_RESIZER_PATH}">All platforms</a> · <a href="${SITE}/free-tools">All free tools</a></p>`,
+  );
+  return { html, faqs: p.faq };
+}
+
+function resizerHubPage(): CrawlerPage {
+  const sections = RESIZER_PLATFORMS.map(
+    (p) => `<h2><a href="${SITE}${resizerPath(p.slug)}">${esc(p.name)}</a></h2><ul>${p.formats.map((f) => `<li>${esc(f.label)}: ${f.w} x ${f.h} px</li>`).join("")}</ul>`,
+  ).join("");
+  const html = article(
+    `<h1>Social Media Image Resizer</h1><p>Drop in one image and get it sized for all 9 networks at once, cropped to fill or fitted with a background. It runs in your browser, so nothing is uploaded.</p>${sections}` +
+      `<p><a href="${SITE}/free-tools">All free tools</a> · <a href="${SITE}/pricing">Social0 pricing</a></p>`,
+  );
+  return { html, faqs: [] };
+}
+
 function alternativePage(a: AlternativePage): CrawlerPage {
   const rows = a.comparisonRows
     .map((r) => `<tr><td>${inline(r.feature)}</td><td>${inline(r.social0)}</td><td>${inline(r.competitor)}</td></tr>`)
@@ -202,6 +226,8 @@ export function buildCrawlerPages(): Record<string, CrawlerPage> {
   for (const t of TOOLS) pages[`/tools/${t.slug}`] = toolPage(t);
   for (const p of PREVIEW_PLATFORMS) pages[postPreviewPath(p.slug)] = previewToolPage(p);
   for (const t of STANDALONE_TOOLS) pages[freeToolPath(t.slug)] = standaloneToolPage(t);
+  pages[IMAGE_RESIZER_PATH] = resizerHubPage();
+  for (const p of RESIZER_PLATFORMS) pages[resizerPath(p.slug)] = resizerPage(p);
   const seen = new Set<string>();
   for (const a of [...ALTERNATIVES, ...CATALOG_ALTERNATIVES]) {
     if (seen.has(a.slug)) continue;

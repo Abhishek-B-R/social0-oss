@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T13:27:59.082Z",
+  "generatedAt": "2026-11-25T13:34:28.578Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -49,7 +49,7 @@
     },
     "/free-tools": {
       "title": "Free Social Media Tools: Post Preview & Character Counters | Social0",
-      "description": "Free, no-signup tools for social media posts: preview and character counters for LinkedIn, X (incl. Premium), Instagram, Threads, Bluesky, TikTok and more."
+      "description": "Free, no-signup social media tools: post preview and character counters for 9 networks (X Premium too), a LinkedIn text formatter and an image resizer for every platform."
     },
     "/free-tools/post-preview/linkedin": {
       "title": "LinkedIn Post Preview & Character Counter (Free) | Social0",
@@ -90,6 +90,46 @@
     "/free-tools/linkedin-text-formatter": {
       "title": "LinkedIn Text Formatter: Bold, Italic, Underline (Free) | Social0",
       "description": "Make bold, italic, underlined or strikethrough text and bullet lists for LinkedIn posts, with a live preview and copy button. Free, no signup."
+    },
+    "/free-tools/image-resizer": {
+      "title": "Social Media Image Resizer: Every Platform Size (Free) | Social0",
+      "description": "Upload one image and get it sized for Instagram, X, LinkedIn, Facebook, YouTube, TikTok, Pinterest, Threads and Bluesky. Free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/instagram": {
+      "title": "Instagram Image Resizer: Post, Story, Reel Sizes (Free) | Social0",
+      "description": "Resize any image to Instagram sizes: 1080x1350 portrait, 1080x1080 square, 1080x1920 story and reel cover. Crop or fit, free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/x": {
+      "title": "X (Twitter) Image Resizer: Post and Header Sizes (Free) | Social0",
+      "description": "Resize images for X: 1600x900 post image, 1080x1080 square, 1500x500 header and 400x400 profile photo. Crop or fit, free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/linkedin": {
+      "title": "LinkedIn Image Resizer: Post, Banner Sizes (Free) | Social0",
+      "description": "Resize images for LinkedIn: 1200x627 link image, 1080x1080 square, 1080x1350 portrait and 1584x396 banner. Crop or fit, free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/facebook": {
+      "title": "Facebook Image Resizer: Post, Story, Cover Sizes (Free) | Social0",
+      "description": "Resize images for Facebook: 1200x630 post, 1080x1080 square, 1080x1920 story and 851x315 Page cover. Crop or fit, free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/youtube": {
+      "title": "YouTube Thumbnail & Banner Resizer (Free) | Social0",
+      "description": "Resize images to a 1280x720 YouTube thumbnail, 2560x1440 channel banner or 1080x1920 Shorts cover. Crop or fit, free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/tiktok": {
+      "title": "TikTok Image Resizer: 1080x1920 Photo Posts (Free) | Social0",
+      "description": "Resize images to 1080x1920 for TikTok photo posts and video covers, or 200x200 for a profile photo. Crop or fit, free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/pinterest": {
+      "title": "Pinterest Pin Size Resizer: 1000x1500 (Free) | Social0",
+      "description": "Resize images to the 1000x1500 standard Pin (2:3) or a 1000x1000 square Pin. Crop or fit, free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/threads": {
+      "title": "Threads Image Resizer: Post Sizes (Free) | Social0",
+      "description": "Resize images for Threads posts: 1080x1350 portrait or 1080x1080 square. Crop or fit, free, nothing uploaded."
+    },
+    "/free-tools/image-resizer/bluesky": {
+      "title": "Bluesky Image Resizer: Post and Banner Sizes (Free) | Social0",
+      "description": "Resize images for Bluesky: 1200x675 post image, 1080x1080 square and 3000x1000 profile banner. Crop or fit, free, nothing uploaded."
     },
     "/refund": {
       "title": "Refund & Cancellation Policy | Social0",

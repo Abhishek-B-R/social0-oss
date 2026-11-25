@@ -5,6 +5,7 @@ import { useSession } from "@/lib/auth-client";
 import { absoluteUrl } from "@/lib/seo";
 import { FREE_TOOLS_PATH, PREVIEW_PLATFORMS, postPreviewPath } from "@/lib/content/free-tools";
 import { STANDALONE_TOOLS, freeToolPath } from "@/lib/content/free-tools-standalone";
+import { IMAGE_RESIZER_PATH, RESIZER_PLATFORMS, resizerPath } from "@/lib/content/image-resizer";
 
 export default function FreeToolsIndexPage() {
   const { data: session } = useSession();
@@ -12,7 +13,7 @@ export default function FreeToolsIndexPage() {
     <MarketingPageLayout signedIn={!!session?.user}>
       <SeoHead
         title="Free Social Media Tools: Post Preview & Character Counters | Social0"
-        description="Free, no-signup tools for social media posts: preview and character counters for LinkedIn, X (incl. Premium), Instagram, Threads, Bluesky, TikTok and more."
+        description="Free, no-signup social media tools: post preview and character counters for 9 networks (X Premium too), a LinkedIn text formatter and an image resizer for every platform."
         path={FREE_TOOLS_PATH}
         canonical={absoluteUrl(FREE_TOOLS_PATH)}
       />
@@ -37,6 +38,18 @@ export default function FreeToolsIndexPage() {
               >
                 <span className="text-[15px] font-semibold">{t.name}</span>
                 <span className="text-[13px] text-muted-foreground">{t.metaDescription.split(".")[0]}.</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+        <section className="flex flex-col gap-3">
+          <h2 className="text-[18px] font-semibold">
+            <Link href={IMAGE_RESIZER_PATH} className="hover:underline">Image resizer</Link>
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {RESIZER_PLATFORMS.map((p) => (
+              <Link key={p.slug} href={resizerPath(p.slug)} className="rounded-full border border-border bg-card px-3 py-1.5 text-[14px] hover:border-emerald-500">
+                {p.name} sizes
               </Link>
             ))}
           </div>
