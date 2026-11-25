@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePostHog } from "@posthog/react";
 import { toast } from "sonner";
-import { databullAttribution } from "@/lib/databull";
+import { databullAttribution, databullGoal } from "@/lib/databull";
 import { fetchApi } from "@/lib/fetch-api";
 import { assignSafeRedirectUrl } from "@/lib/safe-external-url";
 import type { BillingInterval, PaidPlanTier } from "@/lib/plans";
@@ -192,6 +192,7 @@ export function useBillingFlows({
     extraAccounts: number,
     options?: { forceNewSession?: boolean },
   ): Promise<CheckoutResult> => {
+    databullGoal("checkout", { plan, interval, from: "billing" });
     const res = await fetchApi("/api/billing/checkout", {
       method: "POST",
       headers: JSON_HEADERS,

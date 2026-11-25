@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { BillingIntervalToggle } from "@/components/billing/BillingIntervalToggle";
 import { PlanDiscountPrice } from "@/components/billing/PlanDiscountPrice";
-import { databullAttribution } from "@/lib/databull";
+import { databullAttribution, databullGoal } from "@/lib/databull";
 import { fetchApi } from "@/lib/fetch-api";
 import {
   AGENCY_INCLUDED_ACCOUNTS,
@@ -155,6 +155,7 @@ export function PlansDialog({
       interval,
       from: "onboarding",
     });
+    databullGoal("checkout", { plan, interval, from: "onboarding" });
     setLoadingPlan(plan);
     try {
       const res = await fetchApi("/api/billing/checkout", {

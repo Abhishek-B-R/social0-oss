@@ -11,6 +11,7 @@ import {
   verifyEmailUrl,
 } from "@/lib/sign-in-url";
 import { sanitizeReturnToPath } from "@/lib/safe-return-to";
+import { trackSignupOnce } from "@/lib/databull";
 
 /** Full-screen hold after sign-in while we pick dashboard vs onboarding. */
 export default function AuthContinuePage() {
@@ -49,6 +50,8 @@ export default function AuthContinuePage() {
     }
 
     if (statusPending) return;
+
+    trackSignupOnce(session.user);
 
     if (isError || !status) {
       // Fail open to dashboard; DashboardLayout still gates shouldOnboard.

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T07:07:18.231Z",
+  "generatedAt": "2026-11-25T07:18:40.338Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -501,6 +501,12 @@
     }
   },
   "blog": {
+    "black-friday-social-media-scheduler-deals": {
+      "title": "Black Friday Social Media Scheduler Deal 2026 | Social0",
+      "description": "Social0's Black Friday 2026 deal: 20% off any plan with code BLACKFRIDAY until Dec 1, kept for as long as you stay subscribed. Creator $23.92/mo, Agency $47.92/mo.",
+      "datePublished": "2026-11-25",
+      "dateModified": "2026-11-25"
+    },
     "how-to-cancel-buffer": {
       "title": "How to Cancel Buffer (and Keep Your Scheduled Posts)",
       "description": "The exact clicks to cancel a Buffer plan, what happens to your channels and queue afterwards, and how to save your scheduled posts first. Checked November 2026.",

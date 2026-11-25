@@ -297,6 +297,7 @@ export function buildOrganizationJsonLd() {
     sameAs: [
       "https://x.com/social0_app",
       "https://www.linkedin.com/company/social0/",
+      "https://github.com/Abhishek-B-R/social0-oss",
     ],
     contactPoint: {
       "@type": "ContactPoint",

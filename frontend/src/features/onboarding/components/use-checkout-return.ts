@@ -6,6 +6,7 @@ import { fetchApi } from "@/lib/fetch-api";
 import { useInvalidateQueries } from "@/hooks/use-invalidate-queries";
 import { planName } from "@/lib/plan-name";
 import { isPaidPlan } from "@/components/billing/plan-catalog";
+import { databullGoal } from "@/lib/databull";
 import {
   PAID_PARAM,
   PAYMENT_FAILED_PARAM,
@@ -122,6 +123,7 @@ export function useCheckoutReturn(): boolean {
         if (cancelled) return;
         if (result.active) {
           invalidateQueries();
+          databullGoal("subscribed", result.tier ? { plan: result.tier } : undefined);
           celebrate();
           toast.success(
             result.tier
