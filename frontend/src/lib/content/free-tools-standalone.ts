@@ -60,7 +60,81 @@ export const LINKEDIN_FORMATTER: StandaloneTool = {
   ],
 };
 
-export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER];
+export const INSTAGRAM_GRID: StandaloneTool = {
+  slug: "instagram-grid-maker",
+  name: "Instagram Grid Maker",
+  metaTitle: "Instagram Grid Maker: Split a Photo into 3, 6, 9 or 12 Posts (Free) | Social0",
+  metaDescription:
+    "Split one image into an Instagram profile grid of 3, 6, 9 or 12 tiles in the new 3:4 shape, numbered in posting order. Free, nothing uploaded.",
+  intro:
+    "Turn one big image into a profile grid that lines up perfectly. Pick 1 to 4 rows, and the tool cuts your image into 3-column tiles in Instagram's 3:4 grid shape (or classic square), numbered in the order to post them.",
+  howTo: [
+    "Drop in your image and pick how many rows.",
+    "Download the tiles. Each one is numbered in posting order.",
+    "Post tile 1 first and the highest number last. Instagram shows the newest post top-left, so the picture lines up.",
+  ],
+  notes: [
+    "Since 2025 the profile grid shows posts as 3:4 rectangles, so 3:4 tiles (1080 x 1440) line up without being cropped. Square tiles still work but get trimmed at the sides.",
+    "Post all tiles in one go. Anything you post later pushes the grid one tile along.",
+    "The image is cut in your browser and never uploaded.",
+  ],
+  faq: [
+    {
+      question: "How do I split a picture into a grid for Instagram?",
+      answer:
+        "Drop the image in, choose rows, download the numbered tiles and post them from 1 upward. With 3 columns and 3 rows you get 9 posts that form one picture on your profile.",
+    },
+    {
+      question: "What size should Instagram grid tiles be?",
+      answer:
+        "1080 x 1440 px (3:4), the shape the profile grid has used since 2025. For a square grid, use 1080 x 1080 px.",
+    },
+    {
+      question: "In what order do I post the tiles?",
+      answer:
+        "Start with tile 1 (bottom-right) and finish with the highest number (top-left). Social0 can schedule them a minute apart so you don't have to post by hand.",
+    },
+  ],
+};
+
+export const INSTAGRAM_CAROUSEL: StandaloneTool = {
+  slug: "instagram-carousel-splitter",
+  name: "Instagram Carousel Splitter",
+  metaTitle: "Instagram Carousel Splitter: Seamless Panorama Slides (Free) | Social0",
+  metaDescription:
+    "Cut a panorama or wide design into 2 to 10 seamless Instagram carousel slides, 4:5 or square, that line up when people swipe. Free, nothing uploaded.",
+  intro:
+    "Make a seamless carousel: one wide image cut into slides that join up as people swipe. Pick the number of slides and the slide shape, then download them in order.",
+  howTo: [
+    "Drop in a wide image, like a panorama or a design made for swiping.",
+    "Pick how many slides and the slide shape (4:5 portrait or square).",
+    "Download the slides and add them to one carousel post in order, 1 first.",
+  ],
+  notes: [
+    "4:5 slides (1080 x 1350) take the most room in the feed.",
+    "Your image is scaled to fill the full strip and trimmed evenly at the top and bottom or the ends, so keep important parts away from the edges.",
+    "Instagram carousels take up to 20 slides; this tool cuts 2 to 10.",
+  ],
+  faq: [
+    {
+      question: "How do I post a panorama on Instagram without it shrinking?",
+      answer:
+        "Cut it into slides of the same shape and post them as one carousel. Each slide shows full-size, and the panorama joins up as people swipe.",
+    },
+    {
+      question: "What size should seamless carousel slides be?",
+      answer:
+        "1080 x 1350 px (4:5) each for portrait slides, or 1080 x 1080 px for square. A 3-slide 4:5 panorama starts as a 3240 x 1350 px image.",
+    },
+    {
+      question: "Can I schedule a carousel?",
+      answer:
+        "Yes. Social0 schedules Instagram carousels; add the slides in order to one post. The free plan covers 3 accounts.",
+    },
+  ],
+};
+
+export const STANDALONE_TOOLS: StandaloneTool[] = [LINKEDIN_FORMATTER, INSTAGRAM_GRID, INSTAGRAM_CAROUSEL];
 
 export const FORMATTER_SAMPLE = `𝗠𝗼𝘀𝘁 𝗳𝗼𝘂𝗻𝗱𝗲𝗿𝘀 𝗽𝗼𝘀𝘁 𝘁𝗼𝗼 𝗹𝗶𝘁𝘁𝗹𝗲.
 

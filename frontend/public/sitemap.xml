@@ -376,6 +376,16 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://social0.app/free-tools/instagram-grid-maker</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/free-tools/instagram-carousel-splitter</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://social0.app/free-tools/post-preview/linkedin</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

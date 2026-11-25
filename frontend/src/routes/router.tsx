@@ -204,6 +204,7 @@ const FreeToolsIndexPage = lazy(() => import("@/features/marketing/pages/FreeToo
 const PostPreviewToolPage = lazy(() => import("@/features/marketing/pages/PostPreviewToolPage"));
 const LinkedInFormatterPage = lazy(() => import("@/features/marketing/pages/LinkedInFormatterPage"));
 const ImageResizerPage = lazy(() => import("@/features/marketing/pages/ImageResizerPage"));
+const ImageSplitterPage = lazy(() => import("@/features/marketing/pages/ImageSplitterPage"));
 const PricingPage = lazy(() => import("@/features/marketing/pages/PricingPage"));
 const AboutPage = lazy(() => import("@/features/marketing/pages/AboutPage"));
 const ContactPage = lazy(() => import("@/features/marketing/pages/ContactPage"));
@@ -504,6 +505,22 @@ function AppRoutes() {
           element={
             <Lazy>
               <FreeToolsIndexPage />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/instagram-grid-maker"
+          element={
+            <Lazy>
+              <ImageSplitterPage kind="grid" />
+            </Lazy>
+          }
+        />
+        <Route
+          path="free-tools/instagram-carousel-splitter"
+          element={
+            <Lazy>
+              <ImageSplitterPage kind="carousel" />
             </Lazy>
           }
         />

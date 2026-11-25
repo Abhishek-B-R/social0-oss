@@ -11,13 +11,13 @@ import { FREE_TOOLS_PATH, postPreviewPath } from "@/lib/content/free-tools";
 import {
   IMAGE_RESIZER_PATH,
   RESIZER_PLATFORMS,
-  fitRect,
   resizerPath,
   type ImageFormat,
 } from "@/lib/content/image-resizer";
 import { cn } from "@/lib/utils";
+import { baseName, downloadCanvas, loadImageFile, renderTo, sampleSource, type ImageSource } from "@/lib/canvas-image";
 
-type Source = { img: CanvasImageSource; w: number; h: number; name: string };
+type Source = ImageSource;
 type Mode = "cover" | "contain";
 
 const HUB = {
@@ -26,35 +26,8 @@ const HUB = {
     "Upload one image and get it sized for Instagram, X, LinkedIn, Facebook, YouTube, TikTok, Pinterest, Threads and Bluesky. Free, nothing uploaded.",
 };
 
-/** A placeholder picture so the tool shows real output before anyone uploads. */
-function sampleSource(): Source {
-  const c = document.createElement("canvas");
-  c.width = 1600;
-  c.height = 1067;
-  const g = c.getContext("2d")!;
-  const grad = g.createLinearGradient(0, 0, 1600, 1067);
-  grad.addColorStop(0, "#10b981");
-  grad.addColorStop(1, "#0ea5e9");
-  g.fillStyle = grad;
-  g.fillRect(0, 0, 1600, 1067);
-  g.fillStyle = "rgba(255,255,255,.92)";
-  g.font = "bold 110px system-ui, sans-serif";
-  g.textAlign = "center";
-  g.fillText("Your image here", 800, 520);
-  g.font = "56px system-ui, sans-serif";
-  g.fillText("sample 1600 x 1067", 800, 620);
-  return { img: c, w: 1600, h: 1067, name: "sample" };
-}
-
 function draw(canvas: HTMLCanvasElement, src: Source, f: ImageFormat, mode: Mode, bg: string, scale = 1) {
-  canvas.width = Math.round(f.w * scale);
-  canvas.height = Math.round(f.h * scale);
-  const g = canvas.getContext("2d")!;
-  g.imageSmoothingQuality = "high";
-  g.fillStyle = bg;
-  g.fillRect(0, 0, canvas.width, canvas.height);
-  const r = fitRect(src.w, src.h, canvas.width, canvas.height, mode);
-  g.drawImage(src.img, r.x, r.y, r.w, r.h);
+  renderTo(canvas, src, f, mode, bg, undefined, scale);
 }
 
 function Tile({ src, f, mode, bg, platform }: { src: Source; f: ImageFormat; mode: Mode; bg: string; platform: string }) {
@@ -66,18 +39,7 @@ function Tile({ src, f, mode, bg, platform }: { src: Source; f: ImageFormat; mod
   const download = () => {
     const c = document.createElement("canvas");
     draw(c, src, f, mode, bg);
-    c.toBlob(
-      (blob) => {
-        if (!blob) return;
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `${src.name.replace(/\.[^.]+$/, "")}-${platform}-${f.w}x${f.h}.jpg`;
-        a.click();
-        window.setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-      },
-      "image/jpeg",
-      0.92,
-    );
+    downloadCanvas(c, `${baseName(src.name)}-${platform}-${f.w}x${f.h}.jpg`);
     databullGoal("free_tool_download", { tool: `image-resizer/${platform}` });
   };
 
@@ -118,18 +80,13 @@ export default function ImageResizerPage() {
 
   const load = (file: File | undefined) => {
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("That file isn't an image. Use a JPG, PNG, WebP or GIF.");
-      return;
-    }
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      setSrc({ img, w: img.naturalWidth, h: img.naturalHeight, name: file.name });
-      setError("");
-    };
-    img.onerror = () => setError("This image couldn't be opened. Try saving it as JPG or PNG first.");
-    img.src = url;
+    loadImageFile(file).then(
+      (s) => {
+        setSrc(s);
+        setError("");
+      },
+      (e: Error) => setError(e.message),
+    );
   };
 
   const current = src ?? sample;

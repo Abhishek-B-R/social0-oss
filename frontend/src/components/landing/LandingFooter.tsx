@@ -235,6 +235,8 @@ export function LandingFooter() {
     { href: "/free-tools/post-preview/linkedin", label: "LinkedIn post preview" },
     { href: "/free-tools/linkedin-text-formatter", label: "LinkedIn text formatter" },
     { href: "/free-tools/image-resizer", label: "Social media image resizer" },
+    { href: "/free-tools/instagram-grid-maker", label: "Instagram grid maker" },
+    { href: "/free-tools/instagram-carousel-splitter", label: "Instagram carousel splitter" },
     { href: "/tools/api", label: "API" },
     { href: "/mcp", label: "MCP" },
     { href: "/tools/cli", label: "AI Agents CLI" },

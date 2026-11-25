@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-25T13:34:28.578Z",
+  "generatedAt": "2026-11-25T13:58:36.510Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -90,6 +90,14 @@
     "/free-tools/linkedin-text-formatter": {
       "title": "LinkedIn Text Formatter: Bold, Italic, Underline (Free) | Social0",
       "description": "Make bold, italic, underlined or strikethrough text and bullet lists for LinkedIn posts, with a live preview and copy button. Free, no signup."
+    },
+    "/free-tools/instagram-grid-maker": {
+      "title": "Instagram Grid Maker: Split a Photo into 3, 6, 9 or 12 Posts (Free) | Social0",
+      "description": "Split one image into an Instagram profile grid of 3, 6, 9 or 12 tiles in the new 3:4 shape, numbered in posting order. Free, nothing uploaded."
+    },
+    "/free-tools/instagram-carousel-splitter": {
+      "title": "Instagram Carousel Splitter: Seamless Panorama Slides (Free) | Social0",
+      "description": "Cut a panorama or wide design into 2 to 10 seamless Instagram carousel slides, 4:5 or square, that line up when people swipe. Free, nothing uploaded."
     },
     "/free-tools/image-resizer": {
       "title": "Social Media Image Resizer: Every Platform Size (Free) | Social0",
