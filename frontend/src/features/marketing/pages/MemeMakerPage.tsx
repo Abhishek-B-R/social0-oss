@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
@@ -6,7 +7,9 @@ import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import { absoluteUrl } from "@/lib/seo";
 import { databullGoal } from "@/lib/databull";
-import { baseName, downloadCanvas, sampleSource } from "@/lib/canvas-image";
+import { postEverywhere } from "@/lib/tool-handoff";
+import { useToolDraft } from "@/lib/use-tool-draft";
+import { baseName, canvasToFile, downloadCanvas, sampleSource } from "@/lib/canvas-image";
 import { MEME_FONTS_URL, drawMeme, memeSize, type MemeOptions, type MemeStyle } from "@/lib/meme-render";
 import { FREE_TOOLS_PATH } from "@/lib/content/free-tools";
 import { MEME_IMAGE, MEME_VIDEO, freeToolPath } from "@/lib/content/free-tools-standalone";
@@ -62,6 +65,25 @@ function sizeCanvas(c: HTMLCanvasElement, m: Media, o: MemeOptions, width: numbe
   }
 }
 
+/** Play once, with sound (it only goes to the recording), from the start. */
+function rewindForRecording(v: HTMLVideoElement) {
+  v.pause();
+  v.loop = false;
+  v.muted = false;
+  v.currentTime = 0;
+}
+
+function stopWhenEnded(v: HTMLVideoElement, rec: MediaRecorder) {
+  v.onended = () => rec.state === "recording" && rec.stop();
+}
+
+/** Back to the silent looping preview. */
+function resumePreview(v: HTMLVideoElement) {
+  v.muted = true;
+  v.loop = true;
+  void v.play().catch(() => undefined);
+}
+
 function pickMime(): string {
   const options = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm"];
   return options.find((t) => typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) ?? "";
@@ -70,7 +92,9 @@ function pickMime(): string {
 export default function MemeMakerPage({ kind }: { kind: Kind }) {
   const T = kind === "video" ? MEME_VIDEO : MEME_IMAGE;
   const { data: session } = useSession();
+  const navigate = useNavigate();
   const signedIn = !!session?.user;
+  const [file, setFile] = useState<File | null>(null);
   const [media, setMedia] = useState<Media | null>(null);
   const [style, setStyle] = useState<MemeStyle>("bar");
   const [theme, setTheme] = useState<"white" | "black">("white");
@@ -156,6 +180,7 @@ export default function MemeMakerPage({ kind }: { kind: Kind }) {
         }
         videoEl.current = v;
         setMedia({ el: v, w: v.videoWidth, h: v.videoHeight, name: file.name, video: true });
+        setFile(file);
         setError("");
         void v.play().catch(() => undefined);
       };
@@ -164,12 +189,22 @@ export default function MemeMakerPage({ kind }: { kind: Kind }) {
       const img = new Image();
       img.onload = () => {
         setMedia({ el: img, w: img.naturalWidth, h: img.naturalHeight, name: file.name, video: false });
+        setFile(file);
         setError("");
       };
       img.onerror = () => setError("This image couldn't be opened. Try a JPG or PNG.");
       img.src = url;
     }
   };
+
+  const draft = useMemo(() => (file ? { file, style, theme, size, caption } : null), [file, style, theme, size, caption]);
+  useToolDraft<{ file: File; style: MemeStyle; theme: "white" | "black"; size: number; caption: string }>(`meme-${kind}`, draft, (d) => {
+    setStyle(d.style);
+    setTheme(d.theme);
+    setSize(d.size);
+    setCaption(d.caption);
+    load(d.file);
+  });
 
   const downloadImage = () => {
     if (!current) return;
@@ -180,12 +215,13 @@ export default function MemeMakerPage({ kind }: { kind: Kind }) {
     databullGoal("free_tool_download", { tool: T.slug });
   };
 
-  const recordVideo = async () => {
+  /** Play the clip through once onto a canvas and record it (with sound) to a file. */
+  const recordVideo = async (): Promise<File | null> => {
     const m = current;
     const mime = pickMime();
     if (!m || !mime) {
       setError("This browser can't record video. Try Chrome, Edge or Safari.");
-      return;
+      return null;
     }
     const c = document.createElement("canvas");
     sizeCanvas(c, m, opts, EXPORT_W.video);
@@ -204,10 +240,7 @@ export default function MemeMakerPage({ kind }: { kind: Kind }) {
       const dest = audioCtx.createMediaStreamDestination();
       source.connect(dest);
       dest.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
-      v.pause();
-      v.loop = false;
-      v.muted = false;
-      v.currentTime = 0;
+      rewindForRecording(v);
     }
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 6_000_000 });
     const chunks: Blob[] = [];
@@ -223,30 +256,51 @@ export default function MemeMakerPage({ kind }: { kind: Kind }) {
       if (!v && elapsed >= duration) rec.stop();
       else raf = requestAnimationFrame(draw);
     };
-    rec.onstop = () => {
-      cancelAnimationFrame(raf);
-      setProgress(null);
-      if (v) {
-        v.muted = true;
-        v.loop = true;
-        void v.play().catch(() => undefined);
-      }
-      const ext = mime.startsWith("video/mp4") ? "mp4" : "webm";
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob(chunks, { type: mime.split(";")[0] }));
-      a.download = `${baseName(m.name)}-meme.${ext}`;
-      a.click();
-      window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    };
-    if (v) v.onended = () => rec.state === "recording" && rec.stop();
+    const done = new Promise<File>((resolve) => {
+      rec.onstop = () => {
+        cancelAnimationFrame(raf);
+        setProgress(null);
+        if (v) resumePreview(v);
+        const ext = mime.startsWith("video/mp4") ? "mp4" : "webm";
+        const type = mime.split(";")[0];
+        resolve(new File([new Blob(chunks, { type })], `${baseName(m.name)}-meme.${ext}`, { type }));
+      };
+    });
+    if (v) stopWhenEnded(v, rec);
     rec.start(250);
     if (v) await v.play();
     raf = requestAnimationFrame(draw);
+    return done;
+  };
+
+  const downloadVideo = async () => {
+    const f = await recordVideo();
+    if (!f) return;
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(f);
+    a.download = f.name;
+    a.click();
+    window.setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     databullGoal("free_tool_download", { tool: T.slug });
   };
 
+  /** Record the meme, then open it in the composer (through sign-in if needed). */
+  const post = async () => {
+    databullGoal("free_tool_cta", { tool: T.slug });
+    let files: File[] | undefined;
+    if (media) {
+      const f = kind === "video" ? await recordVideo() : null;
+      if (kind === "image") {
+        const c = document.createElement("canvas");
+        sizeCanvas(c, media, opts, EXPORT_W.image);
+        drawMeme(c.getContext("2d")!, media.el, media.w, media.h, opts);
+        files = [await canvasToFile(c, `${baseName(media.name)}-meme.jpg`)];
+      } else if (f) files = [f];
+    }
+    await postEverywhere({ files, text: caption, from: T.slug }, signedIn, navigate, signInUrl);
+  };
+
   const path = freeToolPath(T.slug);
-  const scheduleHref = signedIn ? "/dashboard/new" : signInUrl("/dashboard/new");
   const recording = progress !== null;
 
   return (
@@ -305,14 +359,14 @@ export default function MemeMakerPage({ kind }: { kind: Kind }) {
             </label>
 
             <div className="flex flex-wrap items-center gap-3">
-              <button type="button" disabled={recording} onClick={kind === "video" ? () => void recordVideo() : downloadImage}
+              <button type="button" disabled={recording} onClick={kind === "video" ? () => void downloadVideo() : downloadImage}
                 className="inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2.5 text-[14px] font-bold text-emerald-950 hover:bg-emerald-400 disabled:opacity-70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2">
                 {recording ? `Recording… ${Math.round((progress ?? 0) * 100)}%` : kind === "video" ? "Download video" : "Download JPG"}
               </button>
-              <a href={scheduleHref} onClick={() => databullGoal("free_tool_cta", { tool: T.slug })}
+              <button type="button" disabled={recording} onClick={() => void post()}
                 className="inline-flex items-center rounded-lg border border-border px-4 py-2.5 text-[14px] font-semibold hover:border-foreground/40">
                 Post it everywhere →
-              </a>
+              </button>
             </div>
             <p className="text-[12px] text-muted-foreground">
               {signedIn ? "You're signed in, so downloads have no badge." : (

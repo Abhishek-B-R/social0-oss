@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
@@ -7,6 +7,7 @@ import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import { absoluteUrl } from "@/lib/seo";
 import { databullGoal } from "@/lib/databull";
+import { postEverywhere } from "@/lib/tool-handoff";
 import { getLimitForAccount, postCharCount } from "@/lib/platform-limits";
 import {
   FREE_TOOLS_PATH,
@@ -107,6 +108,7 @@ export default function PostPreviewToolPage() {
   const { platform: slug } = useParams();
   const p = PREVIEW_PLATFORMS.find((x) => x.slug === slug);
   const { data: session } = useSession();
+  const navigate = useNavigate();
   const [text, setText] = useState(readDraft);
   const [premium, setPremium] = useState(false);
   const textId = useId();
@@ -125,8 +127,8 @@ export default function PostPreviewToolPage() {
   const isX = p.platform === "twitter_x";
   const count = postCharCount(text, p.platform);
   const limit = limitFor(p, premium && isX);
-  const target = `/dashboard/new?text=${encodeURIComponent(text)}`;
-  const scheduleHref = session?.user ? target : signInUrl(target);
+  const post = () =>
+    postEverywhere({ text, from: `post-preview/${p.slug}` }, !!session?.user, navigate, signInUrl);
   const siblings = PREVIEW_PLATFORMS.filter((x) => x.slug !== p.slug).slice(0, 4);
 
   return (
@@ -179,13 +181,11 @@ export default function PostPreviewToolPage() {
               ))}
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <a
-                href={scheduleHref}
-                onClick={() => databullGoal("free_tool_cta", { tool: `post-preview/${p.slug}` })}
+              <button type="button" onClick={() => { databullGoal("free_tool_cta", { tool: `post-preview/${p.slug}` }); void post(); }}
                 className="inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2.5 text-[14px] font-bold text-emerald-950 hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2"
               >
                 Schedule this post free →
-              </a>
+              </button>
               <span className="text-[13px] text-muted-foreground">Opens Social0 with this text as a draft. Post to {p.name} and 8 more networks.</span>
             </div>
           </div>

@@ -4,7 +4,11 @@ export type TextLayer = {
   font: string; color: string; stroke: string; strokeWidth: number; caps: boolean;
   align: "left" | "center" | "right"; box: boolean;
 };
-export type ImageLayer = { id: number; type: "image"; el: CanvasImageSource; x: number; y: number; w: number; h: number };
+export type ImageLayer = {
+  id: number; type: "image"; el: CanvasImageSource; x: number; y: number; w: number; h: number;
+  /** Original file, kept so the editor can be restored after sign-in. */
+  file?: Blob;
+};
 export type Layer = TextLayer | ImageLayer;
 export type Rect = { x: number; y: number; w: number; h: number };
 export type Base = { el: CanvasImageSource; w: number; h: number };

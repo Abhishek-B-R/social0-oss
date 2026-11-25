@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
@@ -6,7 +7,9 @@ import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import { absoluteUrl } from "@/lib/seo";
 import { databullGoal } from "@/lib/databull";
-import { baseName, downloadCanvas, loadImageFile, renderTo, sampleSource, type ImageSource } from "@/lib/canvas-image";
+import { baseName, canvasToFile, downloadCanvas, loadImageFile, renderTo, sampleSource, type ImageSource } from "@/lib/canvas-image";
+import { postEverywhere } from "@/lib/tool-handoff";
+import { useToolDraft } from "@/lib/use-tool-draft";
 import { splitTiles, type Tile } from "@/lib/split-image";
 import { FREE_TOOLS_PATH } from "@/lib/content/free-tools";
 import { INSTAGRAM_CAROUSEL, INSTAGRAM_GRID, freeToolPath } from "@/lib/content/free-tools-standalone";
@@ -45,7 +48,9 @@ function TileCanvas({ src, layout, tile, label }: { src: ImageSource; layout: { 
 export default function ImageSplitterPage({ kind }: { kind: Kind }) {
   const T = kind === "grid" ? INSTAGRAM_GRID : INSTAGRAM_CAROUSEL;
   const { data: session } = useSession();
+  const navigate = useNavigate();
   const [src, setSrc] = useState<ImageSource | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [count, setCount] = useState(3);
   const [shapeIdx, setShapeIdx] = useState(0);
   const [error, setError] = useState("");
@@ -55,6 +60,16 @@ export default function ImageSplitterPage({ kind }: { kind: Kind }) {
     () => (typeof document === "undefined" ? null : kind === "grid" ? sampleSource(1620, 1440) : sampleSource(3240, 1350)),
     [kind],
   );
+
+  const draft = useMemo(() => (file ? { file, count, shapeIdx } : null), [file, count, shapeIdx]);
+  useToolDraft<{ file: File; count: number; shapeIdx: number }>(`splitter-${kind}`, draft, (d) => {
+    setCount(d.count);
+    setShapeIdx(d.shapeIdx);
+    void loadImageFile(d.file).then((s) => {
+      setSrc(s);
+      setFile(d.file);
+    });
+  });
 
   const shape = SHAPES[kind][shapeIdx];
   const cols = kind === "grid" ? 3 : count;
@@ -68,6 +83,7 @@ export default function ImageSplitterPage({ kind }: { kind: Kind }) {
     loadImageFile(file).then(
       (s) => {
         setSrc(s);
+        setFile(file);
         setError("");
       },
       (e: Error) => setError(e.message),
@@ -91,7 +107,22 @@ export default function ImageSplitterPage({ kind }: { kind: Kind }) {
     databullGoal("free_tool_download", { tool: T.slug });
   };
 
-  const scheduleHref = session?.user ? "/dashboard/new" : signInUrl("/dashboard/new");
+  /** Carousel: every slide, in swipe order, as one post. Grid: tile 1 (each tile is its own post). */
+  const post = async () => {
+    let files: File[] | undefined;
+    if (src) {
+      const ordered = [...tiles].sort((a, b) => (kind === "grid" ? a.order - b.order : a.col - b.col));
+      const chosen = kind === "grid" ? ordered.slice(0, 1) : ordered;
+      files = await Promise.all(
+        chosen.map((t) => {
+          const c = document.createElement("canvas");
+          renderTo(c, src, layout, "cover", "#ffffff", t);
+          return canvasToFile(c, fileFor(t));
+        }),
+      );
+    }
+    await postEverywhere({ files, from: T.slug }, !!session?.user, navigate, signInUrl);
+  };
   const path = freeToolPath(T.slug);
 
   return (
@@ -149,10 +180,10 @@ export default function ImageSplitterPage({ kind }: { kind: Kind }) {
               className="inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2.5 text-[14px] font-bold text-emerald-950 hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2">
               Download all {tiles.length} {kind === "grid" ? "tiles" : "slides"}
             </button>
-            <a href={scheduleHref} onClick={() => databullGoal("free_tool_cta", { tool: T.slug })}
+            <button type="button" onClick={() => { databullGoal("free_tool_cta", { tool: T.slug }); void post(); }}
               className="inline-flex items-center rounded-lg border border-border px-4 py-2.5 text-[14px] font-semibold hover:border-foreground/40">
-              {kind === "grid" ? "Schedule the grid with Social0 →" : "Schedule the carousel with Social0 →"}
-            </a>
+              {kind === "grid" ? "Post tile 1 with Social0 →" : "Post the carousel with Social0 →"}
+            </button>
           </div>
         </div>
 

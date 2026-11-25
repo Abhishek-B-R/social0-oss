@@ -72,3 +72,9 @@ export function downloadCanvas(canvas: HTMLCanvasElement, filename: string, type
 }
 
 export const baseName = (name: string) => name.replace(/\.[^.]+$/, "");
+
+export function canvasToFile(canvas: HTMLCanvasElement, name: string, type: "image/jpeg" | "image/png" = "image/jpeg"): Promise<File> {
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(new File([b], name, { type })) : reject(new Error("Couldn't render the image."))), type, 0.92),
+  );
+}

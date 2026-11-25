@@ -5,6 +5,7 @@ import { usePostHog } from "@posthog/react";
 import { toast } from "sonner";
 import { setOnboardingCompleted, type OnboardingStatus } from "@/api/onboarding";
 import { ONBOARDING_FINISH_PATH } from "@/features/onboarding/lib/paths";
+import { HANDOFF_PATH, hasPendingHandoff } from "@/lib/tool-handoff";
 import type { PostMode } from "@/features/onboarding/lib/agent-setup";
 
 type FinishOptions = {
@@ -73,7 +74,8 @@ export function useFinishOnboarding() {
         queryKey: ["onboarding-status"],
         refetchType: "none",
       });
-      navigate(to, { replace: true });
+      // Came from a free tool's "Post it everywhere": open the composer with it.
+      navigate(to === ONBOARDING_FINISH_PATH && hasPendingHandoff() ? HANDOFF_PATH : to, { replace: true });
       return true;
     },
     [navigate, posthog, queryClient],

@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
@@ -6,6 +7,8 @@ import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import { absoluteUrl } from "@/lib/seo";
 import { databullGoal } from "@/lib/databull";
+import { postEverywhere } from "@/lib/tool-handoff";
+import { useToolDraft } from "@/lib/use-tool-draft";
 import { postCharCount } from "@/lib/platform-limits";
 import { listify, toPlain, toggleStyle, type TextStyle } from "@/lib/unicode-text";
 import { FREE_TOOLS_PATH, postPreviewPath } from "@/lib/content/free-tools";
@@ -33,7 +36,9 @@ function cut(text: string, n: number): string {
 
 export default function LinkedInFormatterPage() {
   const { data: session } = useSession();
+  const navigate = useNavigate();
   const [text, setText] = useState(FORMATTER_SAMPLE);
+  useToolDraft<string>("linkedin-formatter", text, setText);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const textId = useId();
@@ -66,8 +71,8 @@ export default function LinkedInFormatterPage() {
 
   const count = postCharCount(text, "linkedin");
   const folded = count > FOLD;
-  const target = `/dashboard/new?text=${encodeURIComponent(text)}`;
-  const scheduleHref = session?.user ? target : signInUrl(target);
+  const post = () =>
+    postEverywhere({ text, from: T.slug }, !!session?.user, navigate, signInUrl);
 
   return (
     <MarketingPageLayout signedIn={!!session?.user}>
@@ -126,10 +131,10 @@ export default function LinkedInFormatterPage() {
                 className="inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2.5 text-[14px] font-bold text-emerald-950 hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2">
                 {copied ? "Copied" : "Copy formatted text"}
               </button>
-              <a href={scheduleHref} onClick={() => databullGoal("free_tool_cta", { tool: T.slug })}
+              <button type="button" onClick={() => { databullGoal("free_tool_cta", { tool: T.slug }); void post(); }}
                 className="inline-flex items-center rounded-lg border border-border px-4 py-2.5 text-[14px] font-semibold hover:border-foreground/40">
                 Schedule this post free →
-              </a>
+              </button>
             </div>
           </div>
 

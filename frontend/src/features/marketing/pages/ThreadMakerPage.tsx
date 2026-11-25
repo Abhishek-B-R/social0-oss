@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
@@ -6,6 +7,8 @@ import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import { absoluteUrl } from "@/lib/seo";
 import { databullGoal } from "@/lib/databull";
+import { postEverywhere } from "@/lib/tool-handoff";
+import { useToolDraft } from "@/lib/use-tool-draft";
 import { postCharCount } from "@/lib/platform-limits";
 import { splitThread } from "@/lib/thread-split";
 import { FREE_TOOLS_PATH, postPreviewPath } from "@/lib/content/free-tools";
@@ -23,7 +26,9 @@ const chip = (on: boolean) =>
 
 export default function ThreadMakerPage() {
   const { data: session } = useSession();
+  const navigate = useNavigate();
   const [text, setText] = useState(THREAD_SAMPLE);
+  useToolDraft<string>("thread-maker", text, setText);
   const [netIdx, setNetIdx] = useState(0);
   const [numbered, setNumbered] = useState(true);
   const [breakOnBlankLines, setBreakOnBlankLines] = useState(false);
@@ -49,8 +54,8 @@ export default function ThreadMakerPage() {
     }
   };
 
-  const target = `/dashboard/new?${posts.map((p) => `part=${encodeURIComponent(p)}`).join("&")}`;
-  const scheduleHref = session?.user ? target : signInUrl(target);
+  const post = () =>
+    postEverywhere({ parts: posts, from: T.slug }, !!session?.user, navigate, signInUrl);
   const path = freeToolPath(T.slug);
 
   return (
@@ -94,10 +99,10 @@ export default function ThreadMakerPage() {
               </label>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              <a href={scheduleHref} onClick={() => databullGoal("free_tool_cta", { tool: T.slug })}
+              <button type="button" onClick={() => { databullGoal("free_tool_cta", { tool: T.slug }); void post(); }}
                 className="inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2.5 text-[14px] font-bold text-emerald-950 hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2">
                 Schedule this thread free →
-              </a>
+              </button>
               <span className="text-[13px] text-muted-foreground">Opens Social0 with all {posts.length} posts in place.</span>
             </div>
           </div>

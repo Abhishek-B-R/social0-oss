@@ -66,6 +66,8 @@ export function resolvePostAuthDestination(
 
   if (status.shouldOnboard) {
     if (preferred?.startsWith("/invite/")) return preferred;
+    // Signed up from a free tool (e.g. to drop the badge): back to their work first.
+    if (preferred?.startsWith("/free-tools")) return preferred;
     if (preferred?.startsWith("/onboarding")) return preferred;
     return "/onboarding";
   }

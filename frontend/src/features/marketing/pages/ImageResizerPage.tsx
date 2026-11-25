@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
@@ -15,7 +15,9 @@ import {
   type ImageFormat,
 } from "@/lib/content/image-resizer";
 import { cn } from "@/lib/utils";
-import { baseName, downloadCanvas, loadImageFile, renderTo, sampleSource, type ImageSource } from "@/lib/canvas-image";
+import { baseName, canvasToFile, downloadCanvas, loadImageFile, renderTo, sampleSource, type ImageSource } from "@/lib/canvas-image";
+import { postEverywhere } from "@/lib/tool-handoff";
+import { useToolDraft } from "@/lib/use-tool-draft";
 
 type Source = ImageSource;
 type Mode = "cover" | "contain";
@@ -30,7 +32,7 @@ function draw(canvas: HTMLCanvasElement, src: Source, f: ImageFormat, mode: Mode
   renderTo(canvas, src, f, mode, bg, undefined, scale);
 }
 
-function Tile({ src, f, mode, bg, platform }: { src: Source; f: ImageFormat; mode: Mode; bg: string; platform: string }) {
+function Tile({ src, f, mode, bg, platform, onPost }: { src: Source; f: ImageFormat; mode: Mode; bg: string; platform: string; onPost: () => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     if (ref.current) draw(ref.current, src, f, mode, bg, Math.min(1, 320 / Math.max(f.w, f.h)));
@@ -54,10 +56,16 @@ function Tile({ src, f, mode, bg, platform }: { src: Source; f: ImageFormat; mod
           <span className="font-mono text-[12px] text-muted-foreground">{f.w} x {f.h}</span>
           {f.note ? <span className="block text-[12px] text-muted-foreground">{f.note}</span> : null}
         </span>
+        <span className="flex shrink-0 flex-col gap-1">
         <button type="button" onClick={download}
           className="shrink-0 rounded-lg border border-border px-2.5 py-1.5 text-[13px] font-semibold hover:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50">
           Download
         </button>
+        <button type="button" onClick={onPost}
+          className="rounded-lg border border-border px-2.5 py-1.5 text-[13px] font-semibold hover:border-emerald-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50">
+          Post
+        </button>
+        </span>
       </figcaption>
     </figure>
   );
@@ -67,7 +75,9 @@ export default function ImageResizerPage() {
   const { platform: slug } = useParams();
   const p = slug ? RESIZER_PLATFORMS.find((x) => x.slug === slug) : null;
   const { data: session } = useSession();
+  const navigate = useNavigate();
   const [src, setSrc] = useState<Source | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<Mode>("cover");
   const [bg, setBg] = useState("#ffffff");
   const [error, setError] = useState("");
@@ -75,6 +85,15 @@ export default function ImageResizerPage() {
   const fileId = useId();
   const bgId = useId();
   const sample = useMemo(() => (typeof document === "undefined" ? null : sampleSource()), []);
+  const draft = useMemo(() => (file ? { file, mode, bg } : null), [file, mode, bg]);
+  useToolDraft<{ file: File; mode: Mode; bg: string }>("image-resizer", draft, (d) => {
+    setMode(d.mode);
+    setBg(d.bg);
+    void loadImageFile(d.file).then((s) => {
+      setSrc(s);
+      setFile(d.file);
+    });
+  });
 
   if (slug && !p) return <Navigate to={IMAGE_RESIZER_PATH} replace />;
 
@@ -83,6 +102,7 @@ export default function ImageResizerPage() {
     loadImageFile(file).then(
       (s) => {
         setSrc(s);
+        setFile(file);
         setError("");
       },
       (e: Error) => setError(e.message),
@@ -94,7 +114,16 @@ export default function ImageResizerPage() {
   const title = p ? `${p.name} Image Resizer` : "Social Media Image Resizer";
   const meta = p ?? HUB;
   const path = p ? resizerPath(p.slug) : IMAGE_RESIZER_PATH;
-  const scheduleHref = session?.user ? "/dashboard/new" : signInUrl("/dashboard/new");
+  /** Render one size (the page's first by default) and open it in the composer. */
+  const post = async (f: ImageFormat = groups[0].formats[0], platform = groups[0].slug) => {
+    let files: File[] | undefined;
+    if (src) {
+      const c = document.createElement("canvas");
+      draw(c, src, f, mode, bg);
+      files = [await canvasToFile(c, `${baseName(src.name)}-${platform}-${f.w}x${f.h}.jpg`)];
+    }
+    await postEverywhere({ files, from: `image-resizer/${platform}` }, !!session?.user, navigate, signInUrl);
+  };
 
   return (
     <MarketingPageLayout signedIn={!!session?.user}>
@@ -146,10 +175,10 @@ export default function ImageResizerPage() {
                 <input id={bgId} type="color" value={bg} onChange={(e) => setBg(e.target.value)} className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent" />
               </label>
             ) : null}
-            <a href={scheduleHref} onClick={() => databullGoal("free_tool_cta", { tool: `image-resizer/${p?.slug ?? "all"}` })}
+            <button type="button" onClick={() => { databullGoal("free_tool_cta", { tool: `image-resizer/${p?.slug ?? "all"}` }); void post(); }}
               className="ml-auto inline-flex items-center rounded-lg bg-emerald-500 px-4 py-2 text-[14px] font-bold text-emerald-950 hover:bg-emerald-400">
               Post it everywhere with Social0 →
-            </a>
+            </button>
           </div>
         </div>
 
@@ -161,7 +190,7 @@ export default function ImageResizerPage() {
               </h2>
             ) : null}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {g.formats.map((f) => <Tile key={f.label} src={current} f={f} mode={mode} bg={bg} platform={g.slug} />)}
+              {g.formats.map((f) => <Tile key={f.label} src={current} f={f} mode={mode} bg={bg} platform={g.slug} onPost={() => { databullGoal("free_tool_cta", { tool: `image-resizer/${g.slug}` }); void post(f, g.slug); }} />)}
             </div>
           </section>
         )) : null}

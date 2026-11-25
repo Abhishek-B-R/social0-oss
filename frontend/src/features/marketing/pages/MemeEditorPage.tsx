@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
@@ -6,10 +7,12 @@ import { useSession } from "@/lib/auth-client";
 import { signInUrl } from "@/lib/sign-in-url";
 import { absoluteUrl } from "@/lib/seo";
 import { databullGoal } from "@/lib/databull";
-import { baseName, downloadCanvas, sampleSource } from "@/lib/canvas-image";
+import { baseName, canvasToFile, downloadCanvas, sampleSource } from "@/lib/canvas-image";
+import { postEverywhere } from "@/lib/tool-handoff";
+import { useToolDraft } from "@/lib/use-tool-draft";
 import {
   DOC_WIDTH, EDITOR_FONTS_URL, FONTS, PAD, docHeight, dragLayer, drawDoc, fontCss, hitTest, layerRect, onHandle,
-  type Base, type Doc, type Layer, type TextLayer,
+  type Base, type Doc, type ImageLayer, type Layer, type TextLayer,
 } from "@/lib/meme-editor";
 import { FREE_TOOLS_PATH } from "@/lib/content/free-tools";
 import { MEME_IMAGE as T, MEME_VIDEO, freeToolPath } from "@/lib/content/free-tools-standalone";
@@ -24,7 +27,7 @@ const newText = (text: string, y: number): TextLayer => ({
   color: "#ffffff", stroke: "#000000", strokeWidth: 7, caps: true, align: "center", box: false,
 });
 
-function loadImage(file: File): Promise<HTMLImageElement> {
+function loadImage(file: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith("image/")) return reject(new Error("Use an image (JPG, PNG, WebP or GIF)."));
     const img = new Image();
@@ -42,7 +45,9 @@ export default function MemeEditorPage() {
     const s = sampleSource(1200, 900);
     return { el: s.img, w: s.w, h: s.h };
   }, []);
+  const navigate = useNavigate();
   const [base, setBase] = useState<Base | null>(null);
+  const [baseFile, setBaseFileState] = useState<Blob | null>(null);
   const [baseName_, setBaseName] = useState("social0");
   const [padTop, setPadTop] = useState(0);
   const [padBottom, setPadBottom] = useState(0);
@@ -140,6 +145,7 @@ export default function MemeEditorPage() {
     loadImage(file).then(
       (img) => {
         setBase({ el: img, w: img.naturalWidth, h: img.naturalHeight });
+        setBaseFileState(file);
         setBaseName(baseName(file.name));
         setError("");
       },
@@ -150,13 +156,39 @@ export default function MemeEditorPage() {
     loadImage(file).then(
       (img) => {
         const w = DOC_WIDTH / 3;
-        const layer: Layer = { id: nextId++, type: "image", el: img, x: DOC_WIDTH / 3, y: 200, w, h: (w * img.naturalHeight) / img.naturalWidth };
+        const layer: Layer = { id: nextId++, type: "image", el: img, file, x: DOC_WIDTH / 3, y: 200, w, h: (w * img.naturalHeight) / img.naturalWidth };
         setLayers((ls) => [...ls, layer]);
         setSelected(layer.id);
         setError("");
       },
       (e: Error) => setError(e.message),
     );
+  // Remember the meme (base file, white space, layers with their files) across sign-in.
+  type Saved = { baseFile: Blob | null; name: string; padTop: number; padBottom: number; layers: (TextLayer | (Omit<ImageLayer, "el"> & { file?: Blob }))[] };
+  const draft = useMemo<Saved>(
+    () => ({ baseFile, name: baseName_, padTop, padBottom, layers: layers.map((l) => (l.type === "image" ? { ...l, el: undefined } : l)) }),
+    [baseFile, baseName_, padTop, padBottom, layers],
+  );
+  useToolDraft<Saved>("meme-editor", draft, (d) => {
+    void (async () => {
+      const restored: Layer[] = [];
+      for (const l of d.layers) {
+        if (l.type === "text") restored.push(l);
+        else if (l.file) restored.push({ ...l, el: await loadImage(l.file) });
+      }
+      nextId = Math.max(nextId, ...restored.map((l) => l.id + 1));
+      if (d.baseFile) {
+        const img = await loadImage(d.baseFile);
+        setBase({ el: img, w: img.naturalWidth, h: img.naturalHeight });
+        setBaseFileState(d.baseFile);
+      }
+      setBaseName(d.name);
+      setPadTop(d.padTop);
+      setPadBottom(d.padBottom);
+      setLayers(restored);
+    })().catch(() => undefined);
+  });
+
   const togglePad = (which: "top" | "bottom") => {
     if (which === "top") {
       const next = padTop ? 0 : PAD;
@@ -175,10 +207,23 @@ export default function MemeEditorPage() {
     databullGoal("free_tool_download", { tool: T.slug });
   };
 
+  /** Render the meme and open it in the composer (through sign-in if needed). */
+  const post = async () => {
+    databullGoal("free_tool_cta", { tool: T.slug });
+    let files: File[] | undefined;
+    if (doc && (baseFile || layers.some((l) => l.type === "image"))) {
+      const c = document.createElement("canvas");
+      c.width = DOC_WIDTH;
+      c.height = docHeight(doc);
+      drawDoc(c.getContext("2d")!, doc, { selected: null, watermark: !signedIn });
+      files = [await canvasToFile(c, `${baseName_}-meme.jpg`)];
+    }
+    await postEverywhere({ files, from: T.slug }, signedIn, navigate, signInUrl);
+  };
+
   const sel = layers.find((l) => l.id === selected);
   const texts = layers.filter((l): l is TextLayer => l.type === "text");
   const path = freeToolPath(T.slug);
-  const scheduleHref = signedIn ? "/dashboard/new" : signInUrl("/dashboard/new");
 
   return (
     <MarketingPageLayout signedIn={signedIn}>
@@ -275,7 +320,7 @@ export default function MemeEditorPage() {
                 Download JPG
               </button>
               <button type="button" className={btn} onClick={() => download("image/png")}>PNG</button>
-              <a href={scheduleHref} onClick={() => databullGoal("free_tool_cta", { tool: T.slug })} className={btn}>Post it everywhere →</a>
+              <button type="button" onClick={() => void post()} className={btn}>Post it everywhere →</button>
             </div>
             <p className="text-[12px] text-muted-foreground">
               {signedIn ? "You're signed in, so downloads have no badge." : (
