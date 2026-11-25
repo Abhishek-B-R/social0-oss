@@ -43,7 +43,7 @@ export default function MemeEditorPage() {
     return { el: s.img, w: s.w, h: s.h };
   }, []);
   const [base, setBase] = useState<Base | null>(null);
-  const [baseName_, setBaseName] = useState("meme");
+  const [baseName_, setBaseName] = useState("social0");
   const [padTop, setPadTop] = useState(0);
   const [padBottom, setPadBottom] = useState(0);
   const [layers, setLayers] = useState<Layer[]>(() => [newText("When the free tool", 90), newText("Is better than the paid one", 720)]);

@@ -96,9 +96,9 @@ export default function MemeMakerPage({ kind }: { kind: Kind }) {
 
   const sample = useMemo<Media | null>(() => {
     if (typeof document === "undefined") return null;
-    if (kind === "video") return { el: makeSampleClip(), w: 960, h: 720, name: "meme", video: false };
+    if (kind === "video") return { el: makeSampleClip(), w: 960, h: 720, name: "social0", video: false };
     const s = sampleSource(1200, 900);
-    return { el: s.img as HTMLCanvasElement, w: s.w, h: s.h, name: "meme", video: false };
+    return { el: s.img as HTMLCanvasElement, w: s.w, h: s.h, name: "social0", video: false };
   }, [kind]);
   const current = media ?? sample;
   const currentRef = useRef(current);
