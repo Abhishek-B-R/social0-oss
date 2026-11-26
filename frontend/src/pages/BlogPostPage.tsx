@@ -60,7 +60,8 @@ export function BlogPostPage() {
 
       <article>
         <header className="border-b border-border px-6 pb-12 pt-12 lg:px-8 lg:pt-16">
-          <div className="mx-auto max-w-[760px]">
+          <div className="mx-auto max-w-[1000px]">
+          <div className="max-w-[700px]">
             <nav className="mb-6 text-[13px] text-muted-foreground">
               <Link href="/blog" className="hover:text-foreground">
                 Blog
@@ -82,16 +83,21 @@ export function BlogPostPage() {
                 ·
               </span>
               {post.readingMinutes} min read
+              <span className="mx-2" aria-hidden="true">
+                ·
+              </span>
+              By <span className="text-foreground">Abhishek BR</span>, founder of Social0
             </p>
+          </div>
           </div>
         </header>
 
         <div className="px-6 py-12 lg:px-8">
-          <div className="mx-auto max-w-[760px]">
+          <div className="mx-auto max-w-[1000px] lg:grid lg:grid-cols-[minmax(0,700px)_220px] lg:justify-between lg:gap-14">
             {toc.length > 2 ? (
               <nav
                 aria-label="On this page"
-                className="mb-10 rounded-2xl border border-border bg-muted/20 px-6 py-5"
+                className="mb-10 rounded-2xl border border-border bg-muted/20 px-6 py-5 lg:order-2 lg:sticky lg:top-24 lg:mb-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0"
               >
                 <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
                   On this page
@@ -111,6 +117,7 @@ export function BlogPostPage() {
               </nav>
             ) : null}
 
+            <div className="min-w-0 lg:order-1">
             <BlogBody blocks={post.body} />
 
             {post.relatedPaths?.length ? (
@@ -132,6 +139,7 @@ export function BlogPostPage() {
                 </ul>
               </section>
             ) : null}
+            </div>
           </div>
         </div>
       </article>

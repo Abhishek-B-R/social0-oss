@@ -118,8 +118,8 @@
     "DM Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   --font-geist-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
-  /* ponytail: font-serif token = heading face (Plus Jakarta), not a real serif */
-  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  /* font-serif token = the heading face (DM Sans, same as the home hero), not a real serif */
+  --font-serif: "DM Sans", system-ui, sans-serif;
   --font-logo: "Instrument Serif", Georgia, serif;
 }
 
@@ -282,7 +282,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-serif: "DM Sans", system-ui, sans-serif;
   --font-logo: "Instrument Serif", Georgia, serif;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -606,7 +606,7 @@ html {
   --ring: #10b981;
   --radius: 0.625rem;
   --font-sans: "DM Sans", system-ui, sans-serif;
-  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-serif: "DM Sans", system-ui, sans-serif;
   --font-logo: "Instrument Serif", Georgia, serif;
   --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
   --hero-everywhere: #10b981;
@@ -637,7 +637,7 @@ html {
   --input: #262626;
   --ring: #1a6b4a;
   --font-sans: "DM Sans", system-ui, sans-serif;
-  --font-serif: "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-serif: "DM Sans", system-ui, sans-serif;
   --font-logo: "Instrument Serif", Georgia, serif;
   --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
 }
@@ -1198,4 +1198,16 @@ input[type="radio"] {
     position: absolute;
     inset: -0.5rem;
   }
+}
+
+/* Headings match the home hero: DM Sans, heavy, tight. Beats per-page font-normal/tracking classes. */
+h1.font-serif {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+}
+h2.font-serif,
+h3.font-serif {
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }

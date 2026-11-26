@@ -24,14 +24,14 @@ function BlockView({ block }: { block: BlogBlock }) {
 
     case "paragraph":
       return (
-        <p className="mt-5 text-[17px] leading-[1.75] text-muted-foreground">
+        <p className="mt-5 text-[17.5px] leading-[1.75] text-foreground/85">
           <RichText text={block.text} />
         </p>
       );
 
     case "list":
       return block.ordered ? (
-        <ol className="mt-5 list-decimal space-y-3 pl-6 text-[17px] leading-[1.75] text-muted-foreground marker:text-emerald-700">
+        <ol className="mt-5 list-decimal space-y-3 pl-6 text-[17.5px] leading-[1.75] text-foreground/85 marker:text-emerald-700">
           {block.items.map((item, index) => (
             <li key={`${index}-${item}`} className="pl-1">
               <RichText text={item} />
@@ -39,7 +39,7 @@ function BlockView({ block }: { block: BlogBlock }) {
           ))}
         </ol>
       ) : (
-        <ul className="mt-5 list-disc space-y-3 pl-6 text-[17px] leading-[1.75] text-muted-foreground marker:text-emerald-700">
+        <ul className="mt-5 list-disc space-y-3 pl-6 text-[17.5px] leading-[1.75] text-foreground/85 marker:text-emerald-700">
           {block.items.map((item, index) => (
             <li key={`${index}-${item}`} className="pl-1">
               <RichText text={item} />
@@ -77,7 +77,7 @@ function BlockView({ block }: { block: BlogBlock }) {
                     {row.map((cell, cellIndex) => (
                       <td
                         key={`${cellIndex}-${cell}`}
-                        className="border-b border-border px-4 py-3 align-top leading-relaxed text-muted-foreground last:border-b-0"
+                        className="border-b border-border px-4 py-3 align-top leading-relaxed text-foreground/80 last:border-b-0 first:whitespace-nowrap first:font-medium first:text-foreground"
                       >
                         <RichText text={cell} />
                       </td>
