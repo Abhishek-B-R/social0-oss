@@ -3,7 +3,7 @@ import type { BlogPost } from "../blog-types";
 export const instagramAlgorithmGuide: BlogPost = {
   slug: "instagram-algorithm-guide",
   category: "Strategy",
-  metaTitle: "How the Instagram Algorithm Works in 2026 (Feed, Reels, Explore)",
+  metaTitle: "How the Instagram Algorithm Works in 2026: Reels, Feed, Explore",
   metaDescription:
     "Instagram runs four different algorithms, not one. What Feed, Reels, Stories, and Explore each rank on, why sends beat likes, and the repost rule that can remove you from recommendations.",
   keywords: [
@@ -18,6 +18,7 @@ export const instagramAlgorithmGuide: BlogPost = {
   excerpt:
     "There isn't one Instagram algorithm — there are four, and they rank on different things. Here's what each surface rewards, why a DM share is worth more than a like, and the reposting rule that quietly kills accounts.",
   datePublished: "2026-09-20",
+  dateModified: "2026-11-26",
   readingMinutes: 10,
   body: [
     {
@@ -78,7 +79,7 @@ export const instagramAlgorithmGuide: BlogPost = {
     },
     {
       type: "paragraph",
-      text: "Note the *per reach* construction on two of them. These are **rates, not totals**. A post seen by 500 people with 50 sends outranks one seen by 50,000 with 200 sends. This is why small accounts can still break out, and why buying reach does not help.",
+      text: "Note the "per reach" construction on two of them. These are **rates, not totals**. A post seen by 500 people with 50 sends outranks one seen by 50,000 with 200 sends. This is why small accounts can still break out, and why buying reach does not help.",
     },
     {
       type: "heading",
@@ -116,7 +117,7 @@ export const instagramAlgorithmGuide: BlogPost = {
     {
       type: "callout",
       title: "This one removes accounts from recommendations",
-      text: "Original content receives substantially more distribution than reposted content — figures around **40–60% more** are widely reported. More seriously, accounts posting roughly **10 or more reposts within 30 days can be excluded from recommendations entirely.** Not down-ranked. Excluded.",
+      text: "In 2024 Instagram said that accounts reposting other people's content **10 or more times in 30 days** become ineligible for recommendations. Not down-ranked: excluded. An April 2026 update reportedly widened this to accounts whose recent posts are **mostly** other people's content, and an account becomes eligible again once most of its posts over a 30-day period are original.",
     },
     {
       type: "paragraph",
@@ -137,6 +138,7 @@ export const instagramAlgorithmGuide: BlogPost = {
     {
       type: "list",
       items: [
+        "**\"Your Algorithm\" controls.** Since December 2025 people can open a panel showing the topics Instagram thinks they're into, and add or remove topics. It started with Reels and has been reported expanding to Explore and Feed during 2026. A clear, consistent topic makes your content easier to match to the right viewers.",
         "**Hashtags capped at five.** Down from thirty, since December 2025, and enforced at publish time. Covered in full in [Instagram's 5-hashtag limit](/blog/instagram-hashtag-limit).",
         "**Longer Reels are being recommended more.** Instagram has been pushing longer storytelling into Explore, softening the old assumption that shorter always wins.",
         "**Automatic caption and audio translation.** Reels now reach international audiences without you doing anything, which makes clear, plainly-worded captions more valuable.",
@@ -160,8 +162,8 @@ export const instagramAlgorithmGuide: BlogPost = {
           "Blocked or stripped at publish time.",
         ],
         [
-          "~10+ reposts in 30 days",
-          "Risk of exclusion from recommendations.",
+          "Mostly reposted content",
+          "Excluded from recommendations until most of 30 days of posts are original.",
         ],
         [
           "25 API posts per rolling 24h",
@@ -171,7 +173,7 @@ export const instagramAlgorithmGuide: BlogPost = {
     },
     {
       type: "cta",
-      text: "Schedule Reels, carousels, and Stories alongside your other networks.",
+      text: "Schedule Reels and carousels alongside your other networks, with a custom cover and trial Reels.",
       href: "/features/instagram-scheduler",
       label: "See the Instagram scheduler",
     },
@@ -186,7 +188,7 @@ export const instagramAlgorithmGuide: BlogPost = {
         "**Make Reels for reach, carousels for saves, Stories for retention.** Match the format to the surface you need.",
         "**Write the first line for a send, not a like.** Ask who the viewer would forward this to.",
         "**Keep Reels under 3 minutes**, and open with something that earns the next two seconds.",
-        "**Post original content.** If you must repost, keep it well under the threshold and add something real.",
+        "**Post original content.** If you repost, keep it a small share of what you post and add something real.",
         "**Write captions in plain search language**, then five deliberate hashtags.",
         "**Check sends and saves, not likes.** They are in the post insights and they are what the ranking actually uses.",
       ],
@@ -210,12 +212,17 @@ export const instagramAlgorithmGuide: BlogPost = {
     {
       question: "Does reposting content hurt your Instagram reach?",
       answer:
-        "Yes, significantly. Original content receives substantially more distribution, and accounts posting roughly ten or more reposts within thirty days can be excluded from recommendations entirely. This also covers videos carrying another platform's watermark.",
+        "It can remove you from recommendations. Instagram excludes accounts that mostly repost other people's content (its 2024 rule named 10 or more reposts in 30 days), and eligibility returns once most of your recent posts are original. Videos carrying another platform's watermark also read as unoriginal.",
     },
     {
       question: "How long should Instagram Reels be?",
       answer:
         "Under three minutes. The API accepts up to twenty minutes, but past roughly three Instagram stops recommending the Reel to non-followers — it publishes fine and existing followers see it, but it is excluded from discovery. Instagram has recently been recommending longer storytelling Reels more, but three minutes remains the practical ceiling.",
+    },
+    {
+      question: "What is \"Your Algorithm\" on Instagram?",
+      answer:
+        "A panel, launched in December 2025, where people can see the topics Instagram uses to recommend Reels to them and add or remove topics. It has been reported expanding to Explore and Feed during 2026. For creators, it rewards accounts with a clear, consistent topic.",
     },
     {
       question: "Do likes still matter on Instagram?",
@@ -228,6 +235,7 @@ export const instagramAlgorithmGuide: BlogPost = {
     { href: "/features/multi-platform-scheduler", label: "Multi-platform scheduler" },
   ],
   relatedSlugs: [
+    "how-to-schedule-instagram-posts",
     "instagram-hashtag-limit",
     "reels-vs-tiktok-vs-shorts",
     "tiktok-algorithm-guide",

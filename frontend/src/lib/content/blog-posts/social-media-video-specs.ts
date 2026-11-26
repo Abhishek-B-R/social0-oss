@@ -20,7 +20,7 @@ export const socialMediaVideoSpecs: BlogPost = {
   excerpt:
     "One 4-minute vertical video is a Reel, a TikTok, a LinkedIn post — and too long for YouTube Shorts and Bluesky. Here is the full spec table, and the three limits that cause most failed publishes.",
   datePublished: "2026-08-12",
-  dateModified: "2026-09-20",
+  dateModified: "2026-11-26",
   readingMinutes: 10,
   body: [
     {
@@ -49,7 +49,7 @@ export const socialMediaVideoSpecs: BlogPost = {
         ],
         ["Instagram", "20:00 (API cap)", "250 MB", "MP4, MOV"],
         ["TikTok", "10:00", "~288 MB", "MP4, MOV"],
-        ["YouTube Shorts", "5:00", "256 MB", "MP4, MOV"],
+        ["YouTube", "Shorts: 3:00 (vertical or square). Longer = regular video: 15:00 unverified, up to 12 h verified", "256 GB", "MP4, MOV, WebM and more"],
         ["LinkedIn", "10:00", "5 GB", "MP4, MOV, MKV, WebM"],
         ["Facebook", "10:00 (feed)", "4 GB", "MP4, MOV"],
         ["Pinterest", "15:00", "2 GB", "MP4, MOV"],
@@ -60,7 +60,7 @@ export const socialMediaVideoSpecs: BlogPost = {
     {
       type: "callout",
       title: "The three that bind first",
-      text: "**Bluesky at 3:00 and 100 MB**, **X at 2:20 for non-Premium accounts**, and **YouTube Shorts at 5:00**. If any of those three is in your selection, it sets the ceiling for the whole cross-post.",
+      text: "**Bluesky at 3:00 and 100 MB**, **X at 2:20 for non-Premium accounts**, and **YouTube Shorts at 3:00**. If any of those three is in your selection, it sets the ceiling for the whole cross-post.",
     },
     {
       type: "heading",
@@ -88,7 +88,7 @@ export const socialMediaVideoSpecs: BlogPost = {
     },
     {
       type: "paragraph",
-      text: "A vertical video **3 minutes or under** is classified as a Short and enters the Shorts feed. Between 3 and 5 minutes it uploads fine but is treated as a regular video, which means a completely different distribution surface and a completely different audience. The file is identical; the outcome is not.",
+      text: "A vertical video **3 minutes or under** is classified as a Short and enters the Shorts feed. Over 3 minutes it still uploads, but as a regular video, which means a completely different distribution surface and a completely different audience. The file is identical; the outcome is not.",
     },
     {
       type: "subheading",
@@ -163,7 +163,7 @@ export const socialMediaVideoSpecs: BlogPost = {
       type: "list",
       ordered: true,
       items: [
-        "**Duration over the hard cap.** A 4-minute video is fine on TikTok and LinkedIn, over the line on Threads and YouTube Shorts, and well over on Bluesky.",
+        "**Duration over the hard cap.** A 4-minute video is fine on TikTok, LinkedIn and Threads, too long to be a YouTube Short, and well over on Bluesky.",
         "**File size over the cap.** A 200 MB export clears Instagram and dies on Bluesky's 100 MB ceiling. Size caps vary by a factor of fifty across these nine networks.",
         "**Wrong aspect ratio for the surface.** A landscape video sent to TikTok is rejected, not letterboxed.",
         "**Token expired mid-upload.** Long uploads are exactly when a stale OAuth token surfaces. This is a reconnect, not a retry — retrying the same job fails identically.",
@@ -219,7 +219,7 @@ pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1" \\
     {
       question: "What is the maximum video length for each social platform?",
       answer:
-        "Instagram accepts up to 20 minutes through its API, Pinterest 15, TikTok, LinkedIn and Facebook 10, YouTube Shorts and Threads 5, Bluesky 3, and X 2:20 for standard accounts or 10 minutes with Premium.",
+        "Instagram accepts up to 20 minutes through its API, Pinterest 15, TikTok, LinkedIn and Facebook 10, Threads 5, YouTube Shorts and Bluesky 3, and X 2:20 for standard accounts or 10 minutes with Premium.",
     },
     {
       question: "What video format works on every social platform?",
@@ -234,12 +234,12 @@ pad=1080:1920:(ow-iw)/2:(oh-ih)/2,setsar=1" \\
     {
       question: "What makes a video a YouTube Short instead of a regular video?",
       answer:
-        "Vertical videos of 3 minutes or less are classified as Shorts and enter the Shorts feed. Between 3 and 5 minutes the same file uploads as a regular video with completely different distribution.",
+        "Vertical videos of 3 minutes or less are classified as Shorts and enter the Shorts feed. Longer, the same file uploads as a regular video with completely different distribution.",
     },
     {
       question: "Which platform has the smallest video file size limit?",
       answer:
-        "Bluesky at 100 MB, followed by YouTube Shorts at 256 MB and Instagram at 250 MB. LinkedIn is the most generous at 5 GB. If Bluesky is in your cross-post selection, it sets the ceiling.",
+        "Bluesky at 100 MB, followed by Instagram at 250 MB through its API and TikTok at about 288 MB. YouTube is the most generous at 256 GB, then LinkedIn at 5 GB. If Bluesky is in your cross-post selection, it sets the ceiling.",
     },
   ],
   relatedPaths: [
