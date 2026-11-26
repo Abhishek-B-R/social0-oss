@@ -31,9 +31,13 @@ import { howToScheduleThreadsPosts } from "./blog-posts/how-to-schedule-threads-
 import { howToScheduleInstagramPosts } from "./blog-posts/how-to-schedule-instagram-posts";
 import { howToScheduleXPosts } from "./blog-posts/how-to-schedule-x-posts";
 import { howToScheduleBlueskyPosts } from "./blog-posts/how-to-schedule-bluesky-posts";
+import { n8nSocialMediaAutomation } from "./blog-posts/n8n-social-media-automation";
+import { postToSocialMediaFromClaudeCode } from "./blog-posts/post-to-social-media-from-claude-code";
 
 /** Newest first. The index page and sitemap both read this order. */
 export const BLOG_POSTS: BlogPost[] = [
+  n8nSocialMediaAutomation,
+  postToSocialMediaFromClaudeCode,
   howToScheduleXPosts,
   howToScheduleBlueskyPosts,
   howToScheduleInstagramPosts,

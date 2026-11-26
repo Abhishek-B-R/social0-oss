@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T13:27:18.640Z",
+  "generatedAt": "2026-11-26T13:35:56.479Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -652,6 +652,18 @@
     "how-to-schedule-youtube-videos": {
       "title": "How to Schedule YouTube Videos and Shorts (2026 Guide)",
       "description": "Schedule YouTube videos and Shorts in YouTube Studio on desktop or in the app, change a scheduled time, set up a Premiere, and schedule Shorts with Reels and TikTok.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
+    "n8n-social-media-automation": {
+      "title": "n8n Social Media Automation: Post to 9 Networks from One Workflow",
+      "description": "Build an n8n workflow that posts and schedules to X, LinkedIn, Instagram, TikTok and more with one HTTP Request node, from Google Sheets, RSS or an AI step.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
+    "post-to-social-media-from-claude-code": {
+      "title": "Post to Social Media from Claude Code (CLI or MCP Setup)",
+      "description": "Let Claude Code write and schedule your launch posts, release threads and changelog updates to X, LinkedIn, Threads and Bluesky, from the terminal you already ship from.",
       "datePublished": "2026-11-26",
       "dateModified": "2026-11-26"
     },
