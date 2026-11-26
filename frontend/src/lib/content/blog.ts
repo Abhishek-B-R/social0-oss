@@ -35,9 +35,13 @@ import { n8nSocialMediaAutomation } from "./blog-posts/n8n-social-media-automati
 import { postToSocialMediaFromClaudeCode } from "./blog-posts/post-to-social-media-from-claude-code";
 import { makeSocialMediaAutomation } from "./blog-posts/make-social-media-automation";
 import { zapierSocialMediaAutomation } from "./blog-posts/zapier-social-media-automation";
+import { howToSchedulePinterestPins } from "./blog-posts/how-to-schedule-pinterest-pins";
+import { howToScheduleFacebookPosts } from "./blog-posts/how-to-schedule-facebook-posts";
 
 /** Newest first. The index page and sitemap both read this order. */
 export const BLOG_POSTS: BlogPost[] = [
+  howToSchedulePinterestPins,
+  howToScheduleFacebookPosts,
   makeSocialMediaAutomation,
   zapierSocialMediaAutomation,
   n8nSocialMediaAutomation,

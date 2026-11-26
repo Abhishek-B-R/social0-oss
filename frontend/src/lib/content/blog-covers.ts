@@ -10,6 +10,8 @@ export const COVER_CHIPS: Record<string, string[]> = {
   "bluesky-and-threads-for-brands": ["Bluesky", "vs", "Threads"],
   "connect-social-accounts-troubleshooting": ["OAuth", "Permissions", "Reconnect"],
   "cross-posting-vs-repurposing": ["Cross-post", "Repurpose", "9 networks"],
+  "how-to-schedule-pinterest-pins": ["Pinterest", "30 days ahead", "2:3 Pins"],
+  "how-to-schedule-facebook-posts": ["Facebook", "Pages", "Business Suite"],
   "make-social-media-automation": ["Make", "1 HTTP module", "9 networks"],
   "zapier-social-media-automation": ["Zapier", "1 Zap", "9 networks"],
   "n8n-social-media-automation": ["n8n", "1 HTTP node", "9 networks"],
