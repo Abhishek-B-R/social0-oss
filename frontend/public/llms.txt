@@ -130,7 +130,7 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - [How to Cancel Buffer (and Keep Your Scheduled Posts)](https://social0.app/blog/how-to-cancel-buffer)
 - [How to Cancel Hootsuite Without Being Charged Again](https://social0.app/blog/how-to-cancel-hootsuite)
 - [Why Your Social Account Won't Connect to a Scheduler (And How to Fix It)](https://social0.app/blog/connect-social-accounts-troubleshooting)
-- [How the Instagram Algorithm Works in 2026 (Feed, Reels, Explore)](https://social0.app/blog/instagram-algorithm-guide)
+- [How the Instagram Algorithm Works in 2026: Reels, Feed, Explore](https://social0.app/blog/instagram-algorithm-guide)
 - [Instagram's 5-Hashtag Limit: What Changed and What Works Now](https://social0.app/blog/instagram-hashtag-limit)
 - [How the LinkedIn Algorithm Works in 2026 (And What Still Gets Reach)](https://social0.app/blog/linkedin-algorithm-guide)
 - [Managing Multiple Social Media Accounts: An Agency Workflow](https://social0.app/blog/managing-multiple-social-accounts)

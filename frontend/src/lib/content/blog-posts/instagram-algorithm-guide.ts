@@ -79,7 +79,7 @@ export const instagramAlgorithmGuide: BlogPost = {
     },
     {
       type: "paragraph",
-      text: "Note the "per reach" construction on two of them. These are **rates, not totals**. A post seen by 500 people with 50 sends outranks one seen by 50,000 with 200 sends. This is why small accounts can still break out, and why buying reach does not help.",
+      text: "Note the “per reach” construction on two of them. These are **rates, not totals**. A post seen by 500 people with 50 sends outranks one seen by 50,000 with 200 sends. This is why small accounts can still break out, and why buying reach does not help.",
     },
     {
       type: "heading",
