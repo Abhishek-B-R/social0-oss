@@ -97,7 +97,7 @@ export function BlogPostPage() {
             {toc.length > 2 ? (
               <nav
                 aria-label="On this page"
-                className="mb-10 rounded-2xl border border-border bg-muted/20 px-6 py-5 lg:order-2 lg:sticky lg:top-24 lg:mb-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0"
+                className="mb-10 rounded-2xl border border-border bg-muted/20 px-6 py-5 lg:order-2 lg:sticky lg:top-32 lg:mb-0 lg:self-start lg:border-0 lg:bg-transparent lg:p-0"
               >
                 <p className="mb-3 text-[11px] uppercase tracking-widest text-muted-foreground">
                   On this page
