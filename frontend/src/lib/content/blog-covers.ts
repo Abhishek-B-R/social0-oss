@@ -10,6 +10,8 @@ export const COVER_CHIPS: Record<string, string[]> = {
   "bluesky-and-threads-for-brands": ["Bluesky", "vs", "Threads"],
   "connect-social-accounts-troubleshooting": ["OAuth", "Permissions", "Reconnect"],
   "cross-posting-vs-repurposing": ["Cross-post", "Repurpose", "9 networks"],
+  "how-to-schedule-x-posts": ["X", "Tweets + threads", "Premium 25,000"],
+  "how-to-schedule-bluesky-posts": ["Bluesky", "App password", "300 chars"],
   "how-to-schedule-instagram-posts": ["Posts + Reels", "75 days ahead", "Stories"],
   "how-to-schedule-linkedin-posts": ["LinkedIn", "Profile + Page", "3 months ahead"],
   "how-to-schedule-threads-posts": ["Threads", "Schedule", "Whole threads"],

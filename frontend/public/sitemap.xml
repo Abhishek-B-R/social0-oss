@@ -461,6 +461,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://social0.app/blog/how-to-schedule-bluesky-posts</loc>
+    <lastmod>2026-11-26T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://social0.app/blog/how-to-schedule-instagram-posts</loc>
     <lastmod>2026-11-26T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
@@ -480,6 +486,12 @@
   </url>
   <url>
     <loc>https://social0.app/blog/how-to-schedule-tiktok-posts</loc>
+    <lastmod>2026-11-26T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/blog/how-to-schedule-x-posts</loc>
     <lastmod>2026-11-26T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

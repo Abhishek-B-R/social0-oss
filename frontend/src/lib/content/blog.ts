@@ -29,9 +29,13 @@ import { howToScheduleYoutubeVideos } from "./blog-posts/how-to-schedule-youtube
 import { howToScheduleLinkedinPosts } from "./blog-posts/how-to-schedule-linkedin-posts";
 import { howToScheduleThreadsPosts } from "./blog-posts/how-to-schedule-threads-posts";
 import { howToScheduleInstagramPosts } from "./blog-posts/how-to-schedule-instagram-posts";
+import { howToScheduleXPosts } from "./blog-posts/how-to-schedule-x-posts";
+import { howToScheduleBlueskyPosts } from "./blog-posts/how-to-schedule-bluesky-posts";
 
 /** Newest first. The index page and sitemap both read this order. */
 export const BLOG_POSTS: BlogPost[] = [
+  howToScheduleXPosts,
+  howToScheduleBlueskyPosts,
   howToScheduleInstagramPosts,
   howToScheduleLinkedinPosts,
   howToScheduleThreadsPosts,

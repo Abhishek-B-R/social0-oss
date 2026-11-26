@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T13:16:21.491Z",
+  "generatedAt": "2026-11-26T13:27:18.640Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -613,6 +613,12 @@
     }
   },
   "blog": {
+    "how-to-schedule-bluesky-posts": {
+      "title": "Can You Schedule Posts on Bluesky? How to Do It (2026)",
+      "description": "Bluesky has drafts but no built-in scheduler. How to schedule Bluesky posts with an app password, keep it safe, schedule threads, and post alongside X and Threads.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
     "how-to-schedule-instagram-posts": {
       "title": "How to Schedule Instagram Posts, Reels and Stories (2026)",
       "description": "Schedule Instagram posts and Reels in the app up to 75 days ahead, Stories through Meta Business Suite, and what scheduled posts can't do (collabs, product tags).",
@@ -634,6 +640,12 @@
     "how-to-schedule-tiktok-posts": {
       "title": "How to Schedule TikTok Posts (2026): Native and API Options",
       "description": "How to schedule TikTok videos and photo posts in 2026: TikTok Studio on desktop, its 10-day window, what a third-party scheduler adds, and the API rules behind it.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
+    "how-to-schedule-x-posts": {
+      "title": "How to Schedule Tweets and X Posts (Web, App and Threads)",
+      "description": "Schedule posts on X from x.com, find your unsent scheduled posts, why threads are the catch, and how Premium's longer posts change scheduling across networks.",
       "datePublished": "2026-11-26",
       "dateModified": "2026-11-26"
     },
