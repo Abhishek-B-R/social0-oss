@@ -41,7 +41,7 @@ export const COVER_CHIPS: Record<string, string[]> = {
   "social-media-video-specs": ["9:16", "MP4", "Length limits"],
   "tiktok-algorithm-guide": ["TikTok", "For You", "2026"],
   "why-scheduled-posts-fail": ["Retries", "Tokens", "Queues"],
-  "x-algorithm-guide": ["X", "Ranking signals", "2026"],
+  "x-algorithm-guide": ["X", "Phoenix model", "From the code"],
 };
 
 /** Two-colour wash per category (works on light and dark). */

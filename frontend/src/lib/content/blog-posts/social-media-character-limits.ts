@@ -3,7 +3,7 @@ import type { BlogPost } from "../blog-types";
 export const socialMediaCharacterLimits: BlogPost = {
   slug: "social-media-character-limits",
   category: "Platform specs",
-  metaTitle: "Social Media Character Limits (2026): Every Platform in One Table",
+  metaTitle: "Social Media Character Limits 2026: X, TikTok, Instagram and More",
   metaDescription:
     "Caption and character limits for X, LinkedIn, Instagram, TikTok, Threads, Bluesky, Pinterest, YouTube, and Facebook — plus what actually counts as a character on each network.",
   keywords: [
@@ -20,12 +20,17 @@ export const socialMediaCharacterLimits: BlogPost = {
   excerpt:
     "Nine networks, nine different ceilings — and three different ideas of what a character even is. Here is the full table, the counting rules that trip people up, and how to write one caption that survives all of them.",
   datePublished: "2026-08-05",
-  dateModified: "2026-09-20",
+  dateModified: "2026-11-26",
   readingMinutes: 9,
   body: [
     {
       type: "paragraph",
       text: "Every cross-posting workflow eventually hits the same wall: you write one good caption, send it to five networks, and two of them truncate it. The fix is not writing shorter — it is knowing exactly where each ceiling sits, and which ceiling binds first.",
+    },
+    {
+      type: "callout",
+      title: "Check a caption live",
+      text: "Paste your text into a free counter that counts the way each network does (X's 23-character links, emoji, Premium's 25,000) and shows where \"more\" cuts it: [X](/free-tools/post-preview/x), [LinkedIn](/free-tools/post-preview/linkedin), [Instagram](/free-tools/post-preview/instagram), [TikTok](/free-tools/post-preview/tiktok), [Threads](/free-tools/post-preview/threads), [Bluesky](/free-tools/post-preview/bluesky).",
     },
     {
       type: "paragraph",
@@ -60,7 +65,7 @@ export const socialMediaCharacterLimits: BlogPost = {
         [
           "Instagram",
           "2,200",
-          "Caption including hashtags. Roughly 125 characters show before “more”.",
+          "Caption including hashtags, and no more than 5 hashtags. Roughly 125 characters show before “more”.",
         ],
         [
           "LinkedIn",
@@ -70,7 +75,7 @@ export const socialMediaCharacterLimits: BlogPost = {
         [
           "TikTok",
           "4,000 photo description / 2,200 video caption",
-          "Two different fields with two different ceilings. Photo titles cap at 90.",
+          "Video captions go to 4,000 in the TikTok app, but posts sent through TikTok's API (what schedulers use) cap at 2,200. Photo titles cap at 90.",
         ],
         ["YouTube", "5,000", "Video description. Titles cap at 100."],
         [

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T13:52:04.119Z",
+  "generatedAt": "2026-11-26T14:12:46.531Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -758,10 +758,10 @@
       "dateModified": "2026-09-20"
     },
     "x-algorithm-guide": {
-      "title": "How the X (Twitter) Algorithm Works in 2026",
-      "description": "Replies are worth many times a like, the first 30 minutes decide most of your reach, links cost you distribution, and Premium changes the maths. How the For You feed actually ranks posts.",
+      "title": "How the Twitter (X) Algorithm Works in 2026, From the Code",
+      "description": "X publishes its ranking code. What the 2026 Grok-based Phoenix model predicts, the 48-hour cutoff, dwell time, author diversity, and what it means for your posts.",
       "datePublished": "2026-09-20",
-      "dateModified": "2026-09-20"
+      "dateModified": "2026-11-26"
     },
     "bluesky-and-threads-for-brands": {
       "title": "Bluesky vs Threads in 2026: Which Is Worth Your Time?",
@@ -830,10 +830,10 @@
       "dateModified": "2026-09-20"
     },
     "social-media-character-limits": {
-      "title": "Social Media Character Limits (2026): Every Platform in One Table",
+      "title": "Social Media Character Limits 2026: X, TikTok, Instagram and More",
       "description": "Caption and character limits for X, LinkedIn, Instagram, TikTok, Threads, Bluesky, Pinterest, YouTube, and Facebook — plus what actually counts as a character on each network.",
       "datePublished": "2026-08-05",
-      "dateModified": "2026-09-20"
+      "dateModified": "2026-11-26"
     }
   },
   "homeFaqs": [

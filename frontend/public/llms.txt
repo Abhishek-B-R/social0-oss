@@ -137,7 +137,7 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - [Reels vs TikTok vs Shorts: Where Short-Form Video Actually Works](https://social0.app/blog/reels-vs-tiktok-vs-shorts)
 - [Engagement Rate: Formulas, Benchmarks, and What to Actually Track](https://social0.app/blog/social-media-engagement-rate)
 - [How the TikTok Algorithm Works in 2026 (For You Page Ranking)](https://social0.app/blog/tiktok-algorithm-guide)
-- [How the X (Twitter) Algorithm Works in 2026](https://social0.app/blog/x-algorithm-guide)
+- [How the Twitter (X) Algorithm Works in 2026, From the Code](https://social0.app/blog/x-algorithm-guide)
 - [Bluesky vs Threads in 2026: Which Is Worth Your Time?](https://social0.app/blog/bluesky-and-threads-for-brands)
 - [Social Media Automation for Developers: CLI, CI, and Webhooks](https://social0.app/blog/social-media-automation-for-developers)
 - [Why Scheduled Social Posts Fail (and How to Build So They Don't)](https://social0.app/blog/why-scheduled-posts-fail)
@@ -149,7 +149,7 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 - [Best Time to Post on Social Media in 2026 (Every Platform)](https://social0.app/blog/best-time-to-post-on-social-media)
 - [Social Media Image Sizes 2026: Cheat Sheet for Every Platform](https://social0.app/blog/social-media-image-sizes)
 - [Social Media Video Specs 2026: Length, Size & Format by Platform](https://social0.app/blog/social-media-video-specs)
-- [Social Media Character Limits (2026): Every Platform in One Table](https://social0.app/blog/social-media-character-limits)
+- [Social Media Character Limits 2026: X, TikTok, Instagram and More](https://social0.app/blog/social-media-character-limits)
 - [All guides](https://social0.app/blog)
 
 ## Key differentiators
