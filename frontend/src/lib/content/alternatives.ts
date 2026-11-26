@@ -110,7 +110,7 @@ const ALL_ALTERNATIVES: AlternativePage[] = [
     competitorName: "Later",
     metaTitle: "Later Alternatives with a Free Plan, X and Bluesky | Social0",
     metaDescription:
-      "Later starts with a 14-day trial and has no X or Bluesky. Social0 posts to 9 networks: free for 3 accounts, or $29.90/mo for 15 with unlimited posts.",
+      "Want a free Later alternative? Later has a 14-day trial and no X or Bluesky. Social0 is free for 3 accounts on 9 networks, or $29.90/mo for 15.",
     keywords: [
       "later alternatives",
       "later alternative",
@@ -179,6 +179,11 @@ const ALL_ALTERNATIVES: AlternativePage[] = [
         question: "When should I stay on Later?",
         answer:
           "Stay on Later if your work is mostly Instagram visual planning, you rely on its Link in Bio or UGC collection, or you post to Snapchat. Social0 doesn't do Snapchat or link-in-bio pages.",
+      },
+      {
+        question: "Is there a Later alternative for Instagram grid planning?",
+        answer:
+          "Social0 has a content calendar for every network but no drag-and-drop Instagram grid preview, so if planning how your grid looks is the main job, Later or Planoly fit better. To split one image into 3, 6 or 9 grid tiles, Social0's free Instagram grid maker does it in your browser.",
       },
       {
         question: "Is Social0 better than Later for Instagram?",
