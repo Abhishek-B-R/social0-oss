@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T13:01:05.150Z",
+  "generatedAt": "2026-11-26T13:07:20.412Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -613,6 +613,18 @@
     }
   },
   "blog": {
+    "how-to-schedule-linkedin-posts": {
+      "title": "How to Schedule LinkedIn Posts: Profiles and Company Pages",
+      "description": "Schedule LinkedIn posts on desktop or mobile, for your profile or a company Page: the 3-month window, editing rules that differ for Pages, and the hook before 'more'.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
+    "how-to-schedule-threads-posts": {
+      "title": "How to Schedule Threads Posts (Meta Threads Scheduling Guide)",
+      "description": "How to schedule posts on Meta's Threads: the built-in scheduler, how far ahead it goes, why replies and multi-post threads are the catch, and scheduling alongside X.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
     "how-to-schedule-tiktok-posts": {
       "title": "How to Schedule TikTok Posts (2026): Native and API Options",
       "description": "How to schedule TikTok videos and photo posts in 2026: TikTok Studio on desktop, its 10-day window, what a third-party scheduler adds, and the API rules behind it.",
