@@ -10,6 +10,8 @@ export const COVER_CHIPS: Record<string, string[]> = {
   "bluesky-and-threads-for-brands": ["Bluesky", "vs", "Threads"],
   "connect-social-accounts-troubleshooting": ["OAuth", "Permissions", "Reconnect"],
   "cross-posting-vs-repurposing": ["Cross-post", "Repurpose", "9 networks"],
+  "how-to-schedule-tiktok-posts": ["TikTok", "Schedule", "10-day window"],
+  "how-to-schedule-youtube-videos": ["YouTube", "Shorts", "Schedule"],
   "how-to-cancel-buffer": ["Cancel Buffer", "Export posts", "No gaps"],
   "how-to-cancel-hootsuite": ["Cancel Hootsuite", "No surprise charge"],
   "instagram-algorithm-guide": ["Instagram", "Ranking signals", "2026"],

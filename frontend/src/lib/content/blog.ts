@@ -24,9 +24,13 @@ import { whyScheduledPostsFail } from "./blog-posts/why-scheduled-posts-fail";
 import { howToCancelBuffer } from "./blog-posts/how-to-cancel-buffer";
 import { howToCancelHootsuite } from "./blog-posts/how-to-cancel-hootsuite";
 import { blackFridaySocialMediaSchedulerDeals } from "./blog-posts/black-friday-social-media-scheduler-deals";
+import { howToScheduleTiktokPosts } from "./blog-posts/how-to-schedule-tiktok-posts";
+import { howToScheduleYoutubeVideos } from "./blog-posts/how-to-schedule-youtube-videos";
 
 /** Newest first. The index page and sitemap both read this order. */
 export const BLOG_POSTS: BlogPost[] = [
+  howToScheduleTiktokPosts,
+  howToScheduleYoutubeVideos,
   blackFridaySocialMediaSchedulerDeals,
   howToCancelBuffer,
   howToCancelHootsuite,

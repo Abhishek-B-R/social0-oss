@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T07:58:39.421Z",
+  "generatedAt": "2026-11-26T12:34:32.684Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -613,6 +613,18 @@
     }
   },
   "blog": {
+    "how-to-schedule-tiktok-posts": {
+      "title": "How to Schedule TikTok Posts (2026): Native and API Options",
+      "description": "How to schedule TikTok videos and photo posts in 2026: TikTok Studio on desktop, its 10-day window, what a third-party scheduler adds, and the API rules behind it.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
+    "how-to-schedule-youtube-videos": {
+      "title": "How to Schedule YouTube Videos and Shorts (2026 Guide)",
+      "description": "Schedule YouTube videos and Shorts in YouTube Studio on desktop or in the app, change a scheduled time, set up a Premiere, and schedule Shorts with Reels and TikTok.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
     "black-friday-social-media-scheduler-deals": {
       "title": "Black Friday Social Media Scheduler Deal 2026 | Social0",
       "description": "Social0's Black Friday 2026 deal: 20% off any plan with code BLACKFRIDAY until Dec 1, kept for as long as you stay subscribed. Creator $23.92/mo, Agency $47.92/mo.",

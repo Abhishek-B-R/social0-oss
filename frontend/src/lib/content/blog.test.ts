@@ -5,6 +5,8 @@ import { BLOG_CATEGORIES } from "./blog-types";
 import { FEATURES } from "./features";
 import { TOOLS } from "./tools";
 import { ALTERNATIVES } from "./alternatives";
+import { FREE_TOOLS_PATH, PREVIEW_PLATFORMS, postPreviewPath } from "./free-tools";
+import { STANDALONE_TOOLS, freeToolPath } from "./free-tools-standalone";
 import { parseInline } from "@/lib/rich-text";
 
 /** Marketing routes that exist outside the pSEO content files. */
@@ -25,6 +27,12 @@ const FEATURE_PATHS = new Set(FEATURES.map((f) => `/features/${f.slug}`));
 const TOOL_PATHS = new Set(TOOLS.map((t) => `/tools/${t.slug}`));
 const BLOG_PATHS = new Set(BLOG_POSTS.map((p) => `/blog/${p.slug}`));
 const ALTERNATIVE_PATHS = new Set(ALTERNATIVES.map((a) => `/alternatives/${a.slug}`));
+const FREE_TOOL_PATHS = new Set([
+  FREE_TOOLS_PATH,
+  `${FREE_TOOLS_PATH}/image-resizer`,
+  ...PREVIEW_PLATFORMS.map((p) => postPreviewPath(p.slug)),
+  ...STANDALONE_TOOLS.map((t) => freeToolPath(t.slug)),
+]);
 
 function isKnownInternalPath(href: string): boolean {
   const [path] = href.split("#");
@@ -34,7 +42,8 @@ function isKnownInternalPath(href: string): boolean {
     FEATURE_PATHS.has(path) ||
     TOOL_PATHS.has(path) ||
     BLOG_PATHS.has(path) ||
-    ALTERNATIVE_PATHS.has(path)
+    ALTERNATIVE_PATHS.has(path) ||
+    FREE_TOOL_PATHS.has(path)
   );
 }
 
