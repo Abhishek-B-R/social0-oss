@@ -1,6 +1,7 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Link from "@/components/AppLink";
+import { ToolHero } from "@/components/landing/ToolHero";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { useSession } from "@/lib/auth-client";
@@ -166,11 +167,7 @@ export default function LinkPreviewCheckerPage() {
           <Link href={FREE_TOOLS_PATH} className="hover:underline">Free tools</Link> › {T.name}
         </nav>
 
-        <header className="flex flex-col items-center gap-3 text-center">
-          <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Free tool · no signup</span>
-          <h1 className="font-serif text-[clamp(30px,5vw,48px)] font-extrabold leading-tight tracking-tight text-balance text-[#333C4D] dark:text-white">{T.name}</h1>
-          <p className="max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">{T.intro}</p>
-        </header>
+        <ToolHero title={T.name} intro={T.intro} />
 
         <form onSubmit={onSubmit} className="mx-auto flex w-full max-w-[760px] flex-col gap-2 sm:flex-row">
           <label htmlFor={inputId} className="sr-only">Link to check</label>

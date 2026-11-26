@@ -185,3 +185,10 @@ describe("relatedBlogPosts", () => {
     expect(related[0]).toBe(post.relatedSlugs?.[0]);
   });
 });
+
+import { COVER_CHIPS } from "./blog-covers";
+describe("blog covers", () => {
+  it("every post has cover chips", () => {
+    for (const p of BLOG_POSTS) expect(COVER_CHIPS[p.slug]?.length, p.slug).toBeGreaterThan(0);
+  });
+});

@@ -1,5 +1,6 @@
 import { Navigate, useParams } from "react-router-dom";
 import Link from "@/components/AppLink";
+import { BlogCover } from "@/components/blog/BlogCover";
 import { BlogBody } from "@/components/blog/BlogBody";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PseoFaq } from "@/components/landing/PseoFaq";
@@ -89,6 +90,7 @@ export function BlogPostPage() {
               By <span className="text-foreground">Abhishek BR</span>, founder of Social0
             </p>
           </div>
+          <BlogCover post={post} className="mt-10" />
           </div>
         </header>
 

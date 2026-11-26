@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { Navigate, useParams, useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
+import { ToolHero } from "@/components/landing/ToolHero";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { useSession } from "@/lib/auth-client";
@@ -146,13 +147,7 @@ export default function PostPreviewToolPage() {
           <Link href={FREE_TOOLS_PATH} className="hover:underline">Free tools</Link> › {p.name} post preview
         </nav>
 
-        <header className="flex flex-col items-center gap-3 text-center">
-          <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Free tool · no signup</span>
-          <h1 className="font-serif text-[clamp(30px,5vw,48px)] font-extrabold leading-tight tracking-tight text-balance text-[#333C4D] dark:text-white">
-            {p.name} Post Preview &amp; Character Counter
-          </h1>
-          <p className="max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">{p.intro}</p>
-        </header>
+        <ToolHero title={<>{p.name} Post Preview &amp; Character Counter</>} intro={p.intro} />
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
           <div className="flex min-w-0 flex-col gap-4 rounded-2xl border border-border bg-card p-4 sm:p-5">

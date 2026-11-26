@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Link from "@/components/AppLink";
+import { ToolHero } from "@/components/landing/ToolHero";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { SeoHead } from "@/components/seo/SeoHead";
 import { useSession } from "@/lib/auth-client";
@@ -68,11 +69,7 @@ export default function ThreadMakerPage() {
           <Link href={FREE_TOOLS_PATH} className="hover:underline">Free tools</Link> › Thread maker
         </nav>
 
-        <header className="flex flex-col items-center gap-3 text-center">
-          <span className="text-[11px] uppercase tracking-widest text-muted-foreground">Free tool · no signup</span>
-          <h1 className="font-serif text-[clamp(30px,5vw,48px)] font-extrabold leading-tight tracking-tight text-balance text-[#333C4D] dark:text-white">{T.name}</h1>
-          <p className="max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">{T.intro}</p>
-        </header>
+        <ToolHero title={T.name} intro={T.intro} />
 
         <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card p-4 sm:p-5">

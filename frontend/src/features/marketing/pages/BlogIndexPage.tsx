@@ -1,4 +1,5 @@
 import Link from "@/components/AppLink";
+import { BlogCover } from "@/components/blog/BlogCover";
 import { MarketingPageLayout } from "@/components/landing/MarketingPageLayout";
 import { PseoRelatedLinks } from "@/components/landing/PseoRelatedLinks";
 import { PseoJsonLd } from "@/components/seo/PseoJsonLd";
@@ -86,8 +87,10 @@ export default function BlogIndexPage() {
           <div className="mx-auto max-w-[1100px]">
             <Link
               href={blogPostPath(featured.slug)}
-              className="group flex flex-col rounded-2xl border border-border bg-muted/20 px-7 py-8 transition-colors hover:border-emerald-600/40 lg:px-10 lg:py-10"
+              className="group grid items-center gap-6 rounded-2xl border border-border bg-muted/20 p-4 transition-colors hover:border-emerald-600/40 sm:p-6 lg:grid-cols-[1.1fr_1fr] lg:gap-10"
             >
+              <BlogCover post={featured} />
+              <div className="flex flex-col">
               <span className="text-[11px] uppercase tracking-widest text-emerald-700">
                 Latest · {featured.category}
               </span>
@@ -106,6 +109,7 @@ export default function BlogIndexPage() {
                 </span>
                 {featured.readingMinutes} min read
               </span>
+              </div>
             </Link>
           </div>
         </section>
@@ -118,18 +122,19 @@ export default function BlogIndexPage() {
               <li key={post.slug}>
                 <Link
                   href={blogPostPath(post.slug)}
-                  className="flex h-full flex-col rounded-2xl border border-border bg-background px-6 py-6 transition-colors hover:border-emerald-600/40 hover:bg-muted/30 dark:hover:bg-white/[0.03]"
+                  className="flex h-full flex-col rounded-2xl border border-border bg-background p-3 pb-6 transition-colors hover:border-emerald-600/40 hover:bg-muted/30 dark:hover:bg-white/[0.03]"
                 >
-                  <span className="text-[11px] uppercase tracking-widest text-emerald-700">
+                  <BlogCover post={post} size="sm" className="mb-4" />
+                  <span className="px-3 text-[11px] uppercase tracking-widest text-emerald-700">
                     {post.category}
                   </span>
-                  <h2 className="mt-2 text-[16px] font-semibold leading-snug text-[#333C4D] dark:text-white">
+                  <h2 className="mt-2 px-3 text-[17px] font-bold leading-snug tracking-tight text-[#333C4D] dark:text-white">
                     {post.title}
                   </h2>
-                  <p className="mt-3 line-clamp-4 flex-1 text-[14px] leading-relaxed text-muted-foreground">
+                  <p className="mt-2 line-clamp-3 flex-1 px-3 text-[14px] leading-relaxed text-muted-foreground">
                     {post.excerpt}
                   </p>
-                  <span className="mt-5 text-[12px] text-muted-foreground">
+                  <span className="mt-4 px-3 text-[12px] text-muted-foreground">
                     <time dateTime={post.datePublished}>
                       {formatBlogDate(post.datePublished)}
                     </time>
