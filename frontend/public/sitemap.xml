@@ -503,6 +503,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://social0.app/blog/make-social-media-automation</loc>
+    <lastmod>2026-11-26T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://social0.app/blog/n8n-social-media-automation</loc>
     <lastmod>2026-11-26T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
@@ -510,6 +516,12 @@
   </url>
   <url>
     <loc>https://social0.app/blog/post-to-social-media-from-claude-code</loc>
+    <lastmod>2026-11-26T00:00:00.000Z</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://social0.app/blog/zapier-social-media-automation</loc>
     <lastmod>2026-11-26T00:00:00.000Z</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>

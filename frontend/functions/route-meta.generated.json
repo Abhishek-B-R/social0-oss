@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T13:35:56.479Z",
+  "generatedAt": "2026-11-26T13:45:20.166Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -655,6 +655,12 @@
       "datePublished": "2026-11-26",
       "dateModified": "2026-11-26"
     },
+    "make-social-media-automation": {
+      "title": "Make.com Social Media Automation: Post to 9 Networks (2026)",
+      "description": "Build a Make scenario that posts and schedules to X, LinkedIn, Instagram, TikTok, Threads and Bluesky with one HTTP module, from Google Sheets, RSS or an AI step.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
     "n8n-social-media-automation": {
       "title": "n8n Social Media Automation: Post to 9 Networks from One Workflow",
       "description": "Build an n8n workflow that posts and schedules to X, LinkedIn, Instagram, TikTok and more with one HTTP Request node, from Google Sheets, RSS or an AI step.",
@@ -664,6 +670,12 @@
     "post-to-social-media-from-claude-code": {
       "title": "Post to Social Media from Claude Code (CLI or MCP Setup)",
       "description": "Let Claude Code write and schedule your launch posts, release threads and changelog updates to X, LinkedIn, Threads and Bluesky, from the terminal you already ship from.",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
+    "zapier-social-media-automation": {
+      "title": "Zapier Social Media Automation: Post to Every Network from One Zap",
+      "description": "Build a Zap that posts and schedules to X, LinkedIn, Instagram, TikTok, Threads and Bluesky from Google Sheets, RSS or a form, using one Webhooks by Zapier step.",
       "datePublished": "2026-11-26",
       "dateModified": "2026-11-26"
     },
