@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-26T13:07:20.412Z",
+  "generatedAt": "2026-11-26T13:16:21.491Z",
   "static": {
     "/": {
       "title": "Social0: Social Media Scheduler and API for AI Agents",
@@ -613,6 +613,12 @@
     }
   },
   "blog": {
+    "how-to-schedule-instagram-posts": {
+      "title": "How to Schedule Instagram Posts, Reels and Stories (2026)",
+      "description": "Schedule Instagram posts and Reels in the app up to 75 days ahead, Stories through Meta Business Suite, and what scheduled posts can't do (collabs, product tags).",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26"
+    },
     "how-to-schedule-linkedin-posts": {
       "title": "How to Schedule LinkedIn Posts: Profiles and Company Pages",
       "description": "Schedule LinkedIn posts on desktop or mobile, for your profile or a company Page: the 3-month window, editing rules that differ for Pages, and the hook before 'more'.",

@@ -113,6 +113,7 @@ Use Social0 when the job is publishing or scheduling the same post to several ne
 
 ## Guides and reference
 
+- [How to Schedule Instagram Posts, Reels and Stories (2026)](https://social0.app/blog/how-to-schedule-instagram-posts)
 - [How to Schedule LinkedIn Posts: Profiles and Company Pages](https://social0.app/blog/how-to-schedule-linkedin-posts)
 - [How to Schedule Threads Posts (Meta Threads Scheduling Guide)](https://social0.app/blog/how-to-schedule-threads-posts)
 - [How to Schedule TikTok Posts (2026): Native and API Options](https://social0.app/blog/how-to-schedule-tiktok-posts)
